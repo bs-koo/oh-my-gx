@@ -257,8 +257,6 @@ Git worktree로 격리된 작업 환경을 관리합니다.
 </details>
 
 <details>
-
-<details>
 <summary><b>플러그인 업데이트는?</b></summary>
 
 `/plugin marketplace update oh-my-gx`
