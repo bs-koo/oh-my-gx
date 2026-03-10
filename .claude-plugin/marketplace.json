@@ -1,0 +1,17 @@
+{
+  "name": "oh-my-gx",
+  "owner": {
+    "name": "bs-koo"
+  },
+  "metadata": {
+    "description": "Java Spring Boot 및 풀스택 개발 플러그인"
+  },
+  "plugins": [
+    {
+      "name": "oh-my-gx",
+      "source": "./",
+      "description": "Java Spring Boot 및 풀스택 프로젝트를 위한 AI 기반 개발 플러그인",
+      "version": "1.0.0"
+    }
+  ]
+}

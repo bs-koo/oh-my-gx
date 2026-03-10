@@ -1,0 +1,25 @@
+{
+  "name": "oh-my-gx",
+  "description": "Java Spring Boot 및 풀스택 프로젝트를 위한 AI 기반 개발 플러그인. PRD 작성, 설계, 구현, 리뷰, 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 수행합니다.",
+  "version": "1.0.0",
+  "author": {
+    "name": "bs-koo"
+  },
+  "homepage": "https://github.com/bs-koo/oh-my-gx",
+  "repository": "https://github.com/bs-koo/oh-my-gx",
+  "keywords": ["java", "spring-boot", "vue", "fullstack", "korean", "dev-workflow", "prd", "code-review"],
+  "skills": "./.claude/skills/",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-tool-guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
