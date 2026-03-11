@@ -158,6 +158,7 @@ PR이 성공적으로 생성되었으면:
    - `enabled`가 `false`이거나 `webhookUrl`이 비어있으면 건너뜀
 
 2. 전송 (`timeout: 10000`):
+
    ```bash
    PROJECT_NAME=$(basename $(git rev-parse --show-toplevel))
    curl --max-time 10 -s -o /dev/null -X POST "$WEBHOOK_URL" \
@@ -165,4 +166,4 @@ PR이 성공적으로 생성되었으면:
      -d '{"text":"['"$PROJECT_NAME"'] 새로운 PR이 올라왔습니다. 확인해주세요: '"$PR_URL"'"}'
    ```
 
-4. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.
+3. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.
