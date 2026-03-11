@@ -152,12 +152,20 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
    | 2 | coder-frontend | Controller/API 구현 | PaymentController.kt |
    | 3 | coder-test | 테스트 작성 | PaymentServiceTest.kt |
 
-   이 분할대로 진행할까요? 수정할 부분이 있으면 알려주세요.
    ```
 
-2. 사용자 응답 처리:
+2. AskUserQuestion으로 승인을 받는다:
+   ```
+   AskUserQuestion(
+     question: "팀 구현 계획을 확인해주세요.",
+     options: [
+       { value: "approve", label: "승인 — 구현 시작" },
+       { value: "modify", label: "수정 요청 — 변경할 항목을 알려주세요" }
+     ]
+   )
+   ```
    - **승인** → Step 2 (coder 스폰)로 진행.
-   - **수정 요청** → 수정 사항을 반영하여 TEAM_PLAN.md 갱신 후 재제시 (1회).
+   - **수정 요청** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 TEAM_PLAN.md 갱신 후 재제시 (1회).
    - 2회 제시 후에도 수정이 있으면 최신 계획으로 진행.
 
 3. `current-step`을 `"태스크 분할 결과 승인"`으로 설정한다.
