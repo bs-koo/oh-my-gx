@@ -46,6 +46,55 @@
 
 ---
 
+## 이럴 때 이렇게 쓰세요
+
+### 새 프로젝트에 투입되었을 때
+
+```bash
+# 1. 도메인 지식부터 등록 (코드베이스를 스캔해서 자동 생성)
+/oh-my-gx:context
+
+# 2. 기존 비즈니스 정책 파악
+/oh-my-gx:lens 할인 정책 정리해줘
+
+# 3. 기능 개발 시작
+/oh-my-gx:dev 쿠폰 적용 기능 추가
+```
+
+### 기획서를 받아서 개발할 때
+
+```bash
+# 1. 기획서를 context에 등록
+/oh-my-gx:context 주문 --from requirements/주문-기획서.md
+
+# 2. 기획서 기반으로 개발 요청
+/oh-my-gx:dev 주문 취소 기능 추가
+# → AI가 context에 등록된 기획서를 참조하여 PRD 작성 → 설계 → 구현 → PR
+```
+
+### 운영 중 긴급 버그가 발생했을 때
+
+```bash
+/oh-my-gx:dev 결제 금액 소수점 절삭 오류 긴급 수정해줘
+# → hotfix 모드: 설계/리뷰 생략, 바로 구현 → 커밋 → PR
+```
+
+### 정책 변경의 영향을 먼저 확인하고 싶을 때
+
+```bash
+/oh-my-gx:lens 구매 한도 --idea "한도를 100만원으로 올리면?"
+# → 코드를 수정하지 않고 영향 범위만 분석하여 보고
+```
+
+### 코드는 직접 짰고, 커밋/PR만 자동화하고 싶을 때
+
+```bash
+/oh-my-gx:commit                # 변경사항 분석 → 한국어 커밋 메시지 생성 → 커밋
+/oh-my-gx:pull-request          # 커밋 히스토리 분석 → PR 제목/본문 생성 → PR
+```
+
+---
+
 ## 어떻게 작동하나요?
 
 ```
@@ -166,15 +215,39 @@ AI: PR을 생성했습니다. → https://github.com/...
 </details>
 
 <details>
-<summary><b>플러그인 업데이트는?</b></summary>
-
-`/plugin marketplace update oh-my-gx`
-</details>
-
-<details>
 <summary><b>개발 지식 없이 사용할 수 있나요?</b></summary>
 
 PRD 작성(`/dev PRD만 작성해줘`)과 정책 분석(`/lens`)은 코드를 직접 다루지 않아도 사용할 수 있습니다.
+</details>
+
+<details>
+<summary><b>/dev를 실행하면 바로 코드를 짜나요?</b></summary>
+
+아닙니다. 먼저 Q&A로 요구사항을 구체화하고(PRD), 기술 설계를 거친 뒤 사용자가 승인해야 구현에 들어갑니다. 각 단계마다 확인을 받기 때문에 의도와 다른 코드가 만들어질 걱정은 없습니다.
+</details>
+
+<details>
+<summary><b>/dev 도중에 멈추면 처음부터 다시 해야 하나요?</b></summary>
+
+아닙니다. "이어서 해줘" 또는 "아까 하던 작업 계속"이라고 말하면 중단된 단계부터 재개합니다.
+</details>
+
+<details>
+<summary><b>context, lens, dev를 꼭 순서대로 실행해야 하나요?</b></summary>
+
+아닙니다. `/dev`만 단독으로 실행해도 됩니다. 다만 `/context`로 도메인을 먼저 등록하면 AI가 도메인 용어를 정확히 이해하고, `/lens`로 현행 정책을 파악하면 더 정확한 결과를 얻을 수 있습니다.
+</details>
+
+<details>
+<summary><b>PR이 자동으로 머지되나요?</b></summary>
+
+아닙니다. PR 생성까지만 자동화합니다. 머지는 리뷰어가 직접 수행합니다.
+</details>
+
+<details>
+<summary><b>플러그인 업데이트는?</b></summary>
+
+`/plugin marketplace update oh-my-gx`
 </details>
 
 ---
