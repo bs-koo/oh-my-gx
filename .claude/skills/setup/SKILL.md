@@ -1,10 +1,10 @@
 ---
 name: setup
-version: 4.0.0
+version: 5.0.0
 argument-hint: "없음"
 description: |
   플러그인 초기 설정.
-  역할 선택, 필수 도구 확인, GH 인증을 단계별로 수행합니다.
+  필수 도구 확인, GH 인증을 단계별로 수행합니다.
 allowed-tools:
   - "Bash(curl *)"
   - "Bash(gh *)"
@@ -28,18 +28,9 @@ allowed-tools:
 
 아래 단계를 **순서대로** 실행한다. 각 단계 완료 시 `{항목} : 완료 ✅` 형식으로 출력한다.
 
-### 0단계: 역할 선택
-
-1. AskUserQuestion: "역할을 선택하세요: **PM** / **개발자**"
-2. 사용자 응답을 파싱하여 `PM` 또는 `개발자`로 판별한다.
-3. `.claude/config.json`의 `role` 필드에 저장한다:
-   - PM 선택 → `"role": "PM"`
-   - 개발자 선택 → `"role": "개발자"`
-4. `역할 선택 : {역할} ✅` 출력
-
 ### 1단계: 필수 도구 확인
 
-#### 공통: gh
+#### gh
 
 | 도구 | 확인 |
 |------|------|
@@ -49,9 +40,7 @@ allowed-tools:
 2. 있으면 → `gh : 완료 ✅` 출력
 3. 없으면 → 설치 링크를 안내 (https://cli.github.com)
 
-#### 개발자 전용: JDK
-
-**역할이 PM이면 이 섹션을 건너뛴다.**
+#### JDK
 
 1. `uname -s`로 OS를 감지한다.
 2. `java -version`으로 JDK 설치 여부와 버전을 확인한다.
@@ -121,34 +110,16 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
    - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`)
      `Google Chat 연동 : 완료 ✅` 출력
 
-### 완료: 역할별 퀵스타트
-
-역할에 따라 다른 퀵스타트를 출력한다.
-
-#### PM인 경우:
+### 완료: 퀵스타트
 
 ```
-=== PM 퀵스타트 ===
+=== 퀵스타트 ===
 /context {도메인}     → 도메인 지식 등록
-/dev {요청}           → 개발 요청 (PRD 작성부터)
-/lens {질문}          → 코드에서 비즈니스 정책 확인
-/humanizer {파일}     → AI 글쓰기 교정
+/lens {질문}          → 현행 분석 + 영향도
+/dev {요청}           → 전체 개발 사이클 (PRD~PR)
 
 💡 화면 설계서가 있다면:
 requirements/ 폴더에 넣고 /context {도메인} --from requirements/ 로 등록
-```
-
-#### 개발자인 경우:
-
-```
-=== 개발자 퀵스타트 ===
-/context {도메인}     → 도메인 지식 등록
-/dev {요청}           → 전체 개발 사이클
-/commit              → 자동 커밋
-/pull-request        → PR 생성
-
-💡 화면 설계 기반 개발:
-requirements/ 폴더에 설계서를 넣고 /context로 등록 후 /dev 실행
 ```
 
 ## 주의사항

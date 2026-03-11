@@ -157,19 +157,13 @@ PR이 성공적으로 생성되었으면:
 1. `.claude/config.json`의 `notifications.googleChat` 확인
    - `enabled`가 `false`이거나 `webhookUrl`이 비어있으면 건너뜀
 
-2. 이벤트 판별:
-   `git diff <base-branch>...HEAD --name-only` 결과에서
-   - 모든 파일이 `context/` 하위 → "context 수정" 알림
-   - 그 외 → "기능 추가/수정" 알림
+2. 전송 (`timeout: 10000`):
 
-3. 전송 (`timeout: 10000`):
    ```bash
    PROJECT_NAME=$(basename $(git rev-parse --show-toplevel))
    curl --max-time 10 -s -o /dev/null -X POST "$WEBHOOK_URL" \
      -H "Content-Type: application/json" \
-     -d '{"text":"['"$PROJECT_NAME"'] {메시지}: '"$PR_URL"'"}'
+     -d '{"text":"['"$PROJECT_NAME"'] 새로운 PR이 올라왔습니다. 확인해주세요: '"$PR_URL"'"}'
    ```
-   - context 수정 알림: `context가 수정되었습니다. PR을 확인해주세요`
-   - 기능 추가/수정 알림: `기능이 추가/수정되었습니다. PR을 확인해주세요`
 
-4. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.
+3. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.

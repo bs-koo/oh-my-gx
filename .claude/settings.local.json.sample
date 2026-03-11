@@ -9,7 +9,6 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(command:*)",
-      "Skill(worktree)",
       "Skill(dev)",
       "Skill(commit)",
       "WebSearch"
