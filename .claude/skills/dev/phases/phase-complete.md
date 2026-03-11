@@ -81,7 +81,7 @@ PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제
 ## 5.6 진행 상태 완료
 `.dev/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
 
-## 5.8 다음 단계
+## 5.7 다음 단계
 
 PR이 생성되었으면 완료이다. **PR 머지는 절대 실행하지 않는다** — 머지는 리뷰어가 직접 수행한다.
 
