@@ -2,7 +2,7 @@
 
 # oh-my-gx
 
-**기획서를 주면 AI 에이전트 팀이 PRD, 설계, 구현, 리뷰, PR까지 처리합니다.**
+**GX 사업본부 개발자들을 위한 PRD, 설계, 구현, 리뷰, PR까지 처리하는 개발 자동화 플러그인**
 
 풀스택(Spring Boot + Vue/Nuxt) 프로젝트용 Claude Code 플러그인
 
@@ -10,12 +10,15 @@
 
 ---
 
-## 설치
+## 설치 및 시작
 
 ```bash
 # Claude Code CLI에서 실행
 /plugin marketplace add bs-koo/oh-my-gx
 /plugin install oh-my-gx@oh-my-gx
+
+/reload-plugins
+
 /oh-my-gx:setup
 ```
 
@@ -28,6 +31,18 @@
 ### 기획서 기반 개발 (가장 일반적인 시나리오)
 
 `context` → `lens`(선택) → `dev` → `humanizer`(선택) 순서로 진행합니다.
+
+**0단계: 기획서 준비**
+
+프로젝트 루트에 `requirements/` 폴더를 만들고, 요구사항 문서(PDF, 이미지, 텍스트 등)를 넣어둡니다.
+
+```
+requirements/
+├── 사용량-분석-기획서.pdf
+├── 화면설계서.png
+└── 요구사항-정의서.xlsx
+```
+
 
 **1단계: context — 기획서로 도메인 지식 등록**
 
