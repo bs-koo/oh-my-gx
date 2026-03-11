@@ -214,8 +214,9 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 ### 베이스 브랜치 감지
 `--base`가 지정되었으면 해당 브랜치를 사용한다. 미지정이면 자동 감지:
 1. `git branch --list main master develop`로 존재하는 브랜치를 확인한다.
-2. `main`이 존재하면 → 베이스로 자동 선택.
-3. `main`이 없으면 → 존재하는 `develop`/`master`를 선택지로 사용자에게 제시한다 (AskUserQuestion). 하나도 없으면 직접 입력을 요청한다.
+2. 존재하는 브랜치가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택지 제시 (예: main, develop).
+3. 존재하는 브랜치가 **1개**이면 → 해당 브랜치를 베이스로 자동 선택.
+4. 하나도 없으면 → AskUserQuestion(자유입력)으로 직접 입력을 요청한다.
 
 확정된 베이스 브랜치를 이후 phase-review (diff 계산), phase-complete (PR 생성)에서 사용한다.
 
