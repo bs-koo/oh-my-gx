@@ -163,13 +163,13 @@ PR이 성공적으로 생성되었으면:
    ```bash
    PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel)")
    TMPFILE=$(mktemp)
+   trap 'rm -f "$TMPFILE"' EXIT
    cat > "$TMPFILE" <<JSONEOF
    {"text":"[$PROJECT_NAME] 새로운 PR을 확인해주세요: $PR_URL"}
    JSONEOF
    curl --max-time 10 -s -o /dev/null -X POST "$WEBHOOK_URL" \
      -H "Content-Type: application/json; charset=utf-8" \
      --data-binary "@$TMPFILE"
-   rm -f "$TMPFILE"
    ```
 
 3. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.
