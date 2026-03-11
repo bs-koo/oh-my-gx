@@ -26,8 +26,9 @@ allowed-tools:
 Arguments:
 - ARGS[0] (optional): 베이스 브랜치. 미지정 시 자동 감지:
   1. `git branch --list main master develop`로 존재하는 브랜치 확인
-  2. `main`이 존재하면 → 베이스로 자동 선택
-  3. `main`이 없으면 → 존재하는 `master`/`develop`을 선택지로 사용자에게 제시. 하나도 없으면 직접 입력 요청
+  2. 존재하는 브랜치가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택지 제시 (예: main, develop)
+  3. 존재하는 브랜치가 **1개**이면 → 해당 브랜치를 베이스로 자동 선택
+  4. 하나도 없으면 → AskUserQuestion(자유입력)으로 직접 입력 요청
 
 ## 사전 확인 (반드시 순차 실행)
 

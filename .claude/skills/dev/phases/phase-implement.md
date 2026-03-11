@@ -31,24 +31,31 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
    ## 구현 계획
 
    ### 변경 파일
-   | # | 파일 | 변경 유형 | 내용 요약 |
-   |---|------|----------|----------|
-   | 1 | src/service/PaymentService.kt | 수정 | 한도 검증 로직 추가 |
-   | 2 | src/domain/PaymentLimit.kt | 신규 | 한도 도메인 모델 |
-   | 3 | src/controller/PaymentController.kt | 수정 | 한도 변경 API 엔드포인트 |
-   | ... | | | |
+   | # | 파일 | 변경 유형 | 예상 변경 상세 | 영향 범위 |
+   |---|------|----------|--------------|----------|
+   | 1 | src/domain/PaymentLimit.kt | 신규 | PaymentLimit 데이터 클래스 생성 (필드: userId, dailyLimit, monthlyLimit) | PaymentService에서 참조 |
+   | 2 | src/service/PaymentService.kt | 수정 | processPayment()에 한도 검증 로직 추가. PaymentLimit 조회 후 초과 시 예외 발생 | PaymentController, PaymentServiceTest |
+   | 3 | src/controller/PaymentController.kt | 수정 | PUT /api/payments/limit 엔드포인트 추가. RequestBody로 한도 변경 요청 수신 | API 클라이언트, 프론트엔드 |
+   | ... | | | | |
 
    ### 구현 순서
    1. [1단계] PaymentLimit 도메인 모델 생성
    2. [2단계] PaymentService에 한도 검증 로직 추가
    3. [3단계] PaymentController에 API 엔드포인트 추가
-
-   이 계획대로 구현을 진행할까요? 수정할 부분이 있으면 알려주세요.
    ```
 
-4. 사용자 응답 처리:
-   - **승인** ("진행", "ㅇㅇ", "좋아", "ok" 등) → Task A (coder 구현)로 진행. 구현 계획을 coder 프롬프트에 추가 포함.
-   - **수정 요청** → 수정 사항을 반영하여 계획을 갱신 후 재제시 (1회).
+4. AskUserQuestion으로 승인을 받는다:
+   ```
+   AskUserQuestion(
+     question: "구현 계획을 확인해주세요.",
+     options: [
+       { value: "approve", label: "승인 — 구현 시작" },
+       { value: "modify", label: "수정 요청 — 변경할 항목을 알려주세요" }
+     ]
+   )
+   ```
+   - **승인** → Task A (coder 구현)로 진행. 구현 계획을 coder 프롬프트에 추가 포함.
+   - **수정 요청** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 계획을 갱신 후 재제시 (1회).
    - 2회 제시 후에도 수정이 있으면 최신 계획으로 진행.
 
 5. `current-step`을 `"구현 계획 승인"`으로 설정한다.
@@ -145,12 +152,20 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
    | 2 | coder-frontend | Controller/API 구현 | PaymentController.kt |
    | 3 | coder-test | 테스트 작성 | PaymentServiceTest.kt |
 
-   이 분할대로 진행할까요? 수정할 부분이 있으면 알려주세요.
    ```
 
-2. 사용자 응답 처리:
+2. AskUserQuestion으로 승인을 받는다:
+   ```
+   AskUserQuestion(
+     question: "팀 구현 계획을 확인해주세요.",
+     options: [
+       { value: "approve", label: "승인 — 구현 시작" },
+       { value: "modify", label: "수정 요청 — 변경할 항목을 알려주세요" }
+     ]
+   )
+   ```
    - **승인** → Step 2 (coder 스폰)로 진행.
-   - **수정 요청** → 수정 사항을 반영하여 TEAM_PLAN.md 갱신 후 재제시 (1회).
+   - **수정 요청** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 TEAM_PLAN.md 갱신 후 재제시 (1회).
    - 2회 제시 후에도 수정이 있으면 최신 계획으로 진행.
 
 3. `current-step`을 `"태스크 분할 결과 승인"`으로 설정한다.
