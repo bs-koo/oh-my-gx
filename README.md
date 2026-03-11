@@ -4,7 +4,7 @@
 
 **기획서를 주면 AI 에이전트 팀이 PRD, 설계, 구현, 리뷰, PR까지 처리합니다.**
 
-Java Spring Boot / 풀스택(Spring Boot + Vue/React) 프로젝트용 Claude Code 플러그인
+풀스택(Spring Boot + Vue/React) 프로젝트용 Claude Code 플러그인
 
 </div>
 
