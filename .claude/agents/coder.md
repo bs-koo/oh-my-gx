@@ -12,7 +12,7 @@ description: |
   User: QA 리뷰 피드백에 따라 코드 수정
   Agent: 피드백 항목별로 기존 코드를 최소 변경하여 수정 + 변경 사항 보고
   </example>
-model: inherit
+model: opus
 color: green
 tools:
   - Read

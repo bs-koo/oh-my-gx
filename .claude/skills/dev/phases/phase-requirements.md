@@ -35,13 +35,23 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 **Step 4**: 질문 여부를 확인한다.
 
 **질문이 있으면** ("추가 확인 사항 없음"이 포함되지 않은 경우):
-- PRD와 질문 목록을 사용자에게 출력한 뒤, 사용자의 다음 입력을 기다린다.
+- PRD를 사용자에게 출력한다.
+- Agent 출력의 "확인이 필요한 사항"을 **에이전트 질문 → AskUserQuestion 변환 규칙** (SKILL.md 공유 규칙)에 따라 변환하여 사용자에게 순서대로 제시한다.
 - 사용자 답변을 반영하여 product-owner를 1회 더 호출. 미해결 질문이 있으면 기록하고 phase-design으로 진행.
 
 **질문이 없으면** ("추가 확인 사항 없음. PRD가 확정되었습니다."):
-- 사용자에게 확인: "이 PRD대로 설계를 진행할까요? 수정할 부분이 있으면 알려주세요."
+- **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
+  ```
+  AskUserQuestion(
+    question: "PRD를 확인해주세요.",
+    options: [
+      { value: "approve", label: "승인 — 설계 단계로 진행" },
+      { value: "modify", label: "수정 요청 — 수정할 부분을 알려주세요" }
+    ]
+  )
+  ```
 - 승인 → phase-design으로 진행.
-- 수정 요청 → 수정 사항을 반영하여 product-owner를 1회 더 호출 후 phase-design으로 진행.
+- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 1회 더 호출 후 phase-design으로 진행.
 
 **Phase 완료 후 저장**:
 1. `${PROJECT_ROOT}/.dev/` 디렉토리가 없으면 생성한다.

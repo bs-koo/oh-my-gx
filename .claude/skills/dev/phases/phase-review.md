@@ -102,16 +102,28 @@ if findings에 Critical(QA) 또는 CRITICAL(ZT)이 있으면:
     coder로 자동 수정 (수정 모드: 항목 목록 + 수정 방안 + 코드 맵 + PROJECT_ROOT)
     did_fix = true
 
-# 4b: QUESTION 사용자 확인
+# 4b: QUESTION 사용자 확인 (AskUserQuestion 변환)
 if findings에 QUESTION(QA)이 있으면:
-    질문 항목만 사용자에게 출력하고 답변 대기
-    if 사용자가 스킵/넘어가기:
+    각 QUESTION을 **에이전트 질문 → AskUserQuestion 변환 규칙** (SKILL.md 공유 규칙)에 따라 변환한다.
+    단, 첫 번째 AskUserQuestion에 "전부 넘어가기" 선택지를 추가한다:
+    ```
+    AskUserQuestion(
+      question: "QA 리뷰에서 확인이 필요한 사항이 N건 있습니다. 첫 번째 질문입니다: {질문}",
+      options: [
+        { value: "a", label: "선택지A" },
+        { value: "b", label: "선택지B" },
+        { value: "skip_all", label: "전부 넘어가기 — 모든 QUESTION을 기록만 하고 진행" }
+      ],
+      description: "맥락 텍스트"
+    )
+    ```
+    if 사용자가 "전부 넘어가기" 선택:
         미답변 QUESTION을 Trust Ledger에 기록:
         ### 미답변 QA QUESTION
         - [QUESTION] 항목 설명
           - 맥락: ...
     else:
-        답변을 수렴하여 다음 반복에 반영
+        답변을 수렴하고 나머지 QUESTION도 순서대로 AskUserQuestion으로 제시
         did_fix = true
 
 # 4c: 반복 판단
