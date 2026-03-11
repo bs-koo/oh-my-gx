@@ -144,33 +144,3 @@ else:
 
 **2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남아있으면 미해결 항목을 사용자에게 명시하고 AskUserQuestion으로 진행 여부를 확인한다 ("수동 수정 후 재리뷰" / "현재 상태로 진행").
 
----
-
-## 팀 모드 리뷰 (mode=team)
-
-`mode: normal`이면 위 기존 로직을 실행한다. `mode: team`이면 아래를 실행한다.
-
-### Step 0: Mechanical Gate (동일)
-기존과 동일하게 build + test Gate를 실행한다.
-
-### Step 1-2: 팀 내 리뷰어 스폰
-
-qa-manager와 security-auditor를 팀에 스폰한다:
-```
-Task({ team_name, name: "qa-reviewer", subagent_type: "qa-manager", model: "sonnet" })
-Task({ team_name, name: "security-reviewer", subagent_type: "security-auditor", model: "sonnet" })
-```
-
-### Step 3: 직접 소통 기반 수정
-
-리뷰 결과에서 수정이 필요할 때:
-1. qa-manager가 해당 coder에게 직접 SendMessage로 수정 요청
-2. coder가 수정 후 SendMessage로 완료 알림
-3. qa-manager가 직접 재검증
-(오케스트레이터 중계 불필요)
-
-### Step 4: 결과 합산
-
-기존 Step 3-4와 동일하게 결과를 합산하고 Gate 로직을 적용한다.
-- Trust Ledger 저장, 통합 findings 구성, 사용자 요약 보고 모두 동일.
-- 최종 결과를 팀장이 TEAM_PLAN.md에 기록한다.
