@@ -78,13 +78,7 @@ PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제
 
 **임의 반영 금지**: 사용자 승인 없이 context 문서를 수정하지 않는다.
 
-## 5.6 팀 해산 (mode=team일 때만)
-
-`mode: team`이면 기존 완료 로직(5.1~5.5) 실행 후:
-1. `TeamDelete({ team_name })` 호출하여 팀을 해산한다.
-2. `.dev/TEAM_*.md` 파일은 삭제하지 않고 유지한다 (이력 보존).
-
-## 5.7 진행 상태 완료
+## 5.6 진행 상태 완료
 `.dev/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
 
 ## 5.8 다음 단계

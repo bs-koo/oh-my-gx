@@ -3,7 +3,7 @@ name: dev
 version: 1.0.0
 description: "PRD → 설계 → 구현 → 리뷰 → 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 Q&A 루프로 수행"
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "TeamCreate", "TeamDelete", "SendMessage"]
+allowed-tools: ["Bash(git *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion"]
 ---
 
 오케스트레이터. 직무 기반 Agent 팀과 Q&A 피드백 루프로 전체 개발 사이클을 관리한다.
@@ -40,7 +40,6 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `이어서`, `계속`, `재개`, `아까 하던` | RESUME | "아까 하던 작업 이어서 해줘" |
 | `긴급`, `핫픽스`, `급한`, `빨리 고쳐`, `버그 수정만` | HOTFIX | "로그인 버그 긴급 수정해줘" |
 | `설계만`, `PRD만`, `구현만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
-| `대규모`, `팀으로`, `병렬로`, `동시에`, `빠르게 나눠서` | TEAM | "결제 모듈 대규모 리팩토링 팀으로 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
 | 위 어디에도 해당 안 됨 | NORMAL | "로그인 기능 추가해줘" |
 
@@ -48,21 +47,12 @@ PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만`
 
 BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다.
 
-**Step 3: 규모 자동 판정** (TEAM 모드가 아닌 NORMAL일 때)
-
-phase-setup 0.4 완료 후 코드 맵의 핵심 파일 수로 자동 제안한다:
-- 핵심 파일 ≤ 3개 → 소형 (subagent 유지, 별도 안내 없음)
-- 핵심 파일 4~7개 → 중형 (AskUserQuestion: "핵심 파일이 N개입니다. 팀 모드로 전환할까요?")
-- 핵심 파일 ≥ 8개 → 대형 (AskUserQuestion: "핵심 파일이 N개로 대규모 작업입니다. 팀 모드를 강력 권장합니다. 전환할까요?")
-
-사용자가 명시적으로 "팀으로" 등을 말했으면 확인 없이 팀 모드 진입.
-
 ### 모드 판정 결과 기록
 
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
-mode: normal | hotfix | team
-intent-source: flag | natural-language | auto-scale
+mode: normal | hotfix
+intent-source: flag | natural-language
 ```
 
 ### 레거시 플래그 참조 (호환용)
@@ -432,53 +422,6 @@ AskUserQuestion(
 )
 ```
 사용자가 "수정 요청"을 선택하면 후속 AskUserQuestion(자유입력)으로 수정 내용을 받는다.
-
----
-
-## 팀 모드 (mode=team)
-
-핵심 파일이 많거나 사용자가 명시적으로 팀 모드를 요청한 경우 활성화된다.
-기존 subagent(Task) 방식과 병행하는 하이브리드 구조이며, `mode: normal`이면 기존 로직 그대로 실행한다.
-
-### 팀 모드 모델 라우팅
-
-| Agent | 팀 모드 모델 | 비고 |
-|-------|-------------|------|
-| 팀장 (architect) | opus | 태스크 분배, 진행 모니터링, 품질 검증. 직접 코드 작성 금지 |
-| coder-backend | inherit | 백엔드 담당 |
-| coder-frontend | inherit | 프론트엔드 담당 |
-| coder-test | sonnet | 테스트 담당 |
-| qa-manager | sonnet | 리뷰 + 직접 소통 |
-| security-auditor | sonnet | 통합 감사 |
-
-### 공유 메모리 (.dev/ 확장)
-
-팀 모드에서는 기존 `.dev/` 파일에 더해 다음 3개 파일을 추가로 사용한다:
-
-- `.dev/TEAM_PLAN.md` — 팀장이 관리. 태스크 분배, 파일 소유권, 결정사항 기록.
-- `.dev/TEAM_PROGRESS.md` — 전체 팀원이 기록. 시작/완료/차단 상태.
-- `.dev/TEAM_FINDINGS.md` — 발견사항 + DEAD_ENDS (실패한 접근 기록).
-
-DEAD_ENDS 형식:
-```markdown
-# DEAD_ENDS
-## [timestamp] — [팀원명]: [시도한 접근]
-- 시도: [무엇을 했는지]
-- 결과: [왜 실패/부적합했는지]
-```
-
-### 충돌 방지 규칙
-
-- 각 coder는 자신의 담당 파일만 수정한다.
-- 공통 파일(예: build.gradle, package.json)은 팀장이 1명에게만 배정한다.
-- TEAM_PLAN.md의 태스크 목록에 파일 소유권을 명시한다.
-
-### 병렬 실행 규칙 (팀 모드 확장)
-
-기존 병렬 실행 규칙에 추가:
-- 팀 모드에서 coder 복수 스폰은 파일 소유권이 겹치지 않는 한 허용한다.
-- 팀원 간 직접 소통은 SendMessage를 사용한다 (오케스트레이터 중계 불필요).
-- 팀장이 TEAM_PROGRESS.md를 모니터링하여 차단 발생 시 조율한다.
 
 ---
 
