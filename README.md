@@ -105,6 +105,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 ```
 "/humanizer 제안서.md AI 글쓰기 흔적 교정해줘"
 "/humanizer 소스코드 기반으로 기획서.md를 작성해줘"
+"/humanizer 발표대본.md 소스코드 기반으로 발표 대본 작성해줘"
 ```
 
 ### commit / pull-request
