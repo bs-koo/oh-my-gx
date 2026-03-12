@@ -6,6 +6,9 @@
 
 풀스택(Spring Boot + Vue/Nuxt) 프로젝트용 Claude Code 플러그인
 
+[![GitHub Pages](https://img.shields.io/badge/📖_문서_보기-GitHub_Pages-2ea44f?style=for-the-badge)](https://bs-koo.github.io/oh-my-gx/)
+[![GitHub](https://img.shields.io/github/license/bs-koo/oh-my-gx?style=flat-square)](https://github.com/bs-koo/oh-my-gx)
+
 [스킬 상세](#스킬-상세) · [dev 파이프라인](#dev--전체-개발-파이프라인) · [humanizer 교정 예시](humanizer-example) · [FAQ](#faq)
 
 </div>
