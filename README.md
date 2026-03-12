@@ -130,6 +130,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 
 `/oh-my-gx:setup`에서 Google Chat 웹훅을 연동하면 PR 생성 시 Chat Space에 자동 알림이 전송됩니다. 한 명이 설정하고 커밋하면 팀 전체가 받습니다.
 ```
+[{프로젝트 이름}] 새로운 PR을 확인해주세요: {PR 주소} 형식
 [oh-my-gx] 새로운 PR을 확인해주세요: https://github.com/bs-koo/oh-my-gx/pull/1
 ```
 
