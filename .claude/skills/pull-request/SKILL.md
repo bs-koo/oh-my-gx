@@ -155,15 +155,21 @@ git diff <base-branch>...HEAD --stat
 PR이 성공적으로 생성되었으면:
 
 1. `.claude/config.json`의 `notifications.googleChat` 확인
-   - `enabled`가 `false`이거나 `webhookUrl`이 비어있으면 건너뜀
+   - `enabled`가 `false`이거나 `webhookUrl`이 비어있으면:
+     "Google Chat 알림이 설정되어 있지 않습니다. `/setup`을 실행하면 웹훅을 연동할 수 있습니다." 안내 후 건너뜀
 
 2. 전송 (`timeout: 10000`):
 
    ```bash
-   PROJECT_NAME=$(basename $(git rev-parse --show-toplevel))
+   PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel)")
+   TMPFILE=$(mktemp)
+   trap 'rm -f "$TMPFILE"' EXIT
+   cat > "$TMPFILE" <<JSONEOF
+   {"text":"[$PROJECT_NAME] 새로운 PR을 확인해주세요: $PR_URL"}
+   JSONEOF
    curl --max-time 10 -s -o /dev/null -X POST "$WEBHOOK_URL" \
-     -H "Content-Type: application/json" \
-     -d '{"text":"['"$PROJECT_NAME"'] 새로운 PR이 올라왔습니다. 확인해주세요: '"$PR_URL"'"}'
+     -H "Content-Type: application/json; charset=utf-8" \
+     --data-binary "@$TMPFILE"
    ```
 
 3. 실패해도 작업 흐름을 중단하지 않음. 경고만 출력.

@@ -104,8 +104,29 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
    - 아니오 → 건너뜀
    - 예 → 3번으로
 
-3. AskUserQuestion: "Google Chat 스페이스의 웹훅 URL을 입력하세요."
-   - `https://chat.googleapis.com/` 시작 여부 검증
+3. 웹훅 URL 생성 가이드를 표시한 후 AskUserQuestion으로 URL을 받는다:
+
+   ```
+   📋 Google Chat 웹훅 URL 생성 방법
+
+   1. Google Chat에서 알림을 받을 스페이스를 엽니다.
+      (스페이스가 없으면 '+ 새 스페이스'로 먼저 생성하세요)
+   2. 스페이스 상단의 스페이스 이름을 클릭합니다.
+   3. '앱 및 통합' 탭을 선택합니다.
+   4. '+ 웹훅 추가'를 클릭합니다.
+   5. 웹훅 이름(예: 'Claude Code')을 입력하고 '저장'을 누릅니다.
+   6. 생성된 웹훅 URL을 복사합니다.
+   ```
+
+   AskUserQuestion:
+   ```
+   question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요."
+   options:
+     - { label: "건너뛰기", description: "나중에 설정합니다" }
+   ```
+
+   - 건너뛰기 → 건너뜀
+   - URL 입력 → `https://chat.googleapis.com/` 시작 여부 검증
    - 유효하지 않으면 1회 재입력 요청. 재입력도 유효하지 않으면 건너뜀.
    - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`)
      `Google Chat 연동 : 완료 ✅` 출력

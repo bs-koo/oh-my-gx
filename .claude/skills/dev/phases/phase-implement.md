@@ -18,7 +18,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 - `${PROJECT_ROOT}/.dev/design.md`를 Read하여 설계서를 로드한다.
 - `${PROJECT_ROOT}/.dev/prd.md`를 Read하여 PRD를 로드한다 (자기점검에서 "요구사항"+"수용 기준" 섹션 사용).
 
-**Step 0.5**: 구현 계획 승인.
+**Step 1**: 구현 계획 승인.
 
 설계서의 "구현 순서"와 코드 맵을 기반으로, coder가 실제로 수행할 구체적인 변경 계획을 사용자에게 제시한다.
 오케스트레이터가 직접 구성한다 (agent 호출 불필요):
@@ -69,11 +69,11 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 - 코드 맵 (누적된 상태)
 - 프로젝트 타입 및 구조
 - 프로젝트 루트 경로 (작업 경로 기준 참조)
-- Step 0.5에서 승인된 계획이 있다면 해당 계획을, 없다면 설계서의 "구현 순서"를 전달하여 순서대로 구현하도록 지시합니다.
+- Step 1에서 승인된 계획이 있다면 해당 계획을, 없다면 설계서의 "구현 순서"를 전달하여 순서대로 구현하도록 지시합니다.
 
 ## Task 완료 후
 
-**Step 1**: coder 결과를 받은 후:
+**Step 2**: coder 결과를 받은 후:
 - 설계서 "구현 순서"의 항목 수와 coder의 보고 단계 수(`[N/M]`의 M)를 비교한다. 불일치 시 누락 항목을 명시하고 사용자에게 확인한다.
 - **요약만** 사용자에게 보고한다 (Agent 전문 출력 금지. 코드는 파일에 이미 작성됨):
   ```
@@ -93,18 +93,18 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 1. 총 변경이 **10줄 미만**
 2. 변경된 파일이 **설정 파일만**으로 구성 (e.g., `.yml`, `.yaml`, `.json`, `.toml`, `.properties`, `.env`, `.md`). 코드 파일(`.kt`, `.java`, `.ts`, `.js`, `.py` 등)이 하나라도 포함되면 규모와 무관하게 자기점검을 실행한다.
 
-**Step 1**: 변경사항 수집 및 파일 저장 (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행). 이 스테이징은 diff 추출 목적이며, 커밋은 phase-complete의 commit이 별도로 수행한다. 스테이징 상태는 이후 phase-review의 diff 수집과 phase-complete의 commit까지 유지된다 (각 단계에서 `git add -A`를 재실행하므로 중간에 coder가 수정한 파일도 포함됨).
+**Step 3**: 변경사항 수집 및 파일 저장 (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행). 이 스테이징은 diff 추출 목적이며, 커밋은 phase-complete의 commit이 별도로 수행한다. 스테이징 상태는 이후 phase-review의 diff 수집과 phase-complete의 commit까지 유지된다 (각 단계에서 `git add -A`를 재실행하므로 중간에 coder가 수정한 파일도 포함됨).
 
 1. `${GIT_PREFIX} add -A`로 스테이징한다.
 2. **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트한다 (`git diff --cached`를 Bash 단독 실행하지 않는다).
 
-**Step 2**: qa-manager agent로 자동 리뷰.
+**Step 4**: qa-manager agent로 자동 리뷰.
 `Task(subagent_type="qa-manager")` — prompt에 다음을 포함:
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - PRD의 "요구사항" + "수용 기준" 섹션만 (Context Slicing 규칙 참조: 자기점검 모드). `--hotfix`이면 PRD만 전달 (설계서 없음).
 - "자기점검 단계이므로 CERTAIN 문제만 자동 수정 대상으로 취급할 것. QUESTION은 보고하되 수정하지 않고 phase-review로 이월한다."
 
-**Step 3**: 결과 판단.
+**Step 5**: 결과 판단.
 - **Critical이 있으면**: `Task(subagent_type="coder")` — Critical 항목 목록, qa-manager가 제시한 수정 방안, 코드 맵, 프로젝트 루트 경로를 prompt에 포함하여 자동 수정 (Context Slicing: coder 수정 모드). 수정 실패 시(coder가 해결하지 못했거나 수정 후에도 문제가 남는 경우) 미해결 Critical을 `SELF_CHECK_FINDINGS`에 `[Critical/미해결]`로 추가하고 phase-review로 이월한다. 자기점검은 1회만 시도하므로 재시도하지 않는다.
 - **Critical이 없으면**: 자기점검 완료.
 - Warning/Info는 `SELF_CHECK_FINDINGS` 변수에 저장한다. 형식: `[Warning] 파일:라인 - 설명` (한 줄씩). phase-review에서 qa-manager 프롬프트에 포함하여 중복 보고를 방지한다.
