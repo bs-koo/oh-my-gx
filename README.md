@@ -103,8 +103,8 @@
 PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정합니다. 감지만 하는 audit 모드와 직접 수정하는 rewrite 모드를 지원합니다.
 
 ```
-".dev/prd.md AI 글쓰기 흔적 교정해줘"
-".dev/design.md 감지만 해줘"
+"/humanizer 제안서.md AI 글쓰기 흔적 교정해줘"
+"/humanizer 소스코드 기반으로 기획서.md를 작성해줘"
 ```
 
 ### commit / pull-request
@@ -129,6 +129,9 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 ## Google Chat 알림
 
 `/oh-my-gx:setup`에서 Google Chat 웹훅을 연동하면 PR 생성 시 Chat Space에 자동 알림이 전송됩니다. 한 명이 설정하고 커밋하면 팀 전체가 받습니다.
+```
+[oh-my-gx] 새로운 PR을 확인해주세요: https://github.com/bs-koo/oh-my-gx/pull/1
+```
 
 ---
 
