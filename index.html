@@ -23,12 +23,15 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    html {
+      scroll-padding-top: 60px;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Noto Sans KR, Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.7;
-      overflow-x: hidden;
     }
 
     /* Hero */
@@ -306,13 +309,60 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 20px;
+      padding: 20px 20px 20px 24px;
       margin: 16px 0;
-      font-family: 'SFMono-Regular', Consolas, monospace;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       line-height: 1.6;
-      white-space: pre;
-      overflow-x: auto;
+      list-style: none;
+      counter-reset: flow-step;
+    }
+    .flow > li {
+      position: relative;
+      padding: 8px 0 8px 28px;
+      border-left: 2px solid var(--border);
+      margin-left: 8px;
+    }
+    .flow > li:last-child {
+      border-left-color: transparent;
+    }
+    .flow > li::before {
+      counter-increment: flow-step;
+      content: counter(flow-step);
+      position: absolute;
+      left: -11px;
+      top: 8px;
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .flow > li > .flow-title {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .flow .flow-sub {
+      list-style: none;
+      padding-left: 16px;
+      margin-top: 4px;
+    }
+    .flow .flow-sub li {
+      color: var(--text-secondary);
+      font-size: 0.83rem;
+      padding: 2px 0;
+    }
+    .flow .flow-sub li::before {
+      content: "├── ";
+      font-family: monospace;
+      color: var(--border);
+    }
+    .flow .flow-sub li:last-child::before {
+      content: "└── ";
     }
 
     /* Responsive */
@@ -499,75 +549,87 @@
     <h3>각 Phase 상세</h3>
 
     <h4>Phase 1: Setup</h4>
-    <div class="flow">진행 중 작업 감지 (.dev/state.md)
-    ↓ (이전 작업 있으면 재개 여부 확인)
-Git 저장소 확인
-    ↓
-베이스 브랜치 결정 + 동기화 (git pull)
-    ↓
-프로젝트 정보 수집 (4개 작업 병렬):
-  ├── 프로젝트 타입 감지 (build.gradle.kts → java-spring 등)
-  ├── 디렉토리 구조 수집
-  ├── CLAUDE.md 컨벤션 확보
-  └── 도메인 컨텍스트 매칭 (context/*/PROJECTS.md)
-    ↓
-관련 코드 맵 생성 (키워드 추출 → Grep → 핵심 파일 15개 이내)
-    ↓
-작업 브랜치 생성 + .gitignore 보강 + 상태 초기화</div>
+    <ol class="flow">
+      <li><span class="flow-title">진행 중 작업 감지 (.dev/state.md)</span> — 이전 작업 있으면 재개 여부 확인</li>
+      <li><span class="flow-title">Git 저장소 확인</span></li>
+      <li><span class="flow-title">베이스 브랜치 결정 + 동기화 (git pull)</span></li>
+      <li><span class="flow-title">프로젝트 정보 수집 (4개 작업 병렬)</span>
+        <ul class="flow-sub">
+          <li>프로젝트 타입 감지 (build.gradle.kts → java-spring 등)</li>
+          <li>디렉토리 구조 수집</li>
+          <li>CLAUDE.md 컨벤션 확보</li>
+          <li>도메인 컨텍스트 매칭 (context/*/PROJECTS.md)</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">관련 코드 맵 생성</span> — 키워드 추출 → Grep → 핵심 파일 15개 이내</li>
+      <li><span class="flow-title">작업 브랜치 생성 + .gitignore 보강 + 상태 초기화</span></li>
+    </ol>
 
     <h4>Phase 2: Requirements — PRD Q&A</h4>
-    <div class="flow">product-owner 에이전트 호출 (PRD 작성)
-    ↓
-PRD 전문 표시 + 3관점 품질 자가 검증:
-  ├── 유저 경험 검증: 사용자가 자연스럽게 이해하고 행동할 수 있는가
-  ├── 해석 여지 제거: "크게", "적절히" 대신 구체적 수치가 있는가
-  └── 엣지케이스 커버리지: 빈 상태, 로딩, 에러, 최솟값/최댓값
-    ↓
-질문 → AskUserQuestion 변환 → 답변 반영 (최대 1회)
-    ↓
-사용자 승인 (승인 / 수정 요청) → .dev/prd.md 저장</div>
+    <ol class="flow">
+      <li><span class="flow-title">product-owner 에이전트 호출 (PRD 작성)</span></li>
+      <li><span class="flow-title">PRD 전문 표시 + 3관점 품질 자가 검증</span>
+        <ul class="flow-sub">
+          <li>유저 경험 검증: 사용자가 자연스럽게 이해하고 행동할 수 있는가</li>
+          <li>해석 여지 제거: "크게", "적절히" 대신 구체적 수치가 있는가</li>
+          <li>엣지케이스 커버리지: 빈 상태, 로딩, 에러, 최솟값/최댓값</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">질문 → AskUserQuestion 변환 → 답변 반영</span> — 최대 1회</li>
+      <li><span class="flow-title">사용자 승인 (승인 / 수정 요청) → .dev/prd.md 저장</span></li>
+    </ol>
 
     <h4>Phase 3: Design — 설계 Q&A</h4>
-    <div class="flow">architect 에이전트 호출 (기술 설계)
-    ↓
-설계 초안 전문 표시
-    ↓
-설계 비판 검토 (중형/대형만):
-  └── design-critic이 암묵적 가정 도전, 과잉 설계 식별
-      ├── MUST-ADDRESS → architect 설계 수정
-      └── CONSIDER → 참고 사항으로 기록
-    ↓
-사용자 승인 (최대 2회 반복) → .dev/design.md 저장</div>
+    <ol class="flow">
+      <li><span class="flow-title">architect 에이전트 호출 (기술 설계)</span></li>
+      <li><span class="flow-title">설계 초안 전문 표시</span></li>
+      <li><span class="flow-title">설계 비판 검토 (중형/대형만)</span>
+        <ul class="flow-sub">
+          <li>design-critic이 암묵적 가정 도전, 과잉 설계 식별</li>
+          <li>MUST-ADDRESS → architect 설계 수정</li>
+          <li>CONSIDER → 참고 사항으로 기록</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">사용자 승인 (최대 2회 반복) → .dev/design.md 저장</span></li>
+    </ol>
 
     <h4>Phase 4: Implement — 구현 + 자기점검</h4>
-    <div class="flow">구현 계획 제시 (변경 파일, 유형, 순서) → 사용자 승인
-    ↓
-coder 에이전트 구현 (설계서 순서대로)
-    ↓
-자기점검 (qa-manager):
-  ├── Critical → coder 자동 수정 (1회)
-  ├── Warning/Info → phase-review로 이월
-  └── QUESTION → phase-review로 이월</div>
+    <ol class="flow">
+      <li><span class="flow-title">구현 계획 제시 (변경 파일, 유형, 순서) → 사용자 승인</span></li>
+      <li><span class="flow-title">coder 에이전트 구현 (설계서 순서대로)</span></li>
+      <li><span class="flow-title">자기점검 (qa-manager)</span>
+        <ul class="flow-sub">
+          <li>Critical → coder 자동 수정 (1회)</li>
+          <li>Warning/Info → phase-review로 이월</li>
+          <li>QUESTION → phase-review로 이월</li>
+        </ul>
+      </li>
+    </ol>
 
     <h4>Phase 5: Review — QA + 보안 감사</h4>
-    <div class="flow">Mechanical Gate:
-  ├── 빌드 실패 → coder 자동 수정 → 1회 재시도
-  └── 테스트 실패 → coder 자동 수정 → 1회 재시도
-    ↓
-qa-manager + security-auditor 병렬 호출:
-  ├── QA: 코드 리뷰 + 스펙 충족 검증
-  └── 종합 검증: PRD + 설계서 + diff 교차 검증
-    ↓
-결과 합산 → Trust Ledger 생성 → Critical 자동 수정 (최대 2회)</div>
+    <ol class="flow">
+      <li><span class="flow-title">Mechanical Gate</span>
+        <ul class="flow-sub">
+          <li>빌드 실패 → coder 자동 수정 → 1회 재시도</li>
+          <li>테스트 실패 → coder 자동 수정 → 1회 재시도</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">qa-manager + security-auditor 병렬 호출</span>
+        <ul class="flow-sub">
+          <li>QA: 코드 리뷰 + 스펙 충족 검증</li>
+          <li>종합 검증: PRD + 설계서 + diff 교차 검증</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">결과 합산 → Trust Ledger 생성 → Critical 자동 수정</span> — 최대 2회</li>
+    </ol>
 
     <h4>Phase 6: Complete</h4>
-    <div class="flow">인수 검증 (product-owner): PRD 수용 기준 대비 검증
-    ↓
-/commit 스킬 실행 (빌드 체크 + 한국어 커밋)
-    ↓
-/pull-request 스킬 실행 (PR 본문 + Trust Ledger 요약)
-    ↓
-도메인 status.md 갱신 + context 환류 제안</div>
+    <ol class="flow">
+      <li><span class="flow-title">인수 검증 (product-owner)</span> — PRD 수용 기준 대비 검증</li>
+      <li><span class="flow-title">/commit 스킬 실행</span> — 빌드 체크 + 한국어 커밋</li>
+      <li><span class="flow-title">/pull-request 스킬 실행</span> — PR 본문 + Trust Ledger 요약</li>
+      <li><span class="flow-title">도메인 status.md 갱신 + context 환류 제안</span></li>
+    </ol>
 
     <h3>정체 감지 + 에스컬레이션</h3>
     <p>구현/리뷰 단계에서 진전이 없으면 자동으로 전문 에이전트에게 에스컬레이션합니다.</p>
@@ -686,18 +748,19 @@ phases:
     </blockquote>
 
     <h3>5단계 Phase</h3>
-    <div class="flow">Prepare: 쿼리 키워드 추출 → 프로젝트 확정
-    ↓
-Explore: Agent(Explore)로 코드에서 정책 구현 발견
-  ├── 1단계: 후보 수집 (Glob + Grep, Read 없이)
-  ├── 2단계: 입구 추적 (Controller/Handler Read)
-  └── 3단계: 핵심 파일 정독 (Service/Policy/Rule Read)
-    ↓
-Report: "대상에게 무슨 일이 일어나는가" 관점으로 합성
-    ↓
-(선택) Impact: architect + security-auditor 병렬 분석
-    ↓
-(선택) Impact-Report: PO 친화적 영향도 보고서</div>
+    <ol class="flow">
+      <li><span class="flow-title">Prepare</span> — 쿼리 키워드 추출 → 프로젝트 확정</li>
+      <li><span class="flow-title">Explore: Agent(Explore)로 코드에서 정책 구현 발견</span>
+        <ul class="flow-sub">
+          <li>1단계: 후보 수집 (Glob + Grep, Read 없이)</li>
+          <li>2단계: 입구 추적 (Controller/Handler Read)</li>
+          <li>3단계: 핵심 파일 정독 (Service/Policy/Rule Read)</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">Report</span> — "대상에게 무슨 일이 일어나는가" 관점으로 합성</li>
+      <li><span class="flow-title">(선택) Impact</span> — architect + security-auditor 병렬 분석</li>
+      <li><span class="flow-title">(선택) Impact-Report</span> — PO 친화적 영향도 보고서</li>
+    </ol>
   </section>
 
   <!-- Humanizer -->
@@ -841,34 +904,36 @@ Report: "대상에게 무슨 일이 일어나는가" 관점으로 합성
     <h2>commit / pull-request</h2>
 
     <h3>commit — 커밋 자동화</h3>
-    <div class="flow">사전 확인: Git 저장소 + 변경사항 + 빌드 실행
-    ↓
-타입 파싱: 브랜치명에서 추출 (feat/login → feat)
-    ↓
-커밋 메시지 생성: {type}: 한국어 요약 (50자 이내) + 본문
-    ↓
-커밋 실행:
-  ├── 빌드 아티팩트 tracking 해제 (build/, node_modules/)
-  ├── 민감 파일 감지 (.env, *.key, *.pem, credentials*, *secret*) → 경고
-  ├── 20개 초과 변경 → 전체 스테이징 확인
-  └── HEREDOC 포맷으로 커밋
-    ↓
-context 동기화 체크</div>
+    <ol class="flow">
+      <li><span class="flow-title">사전 확인</span> — Git 저장소 + 변경사항 + 빌드 실행</li>
+      <li><span class="flow-title">타입 파싱</span> — 브랜치명에서 추출 (feat/login → feat)</li>
+      <li><span class="flow-title">커밋 메시지 생성</span> — {type}: 한국어 요약 (50자 이내) + 본문</li>
+      <li><span class="flow-title">커밋 실행</span>
+        <ul class="flow-sub">
+          <li>빌드 아티팩트 tracking 해제 (build/, node_modules/)</li>
+          <li>민감 파일 감지 (.env, *.key, *.pem, credentials*, *secret*) → 경고</li>
+          <li>20개 초과 변경 → 전체 스테이징 확인</li>
+          <li>HEREDOC 포맷으로 커밋</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">context 동기화 체크</span></li>
+    </ol>
 
     <h3>pull-request — PR 자동화</h3>
-    <div class="flow">사전 확인: gh CLI + 인증 + origin remote + 베이스 브랜치
-    ↓
-타입 매핑: feat→FEATURE, fix→BUGFIX, docs→DOCS ...
-    ↓
-PR 제목: [{TYPE}] 서술형 한국어 문장 (50자 이내)
-    ↓
-PR 본문 (문장형 서술):
-  ├── Background: 왜 이 변경이 필요한가
-  ├── Summary: 무엇을 했는가
-  ├── Changes: 기능 단위로 무엇이 바뀌었는가
-  └── Checklist: 변경 내용에 따라 동적 생성
-    ↓
-PR 생성 + Google Chat 알림</div>
+    <ol class="flow">
+      <li><span class="flow-title">사전 확인</span> — gh CLI + 인증 + origin remote + 베이스 브랜치</li>
+      <li><span class="flow-title">타입 매핑</span> — feat→FEATURE, fix→BUGFIX, docs→DOCS ...</li>
+      <li><span class="flow-title">PR 제목</span> — [{TYPE}] 서술형 한국어 문장 (50자 이내)</li>
+      <li><span class="flow-title">PR 본문 (문장형 서술)</span>
+        <ul class="flow-sub">
+          <li>Background: 왜 이 변경이 필요한가</li>
+          <li>Summary: 무엇을 했는가</li>
+          <li>Changes: 기능 단위로 무엇이 바뀌었는가</li>
+          <li>Checklist: 변경 내용에 따라 동적 생성</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">PR 생성 + Google Chat 알림</span></li>
+    </ol>
   </section>
 
   <!-- Safety -->
