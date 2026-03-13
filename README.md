@@ -4,9 +4,7 @@
 
 **GX 사업본부 개발자들을 위한 PRD, 설계, 구현, 리뷰, PR까지 처리하는 개발 자동화 플러그인**
 
-풀스택(Spring Boot + Vue/Nuxt) 프로젝트용 Claude Code 플러그인
-
-[![GitHub Pages](https://img.shields.io/badge/📖_상세_문서-GitHub_Pages-2ea44f?style=for-the-badge)](https://bs-koo.github.io/oh-my-gx/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-2ea44f?style=for-the-badge)](https://bs-koo.github.io/oh-my-gx/)
 
 </div>
 
