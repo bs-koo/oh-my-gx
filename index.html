@@ -595,8 +595,21 @@
 
     <h4>Phase 4: Implement — 구현 + 자기점검</h4>
     <ol class="flow">
-      <li><span class="flow-title">구현 계획 제시 (변경 파일, 유형, 순서) → 사용자 승인</span></li>
-      <li><span class="flow-title">coder 에이전트 구현 (설계서 순서대로)</span></li>
+      <li><span class="flow-title">구현 계획 제시 (변경 파일, 유형, 배치 테이블) → 사용자 승인</span></li>
+      <li><span class="flow-title">의존성 분석 → 배치 구성</span>
+        <ul class="flow-sub">
+          <li>파일 배타적 잠금: 같은 파일을 수정하는 단계는 같은 배치에 넣지 않음</li>
+          <li>import/참조 의존: 신규 타입을 참조하면 순차 배치</li>
+          <li>위상 정렬로 B1 → B2 → B3 배치 배정</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">배치별 coder 디스패치 (병렬 실행)</span>
+        <ul class="flow-sub">
+          <li>단일 배치+단일 단계: 기존 전체 모드 coder 호출</li>
+          <li>배치 내 2개 이상: 동시 coder Task 발행 (각 coder는 담당 파일만 수정)</li>
+          <li>배치 간 통합 빌드 검증 → 실패 시 원인 coder 특정 후 수정 재호출</li>
+        </ul>
+      </li>
       <li><span class="flow-title">자기점검 (qa-manager)</span>
         <ul class="flow-sub">
           <li>Critical → coder 자동 수정 (1회)</li>
@@ -644,18 +657,25 @@
     </table>
 
     <h3>상태 저장과 재개</h3>
-    <p><code>.dev/state.md</code>에 현재 진행 상태를 기록합니다. "이어서 해줘"라고 말하면 중단된 Phase의 중단된 Step부터 정확히 재개합니다.</p>
+    <p><code>.dev/state.md</code>에 현재 진행 상태를 기록합니다. "이어서 해줘"라고 말하면 중단된 Phase의 중단된 Step부터 정확히 재개합니다. 배치 실행 중 중단되면 완료된 배치는 건너뛰고 다음 배치부터 재개합니다.</p>
     <pre><code># .dev/state.md 예시
 phase: implement
 status: in_progress
 branch: JIRA-123
 base: main
-current-step: "자기점검"
+current-step: "coder 구현 (B2)"
 phases:
   setup: completed
   requirements: completed
   design: completed
-  implement: in_progress</code></pre>
+  implement: in_progress
+steps:
+  implement:
+    - 구현 계획 승인: completed
+    - 배치 구성: completed
+    - coder 구현 (B1, 2단계 병렬): completed
+    - 빌드 검증 (B1): completed
+    - coder 구현 (B2, 1단계): in_progress</code></pre>
   </section>
 
   <!-- Agents -->
@@ -699,6 +719,7 @@ phases:
         <tr><td>product-owner (PRD)</td><td>ARGS + 코드 맵 + 프로젝트 구조</td><td>설계서, diff</td></tr>
         <tr><td>architect (설계)</td><td>PRD 전체 + 코드 맵 + 컨벤션</td><td>diff</td></tr>
         <tr><td>coder (구현)</td><td>설계서 전체 + 코드 맵</td><td>PRD (설계서에 반영됨)</td></tr>
+        <tr><td>coder (배치 모드)</td><td>담당 단계 설계만 + 담당 파일 목록 + 코드 맵</td><td>설계서 전체, PRD</td></tr>
         <tr><td>qa-manager (자기점검)</td><td>PRD 요구사항+수용기준만</td><td>설계서, 배경</td></tr>
         <tr><td>security-auditor</td><td>PRD + 설계서 + diff + 코드 맵</td><td>(전체 접근)</td></tr>
       </tbody>

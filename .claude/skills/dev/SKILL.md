@@ -1,6 +1,6 @@
 ---
 name: dev
-version: 1.0.0
+version: 1.1.0
 description: "PRD → 설계 → 구현 → 리뷰 → 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 Q&A 루프로 수행"
 argument-hint: "<자연어 요청>"
 allowed-tools: ["Bash(git *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion"]
@@ -298,6 +298,7 @@ execution-log:
 - **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
 - **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면)
 - **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로. `--hotfix`이면 설계서 대신 PRD + 코드 맵.
+- **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로. 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
 - **coder (수정)**: 수정 항목 목록 + 수정 방안 + 코드 맵 + 프로젝트 루트 경로
 - **qa-manager**: PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 + 코드 맵
 - **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용)
@@ -314,6 +315,11 @@ execution-log:
 1. 하나의 메시지에서 여러 `Task()` 호출을 동시에 발행한다.
 2. 모든 병렬 Task가 완료된 후 결과를 합산한다 (Gate 로직).
 3. 쓰기 Agent(coder)는 다른 쓰기 Agent와 병렬 실행하지 않는다.
+   **예외 — 배치 모드 병렬**:
+   - 같은 배치 내 coder들은 병렬 실행이 허용된다.
+   - 전제 조건: 파일 배타적 잠금이 보장될 것 (phase-implement Step 1.5에서 검증 완료).
+     동일 파일을 수정하는 단계는 같은 배치에 배정되지 않는다.
+   - 배치 순서 보장: B1 완료 → B2 시작. 배치 간 순서를 건너뛰지 않는다.
 4. coder와 읽기 전용 Agent의 병렬은 **읽기 Agent가 이전 Phase의 산출물(설계서 등)만 참조하는 경우** 허용한다. 현재 구현 중인 코드를 참조하는 읽기 Agent와는 병렬하지 않는다.
 
 ### 정체 감지 + 에스컬레이션
