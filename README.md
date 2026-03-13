@@ -10,17 +10,16 @@
 
 ---
 
-## 설치 및 시작
+## 설치
 
 ```bash
 # Claude Code CLI에서 실행
 /plugin marketplace add bs-koo/oh-my-gx
 /plugin install oh-my-gx@oh-my-gx
+```
 
-# 플러그인 리로드
-/reload-plugins
-
-# 시작
+## 시작
+```bash
 /oh-my-gx:setup
 ```
 
