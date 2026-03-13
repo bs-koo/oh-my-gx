@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>oh-my-gx — 상세 문서</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-hover: #1c2129;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --pink: #f778ba;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-padding-top: 60px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Noto Sans KR, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1e2e 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 24px;
+    }
+    .hero-badges {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hero-badges a {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-outline {
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Nav */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      overflow-x: auto;
+    }
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      gap: 4px;
+    }
+    .nav a {
+      padding: 12px 16px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav a:hover, .nav a.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Content */
+    .content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    section {
+      margin-bottom: 64px;
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 32px 0 16px;
+      color: var(--accent);
+    }
+    h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 24px 0 12px;
+      color: var(--purple);
+    }
+
+    p { margin-bottom: 16px; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Tags */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .tag-opus { background: rgba(188,140,255,0.15); color: var(--purple); }
+    .tag-sonnet { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .tag-p1 { background: rgba(248,81,73,0.15); color: var(--red); }
+    .tag-p2 { background: rgba(210,153,34,0.15); color: var(--orange); }
+    .tag-p3 { background: rgba(139,148,158,0.15); color: var(--text-secondary); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:hover td { background: var(--surface); }
+
+    /* Code */
+    code {
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+
+    /* Pipeline */
+    .pipeline {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+      align-items: center;
+    }
+    .pipeline-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 20px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .pipeline-step .step-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+    .pipeline-step .step-agent {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+    }
+    .pipeline-arrow {
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+    }
+
+    /* Diff */
+    .diff {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin: 16px 0;
+    }
+    .diff-header {
+      background: var(--surface);
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .diff-del {
+      background: rgba(248,81,73,0.1);
+      padding: 12px 16px;
+      border-left: 3px solid var(--red);
+      font-size: 0.9rem;
+    }
+    .diff-add {
+      background: rgba(63,185,80,0.1);
+      padding: 12px 16px;
+      border-left: 3px solid var(--green);
+      font-size: 0.9rem;
+    }
+
+    /* Blockquote */
+    blockquote {
+      border-left: 3px solid var(--border);
+      padding: 12px 20px;
+      margin: 16px 0;
+      color: var(--text-secondary);
+      background: var(--surface);
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* Flowchart-like */
+    .flow {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 20px 20px 24px;
+      margin: 16px 0;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      list-style: none;
+      counter-reset: flow-step;
+    }
+    .flow > li {
+      position: relative;
+      padding: 8px 0 8px 28px;
+      border-left: 2px solid var(--border);
+      margin-left: 8px;
+    }
+    .flow > li:last-child {
+      border-left-color: transparent;
+    }
+    .flow > li::before {
+      counter-increment: flow-step;
+      content: counter(flow-step);
+      position: absolute;
+      left: -11px;
+      top: 8px;
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .flow > li > .flow-title {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .flow .flow-sub {
+      list-style: none;
+      padding-left: 16px;
+      margin-top: 4px;
+    }
+    .flow .flow-sub li {
+      color: var(--text-secondary);
+      font-size: 0.83rem;
+      padding: 2px 0;
+    }
+    .flow .flow-sub li::before {
+      content: "├── ";
+      font-family: monospace;
+      color: var(--border);
+    }
+    .flow .flow-sub li:last-child::before {
+      content: "└── ";
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2rem; }
+      .hero p { font-size: 1rem; }
+      .card-grid { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; align-items: stretch; }
+      .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>oh-my-gx</h1>
+  <p>자연어 한 마디로 PRD, 설계, 구현, 리뷰, PR까지 — Java Spring Boot / 풀스택 개발 자동화 플러그인</p>
+  <div class="hero-badges">
+    <a href="https://github.com/bs-koo/oh-my-gx" class="btn-primary">GitHub</a>
+    <a href="#skills" class="btn-outline">스킬 상세</a>
+    <a href="#humanizer-example" class="btn-outline">교정 예시</a>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#overview">개요</a>
+    <a href="#skills">스킬</a>
+    <a href="#dev-pipeline">dev 파이프라인</a>
+    <a href="#agents">에이전트 팀</a>
+    <a href="#context-skill">context</a>
+    <a href="#lens-skill">lens</a>
+    <a href="#humanizer-skill">humanizer</a>
+    <a href="#humanizer-example">교정 예시</a>
+    <a href="#commit-pr">commit / PR</a>
+    <a href="#safety">안전장치</a>
+  </div>
+</nav>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- Overview -->
+  <section id="overview">
+    <h2>개요</h2>
+    <p>oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인입니다. 7개 스킬, 9개 에이전트가 협업하여 자연어 요청 하나로 전체 개발 사이클을 수행합니다.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">자연어 의도 파싱</div>
+        <div class="card-desc">"긴급 수정해줘" → hotfix 모드, "이어서 해줘" → 상태 재개. 명령어를 외울 필요 없이 자연어로 의도를 전달하면 적절한 스킬과 모드가 자동 발동됩니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">에이전트 팀 협업</div>
+        <div class="card-desc">PO, 설계자, 개발자, QA, 보안 감사자 등 9개 에이전트가 각자의 관점에서 협업합니다. 비판적 분석은 Opus, 산출물 생성은 Sonnet으로 모델을 분리하여 비용과 품질을 최적화합니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">단계별 승인</div>
+        <div class="card-desc">PRD, 설계, 구현 계획 — 각 단계에서 사용자 승인 없이 다음으로 넘어가지 않습니다. 선택형/자유입력형 질문으로 정보를 수집하고, 수정 요청도 가능합니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">안전장치 내장</div>
+        <div class="card-desc">PR 머지 차단, force push 차단, 민감 파일 감지, 빌드 게이트 — 실수를 방지하기 위한 다중 안전장치가 설정 수준에서 동작합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section id="skills">
+    <h2>7개 스킬</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>스킬</th>
+          <th>핵심 역할</th>
+          <th>에이전트</th>
+          <th>모드</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="#context-skill"><strong>context</strong></a></td>
+          <td>도메인 지식 등록/갱신</td>
+          <td>오케스트레이터 직접</td>
+          <td>스캔, 신규, 문서기반, 갱신, 동기화</td>
+        </tr>
+        <tr>
+          <td><a href="#dev-pipeline"><strong>dev</strong></a></td>
+          <td>PRD → 설계 → 구현 → 리뷰 → PR</td>
+          <td>9개 에이전트 팀</td>
+          <td>normal, hotfix, 단일단계, 재개</td>
+        </tr>
+        <tr>
+          <td><a href="#lens-skill"><strong>lens</strong></a></td>
+          <td>코드에서 비즈니스 정책 추출</td>
+          <td>Explore + architect + security-auditor</td>
+          <td>요약, 상세, 영향도분석</td>
+        </tr>
+        <tr>
+          <td><a href="#humanizer-skill"><strong>humanizer</strong></a></td>
+          <td>AI 글쓰기 패턴 감지/교정</td>
+          <td>오케스트레이터 직접</td>
+          <td>audit, rewrite</td>
+        </tr>
+        <tr>
+          <td><a href="#commit-pr"><strong>commit</strong></a></td>
+          <td>브랜치 타입 파싱 + 한국어 커밋</td>
+          <td>오케스트레이터 직접</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><a href="#commit-pr"><strong>pull-request</strong></a></td>
+          <td>커밋 히스토리 분석 + PR 생성</td>
+          <td>오케스트레이터 직접</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><strong>setup</strong></td>
+          <td>GH 인증, 웹훅 설정</td>
+          <td>오케스트레이터 직접</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Dev Pipeline -->
+  <section id="dev-pipeline">
+    <h2>dev — 전체 개발 파이프라인</h2>
+    <p>자연어 요청 하나로 PRD 작성부터 PR 생성까지 전체 사이클을 수행합니다. 자연어를 분석하여 모드를 자동 결정합니다.</p>
+
+    <h3>자연어 의도 파싱</h3>
+    <table>
+      <thead><tr><th>감지 패턴</th><th>모드</th><th>예시</th></tr></thead>
+      <tbody>
+        <tr><td><code>상태</code>, <code>진행</code>, <code>어디까지</code></td><td>STATUS</td><td>"지금 어디까지 됐어?"</td></tr>
+        <tr><td><code>이어서</code>, <code>계속</code>, <code>재개</code></td><td>RESUME</td><td>"아까 하던 작업 이어서 해줘"</td></tr>
+        <tr><td><code>긴급</code>, <code>핫픽스</code>, <code>급한</code></td><td>HOTFIX</td><td>"로그인 버그 긴급 수정해줘"</td></tr>
+        <tr><td><code>설계만</code>, <code>PRD만</code>, <code>구현만</code></td><td>단일 Phase</td><td>"설계만 해줘"</td></tr>
+        <tr><td>위 어디에도 해당 안 됨</td><td>NORMAL</td><td>"로그인 기능 추가해줘"</td></tr>
+      </tbody>
+    </table>
+
+    <h3>6단계 파이프라인</h3>
+
+    <h4>정상 경로 (Normal)</h4>
+    <div class="pipeline">
+      <div class="pipeline-step"><div class="step-name">Setup</div><div class="step-agent">환경 준비</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Requirements</div><div class="step-agent">PRD Q&A</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Design</div><div class="step-agent">기술 설계</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Implement</div><div class="step-agent">구현 + 자기점검</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Review</div><div class="step-agent">QA + 보안 감사</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Complete</div><div class="step-agent">커밋 / PR</div></div>
+    </div>
+
+    <h4>긴급 경로 (Hotfix)</h4>
+    <div class="pipeline">
+      <div class="pipeline-step"><div class="step-name">Setup</div><div class="step-agent">환경 준비</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Requirements</div><div class="step-agent">경량 PRD</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Implement</div><div class="step-agent">구현 + 자기점검</div></div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><div class="step-name">Complete</div><div class="step-agent">커밋 / PR</div></div>
+    </div>
+
+    <h3>각 Phase 상세</h3>
+
+    <h4>Phase 1: Setup</h4>
+    <ol class="flow">
+      <li><span class="flow-title">진행 중 작업 감지 (.dev/state.md)</span> — 이전 작업 있으면 재개 여부 확인</li>
+      <li><span class="flow-title">Git 저장소 확인</span></li>
+      <li><span class="flow-title">베이스 브랜치 결정 + 동기화 (git pull)</span></li>
+      <li><span class="flow-title">프로젝트 정보 수집 (4개 작업 병렬)</span>
+        <ul class="flow-sub">
+          <li>프로젝트 타입 감지 (build.gradle.kts → java-spring 등)</li>
+          <li>디렉토리 구조 수집</li>
+          <li>CLAUDE.md 컨벤션 확보</li>
+          <li>도메인 컨텍스트 매칭 (context/*/PROJECTS.md)</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">관련 코드 맵 생성</span> — 키워드 추출 → Grep → 핵심 파일 15개 이내</li>
+      <li><span class="flow-title">작업 브랜치 생성 + .gitignore 보강 + 상태 초기화</span></li>
+    </ol>
+
+    <h4>Phase 2: Requirements — PRD Q&A</h4>
+    <ol class="flow">
+      <li><span class="flow-title">product-owner 에이전트 호출 (PRD 작성)</span></li>
+      <li><span class="flow-title">PRD 전문 표시 + 3관점 품질 자가 검증</span>
+        <ul class="flow-sub">
+          <li>유저 경험 검증: 사용자가 자연스럽게 이해하고 행동할 수 있는가</li>
+          <li>해석 여지 제거: "크게", "적절히" 대신 구체적 수치가 있는가</li>
+          <li>엣지케이스 커버리지: 빈 상태, 로딩, 에러, 최솟값/최댓값</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">질문 → AskUserQuestion 변환 → 답변 반영</span> — 최대 1회</li>
+      <li><span class="flow-title">사용자 승인 (승인 / 수정 요청) → .dev/prd.md 저장</span></li>
+    </ol>
+
+    <h4>Phase 3: Design — 설계 Q&A</h4>
+    <ol class="flow">
+      <li><span class="flow-title">architect 에이전트 호출 (기술 설계)</span></li>
+      <li><span class="flow-title">설계 초안 전문 표시</span></li>
+      <li><span class="flow-title">설계 비판 검토 (중형/대형만)</span>
+        <ul class="flow-sub">
+          <li>design-critic이 암묵적 가정 도전, 과잉 설계 식별</li>
+          <li>MUST-ADDRESS → architect 설계 수정</li>
+          <li>CONSIDER → 참고 사항으로 기록</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">사용자 승인 (최대 2회 반복) → .dev/design.md 저장</span></li>
+    </ol>
+
+    <h4>Phase 4: Implement — 구현 + 자기점검</h4>
+    <ol class="flow">
+      <li><span class="flow-title">구현 계획 제시 (변경 파일, 유형, 순서) → 사용자 승인</span></li>
+      <li><span class="flow-title">coder 에이전트 구현 (설계서 순서대로)</span></li>
+      <li><span class="flow-title">자기점검 (qa-manager)</span>
+        <ul class="flow-sub">
+          <li>Critical → coder 자동 수정 (1회)</li>
+          <li>Warning/Info → phase-review로 이월</li>
+          <li>QUESTION → phase-review로 이월</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>Phase 5: Review — QA + 보안 감사</h4>
+    <ol class="flow">
+      <li><span class="flow-title">Mechanical Gate</span>
+        <ul class="flow-sub">
+          <li>빌드 실패 → coder 자동 수정 → 1회 재시도</li>
+          <li>테스트 실패 → coder 자동 수정 → 1회 재시도</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">qa-manager + security-auditor 병렬 호출</span>
+        <ul class="flow-sub">
+          <li>QA: 코드 리뷰 + 스펙 충족 검증</li>
+          <li>종합 검증: PRD + 설계서 + diff 교차 검증</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">결과 합산 → Trust Ledger 생성 → Critical 자동 수정</span> — 최대 2회</li>
+    </ol>
+
+    <h4>Phase 6: Complete</h4>
+    <ol class="flow">
+      <li><span class="flow-title">인수 검증 (product-owner)</span> — PRD 수용 기준 대비 검증</li>
+      <li><span class="flow-title">/commit 스킬 실행</span> — 빌드 체크 + 한국어 커밋</li>
+      <li><span class="flow-title">/pull-request 스킬 실행</span> — PR 본문 + Trust Ledger 요약</li>
+      <li><span class="flow-title">도메인 status.md 갱신 + context 환류 제안</span></li>
+    </ol>
+
+    <h3>정체 감지 + 에스컬레이션</h3>
+    <p>구현/리뷰 단계에서 진전이 없으면 자동으로 전문 에이전트에게 에스컬레이션합니다.</p>
+    <table>
+      <thead><tr><th>감지 패턴</th><th>상황</th><th>1차 대응</th><th>2차 대응</th></tr></thead>
+      <tbody>
+        <tr><td><strong>SPINNING</strong></td><td>동일 에러 2회 연속</td><td>hacker에 제약 우회 분석</td><td>researcher에 근본 원인 분석</td></tr>
+        <tr><td><strong>OSCILLATION</strong></td><td>접근법 A→B→A 왕복</td><td>architect에 설계 재검토</td><td>사용자에게 두 접근법 제시</td></tr>
+        <tr><td><strong>NO_DRIFT</strong></td><td>코드 변경 없이 반복</td><td>hacker에 우회 경로 요청</td><td>researcher에 코드베이스 탐색</td></tr>
+        <tr><td><strong>DIMINISHING_RETURNS</strong></td><td>수정 줄고 결과 안 나옴</td><td>simplifier에 범위 축소</td><td>사용자에게 방향 전환 확인</td></tr>
+      </tbody>
+    </table>
+
+    <h3>상태 저장과 재개</h3>
+    <p><code>.dev/state.md</code>에 현재 진행 상태를 기록합니다. "이어서 해줘"라고 말하면 중단된 Phase의 중단된 Step부터 정확히 재개합니다.</p>
+    <pre><code># .dev/state.md 예시
+phase: implement
+status: in_progress
+branch: JIRA-123
+base: main
+current-step: "자기점검"
+phases:
+  setup: completed
+  requirements: completed
+  design: completed
+  implement: in_progress</code></pre>
+  </section>
+
+  <!-- Agents -->
+  <section id="agents">
+    <h2>9개 에이전트 팀</h2>
+    <p>dev 스킬의 핵심은 역할이 분리된 에이전트 팀이 협업하는 구조입니다.</p>
+
+    <table>
+      <thead><tr><th>에이전트</th><th>관점</th><th>역할</th><th>모델</th><th>활동 Phase</th></tr></thead>
+      <tbody>
+        <tr><td><strong>product-owner</strong></td><td>"뭘 만들지"</td><td>PRD 작성, 인수 검증</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>requirements, complete</td></tr>
+        <tr><td><strong>architect</strong></td><td>"어떻게 만들지"</td><td>기술 설계</td><td><span class="tag tag-opus">Opus</span></td><td>design</td></tr>
+        <tr><td><strong>design-critic</strong></td><td>"이 가정이 맞나"</td><td>암묵적 가정 도전</td><td><span class="tag tag-opus">Opus</span></td><td>design (중형 이상)</td></tr>
+        <tr><td><strong>coder</strong></td><td>"만든다"</td><td>코드 구현 + 수정</td><td><span class="tag tag-opus">Opus</span></td><td>implement, review</td></tr>
+        <tr><td><strong>qa-manager</strong></td><td>"스펙대로 됐나"</td><td>코드 리뷰, 스펙 검증</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>implement, review</td></tr>
+        <tr><td><strong>security-auditor</strong></td><td>"뭘 놓쳤나"</td><td>정책/보안 교차 검증</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>review</td></tr>
+        <tr><td><strong>researcher</strong></td><td>"이해한다"</td><td>코드베이스 조사</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>(독립 호출)</td></tr>
+        <tr><td><strong>hacker</strong></td><td>"다른 길이 있다"</td><td>제약 우회, 정체 탈출</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>(정체 감지 시)</td></tr>
+        <tr><td><strong>simplifier</strong></td><td>"더 작게 만들자"</td><td>복잡도 제거</td><td><span class="tag tag-sonnet">Sonnet</span></td><td>(정체 감지 시)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>모델 라우팅 원칙</h3>
+    <p>모든 에이전트가 같은 모델을 쓰지 않습니다. 작업 특성에 따라 모델을 배정합니다.</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><span class="tag tag-opus">Opus</span> 비용 높음, 추론 깊음</div>
+        <div class="card-desc">비판적 분석 (가정 도전, 설계 비판), 구조적 설계 (기술 설계, 아키텍처), 코드 구현 (복잡한 코드 생성)</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-sonnet">Sonnet</span> 비용 효율</div>
+        <div class="card-desc">산출물 생성 (PRD, 리뷰), 정체 탈출 (빠른 판단), 단순 검증 (코드 리뷰, 스펙 체크)</div>
+      </div>
+    </div>
+
+    <h3>컨텍스트 슬라이싱</h3>
+    <p>에이전트에게 모든 정보를 전달하면 토큰 낭비입니다. 역할별로 필요한 섹션만 슬라이싱합니다.</p>
+    <table>
+      <thead><tr><th>에이전트</th><th>받는 정보</th><th>받지 않는 정보</th></tr></thead>
+      <tbody>
+        <tr><td>product-owner (PRD)</td><td>ARGS + 코드 맵 + 프로젝트 구조</td><td>설계서, diff</td></tr>
+        <tr><td>architect (설계)</td><td>PRD 전체 + 코드 맵 + 컨벤션</td><td>diff</td></tr>
+        <tr><td>coder (구현)</td><td>설계서 전체 + 코드 맵</td><td>PRD (설계서에 반영됨)</td></tr>
+        <tr><td>qa-manager (자기점검)</td><td>PRD 요구사항+수용기준만</td><td>설계서, 배경</td></tr>
+        <tr><td>security-auditor</td><td>PRD + 설계서 + diff + 코드 맵</td><td>(전체 접근)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Context -->
+  <section id="context-skill">
+    <h2>context — 도메인 지식 관리</h2>
+    <p>기획서, 요구사항 문서, 코드베이스를 분석하여 도메인 지식을 등록합니다.</p>
+
+    <h3>5가지 모드 자동 판단</h3>
+    <table>
+      <thead><tr><th>조건</th><th>모드</th><th>동작</th></tr></thead>
+      <tbody>
+        <tr><td><code>context/</code> 없음</td><td><strong>스캔</strong></td><td>패키지 구조, 엔티티, API 분석 → 도메인 자동 생성</td></tr>
+        <tr><td>도메인명 지정</td><td><strong>신규</strong></td><td>Q&A 5개 질문으로 도메인 생성</td></tr>
+        <tr><td><code>--from &lt;파일&gt;</code></td><td><strong>문서 기반</strong></td><td>PDF/이미지/텍스트 분석 → context 생성</td></tr>
+        <tr><td>기존 도메인</td><td><strong>갱신</strong></td><td>변경 제안 → 사용자 확인 후 반영</td></tr>
+        <tr><td><code>--sync</code></td><td><strong>동기화</strong></td><td>git log + PR 분석 → status.md 갱신</td></tr>
+      </tbody>
+    </table>
+
+    <h3>생성되는 문서 구조</h3>
+    <pre><code>context/{도메인}/
+├── README.md          ← 도메인 개요 (배경, 문제, 사용자, 성공기준, 담당자)
+├── PROJECTS.md        ← 관련 GHE 레포 매핑
+├── glossary.md        ← 도메인 용어 사전
+├── architecture.md    ← 전체 구조 요약 + 주제 문서 링크
+├── status.md          ← 구현 추적 (AC별 ✅/⬜)
+└── {주제}/README.md   ← 주제별 상세 정책/설계</code></pre>
+
+    <h3>답변 품질 게이트</h3>
+    <p>context는 모호한 답변을 허용하지 않습니다. "많다", "자주" 대신 정량 수치를 요구하고, "효율화", "개선" 같은 추상어가 나오면 구체화를 요청합니다. 그래도 모르는 항목은 ❓로 남기고 진행합니다.</p>
+  </section>
+
+  <!-- Lens -->
+  <section id="lens-skill">
+    <h2>lens — 비즈니스 정책 탐지</h2>
+    <p>코드에서 비즈니스 정책을 찾아 PO/PD가 읽을 수 있는 보고서로 출력합니다. <strong>읽기 전용</strong> — 코드를 수정하지 않습니다.</p>
+
+    <h3>페르소나: 기술 번역자</h3>
+    <blockquote>
+      코드를 읽되, 출력은 비즈니스 언어로 번역합니다.<br>
+      <code>PurchaseLimitPolicy</code> → "구매 한도 정책 (<code>PurchaseLimitPolicy</code>)"<br>
+      코드 변경을 제안하지 않습니다. 확인이 필요한 사항만 안내합니다.
+    </blockquote>
+
+    <h3>5단계 Phase</h3>
+    <ol class="flow">
+      <li><span class="flow-title">Prepare</span> — 쿼리 키워드 추출 → 프로젝트 확정</li>
+      <li><span class="flow-title">Explore: Agent(Explore)로 코드에서 정책 구현 발견</span>
+        <ul class="flow-sub">
+          <li>1단계: 후보 수집 (Glob + Grep, Read 없이)</li>
+          <li>2단계: 입구 추적 (Controller/Handler Read)</li>
+          <li>3단계: 핵심 파일 정독 (Service/Policy/Rule Read)</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">Report</span> — "대상에게 무슨 일이 일어나는가" 관점으로 합성</li>
+      <li><span class="flow-title">(선택) Impact</span> — architect + security-auditor 병렬 분석</li>
+      <li><span class="flow-title">(선택) Impact-Report</span> — PO 친화적 영향도 보고서</li>
+    </ol>
+  </section>
+
+  <!-- Humanizer -->
+  <section id="humanizer-skill">
+    <h2>humanizer — AI 글쓰기 교정</h2>
+    <p>AI가 생성한 텍스트에서 40+가지 패턴을 감지하고 교정합니다. Wikipedia의 "Signs of AI writing" 가이드와 한국어 AI 글쓰기 패턴 연구를 기반으로 합니다.</p>
+
+    <h3>두 가지 모드</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">audit 모드</div>
+        <div class="card-desc">패턴을 감지하고 리포트만 출력합니다. 텍스트를 수정하지 않습니다. 어디가 문제인지 확인만 하고 싶을 때 사용합니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">rewrite 모드</div>
+        <div class="card-desc">패턴을 감지하고 직접 교정합니다. AI 흔적을 제거한 최종본이 필요할 때 사용합니다.</div>
+      </div>
+    </div>
+
+    <h3>심각도 분류</h3>
+    <table>
+      <thead><tr><th>심각도</th><th>설명</th><th>처리</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-p1">P1</span></td><td>확실한 AI 흔적 — 사람이 거의 쓰지 않는 패턴</td><td>즉시 수정</td></tr>
+        <tr><td><span class="tag tag-p2">P2</span></td><td>의심스러운 패턴 — AI가 자주 쓰지만 사람도 가끔 사용</td><td>맥락 판단</td></tr>
+        <tr><td><span class="tag tag-p3">P3</span></td><td>스타일 개선 — 글 품질 향상 차원</td><td>선택적 수정</td></tr>
+      </tbody>
+    </table>
+
+    <h3>40+ 감지 패턴</h3>
+
+    <h4>한국어 <span class="tag tag-p1">P1</span> — 즉시 수정</h4>
+    <table>
+      <thead><tr><th>코드</th><th>패턴</th><th>감지 키워드</th></tr></thead>
+      <tbody>
+        <tr><td>K1</td><td>도입부 상투어</td><td>"오늘날", "알아보겠습니다", "이번 글에서는"</td></tr>
+        <tr><td>K2</td><td>과장 수식어</td><td>"혁신적인", "체계적인", "다양한"(과용), "탁월한"</td></tr>
+        <tr><td>K3</td><td>회피 어미</td><td>"~라고 할 수 있습니다", "~해도 과언이 아닙니다"</td></tr>
+        <tr><td>K4</td><td>"이를 통해" 연쇄</td><td>"이를 통해", "이를 바탕으로", "이를 활용하여"</td></tr>
+        <tr><td>K5</td><td>무의미한 중요성</td><td>"중요성은 아무리 강조해도", "핵심적인 역할"</td></tr>
+        <tr><td>K10</td><td>결론부 상투어</td><td>"결론적으로", "발전이 기대됩니다"</td></tr>
+        <tr><td>K11</td><td>대화형 흔적</td><td>"도움이 되셨길", "좋은 질문입니다!"</td></tr>
+      </tbody>
+    </table>
+
+    <h4>한국어 <span class="tag tag-p2">P2</span> — 맥락 판단</h4>
+    <table>
+      <thead><tr><th>코드</th><th>패턴</th><th>감지 키워드</th></tr></thead>
+      <tbody>
+        <tr><td>K6</td><td>범위 확장 과용</td><td>"~뿐만 아니라 ~도"</td></tr>
+        <tr><td>K7</td><td>자문자답</td><td>"그렇다면 왜 ~일까요?"</td></tr>
+        <tr><td>K8</td><td>셋 법칙</td><td>"첫째... 둘째... 셋째..." (억지 3개 묶음)</td></tr>
+        <tr><td>K9</td><td>격식체 과용</td><td>"~에 있어서"</td></tr>
+        <tr><td>K12</td><td>의미 없는 접속부사</td><td>"또한"(과용), "더불어", "나아가"</td></tr>
+        <tr><td>K13</td><td>장단점 대칭</td><td>"장점으로는... 단점으로는..."</td></tr>
+        <tr><td>K14</td><td>이중 피동</td><td>"~되어지다"</td></tr>
+      </tbody>
+    </table>
+
+    <h4>영어 <span class="tag tag-p1">P1</span> — 즉시 수정</h4>
+    <table>
+      <thead><tr><th>코드</th><th>패턴</th><th>감지 키워드</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>중요성 과장</td><td>testament, pivotal, evolving landscape</td></tr>
+        <tr><td>E4</td><td>홍보성 언어</td><td>groundbreaking, robust, seamless, leverage</td></tr>
+        <tr><td>E7</td><td>AI 빈출 어휘</td><td>Additionally, delve, tapestry, interplay</td></tr>
+        <tr><td>E13</td><td>대화형 잔류물</td><td>"Great question!", "Let's dive in"</td></tr>
+        <tr><td>E18</td><td>불필요한 요약</td><td>"In summary", "As we've seen"</td></tr>
+      </tbody>
+    </table>
+
+    <h4>공통 패턴</h4>
+    <table>
+      <thead><tr><th>코드</th><th>패턴</th></tr></thead>
+      <tbody>
+        <tr><td>C1</td><td>동의어 순환 — 같은 대상을 계속 다른 단어로 바꿔 부름</td></tr>
+        <tr><td>C2</td><td>지식 한계 면책 — "정확한 정보는 확인이 필요합니다"</td></tr>
+        <tr><td>C3</td><td>긍정적 결론 — "밝은 미래가 기대됩니다"</td></tr>
+        <tr><td>C4</td><td>요청하지 않은 이모지 장식</td></tr>
+        <tr><td>C5</td><td>균일한 문단 길이 — 모든 문단 3-4문장</td></tr>
+        <tr><td>C6</td><td>강제 3단 구조 — 짧은 글에도 도입-본론-결론</td></tr>
+      </tbody>
+    </table>
+
+    <h3>콘텐츠 유형별 적용</h3>
+    <table>
+      <thead><tr><th>유형</th><th>적용 기준</th><th>숨결 주입</th></tr></thead>
+      <tbody>
+        <tr><td>블로그/에세이</td><td>모든 패턴 적용</td><td>O — 의견, 1인칭, 개성</td></tr>
+        <tr><td>기술 문서</td><td>수식어/filler 제거</td><td>X — 정확하고 건조하게</td></tr>
+        <tr><td>마케팅/카피</td><td>과장 줄이되 설득력 유지</td><td>제한적</td></tr>
+        <tr><td>학술/리포트</td><td>정확성과 출처 중심</td><td>X — 객관적 톤</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Humanizer Example -->
+  <section id="humanizer-example">
+    <h2>humanizer 교정 예시</h2>
+    <p>oh-my-gx 소스코드를 기반으로 "시스템 구성 설명서"를 AI가 작성했을 때의 교정 전/후 비교입니다.</p>
+
+    <h3>Before — AI 초안</h3>
+    <div class="diff">
+      <div class="diff-header">시스템 개요 (AI 초안)</div>
+      <div class="diff-del">oh-my-gx는 <strong>혁신적인</strong> AI 기반 개발 자동화 플러그인으로, <strong>다양한</strong> 개발 단계를 <strong>체계적으로</strong> 자동화하는 <strong>효과적인</strong> 솔루션입니다. <strong>이를 통해</strong> PRD 작성부터 PR 생성까지 전체 개발 사이클을 <strong>효율적으로</strong> 수행할 수 있습니다.</div>
+    </div>
+    <p>감지 결과: <span class="tag tag-p1">P1</span> 12건 <span class="tag tag-p2">P2</span> 7건 <span class="tag tag-p3">P3</span> 4건 — 총 <strong>23건</strong></p>
+
+    <h3>감지 리포트 (주요 항목)</h3>
+    <table>
+      <thead><tr><th>#</th><th>심각도</th><th>패턴</th><th>원문</th><th>제안</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><span class="tag tag-p1">P1</span></td><td>K2 과장 수식어</td><td>"혁신적인" x3, "체계적으로" x3, "다양한" x5</td><td>전부 삭제 또는 수치로 대체</td></tr>
+        <tr><td>2</td><td><span class="tag tag-p1">P1</span></td><td>K4 연쇄</td><td>"이를 통해/바탕으로/활용하여/기반으로" 4연속</td><td>주어를 바꿔 연결</td></tr>
+        <tr><td>3</td><td><span class="tag tag-p1">P1</span></td><td>C3 긍정 결론</td><td>"혁신적인 변화를 가져올 것입니다"</td><td>실측 데이터로 교체</td></tr>
+        <tr><td>4</td><td><span class="tag tag-p2">P2</span></td><td>E12 볼드 과용</td><td>모든 항목에 볼드</td><td>강조할 것만 남기기</td></tr>
+      </tbody>
+    </table>
+
+    <h3>After — humanizer 교정</h3>
+    <div class="diff">
+      <div class="diff-header">시스템 개요 (교정 후)</div>
+      <div class="diff-add">oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인이다. <code>/dev</code> 명령 한 줄로 PRD 작성, 기술 설계, 코드 구현, QA 검증, 커밋, PR 생성까지 자동 수행한다. Spring Boot + Vue/Nuxt 풀스택 프로젝트를 대상으로 한다.</div>
+    </div>
+
+    <h3>핵심 차이</h3>
+    <table>
+      <thead><tr><th>구분</th><th>Before</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>수식어</td><td>"혁신적인", "다양한" 등 15회</td><td>0회 — 전부 삭제</td></tr>
+        <tr><td>인과 연결</td><td>"이를 통해" 4연속</td><td>주어를 바꿔 자연스럽게</td></tr>
+        <tr><td>결론</td><td>"기대됩니다", "변화를 가져올 것"</td><td>실측 수치 4개로 대체</td></tr>
+        <tr><td>보안 섹션</td><td>"다양한 안전장치를 체계적으로"</td><td>표로 항목별 나열</td></tr>
+        <tr><td>기대효과</td><td>추상적 희망</td><td>실제 프로젝트 데이터 (40분, 13파일, 0건)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Commit / PR -->
+  <section id="commit-pr">
+    <h2>commit / pull-request</h2>
+
+    <h3>commit — 커밋 자동화</h3>
+    <ol class="flow">
+      <li><span class="flow-title">사전 확인</span> — Git 저장소 + 변경사항 + 빌드 실행</li>
+      <li><span class="flow-title">타입 파싱</span> — 브랜치명에서 추출 (feat/login → feat)</li>
+      <li><span class="flow-title">커밋 메시지 생성</span> — {type}: 한국어 요약 (50자 이내) + 본문</li>
+      <li><span class="flow-title">커밋 실행</span>
+        <ul class="flow-sub">
+          <li>빌드 아티팩트 tracking 해제 (build/, node_modules/)</li>
+          <li>민감 파일 감지 (.env, *.key, *.pem, credentials*, *secret*) → 경고</li>
+          <li>20개 초과 변경 → 전체 스테이징 확인</li>
+          <li>HEREDOC 포맷으로 커밋</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">context 동기화 체크</span></li>
+    </ol>
+
+    <h3>pull-request — PR 자동화</h3>
+    <ol class="flow">
+      <li><span class="flow-title">사전 확인</span> — gh CLI + 인증 + origin remote + 베이스 브랜치</li>
+      <li><span class="flow-title">타입 매핑</span> — feat→FEATURE, fix→BUGFIX, docs→DOCS ...</li>
+      <li><span class="flow-title">PR 제목</span> — [{TYPE}] 서술형 한국어 문장 (50자 이내)</li>
+      <li><span class="flow-title">PR 본문 (문장형 서술)</span>
+        <ul class="flow-sub">
+          <li>Background: 왜 이 변경이 필요한가</li>
+          <li>Summary: 무엇을 했는가</li>
+          <li>Changes: 기능 단위로 무엇이 바뀌었는가</li>
+          <li>Checklist: 변경 내용에 따라 동적 생성</li>
+        </ul>
+      </li>
+      <li><span class="flow-title">PR 생성 + Google Chat 알림</span></li>
+    </ol>
+  </section>
+
+  <!-- Safety -->
+  <section id="safety">
+    <h2>안전장치</h2>
+    <table>
+      <thead><tr><th>항목</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><strong>PR 머지 차단</strong></td><td><code>gh pr merge</code> 실행을 설정 수준에서 차단. 머지는 사람이 직접 수행</td></tr>
+        <tr><td><strong>Force Push 차단</strong></td><td><code>git push --force</code> 차단</td></tr>
+        <tr><td><strong>보호 브랜치</strong></td><td>main에서 직접 커밋 차단. 작업 브랜치를 먼저 생성</td></tr>
+        <tr><td><strong>민감 파일 감지</strong></td><td><code>.env</code>, <code>*.key</code>, <code>*.pem</code>, <code>credentials*</code>, <code>*secret*</code> 커밋 전 경고</td></tr>
+        <tr><td><strong>빌드 아티팩트</strong></td><td><code>build/</code>, <code>node_modules/</code> 등 tracked 시 <code>.gitignore</code> 보강 제안</td></tr>
+        <tr><td><strong>단계별 승인</strong></td><td>PRD, 설계, 구현 계획 — 사용자 승인 없이 진행하지 않음</td></tr>
+        <tr><td><strong>Mechanical Gate</strong></td><td>빌드/테스트 통과 후에만 QA 리뷰 진행</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+<footer>
+  <p>oh-my-gx &mdash; Java Spring Boot / 풀스택 개발을 위한 AI 기반 Claude Code 플러그인</p>
+  <p style="margin-top: 8px;"><a href="https://github.com/bs-koo/oh-my-gx">GitHub</a></p>
+</footer>
+
+</body>
+</html>
