@@ -1,0 +1,59 @@
+name: Auto Release on Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from plugin.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract changelog for this version
+        if: steps.check_tag.outputs.exists == 'false'
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Extract title description from header: "## v1.3.0 (date) — description"
+          HEADER=$(grep "^## v${VERSION}" CHANGELOG.md | head -1)
+          TITLE_DESC=$(echo "$HEADER" | sed -n 's/.*— \(.*\)/\1/p')
+          if [ -n "$TITLE_DESC" ]; then
+            echo "title=v${VERSION} — ${TITLE_DESC}" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=v${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+          # Extract section between current version header and next version header
+          BODY=$(awk "/^## v${VERSION}/,/^## v[0-9]/" CHANGELOG.md | head -n -1 | tail -n +2)
+          # Write to file to preserve newlines
+          echo "$BODY" > /tmp/release_body.md
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.changelog.outputs.title }}" \
+            --notes-file /tmp/release_body.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

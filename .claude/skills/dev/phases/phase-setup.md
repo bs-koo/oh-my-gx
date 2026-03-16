@@ -22,6 +22,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 - state.md에서 GIT_PREFIX, PROJECT_ROOT, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags를 복원.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - prd.md, design.md, trust-ledger.md, codemap.md, self-check.md가 있으면 Read하여 맥락 복원.
+- `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
 - phases 맵에서 마지막 in_progress Phase를 찾아 재개.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.
 
@@ -43,7 +44,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 ## Step 3: 프로젝트 정보 수집
 `PROJECT_ROOT = ./` (현재 디렉토리).
 
-아래 4개 작업은 서로 독립적이므로 **병렬로 실행**한다:
+아래 5개 작업은 서로 독립적이므로 **병렬로 실행**한다:
 1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`). 여러 타입이 감지되면 모두 기록한다.
 2. **디렉토리 구조 수집**: `PROJECT_ROOT`의 최상위 2레벨 디렉토리 구조를 수집한다.
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
@@ -54,6 +55,15 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    - `context/` 디렉토리가 없거나 매칭되지 않으면 `DOMAIN_CONTEXT`는 빈 상태로 진행한다.
      사용자에게 안내: "도메인 컨텍스트가 없습니다. `context/` 디렉토리를 생성하고 `/context`로 도메인을 등록하면 이후 작업에서 용어/아키텍처를 참조할 수 있습니다."
    - `DOMAIN_CONTEXT`는 이후 agent 프롬프트에 "도메인 컨텍스트"로 포함한다.
+5. **외부 규격 참조 탐색**: 프로젝트 루트에 `references/` 디렉토리가 있는지 확인한다.
+   - `references/` 디렉토리가 존재하면:
+     a. 디렉토리 내 파일 목록을 수집한다 (하위 디렉토리 포함).
+     b. 각 파일에서 한줄 설명을 추출한다:
+        - `.md` 파일: 첫 번째 `#` 헤딩 텍스트
+        - `.txt` 파일: 첫 번째 비공백 줄
+        - 그 외 (`.pdf` 등): 파일명 그대로 사용
+     c. 파일 목록 + 한줄 설명을 `REFERENCES` 변수에 저장한다.
+   - `references/` 디렉토리가 없으면 `REFERENCES`는 빈 상태로 진행한다. 안내 메시지를 출력하지 않는다.
 
 ## Step 4: 관련 코드 맵 생성
 ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관련 코드를 탐색하고 초기 코드 맵을 생성한다.

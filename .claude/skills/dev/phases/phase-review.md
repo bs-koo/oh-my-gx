@@ -67,6 +67,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 - 이전 Q&A 히스토리 (이전 반복의 답변, 있으면)
 - `SELF_CHECK_FINDINGS` (phase-implement 자기점검에서 발견된 Warning/Info 항목, 있으면). "다음 항목은 자기점검에서 이미 발견·수정된 사항이다. 동일 항목을 다시 보고하지 말 것." 안내와 함께 전달.
 - `SELF_CHECK_QUESTIONS` (phase-implement 자기점검에서 QA가 보고한 QUESTION 항목, 있으면). "다음 항목은 자기점검에서 확인이 필요하다고 보고된 사항이다. 사용자 확인이 필요하면 QUESTION에 포함할 것." 안내와 함께 전달.
+- REFERENCES (있으면): "아래 외부 규격/표준의 준수 여부를 검토하라. 위반 발견 시 CERTAIN으로 보고하라." + REFERENCES 테이블
 - 반복 2회차면: 이전 리뷰 이후 수정된 내용
 
 **Task B**: security-auditor 통합 감사.
@@ -75,6 +76,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 - 설계서 전체 (있으면)
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - 코드 맵
+- REFERENCES (있으면): "아래 외부 규격/표준의 보안 관련 항목을 감사에 포함하라." + REFERENCES 테이블
 - "통합 감사"로 동작할 것
 
 **Step 3**: 두 Task 완료 후 결과를 합산한다.

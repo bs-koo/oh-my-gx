@@ -6,7 +6,7 @@
 - Step 0에서 설계서(`design.md`) 로드를 건너뛴다. PRD(`prd.md`)는 로드한다.
 - Step 1(구현 계획 승인), Step 1.5(배치 구성)도 건너뛴다.
 - 구현 Task에서 설계서 대신 PRD와 코드 맵을 전달한다.
-  - prompt: "다음 PRD를 참고하여 최소한의 변경으로 구현하라: {PRD 내용}. 코드 맵을 참고하라."
+  - prompt: "다음 PRD를 참고하여 최소한의 변경으로 구현하라: {PRD 내용}. 코드 맵을 참고하라." + REFERENCES (있으면): "아래 외부 규격/표준을 구현 시 준수하라. 필요 시 Read하여 상세 내용을 확인하라." + REFERENCES 테이블
 - 자기점검은 동일하게 실행한다.
 
 hotfix가 아닌 경우 아래 정상 플로우를 따른다.
@@ -110,13 +110,14 @@ for batch in batches:
     - 코드 맵 (누적된 상태)
     - 프로젝트 타입 및 구조
     - 프로젝트 루트 경로 (작업 경로 기준 참조)
+    - REFERENCES (있으면): "아래 외부 규격/표준을 구현 시 준수하라. 필요 시 Read하여 상세 내용을 확인하라." + REFERENCES 테이블
     - Step 1에서 승인된 계획이 있다면 해당 계획을, 없다면 설계서의 "구현 순서"를 전달하여 순서대로 구현하도록 지시.
 
   **그 외**:
     if batch.parallel (단계 2개 이상):
       하나의 메시지에서 동시 Task(subagent_type="coder") 발행.
       각 coder에 배치 모드 prompt: 담당 단계 설계 + 담당 파일 목록 +
-      이전 배치 결과 요약 + 병렬 안내 + 코드 맵 + PROJECT_ROOT.
+      이전 배치 결과 요약 + 병렬 안내 + 코드 맵 + PROJECT_ROOT + REFERENCES (있으면).
     else:
       단일 Task(subagent_type="coder") 배치 모드 호출.
 
