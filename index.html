@@ -165,17 +165,21 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 24px;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .card:hover { border-color: var(--accent); }
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(88,166,255,0.1);
+    }
     .card-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .card-desc {
       color: var(--text-secondary);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
     }
 
     /* Tags */
@@ -389,11 +393,10 @@
 <!-- Hero -->
 <div class="hero">
   <h1>oh-my-gx</h1>
-  <p>자연어 한 마디로 PRD, 설계, 구현, 리뷰, PR까지 — Java Spring Boot / 풀스택 개발 자동화 플러그인</p>
+  <p>GX 사업본부 개발자를 위한 PRD, 설계, 구현, 리뷰, PR까지 처리하는 개발 자동화 플러그인</p>
   <div class="hero-badges">
     <a href="https://github.com/bs-koo/oh-my-gx" class="btn-primary">GitHub</a>
-    <a href="#skills" class="btn-outline">스킬 상세</a>
-    <a href="#humanizer-example" class="btn-outline">교정 예시</a>
+    <a href="https://github.com/bs-koo/oh-my-gx/releases/latest" class="btn-outline">릴리스 노트</a>
   </div>
 </div>
 
@@ -406,6 +409,7 @@
     <a href="#agents">에이전트 팀</a>
     <a href="#context-skill">context</a>
     <a href="#lens-skill">lens</a>
+    <a href="#research-skill">research</a>
     <a href="#humanizer-skill">humanizer</a>
     <a href="#humanizer-example">교정 예시</a>
     <a href="#commit-pr">commit / PR</a>
@@ -419,31 +423,31 @@
   <!-- Overview -->
   <section id="overview">
     <h2>개요</h2>
-    <p>oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인입니다. 7개 스킬, 9개 에이전트가 협업하여 자연어 요청 하나로 전체 개발 사이클을 수행합니다.</p>
+    <p>oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인입니다. 8개 스킬, 9개 에이전트가 협업하여 자연어 요청 하나로 전체 개발 사이클을 수행합니다.</p>
 
     <div class="card-grid">
       <div class="card">
         <div class="card-title">자연어 의도 파싱</div>
-        <div class="card-desc">"긴급 수정해줘" → hotfix 모드, "이어서 해줘" → 상태 재개. 명령어를 외울 필요 없이 자연어로 의도를 전달하면 적절한 스킬과 모드가 자동 발동됩니다.</div>
+        <div class="card-desc">명령어 없이 자연어로 의도를 전달하면 적절한 스킬과 모드가 자동 발동됩니다.</div>
       </div>
       <div class="card">
         <div class="card-title">에이전트 팀 협업</div>
-        <div class="card-desc">PO, 설계자, 개발자, QA, 보안 감사자 등 9개 에이전트가 각자의 관점에서 협업합니다. 비판적 분석은 Opus, 산출물 생성은 Sonnet으로 모델을 분리하여 비용과 품질을 최적화합니다.</div>
+        <div class="card-desc">PO, 설계자, 개발자, QA, 보안 감사자 등 9개 에이전트가 역할별로 협업합니다.</div>
       </div>
       <div class="card">
         <div class="card-title">단계별 승인</div>
-        <div class="card-desc">PRD, 설계, 구현 계획 — 각 단계에서 사용자 승인 없이 다음으로 넘어가지 않습니다. 선택형/자유입력형 질문으로 정보를 수집하고, 수정 요청도 가능합니다.</div>
+        <div class="card-desc">PRD, 설계, 구현 계획 — 각 단계에서 사용자 승인 없이 다음으로 넘어가지 않습니다.</div>
       </div>
       <div class="card">
         <div class="card-title">안전장치 내장</div>
-        <div class="card-desc">PR 머지 차단, force push 차단, 민감 파일 감지, 빌드 게이트 — 실수를 방지하기 위한 다중 안전장치가 설정 수준에서 동작합니다.</div>
+        <div class="card-desc">PR 머지 차단, force push 차단, 민감 파일 감지 등 다중 안전장치가 내장되어 있습니다.</div>
       </div>
     </div>
   </section>
 
   <!-- Skills -->
   <section id="skills">
-    <h2>7개 스킬</h2>
+    <h2>8개 스킬</h2>
 
     <table>
       <thead>
@@ -472,6 +476,12 @@
           <td>코드에서 비즈니스 정책 추출</td>
           <td>Explore + architect + security-auditor</td>
           <td>요약, 상세, 영향도분석</td>
+        </tr>
+        <tr>
+          <td><a href="#research-skill"><strong>research</strong></a></td>
+          <td>웹 검색/문서 분석 기반 리서치</td>
+          <td>오케스트레이터 직접</td>
+          <td>종합리포트, 비교표, 핵심요약</td>
         </tr>
         <tr>
           <td><a href="#humanizer-skill"><strong>humanizer</strong></a></td>
@@ -784,6 +794,63 @@ steps:
     </ol>
   </section>
 
+  <!-- Research -->
+  <section id="research-skill">
+    <h2>research — 도메인 리서치</h2>
+    <p>웹 검색과 문서 분석을 병행하여 출처가 명확한 조사 결과를 산출합니다. <code>/context --from</code>으로 결과를 context 문서에 반영할 수 있습니다.</p>
+
+    <h3>3가지 결과물 형태</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">종합 리포트</div>
+        <div class="card-desc">요약 → 주요 발견 → 상세 분석 → 출처. 주제를 깊이 있게 조사할 때 사용합니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">비교표</div>
+        <div class="card-desc">비교 기준 표 → 각 항목 요약 → 판단 근거. 기술/도구 선택지를 비교할 때 유용합니다.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">핵심 요약</div>
+        <div class="card-desc">한 줄 결론 → 핵심 포인트 3-5개 → 출처. 빠르게 핵심만 파악할 때 사용합니다.</div>
+      </div>
+    </div>
+
+    <h3>4단계 워크플로우</h3>
+    <ol class="flow">
+      <li><span class="flow-title">인터뷰</span> — 주제, 결과물 형태, 조사 깊이를 확인 (인자로 지정 시 스킵)</li>
+      <li><span class="flow-title">검색 실행</span> — 키워드 도출 → WebSearch → URL 선별 → WebFetch로 내용 수집</li>
+      <li><span class="flow-title">검증 + 보강</span> — 목표 충족, 완성도, 정확성, 균형 4기준 자기검증. 부족 시 1회 보강</li>
+      <li><span class="flow-title">결과물 생성</span> — 선택한 형태로 <code>.research/</code>에 저장</li>
+    </ol>
+
+    <h3>조사 깊이</h3>
+    <table>
+      <thead><tr><th>모드</th><th>키워드</th><th>URL</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td><strong>꼼꼼하게</strong></td><td>5개</td><td>최대 10개</td><td>다수 소스 교차 검증</td></tr>
+        <tr><td><strong>빠르게 핵심만</strong></td><td>3개</td><td>최대 5개</td><td>핵심 소스만 빠르게</td></tr>
+      </tbody>
+    </table>
+
+    <h3>context 연동</h3>
+    <pre><code>/research 결제 시스템 트렌드
+  → .research/결제시스템트렌드-20260316.md 생성
+
+/context 결제 --from .research/결제시스템트렌드-20260316.md
+  → context/결제/ 문서에 리서치 결과 반영</code></pre>
+
+    <h3>수칙</h3>
+    <table>
+      <thead><tr><th>원칙</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><strong>출처 필수</strong></td><td>모든 발견에 URL 또는 문서 출처를 명시한다</td></tr>
+        <tr><td><strong>구체적 데이터</strong></td><td>"일반적으로", "대부분" 대신 구체적 수치를 찾는다</td></tr>
+        <tr><td><strong>교차 검증</strong></td><td>단일 출처의 주장은 다른 출처로 확인한다 (꼼꼼 모드)</td></tr>
+        <tr><td><strong>실패 투명성</strong></td><td>찾지 못한 정보는 ❓로 남기고 명시한다</td></tr>
+      </tbody>
+    </table>
+  </section>
+
   <!-- Humanizer -->
   <section id="humanizer-skill">
     <h2>humanizer — AI 글쓰기 교정</h2>
@@ -977,7 +1044,7 @@ steps:
 </div>
 
 <footer>
-  <p>oh-my-gx &mdash; Java Spring Boot / 풀스택 개발을 위한 AI 기반 Claude Code 플러그인</p>
+  <p>oh-my-gx &mdash; GX 사업본부 개발자를 위한 개발 자동화 플러그인</p>
   <p style="margin-top: 8px;"><a href="https://github.com/bs-koo/oh-my-gx">GitHub</a></p>
 </footer>
 

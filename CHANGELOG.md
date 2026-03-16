@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.0 (2026-03-16)
+
+### Features
+- **research 스킬 신설**: 웹 검색/문서 분석 기반 도메인 리서치 스킬
+  - 인터뷰(주제/결과물/깊이) → 검색 → 검증 → 결과물 생성 워크플로우
+  - 종합 리포트 / 비교표 / 핵심 요약 3가지 결과물 형태 지원
+  - `/context --from` 연동으로 리서치 결과를 context 문서에 반영 가능
+  - `.research/` 디렉토리에 중간 산출물 및 최종 결과물 저장
+
+### Docs
+- GitHub Pages research 스킬 섹션 추가
+- README research 스킬 사용법 추가
+- GitHub Pages UI/UX 개선 및 설명 통일
+
 ## v1.1.0 (2026-03-13)
 
 ### Features

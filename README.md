@@ -38,6 +38,7 @@
 | "PRD만 작성해줘" | dev (단일 단계) |
 | "이어서 해줘" | dev (재개) |
 | ".dev/prd.md AI 흔적 교정해줘" | humanizer |
+| "클라우드 네이티브 트렌드 조사해줘" | research |
 | "커밋해줘" | commit |
 | "PR 만들어줘" | pull-request |
 
@@ -106,6 +107,18 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 "/humanizer 소스코드 기반으로 기획서.md를 작성해줘"
 "/humanizer 발표대본.md 소스코드 기반으로 발표 대본 작성해줘"
 ```
+
+### research
+
+웹 검색과 문서 분석을 병행하여 도메인 리서치를 수행합니다. 결과물은 `/context --from`으로 context 문서에 반영할 수 있습니다.
+
+```
+"클라우드 네이티브 트렌드 조사해줘"              ← 종합 리포트
+"결제 시스템 비교 분석해줘 --format comparison"   ← 비교표
+"인증 방식 핵심만 정리해줘 --format summary"      ← 핵심 요약
+```
+
+조사 결과는 `.research/` 디렉토리에 저장되며, 모든 발견에 출처 URL이 명시됩니다.
 
 ### commit / pull-request
 
