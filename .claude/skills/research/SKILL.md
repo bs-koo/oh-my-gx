@@ -24,7 +24,7 @@ allowed-tools:
 
 Arguments 문자열에서 아래 규칙으로 파싱한다:
 
-- `--output <경로>`: 결과물 저장 경로. 미지정 시 `.research/{슬러그}-{YYYYMMDD}.md`
+- `--output <경로>`: 결과물 저장 경로. 미지정 시 `.research/{주제슬러그}-{YYYYMMDD}.md`
 - `--format report|comparison|summary`: 결과물 형태 사전 지정. 지정 시 Q2 스킵
 - 나머지 토큰: 리서치 주제
 - 인자 없음: Q1부터 인터뷰 시작
@@ -238,7 +238,9 @@ Q2 답변(또는 `--format`)에 따라 결과물을 작성한다.
 
 **저장 경로:** `--output` 지정 시 해당 경로, 미지정 시 `.research/{주제슬러그}-{YYYYMMDD}.md`
 
-주제 슬러그 생성: 공백을 제거하고 한글은 그대로 유지한다. 예: "클라우드 네이티브 트렌드" → `클라우드네이티브트렌드`
+주제 슬러그 생성: 주제를 소문자로 변환하고, 공백이나 특수문자를 하이픈(-)으로 대체하여 생성한다.
+  예: "클라우드 네이티브 트렌드" → `클라우드-네이티브-트렌드`
+  예: "C# vs. Java" → `c-vs-java`
 
 ### Step 5: 완료 안내
 
@@ -249,5 +251,5 @@ Q2 답변(또는 `--format`)에 따라 결과물을 작성한다.
 - 결과 파일: .research/{파일명}.md
 - 소스: {N}개 참조
 
-/context {도메인} --from .research/{파일명}.md 로 context에 반영할 수 있습니다.
+/context <도메인명> --from .research/{파일명}.md 로 context에 반영할 수 있습니다.
 ```
