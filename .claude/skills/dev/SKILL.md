@@ -197,6 +197,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `.dev/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
 - `DOMAIN_CONTEXT`: phase-setup 0.3에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
+- `REFERENCES`: phase-setup Step 3.5에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
 - 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행할 때, Bash 작업 디렉토리가 변경되지 않도록 **서브셸**을 사용한다: `(cd ${PROJECT_ROOT} && ./gradlew build)`. 괄호 `()`로 감싸면 서브셸에서 `cd`가 실행되어 부모 셸의 작업 디렉토리가 유지된다.
 
@@ -296,13 +297,13 @@ execution-log:
 설계서와 PRD를 Agent에게 전달할 때, 역할에 따라 필요한 섹션만 전달하여 컨텍스트 효율을 높인다:
 - **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면)
 - **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
-- **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면)
-- **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로. `--hotfix`이면 설계서 대신 PRD + 코드 맵.
-- **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로. 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
+- **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + REFERENCES (있으면)
+- **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). `--hotfix`이면 설계서 대신 PRD + 코드 맵.
+- **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
 - **coder (수정)**: 수정 항목 목록 + 수정 방안 + 코드 맵 + 프로젝트 루트 경로
-- **qa-manager**: PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 + 코드 맵
+- **qa-manager**: PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 + 코드 맵 + REFERENCES (있으면)
 - **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용)
-- **security-auditor (통합 감사)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
+- **security-auditor (통합 감사)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **researcher (독립 조사)**: 조사 요청 + 코드 맵 (있으면) + 프로젝트 루트 경로
 - **hacker (제약 우회)**: 정체 상황 설명 (에러 메시지, 시도한 접근) + 코드 맵 + 프로젝트 루트 경로

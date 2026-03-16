@@ -17,4 +17,7 @@
 1. `CHANGELOG.md`에 새 버전 섹션 작성
 2. `.claude-plugin/plugin.json`과 `marketplace.json`의 version 갱신
 3. 커밋 → PR → 머지
-4. GitHub Release 생성 (태그: `v{version}`)
+4. GitHub Release는 **자동 생성**됨 (`.github/workflows/release.yml`)
+   - PR이 main에 머지되면 `plugin.json`에서 버전을 추출
+   - 해당 버전의 태그(`v{version}`)가 없으면 CHANGELOG.md에서 내용을 파싱하여 Release 생성
+   - 이미 태그가 있으면 스킵 (중복 방지)
