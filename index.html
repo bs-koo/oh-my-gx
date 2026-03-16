@@ -109,12 +109,25 @@
       font-size: 0.85rem;
       font-weight: 500;
       white-space: nowrap;
-      border-bottom: 2px solid transparent;
       transition: all 0.2s;
+      position: relative;
+    }
+    .nav a::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 16px;
+      right: 16px;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.2s;
     }
     .nav a:hover, .nav a.active {
       color: var(--accent);
-      border-bottom-color: var(--accent);
+    }
+    .nav a:hover::after, .nav a.active::after {
+      transform: scaleX(1);
     }
 
     /* Content */
@@ -156,7 +169,7 @@
     /* Cards */
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 16px;
       margin: 20px 0;
     }
@@ -325,6 +338,18 @@
       padding: 8px 0 8px 28px;
       border-left: 2px solid var(--border);
       margin-left: 8px;
+    }
+    .flow > li:first-child {
+      border-left-color: transparent;
+    }
+    .flow > li:first-child::after {
+      content: '';
+      position: absolute;
+      left: -2px;
+      top: 28px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
     }
     .flow > li:last-child {
       border-left-color: transparent;
@@ -955,36 +980,37 @@ steps:
     <h3>Before — AI 초안</h3>
     <div class="diff">
       <div class="diff-header">시스템 개요 (AI 초안)</div>
-      <div class="diff-del">oh-my-gx는 <strong>혁신적인</strong> AI 기반 개발 자동화 플러그인으로, <strong>다양한</strong> 개발 단계를 <strong>체계적으로</strong> 자동화하는 <strong>효과적인</strong> 솔루션입니다. <strong>이를 통해</strong> PRD 작성부터 PR 생성까지 전체 개발 사이클을 <strong>효율적으로</strong> 수행할 수 있습니다.</div>
+      <div class="diff-del">oh-my-gx는 <strong>혁신적인</strong> AI 기반 개발 자동화 플러그인으로, <strong>다양한</strong> 개발 단계를 <strong>체계적으로</strong> 자동화하는 <strong>효과적인</strong> 솔루션입니다. <strong>이를 통해</strong> PRD 작성부터 PR 생성까지 전체 개발 사이클을 <strong>효율적으로</strong> 수행할 수 있습니다. <strong>뿐만 아니라</strong> 9개의 <strong>전문화된</strong> AI 에이전트가 <strong>유기적으로</strong> 협업하여 <strong>탁월한</strong> 코드 품질을 보장합니다. <strong>이를 바탕으로</strong> 개발 생산성을 <strong>획기적으로</strong> 향상시킬 수 있으며, 이는 <strong>현대 소프트웨어 개발에 있어서</strong> <strong>혁신적인</strong> 변화를 가져올 것입니다.</div>
     </div>
-    <p>감지 결과: <span class="tag tag-p1">P1</span> 12건 <span class="tag tag-p2">P2</span> 7건 <span class="tag tag-p3">P3</span> 4건 — 총 <strong>23건</strong></p>
+    <p>감지 결과: <span class="tag tag-p1">P1</span> 18건 <span class="tag tag-p2">P2</span> 9건 <span class="tag tag-p3">P3</span> 5건 — 총 <strong>32건</strong></p>
 
     <h3>감지 리포트 (주요 항목)</h3>
     <table>
       <thead><tr><th>#</th><th>심각도</th><th>패턴</th><th>원문</th><th>제안</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td><span class="tag tag-p1">P1</span></td><td>K2 과장 수식어</td><td>"혁신적인" x3, "체계적으로" x3, "다양한" x5</td><td>전부 삭제 또는 수치로 대체</td></tr>
-        <tr><td>2</td><td><span class="tag tag-p1">P1</span></td><td>K4 연쇄</td><td>"이를 통해/바탕으로/활용하여/기반으로" 4연속</td><td>주어를 바꿔 연결</td></tr>
-        <tr><td>3</td><td><span class="tag tag-p1">P1</span></td><td>C3 긍정 결론</td><td>"혁신적인 변화를 가져올 것입니다"</td><td>실측 데이터로 교체</td></tr>
-        <tr><td>4</td><td><span class="tag tag-p2">P2</span></td><td>E12 볼드 과용</td><td>모든 항목에 볼드</td><td>강조할 것만 남기기</td></tr>
+        <tr><td>1</td><td><span class="tag tag-p1">P1</span></td><td>K2 과장 수식어</td><td>"혁신적인" x2, "체계적으로", "효과적인", "탁월한", "획기적으로"</td><td>전부 삭제 또는 수치로 대체</td></tr>
+        <tr><td>2</td><td><span class="tag tag-p1">P1</span></td><td>K4 연쇄</td><td>"이를 통해", "이를 바탕으로" 연속</td><td>주어를 바꿔 연결</td></tr>
+        <tr><td>3</td><td><span class="tag tag-p1">P1</span></td><td>K6+C3</td><td>"뿐만 아니라" + "변화를 가져올 것입니다"</td><td>범위 확장 삭제 + 실측 데이터로 교체</td></tr>
+        <tr><td>4</td><td><span class="tag tag-p1">P1</span></td><td>K9 격식체</td><td>"현대 소프트웨어 개발에 있어서"</td><td>삭제</td></tr>
+        <tr><td>5</td><td><span class="tag tag-p2">P2</span></td><td>E12 볼드 과용</td><td>12개 단어에 볼드 처리</td><td>강조할 것만 남기기</td></tr>
       </tbody>
     </table>
 
     <h3>After — humanizer 교정</h3>
     <div class="diff">
       <div class="diff-header">시스템 개요 (교정 후)</div>
-      <div class="diff-add">oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인이다. <code>/dev</code> 명령 한 줄로 PRD 작성, 기술 설계, 코드 구현, QA 검증, 커밋, PR 생성까지 자동 수행한다. Spring Boot + Vue/Nuxt 풀스택 프로젝트를 대상으로 한다.</div>
+      <div class="diff-add">oh-my-gx는 Claude Code 플러그인이다. <code>/dev 로그인 기능 추가해줘</code> 한 줄이면 PRD 작성 → 기술 설계 → 코드 구현 → QA 검증 → 커밋 → PR 생성을 알아서 돌린다. 내부에서 PO, 설계자, 개발자, QA, 보안 감사자 5개 역할의 에이전트가 단계별로 넘기며 작업한다. Spring Boot + Vue/Nuxt 풀스택 프로젝트 기준으로 만들었고, 빌드 명령만 맞으면 다른 스택에서도 쓸 수 있다.</div>
     </div>
 
     <h3>핵심 차이</h3>
     <table>
       <thead><tr><th>구분</th><th>Before</th><th>After</th></tr></thead>
       <tbody>
-        <tr><td>수식어</td><td>"혁신적인", "다양한" 등 15회</td><td>0회 — 전부 삭제</td></tr>
-        <tr><td>인과 연결</td><td>"이를 통해" 4연속</td><td>주어를 바꿔 자연스럽게</td></tr>
-        <tr><td>결론</td><td>"기대됩니다", "변화를 가져올 것"</td><td>실측 수치 4개로 대체</td></tr>
-        <tr><td>보안 섹션</td><td>"다양한 안전장치를 체계적으로"</td><td>표로 항목별 나열</td></tr>
-        <tr><td>기대효과</td><td>추상적 희망</td><td>실제 프로젝트 데이터 (40분, 13파일, 0건)</td></tr>
+        <tr><td>수식어</td><td>"혁신적인", "탁월한", "획기적으로" 등 12회</td><td>0회 — 전부 삭제</td></tr>
+        <tr><td>인과 연결</td><td>"이를 통해", "이를 바탕으로" 연쇄</td><td>"한 줄이면", "알아서 돌린다" — 구어체 직결</td></tr>
+        <tr><td>결론</td><td>"혁신적인 변화를 가져올 것입니다"</td><td>삭제. 기능 나열로 충분</td></tr>
+        <tr><td>톤</td><td>격식체 + 과장 ("있어서", "뿐만 아니라")</td><td>건조한 설명문 ("만들었고", "쓸 수 있다")</td></tr>
+        <tr><td>정보 밀도</td><td>수식어가 내용보다 많음</td><td>2문장에 기능·구조·대상 스택 모두 포함</td></tr>
       </tbody>
     </table>
   </section>
