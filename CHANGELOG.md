@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.3.1 (2026-03-17) — /dev Phase 스킵 방지
+
+### Fixes
+- **Phase 스킵 방지**: LLM이 "요구사항이 명확하다", "범위가 작다" 등의 이유로 Phase를 임의 스킵하는 문제를 구조적으로 방지
+  - Phase 라우팅을 서술형에서 기계적 for-loop 의사코드로 교체
+  - CRITICAL 경고 + 산출물 게이트 (`.dev/prd.md`, `.dev/design.md` 존재 검증) 추가
+  - 모드 미결정 시 AskUserQuestion으로 사용자에게 모드 선택 강제
+  - Agent 팀 강제 — 외부 Agent(sisyphus-junior 등) 대체 금지
+
+### Features
+- **경량 구현 모드**: "구현만" 선택 시 `setup → implement → complete` 경로 (설계/리뷰 생략, 커밋/PR 포함)
+- **모드 선택 UX**: 자연어 패턴 미매칭 시 3개 선택지 제시 (전체 파이프라인 / 긴급 수정 / 구현만)
+
 ## v1.3.0 (2026-03-16) — references/ 외부 규격 참조 기능
 
 ### Features
