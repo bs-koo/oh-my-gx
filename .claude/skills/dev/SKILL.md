@@ -33,6 +33,8 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 
 **Step 2: 자연어 → 모드 판정**
 
+먼저 아래 패턴으로 자동 판정을 시도한다:
+
 | 감지 패턴 | 모드 | 예시 |
 |-----------|------|------|
 | `상태`, `진행`, `어디까지`, `현황` | STATUS | "지금 어디까지 됐어?" |
@@ -40,18 +42,37 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `긴급`, `핫픽스`, `급한`, `빨리 고쳐`, `버그 수정만` | HOTFIX | "로그인 버그 긴급 수정해줘" |
 | `설계만`, `PRD만`, `구현만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
-| 위 어디에도 해당 안 됨 | NORMAL | "로그인 기능 추가해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `구현만` → `--phase implement`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`.
 
-BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다.
+BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다. BASE 추출은 모드 판정과 독립적이다 — BASE가 추출되어도 모드가 결정되지 않으면 Step 3으로 진행한다.
+
+**Step 3: 모드 확인 (위 패턴에 해당하지 않는 경우)**
+
+위 자동 판정 패턴에서 모드(STATUS/RESUME/HOTFIX/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다. 오케스트레이터가 임의로 모드를 판정하지 않는다.
+
+```
+AskUserQuestion(
+  question: "어떤 방식으로 진행할까요?",
+  options: [
+    { value: "normal", label: "전체 파이프라인 — PRD → 설계 → 구현 → 리뷰 → PR" },
+    { value: "hotfix", label: "긴급 수정 — 경량 PRD → 구현 → PR" },
+    { value: "implement", label: "구현만 — 설계 없이 바로 구현" }
+  ],
+  description: "요청: {ARGS[0]}"
+)
+```
+
+- `normal` 선택 → NORMAL 모드 (전체 Phase 실행)
+- `hotfix` 선택 → HOTFIX 모드
+- `implement` 선택 → 경량 구현 모드: setup → implement → complete (설계/리뷰 생략, 커밋/PR은 포함)
 
 ### 모드 판정 결과 기록
 
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
 mode: normal | hotfix
-intent-source: flag | natural-language
+intent-source: flag | natural-language | user-selection
 ```
 
 ### 레거시 플래그 참조 (호환용)
@@ -133,15 +154,60 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 - review: 건너뛴다.
 - complete: 인수 검증(5.1)을 **실행**한다. PRD 수용 기준 대비 결과를 검증한다.
 
-## Phase 라우팅
+## Phase 라우팅 — 필수 실행 프로토콜
 
-Phase에 진입할 때 **반드시** 해당 Phase 파일을 Read한 후 실행한다:
-```
-Read(`<프로젝트 루트>/.claude/skills/dev/phases/phase-{name}.md`)
-```
-예: `phase-setup.md`, `phase-requirements.md`, `phase-design.md`, `phase-implement.md`, `phase-review.md`, `phase-complete.md`
+> **CRITICAL: Phase 스킵 절대 금지.**
+> "요구사항이 명확하다", "범위가 작다", "이미 확정되어 있다", "간단하다" 등 어떤 이유로도 Phase를 건너뛰지 않는다.
+> Phase를 건너뛸 수 있는 유일한 조건은 `--hotfix` 모드와 `--phase` 플래그뿐이다.
+> 이 규칙을 위반하면 사용자가 기대하는 PRD, 설계서, 리뷰가 누락되어 품질 사고가 발생한다.
 
-Phase 파일의 지시에 따라 실행하고, 완료 후 다음 Phase로 진행한다.
+### Phase 실행 루프
+
+아래 의사코드를 기계적으로 실행한다. **판단하지 말고 순서대로 실행한다.**
+
+```
+# 1. 모드에 따라 Phase 목록 결정
+if hotfix:
+    PHASES = [setup, requirements, implement, complete]
+elif implement (경량 구현 모드):
+    PHASES = [setup, implement, complete]
+elif --phase 지정:
+    PHASES = [해당 phase만] (SKILL.md "Phase 선택" 섹션 참조)
+else:  # NORMAL
+    PHASES = [setup, requirements, design, implement, review, complete]
+
+# 2. Phase별 순차 실행 (건너뛰기 금지)
+for phase in PHASES:
+
+    # 2a. 산출물 게이트 — 이전 Phase 산출물이 없으면 이전 Phase부터 실행 (순서 중요: 상위 의존성 먼저 체크)
+    if phase == "design" and not exists(".dev/prd.md"):
+        → phase-requirements부터 실행
+    if phase == "implement" and not exists(".dev/prd.md"):
+        → phase-requirements부터 실행
+    if phase == "implement" and not exists(".dev/design.md"):
+        → phase-design부터 실행 (hotfix 제외)
+    if phase == "review" and git diff --stat이 비어있음:
+        → "변경사항이 없습니다" 보고 후 중단
+
+    # 2b. Phase 파일 Read (필수)
+    Read("<프로젝트 루트>/.claude/skills/dev/phases/phase-{phase}.md")
+
+    # 2c. Phase 파일의 지시에 따라 실행
+
+    # 2d. state.md 갱신
+    Update state.md → phases.{phase}: completed
+
+    # 2e. 다음 Phase로 진행
+```
+
+### Phase 파일 경로
+
+`phase-setup.md`, `phase-requirements.md`, `phase-design.md`, `phase-implement.md`, `phase-review.md`, `phase-complete.md`
+
+### Agent 팀 강제
+
+Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, design-critic, coder, qa-manager, security-auditor)을 사용한다.
+외부 Agent(sisyphus-junior, sisyphus-junior-high 등)로 대체하지 않는다.
 
 ## 코드 맵
 
