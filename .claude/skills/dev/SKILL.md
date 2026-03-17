@@ -71,7 +71,7 @@ AskUserQuestion(
 
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
-mode: normal | hotfix
+mode: normal | hotfix | implement
 intent-source: flag | natural-language | user-selection
 ```
 
@@ -184,8 +184,8 @@ for phase in PHASES:
         → phase-requirements부터 실행
     if phase == "implement" and not exists(".dev/prd.md"):
         → phase-requirements부터 실행
-    if phase == "implement" and not exists(".dev/design.md"):
-        → phase-design부터 실행 (hotfix 제외)
+    if phase == "implement" and not hotfix and not exists(".dev/design.md"):
+        → phase-design부터 실행
     if phase == "review" and git diff --stat이 비어있음:
         → "변경사항이 없습니다" 보고 후 중단
 
