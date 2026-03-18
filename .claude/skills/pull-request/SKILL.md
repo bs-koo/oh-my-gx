@@ -152,6 +152,8 @@ git diff <base-branch>...HEAD --stat
 
 ## PR 생성 후 알림
 
+**신규 PR 생성(`gh pr create`)일 때만 실행한다.** 기존 PR 업데이트(`gh pr edit`)일 때는 이 섹션 전체를 건너뛴다.
+
 PR이 성공적으로 생성되었으면:
 
 1. `.claude/config.json`의 `notifications.googleChat` 확인
