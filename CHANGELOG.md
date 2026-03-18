@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.2 (2026-03-18) — PR 알림 중복 발송 방지
+
+### Fixes
+- **Google Chat 알림 중복 방지**: `/pull-request` 스킬에서 기존 PR 업데이트(`gh pr edit`) 시에도 알림이 발송되던 문제 수정
+  - 신규 PR 생성(`gh pr create`) 시에만 알림을 발송하도록 선행 조건 가드 추가
+
 ## v1.3.1 (2026-03-17) — /dev Phase 스킵 방지
 
 ### Fixes
