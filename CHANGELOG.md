@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.3 (2026-03-19) — 에이전트 네임스페이스 분리
+
+### Fixes
+- **에이전트 프리픽스 충돌 해결**: `.claude/agents/` → `.claude-plugin/agents/`로 이동하여 `oh-my-gx:` 네임스페이스로 인식
+  - `oh-my-claudecode:architect` 등 다른 플러그인 에이전트와의 이름 충돌 방지
+  - plugin.json에 `agents` 경로 등록
+
 ## v1.3.2 (2026-03-18) — PR 알림 중복 발송 방지
 
 ### Fixes
