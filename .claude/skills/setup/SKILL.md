@@ -80,7 +80,7 @@ allowed-tools:
       ```
       question: "SVN CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
       options:
-        - { value: "install", label: "설치 — {감지된 명령} 실행" }
+        - { value: "install", label: "설치 — {감지된 패키지 매니저}로 SVN CLI 설치" }
         - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
       ```
 
@@ -97,7 +97,7 @@ allowed-tools:
    e. 설치 실패 시 → 수동 설치 안내 출력 후 계속 진행
 
    f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내:
-      - **Windows**: https://tortoisesvn.net (설치 시 "command line client tools" 옵션 체크) 또는 Chocolatey/Scoop 설치 후 재시도
+      - **Windows**: https://tortoisesvn.net (설치 시 "command line client tools" 옵션 체크) 또는 Chocolatey/Scoop 설치 후 `/setup` 재실행
       - **macOS**: `brew install subversion` (Homebrew 먼저 설치)
       - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`
 
