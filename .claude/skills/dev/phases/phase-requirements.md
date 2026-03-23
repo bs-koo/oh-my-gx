@@ -1,6 +1,6 @@
 # phase-requirements: PRD Q&A 사이클
 
-**최대 1회 반복.**
+**사용자가 "승인"할 때까지 반복한다.** 반복 횟수 제한 없음.
 
 ## Hotfix 모드 분기
 
@@ -37,7 +37,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 **질문이 있으면** ("추가 확인 사항 없음"이 포함되지 않은 경우):
 - PRD를 사용자에게 출력한다.
 - Agent 출력의 "확인이 필요한 사항"을 **에이전트 질문 → AskUserQuestion 변환 규칙** (SKILL.md 공유 규칙)에 따라 변환하여 사용자에게 순서대로 제시한다.
-- 사용자 답변을 반영하여 product-owner를 1회 더 호출. 미해결 질문이 있으면 기록하고 phase-design으로 진행.
+- 사용자 답변을 반영하여 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
 
 **질문이 없으면** ("추가 확인 사항 없음. PRD가 확정되었습니다."):
 - **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
@@ -51,7 +51,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
   )
   ```
 - 승인 → phase-design으로 진행.
-- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 1회 더 호출 후 phase-design으로 진행.
+- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
 
 **Phase 완료 후 저장**:
 1. `${PROJECT_ROOT}/.dev/` 디렉토리가 없으면 생성한다.

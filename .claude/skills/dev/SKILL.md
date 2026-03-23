@@ -136,8 +136,8 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | Phase | 파일 | 주 Agent | Q&A Loop |
 |-------|------|----------|----------|
 | setup | 작업환경 준비 | (inline) | No |
-| requirements | PRD Q&A | product-owner | Yes (max 1) |
-| design | 설계 Q&A | architect + design-critic (선택적) | Yes (max 2) |
+| requirements | PRD Q&A | product-owner | Yes (사용자 승인까지) |
+| design | 설계 Q&A | architect + design-critic (선택적) | Yes (사용자 승인까지) |
 | implement | 구현 + 자기점검 | coder + qa-manager | Self-check (1회) |
 | review | 검토 + 감사 | qa-manager + security-auditor (병렬) | Yes (max 2) |
 | complete | 완료 | product-owner (인수) + (스킬 참조) | 인수 재시도 (max 1) |
