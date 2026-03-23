@@ -66,10 +66,40 @@ allowed-tools:
 **svn인 경우:**
 1. `which svn` 실행
 2. 있으면 → `svn --version --quiet`로 버전 확인 → `svn : 완료 ✅ (버전)` 출력
-3. 없으면 → OS별 설치 안내:
-   - **Linux**: `sudo apt install subversion`
-   - **macOS**: `brew install subversion`
-   - **Windows**: https://tortoisesvn.net 또는 `choco install svn` 안내
+3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
+
+   **설치 시도 순서:**
+   a. OS와 패키지 매니저를 감지한다:
+      - `which choco` → Windows (Chocolatey)
+      - `which scoop` → Windows (Scoop)
+      - `which brew` → macOS/Linux (Homebrew)
+      - `which apt` → Linux (apt)
+      - `which yum` → Linux (yum)
+
+   b. 패키지 매니저가 감지되면 AskUserQuestion:
+      ```
+      question: "SVN CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
+      options:
+        - { value: "install", label: "설치 — {감지된 명령} 실행" }
+        - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
+      ```
+
+   c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+      | 패키지 매니저 | 설치 명령 |
+      |-------------|----------|
+      | choco | `choco install svn -y` |
+      | scoop | `scoop install svn` |
+      | brew | `brew install subversion` |
+      | apt | `sudo apt install -y subversion` |
+      | yum | `sudo yum install -y subversion` |
+
+   d. 설치 완료 후 `which svn`으로 재확인 → 성공하면 `svn : 완료 ✅` 출력
+   e. 설치 실패 시 → 수동 설치 안내 출력 후 계속 진행
+
+   f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내:
+      - **Windows**: https://tortoisesvn.net (설치 시 "command line client tools" 옵션 체크) 또는 Chocolatey/Scoop 설치 후 재시도
+      - **macOS**: `brew install subversion` (Homebrew 먼저 설치)
+      - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`
 
 #### JDK
 
