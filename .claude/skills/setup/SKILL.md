@@ -14,6 +14,11 @@ allowed-tools:
   - "Bash(command *)"
   - "Bash(uname *)"
   - "Bash(java *)"
+  - "Bash(choco *)"
+  - "Bash(scoop *)"
+  - "Bash(brew *)"
+  - "Bash(sudo *)"
+  - "Bash(test *)"
   - Read
   - Write
   - Edit
