@@ -9,7 +9,6 @@
   "repository": "https://github.com/bs-koo/oh-my-gx",
   "keywords": ["java", "spring-boot", "vue", "fullstack", "korean", "dev-workflow", "prd", "code-review"],
   "skills": "./.claude/skills/",
-  "agents": "./agents/",
   "hooks": {
     "PreToolUse": [
       {
