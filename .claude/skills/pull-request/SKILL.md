@@ -3,7 +3,6 @@ name: pull-request
 description: >
   커밋 히스토리에서 제목과 본문을 자동 생성하여 PR을 생성한다.
   사용자가 "PR", "PR 올려", "PR 생성", "풀리퀘", "pull request"라고 말하면 이 스킬을 사용한다.
-disable-model-invocation: true
 argument-hint: [base-branch]
 allowed-tools:
   - Read

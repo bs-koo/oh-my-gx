@@ -3,7 +3,6 @@ name: commit
 description: >
   브랜치 타입 기반 한국어 커밋 메시지로 Git 커밋한다. 민감 파일 감지 포함.
   사용자가 "커밋", "커밋해줘", "변경사항 저장", "commit"이라고 말하면 이 스킬을 사용한다.
-disable-model-invocation: true
 argument-hint: [커밋 메시지]
 allowed-tools:
   # git - 커밋 핵심
