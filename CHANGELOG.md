@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.5 (2026-03-23) — dev 파이프라인 스킬 호출 정규화
+
+### Fixes
+- **phase-complete 스킬 호출 방식 전환**: commit/PR 생성을 Read 방식에서 `Skill(skill: "oh-my-gx:commit")`, `Skill(skill: "oh-my-gx:pull-request")` 호출로 변경
+  - 스킬의 절차, 포맷, allowed-tools를 우회하지 않고 반드시 스킬을 통해 실행
+  - pull-request 스킬에 `--background`, `--extra-section` optional args 추가로 dev 컨텍스트 전달 지원
+
 ## v1.3.4 (2026-03-19) — Q&A 루프 사용자 승인 방식으로 전환
 
 ### Fixes
