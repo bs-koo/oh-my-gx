@@ -1,7 +1,9 @@
 ---
 name: dev
-version: 1.1.0
-description: "PRD → 설계 → 구현 → 리뷰 → 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 Q&A 루프로 수행"
+description: >
+  PRD → 설계 → 구현 → 리뷰 → 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 Q&A 루프로 수행한다.
+  사용자가 "개발해줘", "구현해줘", "기능 추가", "만들어줘", "/dev"라고 말하면 이 스킬을 사용한다.
+disable-model-invocation: true
 argument-hint: "<자연어 요청>"
 allowed-tools: ["Bash(git *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion"]
 ---

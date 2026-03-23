@@ -1,10 +1,10 @@
 ---
 name: setup
-version: 5.0.0
 argument-hint: "없음"
-description: |
-  플러그인 초기 설정.
-  필수 도구 확인, GH 인증을 단계별로 수행합니다.
+description: >
+  플러그인 초기 설정. 필수 도구 확인과 GH 인증을 단계별로 수행한다.
+  사용자가 "설정", "셋업", "setup", "초기화"라고 말하면 이 스킬을 사용한다.
+disable-model-invocation: true
 allowed-tools:
   - "Bash(curl *)"
   - "Bash(gh *)"
