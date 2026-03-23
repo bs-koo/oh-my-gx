@@ -29,6 +29,8 @@ Arguments:
   2. 존재하는 브랜치가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택지 제시 (예: main, develop)
   3. 존재하는 브랜치가 **1개**이면 → 해당 브랜치를 베이스로 자동 선택
   4. 하나도 없으면 → AskUserQuestion(자유입력)으로 직접 입력 요청
+- `--background <파일경로>` (optional): Background 섹션에 반영할 비즈니스 맥락 파일. 지정 시 해당 파일을 Read하여 "배경"과 "요구사항"을 Background 섹션에 포함한다. git log 기반 배경과 함께 병합하여 작성.
+- `--extra-section <파일경로>` (optional): Checklist 앞에 삽입할 추가 섹션 파일. 지정 시 해당 파일을 Read하여 요약본을 Checklist 직전에 삽입한다. (예: Trust Ledger → `## Audit Summary` 섹션 생성)
 
 ## 사전 확인 (반드시 순차 실행)
 
@@ -93,12 +95,13 @@ git diff <base-branch>...HEAD --stat
 - 커밋 50개 이하: 전체 log로 본문 작성
 - 커밋 50개 초과: `--oneline` 요약과 `--stat`만으로 본문 작성
 
-커밋 메시지와 diff 통계를 분석하여 본문 작성.
+커밋 메시지와 diff 통계를 분석하여 본문 작성. `--background`가 지정된 경우 해당 파일을 Read하여 Background 섹션에 비즈니스 맥락(배경, 요구사항)을 병합한다.
 
 ```
 ## Background
 이 변경이 필요한 배경을 설명한다. 어떤 문제가 있었는지, 비즈니스 맥락은 무엇인지를
 리뷰어가 코드를 읽기 전에 이해할 수 있도록 자연스러운 문장으로 서술한다.
+(--background 파일이 있으면 해당 문서의 "배경"과 "요구사항"을 우선 반영하고, git log 정보로 보완한다)
 
 ## Summary
 이 PR에서 무엇을 했는지 요약한다. 핵심 접근 방식과 설계 판단을
@@ -107,6 +110,8 @@ git diff <base-branch>...HEAD --stat
 ## Changes
 구체적으로 무엇이 바뀌었는지를 기능 단위로 설명한다. 파일 단위가 아니라
 "무엇을 왜 그렇게 바꿨는지"를 문장으로 풀어쓴다.
+
+(--extra-section 파일이 있으면 여기에 해당 파일을 Read하여 요약 섹션을 삽입한다. 예: Trust Ledger → ## Audit Summary)
 
 ## Checklist
 - [ ] 주요 기능이 로컬에서 정상 동작하는지 확인
