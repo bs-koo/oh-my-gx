@@ -11,6 +11,10 @@
 
 ## 파싱
 
+**git인 경우:**
 - `git branch --show-current`로 브랜치명을 확인한다.
 - 브랜치명에서 이슈 키 패턴(`config.json` → `issueKey.pattern`)을 추출한다.
 - 예시: `feat/JIRA-123/login` → `JIRA-123`, `AFS-6/local-ddl` → `AFS-6`
+
+**svn인 경우:**
+- SVN은 브랜치 기반 이슈 키 파싱을 지원하지 않는다. 이슈 키가 필요하면 ARGS[0]에서 직접 추출한다.

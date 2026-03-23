@@ -9,9 +9,11 @@ ARGS에서 파싱:
 
 ## 1. 프로젝트 확정
 
-`Bash(git rev-parse --show-toplevel)`로 프로젝트 루트를 확인한다.
-- 성공 → `PROJECT_ROOT` = 출력 경로. `PROJECT_NAME` = 디렉토리명 (`basename`).
-- 실패 → `PROJECT_ROOT` = `pwd`. `PROJECT_NAME` = 디렉토리명.
+프로젝트 루트를 확인한다. `.claude/config.json`의 `"vcs"` 값에 따라 분기:
+- **git** (또는 미설정): `Bash(git rev-parse --show-toplevel)` → 성공 시 `PROJECT_ROOT` = 출력 경로.
+- **svn**: `Bash(svn info --show-item wc-root)` → 성공 시 `PROJECT_ROOT` = 출력 경로.
+- 실패 → `PROJECT_ROOT` = `pwd`.
+- `PROJECT_NAME` = 디렉토리명 (`basename`).
 
 ## 2. 쿼리 분석
 

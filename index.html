@@ -553,7 +553,7 @@
   <!-- Setup -->
   <section id="setup">
     <h2>setup — 초기 설정</h2>
-    <p>플러그인 설치 후 최초 1회 실행합니다. 필수 도구(gh CLI)와 GitHub 인증을 확인하고, Google Chat 웹훅을 연동합니다.</p>
+    <p>플러그인 설치 후 최초 1회 실행합니다. VCS(Git/SVN)를 자동 감지하고, 필수 도구와 인증을 확인합니다.</p>
 
     <pre><code>/oh-my-gx:setup</code></pre>
 
@@ -561,9 +561,11 @@
     <table>
       <thead><tr><th>항목</th><th>설명</th><th>필수</th></tr></thead>
       <tbody>
-        <tr><td><strong>gh CLI</strong></td><td>GitHub CLI 설치 및 인증 확인</td><td>필수</td></tr>
-        <tr><td><strong>GitHub 인증</strong></td><td><code>gh auth login</code> 인증 상태 확인</td><td>필수</td></tr>
-        <tr><td><strong>Google Chat 웹훅</strong></td><td>PR 생성 시 팀 알림 전송</td><td>선택</td></tr>
+        <tr><td><strong>VCS 감지</strong></td><td>.git/.svn 디렉토리로 Git 또는 SVN 자동 감지</td><td>자동</td></tr>
+        <tr><td><strong>gh CLI</strong></td><td>GitHub CLI 설치 및 인증 확인 (Git만)</td><td>Git 필수</td></tr>
+        <tr><td><strong>svn CLI</strong></td><td>Subversion CLI 설치 확인 (SVN만)</td><td>SVN 필수</td></tr>
+        <tr><td><strong>GitHub 인증</strong></td><td><code>gh auth login</code> 인증 상태 확인 (Git만)</td><td>Git 필수</td></tr>
+        <tr><td><strong>Google Chat 웹훅</strong></td><td>PR 생성 시 팀 알림 전송 (Git만)</td><td>선택</td></tr>
       </tbody>
     </table>
   </section>
@@ -648,8 +650,8 @@
     <h4>Phase 1: Setup</h4>
     <ol class="flow">
       <li><span class="flow-title">진행 중 작업 감지 (.dev/state.md)</span> — 이전 작업 있으면 재개 여부 확인</li>
-      <li><span class="flow-title">Git 저장소 확인</span></li>
-      <li><span class="flow-title">베이스 브랜치 결정 + 동기화 (git pull)</span></li>
+      <li><span class="flow-title">VCS 확인</span> — Git 또는 SVN 자동 감지</li>
+      <li><span class="flow-title">베이스 브랜치 결정 + 동기화</span> — Git: git pull / SVN: svn update</li>
       <li><span class="flow-title">프로젝트 정보 수집 (5개 작업 병렬)</span>
         <ul class="flow-sub">
           <li>프로젝트 타입 감지 (build.gradle.kts → java-spring 등)</li>
@@ -660,7 +662,7 @@
         </ul>
       </li>
       <li><span class="flow-title">관련 코드 맵 생성</span> — 키워드 추출 → Grep → 핵심 파일 15개 이내</li>
-      <li><span class="flow-title">작업 브랜치 생성 + .gitignore 보강 + 상태 초기화</span></li>
+      <li><span class="flow-title">작업 브랜치 생성 + .gitignore 보강 + 상태 초기화</span> — SVN에서는 브랜치 없이 trunk 직접 작업</li>
     </ol>
 
     <h4>Phase 2: Requirements — PRD Q&A</h4>
@@ -737,8 +739,8 @@
     <h4>Phase 6: Complete</h4>
     <ol class="flow">
       <li><span class="flow-title">인수 검증 (product-owner)</span> — PRD 수용 기준 대비 검증</li>
-      <li><span class="flow-title">/commit 스킬 실행</span> — 빌드 체크 + 한국어 커밋</li>
-      <li><span class="flow-title">/pull-request 스킬 실행</span> — PR 본문 + Trust Ledger 요약</li>
+      <li><span class="flow-title">/commit 스킬 실행</span> — 빌드 체크 + 한국어 커밋 (SVN: 건너뜀 → svn commit 직접 실행 안내)</li>
+      <li><span class="flow-title">/pull-request 스킬 실행</span> — PR 본문 + Trust Ledger 요약 (SVN: 건너뜀)</li>
       <li><span class="flow-title">도메인 status.md 갱신 + context 환류 제안</span></li>
     </ol>
 
@@ -1094,7 +1096,7 @@ references/
   <section id="commit-pr">
     <h2>commit / pull-request</h2>
 
-    <h3>commit — 커밋 자동화</h3>
+    <h3>commit — 커밋 자동화 <small style="color: var(--text-secondary); font-weight: normal;">(Git 전용)</small></h3>
     <ol class="flow">
       <li><span class="flow-title">사전 확인</span> — Git 저장소 + 변경사항 + 빌드 실행</li>
       <li><span class="flow-title">타입 파싱</span> — 브랜치명에서 추출 (feat/login → feat)</li>
@@ -1110,7 +1112,9 @@ references/
       <li><span class="flow-title">context 동기화 체크</span></li>
     </ol>
 
-    <h3>pull-request — PR 자동화</h3>
+    <p style="margin: 16px 0; padding: 12px 16px; background: var(--surface); border-left: 3px solid var(--orange); border-radius: 4px; color: var(--text-secondary);">SVN 프로젝트에서는 commit/pull-request를 지원하지 않습니다. <code>/dev</code> 리뷰 완료 후 <code>svn commit</code>을 직접 실행하세요.</p>
+
+    <h3>pull-request — PR 자동화 <small style="color: var(--text-secondary); font-weight: normal;">(Git 전용)</small></h3>
     <ol class="flow">
       <li><span class="flow-title">사전 확인</span> — gh CLI + 인증 + origin remote + 베이스 브랜치</li>
       <li><span class="flow-title">타입 매핑</span> — feat→FEATURE, fix→BUGFIX, docs→DOCS ...</li>

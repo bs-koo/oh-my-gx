@@ -7,7 +7,9 @@ PRD가 없으면 이 단계를 건너뛴다.
 
 PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한다.
 
-**diff 갱신**: phase-review 이후 coder 수정이 있었을 수 있으므로, `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트하여 갱신한다.
+**diff 갱신**: phase-review 이후 coder 수정이 있었을 수 있으므로 diff를 갱신한다.
+- **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
+- **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
 
 `Task(subagent_type="product-owner")` — prompt에 다음을 포함:
 - PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
@@ -24,6 +26,11 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 위 Step 0 진입 조건에 의해 PRD 부재 또는 `--hotfix` 모드이면 이 단계 전체가 건너뛰어진다.
 
 ## Step 1: Commit
+
+**svn인 경우** → 건너뛴다. "SVN 프로젝트입니다. 리뷰 완료 후 `svn commit`을 직접 실행해주세요." 출력 후 Step 3으로 진행.
+
+**git인 경우:**
+
 `Skill(skill: "oh-my-gx:commit")`을 호출하여 커밋을 실행한다.
 
 **test 실패 시 자동 수정 (1회):**
@@ -32,6 +39,11 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 3. 재호출도 실패하면 사용자에게 실패 목록을 보고하고 진행 여부를 확인한다.
 
 ## Step 2: PR 생성
+
+**svn인 경우** → 건너뛴다 (Step 1에서 이미 건너뜀).
+
+**git인 경우:**
+
 `Skill(skill: "oh-my-gx:pull-request")`을 호출하여 PR을 생성한다. args를 통해 dev 컨텍스트를 전달한다:
 
 1. **args 구성**:

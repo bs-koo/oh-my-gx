@@ -147,6 +147,8 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 "PR 만들어줘"   ← 커밋 히스토리 분석, PR 제목/본문 자동 생성
 ```
 
+> **SVN 프로젝트**: commit/pull-request는 Git 전용입니다. SVN에서는 `/dev` 리뷰까지 완료 후 `svn commit`을 직접 실행하세요.
+
 ---
 
 ## 안전장치
@@ -154,6 +156,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 - PR 생성까지만 자동화합니다. **PR 머지는 사용자가 직접** 수행합니다.
 - `git push --force`, `gh pr merge`는 설정 수준에서 차단됩니다.
 - 보호 브랜치(main)에서 직접 커밋을 차단합니다.
+- SVN 프로젝트에서는 `svn commit`을 Claude가 대신 실행하지 않습니다.
 - 커밋 전 민감 파일(`.env`, `*.key`, `*.pem`, `credentials*`, `*secret*`) 감지 시 경고합니다.
 - 빌드 아티팩트(`build/`, `node_modules/` 등)가 tracked 상태이면 자동으로 `.gitignore` 보강을 제안합니다.
 
@@ -193,6 +196,12 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 <summary><b>PR이 자동으로 머지되나요?</b></summary>
 
 아닙니다. PR 생성까지만 자동화합니다. `gh pr merge`는 설정 수준에서 차단되어 있습니다.
+</details>
+
+<details>
+<summary><b>SVN 프로젝트에서도 사용할 수 있나요?</b></summary>
+
+네. `/setup` 실행 시 VCS를 자동 감지합니다. SVN 프로젝트에서는 `/dev`의 PRD, 설계, 구현, 리뷰까지 동일하게 동작하며, 커밋만 `svn commit`으로 직접 수행하면 됩니다. `/context`, `/lens`, `/research`, `/humanizer`도 모두 사용 가능합니다.
 </details>
 
 <details>
