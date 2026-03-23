@@ -1,16 +1,16 @@
 ---
 name: research
-version: 1.0.0
-description: |
-  도메인 리서치 스킬. 웹 검색과 문서 분석을 병행하여 조사 결과를 파일로 산출합니다.
-  /context 생성 시 외부 자료 조사 품질을 높이는 데 활용할 수 있습니다.
+description: >
+  도메인 리서치 스킬. 웹 검색과 문서 분석을 병행하여 출처가 명확한 조사 결과를 파일로 산출한다.
+  /context 생성 시 외부 자료 조사 품질을 높이는 데 활용할 수 있다.
+  사용자가 "조사해줘", "찾아봐", "리서치", "비교해줘", "research"라고 말하면 이 스킬을 사용한다.
 argument-hint: "<주제> [--output <경로>] [--format report|comparison|summary]"
 allowed-tools:
   - Read
   - Write
   - Glob
   - Grep
-  - Bash
+  - Bash(mkdir *)
   - WebSearch
   - WebFetch
   - AskUserQuestion

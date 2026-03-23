@@ -1,9 +1,9 @@
 ---
 name: context
-version: 1.0.0
-description: |
-  도메인 컨텍스트 관리. 신규 생성, 문서 기반 생성, 코드베이스 스캔, 기존 도메인 갱신, git 히스토리 기반 진행도 동기화를 상황에 맞게 자동 판단합니다.
-  context/{도메인}/ 디렉토리와 README.md, PROJECTS.md, glossary.md, architecture.md를 만듭니다.
+description: >
+  도메인 컨텍스트 관리. 신규 생성, 문서 기반 생성, 코드베이스 스캔, 기존 도메인 갱신, git 히스토리 기반 진행도 동기화를 상황에 맞게 자동 판단한다.
+  context/{도메인}/ 디렉토리와 README.md, PROJECTS.md, glossary.md, architecture.md를 생성한다.
+  사용자가 "도메인 등록", "컨텍스트", "용어 정리", "context"라고 말하거나 도메인 지식 관리가 필요할 때 이 스킬을 사용한다.
 argument-hint: "[도메인명] [--from <파일경로>] [--sync]"
 allowed-tools:
   - Read
@@ -11,7 +11,10 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - Bash
+  - Bash(git *)
+  - Bash(gh *)
+  - Bash(test *)
+  - Bash(mkdir *)
   - AskUserQuestion
 ---
 
