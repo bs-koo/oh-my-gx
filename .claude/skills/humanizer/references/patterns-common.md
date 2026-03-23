@@ -150,3 +150,5 @@
 이 스킬은 다음 자료를 기반으로 한다:
 - [Wikipedia:Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) — WikiProject AI Cleanup이 유지보수하는 AI 글쓰기 징후 가이드
 - 한국어 AI 텍스트 분석에서 관찰된 패턴
+
+핵심 인사이트: "LLM은 통계적 알고리즘으로 다음에 올 내용을 추측한다. 결과는 가장 통계적으로 가능성 높은, 가장 넓은 범위에 적용되는 결과로 수렴한다." 한국어에서도 동일한 원리가 작동하며, "다양한", "혁신적인", "이를 통해" 같은 고빈도 표현으로 나타난다.
