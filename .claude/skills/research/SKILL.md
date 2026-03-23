@@ -11,7 +11,6 @@ allowed-tools:
   - Glob
   - Grep
   - Bash(mkdir *)
-  - Bash(grep *)
   - WebSearch
   - WebFetch
   - AskUserQuestion
