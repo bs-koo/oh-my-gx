@@ -12,6 +12,7 @@ allowed-tools:
   - Glob
   - Grep
   - Bash(git *)
+  - Bash(svn *)
   - Bash(gh *)
   - Bash(test *)
   - Bash(mkdir *)

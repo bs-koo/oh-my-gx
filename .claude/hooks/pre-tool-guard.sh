@@ -39,7 +39,7 @@ case "$INPUT" in
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "SVN 커밋은 사용자가 직접 실행해야 합니다. Claude가 svn commit을 대신 실행하지 않습니다."
+    "permissionDecisionReason": "SVN 프로젝트에서는 커밋을 지원하지 않습니다. svn commit을 직접 실행해주세요."
   }
 }
 EOF
