@@ -53,9 +53,14 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 각 반복(1~2회)에서:
 
-**Step 1**: 변경사항 수집 및 파일 저장 (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행).
+**Step 1**: 변경사항 수집 및 파일 저장.
+
+**git인 경우** (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행):
 - **전체 플로우** (phase-setup부터 진행): `${GIT_PREFIX} add -A`로 스테이징한 후, **Diff 수집 규칙**에 따라 `--cached` diff를 `DIFF_FILE`에 리다이렉트한다.
 - **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. **Diff 수집 규칙**에 따라 `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD <base-branch>)...HEAD`를 `DIFF_FILE`에 리다이렉트한다. 미커밋 변경이 있으면 `${GIT_PREFIX} diff >> ${DIFF_FILE}`로 추가한다.
+
+**svn인 경우**:
+- `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다. staging 없이 한 단계로 끝난다.
 
 **Step 2**: qa-manager와 security-auditor를 **병렬로** 호출한다.
 

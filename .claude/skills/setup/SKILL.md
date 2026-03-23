@@ -2,13 +2,14 @@
 name: setup
 argument-hint: "없음"
 description: >
-  플러그인 초기 설정. 필수 도구 확인과 GH 인증을 단계별로 수행한다.
+  플러그인 초기 설정. VCS 감지, 필수 도구 확인, 인증을 단계별로 수행한다.
   사용자가 "설정", "셋업", "setup", "초기화"라고 말하면 이 스킬을 사용한다.
 disable-model-invocation: true
 allowed-tools:
   - "Bash(curl *)"
   - "Bash(gh *)"
   - "Bash(git *)"
+  - "Bash(svn *)"
   - "Bash(which *)"
   - "Bash(command *)"
   - "Bash(uname *)"
@@ -28,17 +29,47 @@ allowed-tools:
 
 아래 단계를 **순서대로** 실행한다. 각 단계 완료 시 `{항목} : 완료 ✅` 형식으로 출력한다.
 
+### 0단계: VCS 감지
+
+프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
+
+1. 프로젝트 루트에서 `.git/` 디렉토리 존재 여부를 확인한다 (`test -d .git`).
+2. 프로젝트 루트에서 `.svn/` 디렉토리 존재 여부를 확인한다 (`test -d .svn`).
+3. 결과에 따라 분기:
+   - `.git/`만 존재 → `VCS_TYPE = "git"`
+   - `.svn/`만 존재 → `VCS_TYPE = "svn"`
+   - 둘 다 존재 → AskUserQuestion: "Git과 SVN이 모두 감지되었습니다. 어떤 VCS를 사용하시겠습니까?" 선택지: `git`, `svn`
+   - 둘 다 없음 → AskUserQuestion: "VCS를 감지하지 못했습니다. 사용 중인 VCS를 선택해주세요." 선택지: `git`, `svn`, `없음 (VCS 미사용)`
+     - `없음` 선택 시 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
+4. `.claude/config.json`의 `"vcs"` 필드를 확인한다:
+   - 이미 값이 설정되어 있고 감지 결과와 **동일**하면 → 갱신 없이 `VCS 감지 : 완료 ✅ ({VCS_TYPE}, 기존 설정 유지)` 출력.
+   - 이미 값이 설정되어 있지만 감지 결과와 **다르면** → AskUserQuestion: "기존 설정({기존값})과 감지 결과({감지값})가 다릅니다. 어떤 값을 사용하시겠습니까?" 선택지: 기존값, 감지값.
+   - 값이 비어있으면 → `VCS_TYPE` 값으로 갱신한다 (Edit).
+5. `VCS 감지 : 완료 ✅ ({VCS_TYPE})` 출력.
+
+이후 단계는 `VCS_TYPE`에 따라 분기한다.
+
 ### 1단계: 필수 도구 확인
 
-#### gh
+#### VCS CLI
 
-| 도구 | 확인 |
-|------|------|
-| gh | `which gh` |
+| VCS_TYPE | 도구 | 확인 |
+|----------|------|------|
+| git | gh | `which gh` |
+| svn | svn | `which svn` → `svn --version` |
 
+**git인 경우:**
 1. `which gh` 실행
 2. 있으면 → `gh : 완료 ✅` 출력
 3. 없으면 → 설치 링크를 안내 (https://cli.github.com)
+
+**svn인 경우:**
+1. `which svn` 실행
+2. 있으면 → `svn --version --quiet`로 버전 확인 → `svn : 완료 ✅ (버전)` 출력
+3. 없으면 → OS별 설치 안내:
+   - **Linux**: `sudo apt install subversion`
+   - **macOS**: `brew install subversion`
+   - **Windows**: https://tortoisesvn.net 또는 `choco install svn` 안내
 
 #### JDK
 
@@ -50,7 +81,9 @@ allowed-tools:
    - **macOS**: `brew install openjdk@17`
    - **Windows (MSYS/Git Bash)**: https://adoptium.net 에서 다운로드 안내
 
-### 2단계: GH 인증
+### 2단계: 인증
+
+**git인 경우** → GH 인증을 수행한다:
 
 1. `gh auth status` 로 인증 상태 확인
 2. 인증됨 → `GH 인증 : 완료 ✅` 출력
@@ -86,6 +119,8 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 - 성공 → `GH 인증 : 완료 ✅` 출력
 - 실패 → 에러 메시지를 보여주고, 2-1부터 재시도할지 사용자에게 묻는다
 
+**svn인 경우** → 건너뛴다. `인증 : 건너뜀 (SVN)` 출력.
+
 ### 3단계: context/ 초기 구조 안내
 
 프로젝트 루트에 `context/` 디렉토리가 없으면:
@@ -94,6 +129,10 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 이미 있으면 건너뛴다.
 
 ### 4단계: Google Chat 알림 연동 (선택)
+
+**svn인 경우** → 건너뛴다. `Google Chat 연동 : 건너뜀 (SVN — PR 기반 알림 미지원)` 출력.
+
+**git인 경우:**
 
 1. `.claude/config.json`의 `notifications.googleChat` 확인:
    - `webhookUrl`이 이미 채워져 있으면 →
@@ -133,6 +172,7 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 
 ### 완료: 퀵스타트
 
+**git인 경우:**
 ```
 === 퀵스타트 ===
 /context {도메인}     → 도메인 지식 등록
@@ -143,8 +183,21 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 requirements/ 폴더에 넣고 /context {도메인} --from requirements/ 로 등록
 ```
 
+**svn인 경우:**
+```
+=== 퀵스타트 ===
+/context {도메인}     → 도메인 지식 등록
+/lens {질문}          → 현행 분석 + 영향도
+/dev {요청}           → 개발 사이클 (PRD~리뷰)
+
+⚠️ SVN 프로젝트:
+- /commit, /pull-request는 SVN에서 미지원
+- /dev 리뷰까지 완료 후 svn commit은 직접 수행하세요
+```
+
 ## 주의사항
 
 - 각 단계를 **하나씩** 실행하고, 실패하면 원인을 파악하여 사용자에게 안내한다.
 - 설치 도중 에러가 나면 멈추고 사용자에게 상황을 설명한다.
 - 이미 완료된 항목은 재실행하지 않고 `완료 ✅` 만 출력한다.
+- `config.json`의 `vcs` 값이 이미 설정되어 있는 경우, 0단계에서는 감지된 VCS와 일치하는지 확인하며, 다를 경우 사용자에게 물어본다.

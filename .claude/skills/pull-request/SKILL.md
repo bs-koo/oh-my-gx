@@ -24,6 +24,12 @@ allowed-tools:
 
 현재 브랜치의 커밋 히스토리를 분석하여 PR을 자동 생성한다.
 
+## VCS 가드
+
+`.claude/config.json`의 `"vcs"` 필드를 확인한다.
+- `"svn"` → 즉시 종료: "SVN 프로젝트에서는 /pull-request를 지원하지 않습니다. SVN은 PR 개념이 없으므로 커밋 후 리뷰어에게 직접 알려주세요." 출력.
+- `"git"` 또는 `""` (미설정) → 아래 절차를 계속 진행한다.
+
 Arguments:
 - ARGS[0] (optional): 베이스 브랜치. 미지정 시 자동 감지:
   1. `git branch --list main master develop`로 존재하는 브랜치 확인

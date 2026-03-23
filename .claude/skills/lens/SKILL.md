@@ -14,6 +14,7 @@ allowed-tools:
   - Bash(wc *)
   - Bash(date *)
   - Bash(git rev-parse *)
+  - Bash(svn info *)
   # read tools
   - Read
   - Glob

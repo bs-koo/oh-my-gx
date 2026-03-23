@@ -6,7 +6,7 @@ set -uo pipefail
 
 INPUT=$(cat /dev/stdin 2>/dev/null || echo '{}')
 
-# G1: 보호 브랜치(main)에서 직접 커밋 차단
+# G1: 보호 브랜치(main)에서 직접 커밋 차단 (git)
 case "$INPUT" in
   *git*commit*)
     CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
@@ -28,6 +28,22 @@ case "$INPUT" in
 EOF
       exit 0
     fi
+    ;;
+esac
+
+# G2: SVN 직접 커밋 차단 — /commit 스킬을 사용하도록 유도 (SVN은 스킬 미지원이므로 안내)
+case "$INPUT" in
+  *svn*commit*)
+    cat <<EOF
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "SVN 프로젝트에서는 커밋을 지원하지 않습니다. svn commit을 직접 실행해주세요."
+  }
+}
+EOF
+    exit 0
     ;;
 esac
 exit 0

@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0 (2026-03-23) — SVN 프로젝트 지원
+
+### Features
+- **SVN 프로젝트에서도 사용 가능**: `/setup`에서 VCS(Git/SVN)를 자동 감지하고 `config.json`에 저장. 이후 모든 스킬이 VCS 타입에 맞게 동작
+  - `/dev`: PRD → 설계 → 구현 → 리뷰까지 동일하게 동작. diff 수집은 `svn diff` 사용
+  - `/context`: 레포명 추출과 동기화 모드가 SVN 명령어로 분기
+  - `/lens`: 프로젝트 루트 감지가 `svn info`로 폴백
+  - `/commit`, `/pull-request`: SVN에서는 미지원 안내 후 조기 종료
+- **setup 스킬 VCS 분기**: SVN 프로젝트에서는 gh CLI 대신 svn CLI를 확인하고, GH 인증과 Google Chat 연동을 건너뜀
+- **pre-tool-guard SVN 가드**: Claude가 `svn commit`을 대신 실행하지 않도록 훅에서 차단
+- **VCS 워크플로우 규칙 분리**: `git-workflow.md`를 Git/SVN 섹션으로 분리
+
 ## v1.3.5 (2026-03-23) — dev 파이프라인 스킬 호출 정규화
 
 ### Fixes
