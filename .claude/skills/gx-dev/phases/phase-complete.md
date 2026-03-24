@@ -50,7 +50,7 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
    - `--background .dev/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `--hotfix` 모드이면 PRD가 없으므로 `--background`를 생략한다.
    - `--extra-section .dev/trust-ledger.md`: Trust Ledger가 존재하면 Audit Summary 섹션을 Checklist 앞에 삽입. 파일이 없으면 `--extra-section`을 생략한다.
    - 예: `Skill(skill: "oh-my-gx:pull-request", args: "--background .dev/prd.md --extra-section .dev/trust-ledger.md")`
-2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/pull-request`로 PR을 생성할 수 있습니다."
+2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/gx-pull-request`로 PR을 생성할 수 있습니다."
 3. **PR 생성 후 알림**: `pull-request` 스킬이 PR 생성 후 내부적으로 알림 절차를 수행한다. 오케스트레이터가 별도로 알림을 처리할 필요 없다.
 
 ## Step 3: 도메인 status.md 갱신

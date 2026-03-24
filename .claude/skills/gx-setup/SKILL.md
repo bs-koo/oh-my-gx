@@ -1,9 +1,7 @@
 ---
-name: setup
+name: gx-setup
 argument-hint: "없음"
-description: >
-  플러그인 초기 설정. VCS 감지, 필수 도구 확인, 인증을 단계별로 수행한다.
-  사용자가 "설정", "셋업", "setup", "초기화"라고 말하면 이 스킬을 사용한다.
+description: VCS 감지, 도구 확인, 인증을 단계별로 수행한다.
 disable-model-invocation: true
 allowed-tools:
   - "Bash(curl *)"
@@ -100,7 +98,7 @@ allowed-tools:
 
    e. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
    f. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
-   g. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/setup` 재실행 안내.
+   g. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/gx-setup` 재실행 안내.
 
 **svn인 경우:**
 1. `which svn` 실행
@@ -109,11 +107,11 @@ allowed-tools:
 
    ```
    ⚠️ SVN CLI가 설치되어 있지 않습니다.
-   /dev의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
+   /gx-dev의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
 
    {OS별 안내}
 
-   설치 후 터미널을 재시작하고 /setup을 다시 실행하세요.
+   설치 후 터미널을 재시작하고 /gx-setup을 다시 실행하세요.
    ```
 
    **OS별 안내:**
@@ -122,7 +120,7 @@ allowed-tools:
      1. https://sliksvn.com/download/ 에서 SlikSvn (64 bit)을 다운로드하세요.
      2. 다운로드된 .msi 파일을 더블클릭하여 설치를 실행하세요.
      3. 설치가 완료되면 터미널을 완전히 종료하고 다시 여세요.
-     4. /setup을 다시 실행하세요.
+     4. /gx-setup을 다시 실행하세요.
      ```
    - **macOS**: `brew install subversion`을 실행하고 터미널을 재시작하세요.
    - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`을 실행하세요.
@@ -204,7 +202,7 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 ### 3단계: context/ 초기 구조 안내
 
 프로젝트 루트에 `context/` 디렉토리가 없으면:
-- "도메인 지식을 관리하려면 `/context`로 context/ 디렉토리를 생성하세요." 안내
+- "도메인 지식을 관리하려면 `/gx-context`로 context/ 디렉토리를 생성하세요." 안내
 
 이미 있으면 건너뛴다.
 
@@ -255,24 +253,24 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 **git인 경우:**
 ```
 === 퀵스타트 ===
-/context {도메인}     → 도메인 지식 등록
-/lens {질문}          → 현행 분석 + 영향도
-/dev {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-context {도메인}     → 도메인 지식 등록
+/gx-lens {질문}          → 현행 분석 + 영향도
+/gx-dev {요청}           → 전체 개발 사이클 (PRD~PR)
 
 💡 화면 설계서가 있다면:
-requirements/ 폴더에 넣고 /context {도메인} --from requirements/ 로 등록
+requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 등록
 ```
 
 **svn인 경우:**
 ```
 === 퀵스타트 ===
-/context {도메인}     → 도메인 지식 등록
-/lens {질문}          → 현행 분석 + 영향도
-/dev {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-context {도메인}     → 도메인 지식 등록
+/gx-lens {질문}          → 현행 분석 + 영향도
+/gx-dev {요청}           → 개발 사이클 (PRD~리뷰)
 
 ⚠️ SVN 프로젝트:
-- /commit, /pull-request는 SVN에서 미지원
-- /dev 리뷰까지 완료 후 svn commit은 직접 수행하세요
+- /gx-commit, /gx-pull-request는 SVN에서 미지원
+- /gx-dev 리뷰까지 완료 후 svn commit은 직접 수행하세요
 ```
 
 ## 주의사항

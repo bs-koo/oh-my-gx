@@ -1,8 +1,6 @@
 ---
-name: pull-request
-description: >
-  커밋 히스토리에서 제목과 본문을 자동 생성하여 PR을 생성한다.
-  사용자가 "PR", "PR 올려", "PR 생성", "풀리퀘", "pull request"라고 말하면 이 스킬을 사용한다.
+name: gx-pull-request
+description: 커밋 히스토리를 분석하여 PR을 자동 생성한다. "PR", "PR 올려", "풀리퀘" 시 사용.
 argument-hint: [base-branch]
 allowed-tools:
   - Read
@@ -27,7 +25,7 @@ allowed-tools:
 ## VCS 가드
 
 `.claude/config.json`의 `"vcs"` 필드를 확인한다.
-- `"svn"` → 즉시 종료: "SVN 프로젝트에서는 /pull-request를 지원하지 않습니다. SVN은 PR 개념이 없으므로 커밋 후 리뷰어에게 직접 알려주세요." 출력.
+- `"svn"` → 즉시 종료: "SVN 프로젝트에서는 /gx-pull-request를 지원하지 않습니다. SVN은 PR 개념이 없으므로 커밋 후 리뷰어에게 직접 알려주세요." 출력.
 - `"git"` 또는 `""` (미설정) → 아래 절차를 계속 진행한다.
 
 Arguments:
@@ -170,7 +168,7 @@ PR이 성공적으로 생성되었으면:
 
 1. `.claude/config.json`의 `notifications.googleChat` 확인
    - `enabled`가 `false`이거나 `webhookUrl`이 비어있으면:
-     "Google Chat 알림이 설정되어 있지 않습니다. `/setup`을 실행하면 웹훅을 연동할 수 있습니다." 안내 후 건너뜀
+     "Google Chat 알림이 설정되어 있지 않습니다. `/gx-setup`을 실행하면 웹훅을 연동할 수 있습니다." 안내 후 건너뜀
 
 2. 전송 (`timeout: 10000`):
 
