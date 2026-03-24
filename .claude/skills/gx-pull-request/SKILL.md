@@ -15,7 +15,6 @@ allowed-tools:
   # GH_HOST=<host> gh <cmd> 형태의 환경변수 prefix 명령 허용 (GHE 호스트 지정 시 사용)
   - Bash(GH_HOST=github.com gh:*)
   - Bash(which:*)
-  - Bash(brew install:*)
   - Bash(curl *)
   - AskUserQuestion
 ---
@@ -42,9 +41,7 @@ Arguments:
 **Step 1** (게이트 — 반드시 순차 실행):
 
 1. `which gh`로 gh CLI 존재 확인.
-   - **없으면**: AskUserQuestion — "gh CLI가 설치되어 있지 않습니다. 설치할까요?"
-     - 예 → `brew install gh` 실행 (`timeout: 300000`). 설치 실패 시 "gh 설치에 실패했습니다. PR 생성을 건너뜁니다." 출력 후 **즉시 종료**.
-     - 아니오 → "PR 생성을 건너뜁니다. 수동으로 PR을 생성해주세요." 출력 후 **즉시 종료**.
+   - **없으면**: "gh CLI가 설치되어 있지 않습니다. `/gx-setup`을 먼저 실행해주세요." 출력 후 **즉시 종료**.
 
 2. `gh auth status`로 인증 확인.
    - **미인증이면**: "gh 인증이 필요합니다. `gh auth login`을 실행하겠습니다." 안내 후 `gh auth login` 실행.

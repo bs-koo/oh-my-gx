@@ -2,7 +2,32 @@
 name: gx-dev
 description: PRD에서 PR까지 전체 개발 사이클을 에이전트 팀으로 수행한다. "개발해줘", "구현해줘", "만들어줘" 시 사용.
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion"]
+allowed-tools:
+  # VCS
+  - Bash(git *)
+  - Bash(svn *)
+  - Bash(gh *)
+  - Bash(GH_HOST= *)
+  # 빌드
+  - Bash(./gradlew *)
+  # 파일 시스템
+  - Bash(test *)
+  - Bash(mkdir *)
+  - Bash(cp *)
+  - Bash(mv *)
+  - Bash(ls *)
+  - Bash(pwd *)
+  - Bash(basename *)
+  - Bash(dirname *)
+  - Bash(which *)
+  # 도구
+  - Read
+  - Edit
+  - Write
+  - Glob
+  - Grep
+  - Task
+  - AskUserQuestion
 ---
 
 오케스트레이터. 직무 기반 Agent 팀과 Q&A 피드백 루프로 전체 개발 사이클을 관리한다.
