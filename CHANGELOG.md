@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.0 (2026-03-24) — 스킬 네임스페이스 gx- prefix 추가
+
+### Breaking Changes
+- **모든 스킬명에 `gx-` prefix 추가**: `/commit`→`/gx-commit`, `/context`→`/gx-context`, `/dev`→`/gx-dev`, `/humanizer`→`/gx-humanizer`, `/lens`→`/gx-lens`, `/pull-request`→`/gx-pull-request`, `/research`→`/gx-research`, `/setup`→`/gx-setup`
+- `/gx` 입력 시 전체 스킬 목록이 자동완성되어 사용성 향상
+
+### Improvements
+- **스킬 description 간결화**: 각 스킬의 설명을 한 줄로 정리하여 터미널 표시 가독성 개선
+- **네임스페이스 충돌 해결**: oh-my-claudecode, Claude 기본 명령어 등 다른 플러그인과의 스킬명 충돌 방지
+
 ## v1.4.1 (2026-03-24) — setup VCS 감지 및 CLI 자동 설치 개선
 
 ### Fixes
