@@ -109,10 +109,9 @@ allowed-tools:
 3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
 
    **설치 시도 순서:**
-   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
-      - `which winget` → Windows (winget, Windows 10/11 기본 내장)
-      - `which choco` → Windows (Chocolatey)
-      - `which scoop` → Windows (Scoop)
+   a. OS와 패키지 매니저를 감지한다. **SVN은 winget으로 CLI 설치가 불가**하므로 (TortoiseSVN은 GUI 전용), Windows에서는 choco/scoop을 우선한다:
+      - `which choco` → Windows (Chocolatey) — SVN CLI 직접 설치 가능
+      - `which scoop` → Windows (Scoop) — SVN CLI 직접 설치 가능
       - `which brew` → macOS/Linux (Homebrew)
       - `which apt` → Linux (apt)
       - `which yum` → Linux (yum)
@@ -128,7 +127,6 @@ allowed-tools:
    c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
-      | winget | `winget install --id SlikSvn.SlikSvn --accept-source-agreements --accept-package-agreements` |
       | choco | `choco install svn -y` |
       | scoop | `scoop install svn` |
       | brew | `brew install subversion` |
@@ -138,8 +136,12 @@ allowed-tools:
    d. 설치 완료 후 `which svn`으로 재확인 → 성공하면 `svn : 완료 ✅` 출력
    e. 설치 실패 시 → 수동 설치 안내 출력 후 계속 진행
 
-   f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내:
-      - **Windows**: https://tortoisesvn.net (설치 시 "command line client tools" 옵션 체크) 또는 Chocolatey/Scoop 설치 후 `/setup` 재실행
+   f. 패키지 매니저가 감지되지 않으면 (Windows에서 choco/scoop 없는 경우 포함) → 수동 설치 안내:
+      - **Windows**: 아래 중 하나를 선택하세요:
+        1. Chocolatey 설치 후 `choco install svn -y` (권장)
+        2. https://sliksvn.com/download/ 에서 SlikSvn 직접 다운로드 (CLI 전용)
+        3. https://tortoisesvn.net 설치 시 "command line client tools" 옵션 체크
+        설치 후 터미널을 재시작하고 `/setup`을 재실행하세요.
       - **macOS**: `brew install subversion` (Homebrew 먼저 설치)
       - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`
 
