@@ -124,8 +124,8 @@ allowed-tools:
      3. 설치가 완료되면 터미널을 완전히 종료하고 다시 여세요.
      4. /setup을 다시 실행하세요.
      ```
-   - **macOS**: "`brew install subversion`을 실행하고 터미널을 재시작하세요."
-   - **Linux**: "`sudo apt install subversion` 또는 `sudo yum install subversion`을 실행하세요."
+   - **macOS**: `brew install subversion`을 실행하고 터미널을 재시작하세요.
+   - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`을 실행하세요.
 
    안내 출력 후 `svn : ⚠️ 미설치`로 표시하고 계속 진행한다.
 
