@@ -26,7 +26,7 @@
 
 ### 커밋 규칙
 
-**스킬 우선 사용:** 커밋은 `/commit`, PR은 `/pull-request` 스킬을 사용하세요. git 명령어를 직접 실행하지 마세요.
+**스킬 우선 사용:** 커밋은 `/gx-commit`, PR은 `/gx-pull-request` 스킬을 사용하세요. git 명령어를 직접 실행하지 마세요.
 
 ### 최신 상태 유지
 
@@ -49,7 +49,7 @@ SVN은 브랜치 없이 trunk에서 직접 작업한다. 별도 브랜치 생성
 
 ### 커밋 규칙
 
-SVN에서는 `/commit`, `/pull-request` 스킬을 지원하지 않는다. `svn commit`을 직접 실행하세요.
+SVN에서는 `/gx-commit`, `/gx-pull-request` 스킬을 지원하지 않는다. `svn commit`을 직접 실행하세요.
 
 ### 최신 상태 유지
 

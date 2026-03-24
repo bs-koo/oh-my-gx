@@ -1,8 +1,6 @@
 ---
-name: commit
-description: >
-  브랜치 타입 기반 한국어 커밋 메시지로 Git 커밋한다. 민감 파일 감지 포함.
-  사용자가 "커밋", "커밋해줘", "변경사항 저장", "commit"이라고 말하면 이 스킬을 사용한다.
+name: gx-commit
+description: 브랜치 타입을 파싱하여 한국어 커밋 메시지를 생성한다. "커밋", "commit" 시 사용.
 argument-hint: [커밋 메시지]
 allowed-tools:
   # git - 커밋 핵심
@@ -40,7 +38,7 @@ Arguments:
 ## VCS 가드
 
 `.claude/config.json`의 `"vcs"` 필드를 확인한다.
-- `"svn"` → 즉시 종료: "SVN 프로젝트에서는 /commit을 지원하지 않습니다. `svn commit`을 직접 실행해주세요." 출력.
+- `"svn"` → 즉시 종료: "SVN 프로젝트에서는 /gx-commit을 지원하지 않습니다. `svn commit`을 직접 실행해주세요." 출력.
 - `"git"` 또는 `""` (미설정) → 아래 절차를 계속 진행한다.
 
 ## 사전 확인
@@ -120,7 +118,7 @@ feat: 로그인 기능 추가
    context를 동기화할까요?"
    ```
    - 옵션: "예 — context 동기화" / "아니오 — 건너뜀"
-   - "예" 선택 시: 안내만 출력한다. "`/context {도메인} 동기화해줘`로 동기화할 수 있습니다." (commit 스킬 내에서 context 스킬을 직접 실행하지 않는다)
+   - "예" 선택 시: 안내만 출력한다. "`/gx-context {도메인} 동기화해줘`로 동기화할 수 있습니다." (commit 스킬 내에서 context 스킬을 직접 실행하지 않는다)
 6. 매칭되는 도메인이 없으면 이 단계를 건너뛴다.
 
 **금지**: `Co-Authored-By` 라인을 절대 추가하지 말 것.

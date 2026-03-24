@@ -1,10 +1,33 @@
 ---
-name: dev
-description: >
-  PRD → 설계 → 구현 → 리뷰 → 커밋/PR까지 전체 개발 사이클을 에이전트 팀이 Q&A 루프로 수행한다.
-  사용자가 "개발해줘", "구현해줘", "기능 추가", "만들어줘", "/dev"라고 말하면 이 스킬을 사용한다.
+name: gx-dev
+description: PRD에서 PR까지 전체 개발 사이클을 에이전트 팀으로 수행한다. "개발해줘", "구현해줘", "만들어줘" 시 사용.
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion"]
+allowed-tools:
+  # VCS
+  - Bash(git *)
+  - Bash(svn *)
+  - Bash(gh *)
+  - Bash(GH_HOST= *)
+  # 빌드
+  - Bash(./gradlew *)
+  # 파일 시스템
+  - Bash(test *)
+  - Bash(mkdir *)
+  - Bash(cp *)
+  - Bash(mv *)
+  - Bash(ls *)
+  - Bash(pwd *)
+  - Bash(basename *)
+  - Bash(dirname *)
+  - Bash(which *)
+  # 도구
+  - Read
+  - Edit
+  - Write
+  - Glob
+  - Grep
+  - Task
+  - AskUserQuestion
 ---
 
 오케스트레이터. 직무 기반 Agent 팀과 Q&A 피드백 루프로 전체 개발 사이클을 관리한다.
@@ -13,12 +36,12 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 ## 스킬 참조 경로
 
-이 스킬의 파일들은 프로젝트 루트의 `.claude/skills/dev/` 하위에 위치한다.
+이 스킬의 파일들은 프로젝트 루트의 `.claude/skills/gx-dev/` 하위에 위치한다.
 Phase 파일이나 다른 스킬을 Read할 때, 현재 작업 디렉토리(프로젝트 루트)를 기준으로 절대 경로를 구성한다.
 
 다른 스킬의 프로세스를 실행할 때 아래 경로에서 Read한다:
-- `<프로젝트 루트>/.claude/skills/commit/SKILL.md`
-- `<프로젝트 루트>/.claude/skills/pull-request/SKILL.md`
+- `<프로젝트 루트>/.claude/skills/gx-commit/SKILL.md`
+- `<프로젝트 루트>/.claude/skills/gx-pull-request/SKILL.md`
 
 ## 인자
 
@@ -85,7 +108,7 @@ intent-source: flag | natural-language | user-selection
 - `--resume`: 이전 파이프라인 재개
 
 ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
-"구현할 기능이나 수정할 버그를 설명해주세요. 예: `/dev 로그인 기능 추가해줘`"
+"구현할 기능이나 수정할 버그를 설명해주세요. 예: `/gx-dev 로그인 기능 추가해줘`"
 
 ### --status 동작
 `--status`가 지정되면 파이프라인을 실행하지 않고 현재 상태만 출력한다:
@@ -193,7 +216,7 @@ for phase in PHASES:
         → "변경사항이 없습니다" 보고 후 중단
 
     # 2b. Phase 파일 Read (필수)
-    Read("<프로젝트 루트>/.claude/skills/dev/phases/phase-{phase}.md")
+    Read("<프로젝트 루트>/.claude/skills/gx-dev/phases/phase-{phase}.md")
 
     # 2c. Phase 파일의 지시에 따라 실행
 
@@ -513,7 +536,7 @@ AskUserQuestion(
 `--phase`가 지정되면 해당 Phase만 실행한다:
 - `--phase requirements`: setup (필요 시) + requirements만 실행 (PRD 작성).
 - `--phase design`: setup (필요 시) + requirements + design만 실행. 대화 맥락에 요구사항이 없고 `.dev/prd.md`도 없으면 requirements부터 시작.
-- `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `.dev/design.md`도 없으면: "설계서가 필요합니다. `/dev --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
+- `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `.dev/design.md`도 없으면: "설계서가 필요합니다. `/gx-dev --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
 - `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰).
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (test, commit, PR).
 

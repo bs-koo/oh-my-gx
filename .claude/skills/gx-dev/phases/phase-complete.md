@@ -31,11 +31,11 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 **git인 경우:**
 
-`Skill(skill: "oh-my-gx:commit")`을 호출하여 커밋을 실행한다.
+`Skill(skill: "oh-my-gx:gx-commit")`을 호출하여 커밋을 실행한다.
 
 **test 실패 시 자동 수정 (1회):**
 1. commit 스킬이 test 실패로 중단하면, 실패 로그와 코드 맵, PROJECT_ROOT를 `Task(subagent_type="coder")`에 전달하여 수정 요청.
-2. 수정 완료 후 `Skill(skill: "oh-my-gx:commit")`을 재호출한다.
+2. 수정 완료 후 `Skill(skill: "oh-my-gx:gx-commit")`을 재호출한다.
 3. 재호출도 실패하면 사용자에게 실패 목록을 보고하고 진행 여부를 확인한다.
 
 ## Step 2: PR 생성
@@ -44,13 +44,13 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 **git인 경우:**
 
-`Skill(skill: "oh-my-gx:pull-request")`을 호출하여 PR을 생성한다. args를 통해 dev 컨텍스트를 전달한다:
+`Skill(skill: "oh-my-gx:gx-pull-request")`을 호출하여 PR을 생성한다. args를 통해 dev 컨텍스트를 전달한다:
 
 1. **args 구성**:
    - `--background .dev/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `--hotfix` 모드이면 PRD가 없으므로 `--background`를 생략한다.
    - `--extra-section .dev/trust-ledger.md`: Trust Ledger가 존재하면 Audit Summary 섹션을 Checklist 앞에 삽입. 파일이 없으면 `--extra-section`을 생략한다.
-   - 예: `Skill(skill: "oh-my-gx:pull-request", args: "--background .dev/prd.md --extra-section .dev/trust-ledger.md")`
-2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/pull-request`로 PR을 생성할 수 있습니다."
+   - 예: `Skill(skill: "oh-my-gx:gx-pull-request", args: "--background .dev/prd.md --extra-section .dev/trust-ledger.md")`
+2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/gx-pull-request`로 PR을 생성할 수 있습니다."
 3. **PR 생성 후 알림**: `pull-request` 스킬이 PR 생성 후 내부적으로 알림 절차를 수행한다. 오케스트레이터가 별도로 알림을 처리할 필요 없다.
 
 ## Step 3: 도메인 status.md 갱신

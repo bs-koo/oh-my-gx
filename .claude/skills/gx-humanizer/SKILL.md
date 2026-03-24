@@ -1,11 +1,7 @@
 ---
-name: humanizer
+name: gx-humanizer
 argument-hint: "<파일 경로 또는 텍스트>"
-description: >
-  AI가 쓴 티를 제거하는 글쓰기 편집 스킬. 한국어 텍스트를 주력으로, 영어도 지원.
-  Wikipedia의 "Signs of AI writing" 가이드와 한국어 AI 글쓰기 패턴 연구를 기반으로
-  40+ 가지 패턴을 감지하고 교정한다. 감지 전용(audit) 모드와 직접 수정(rewrite) 모드를 지원.
-  사용자가 "AI 티 빼줘", "자연스럽게 고쳐줘", "사람이 쓴 것처럼", "humanizer"라고 말하면 이 스킬을 사용한다.
+description: AI 글쓰기 흔적을 감지하여 자연스러운 문체로 교정한다. "AI 티 빼줘", "자연스럽게 고쳐줘" 시 사용.
 allowed-tools:
   - Read
   - Write

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.0 (2026-03-24) — 스킬 네임스페이스 gx- prefix 추가
+
+### Breaking Changes
+- **모든 스킬명에 `gx-` prefix 추가**: `/commit`→`/gx-commit`, `/context`→`/gx-context`, `/dev`→`/gx-dev`, `/humanizer`→`/gx-humanizer`, `/lens`→`/gx-lens`, `/pull-request`→`/gx-pull-request`, `/research`→`/gx-research`, `/setup`→`/gx-setup`
+- `/gx` 입력 시 전체 스킬 목록이 자동완성되어 사용성 향상
+
+### Improvements
+- **스킬 description 간결화**: 각 스킬의 설명을 한 줄로 정리하여 터미널 표시 가독성 개선
+- **네임스페이스 충돌 해결**: oh-my-claudecode, Claude 기본 명령어 등 다른 플러그인과의 스킬명 충돌 방지
+
 ## v1.4.1 (2026-03-24) — setup VCS 감지 및 CLI 자동 설치 개선
 
 ### Fixes
@@ -12,11 +22,11 @@
 ## v1.4.0 (2026-03-23) — SVN 프로젝트 지원
 
 ### Features
-- **SVN 프로젝트에서도 사용 가능**: `/setup`에서 VCS(Git/SVN)를 자동 감지하고 `config.json`에 저장. 이후 모든 스킬이 VCS 타입에 맞게 동작
-  - `/dev`: PRD → 설계 → 구현 → 리뷰까지 동일하게 동작. diff 수집은 `svn diff` 사용
-  - `/context`: 레포명 추출과 동기화 모드가 SVN 명령어로 분기
-  - `/lens`: 프로젝트 루트 감지가 `svn info`로 폴백
-  - `/commit`, `/pull-request`: SVN에서는 미지원 안내 후 조기 종료
+- **SVN 프로젝트에서도 사용 가능**: `/gx-setup`에서 VCS(Git/SVN)를 자동 감지하고 `config.json`에 저장. 이후 모든 스킬이 VCS 타입에 맞게 동작
+  - `/gx-dev`: PRD → 설계 → 구현 → 리뷰까지 동일하게 동작. diff 수집은 `svn diff` 사용
+  - `/gx-context`: 레포명 추출과 동기화 모드가 SVN 명령어로 분기
+  - `/gx-lens`: 프로젝트 루트 감지가 `svn info`로 폴백
+  - `/gx-commit`, `/gx-pull-request`: SVN에서는 미지원 안내 후 조기 종료
 - **setup 스킬 VCS 분기**: SVN 프로젝트에서는 gh CLI 대신 svn CLI를 확인하고, GH 인증과 Google Chat 연동을 건너뜀
 - **pre-tool-guard SVN 가드**: Claude가 `svn commit`을 대신 실행하지 않도록 훅에서 차단
 - **VCS 워크플로우 규칙 분리**: `git-workflow.md`를 Git/SVN 섹션으로 분리
@@ -45,10 +55,10 @@
 ## v1.3.2 (2026-03-18) — PR 알림 중복 발송 방지
 
 ### Fixes
-- **Google Chat 알림 중복 방지**: `/pull-request` 스킬에서 기존 PR 업데이트(`gh pr edit`) 시에도 알림이 발송되던 문제 수정
+- **Google Chat 알림 중복 방지**: `/gx-pull-request` 스킬에서 기존 PR 업데이트(`gh pr edit`) 시에도 알림이 발송되던 문제 수정
   - 신규 PR 생성(`gh pr create`) 시에만 알림을 발송하도록 선행 조건 가드 추가
 
-## v1.3.1 (2026-03-17) — /dev Phase 스킵 방지
+## v1.3.1 (2026-03-17) — /gx-dev Phase 스킵 방지
 
 ### Fixes
 - **Phase 스킵 방지**: LLM이 "요구사항이 명확하다", "범위가 작다" 등의 이유로 Phase를 임의 스킵하는 문제를 구조적으로 방지
@@ -83,7 +93,7 @@
 - **research 스킬 신설**: 웹 검색/문서 분석 기반 도메인 리서치 스킬
   - 인터뷰(주제/결과물/깊이) → 검색 → 검증 → 결과물 생성 워크플로우
   - 종합 리포트 / 비교표 / 핵심 요약 3가지 결과물 형태 지원
-  - `/context --from` 연동으로 리서치 결과를 context 문서에 반영 가능
+  - `/gx-context --from` 연동으로 리서치 결과를 context 문서에 반영 가능
   - `.research/` 디렉토리에 중간 산출물 및 최종 결과물 저장
 
 ### Docs
