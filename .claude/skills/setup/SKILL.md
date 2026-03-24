@@ -96,8 +96,7 @@ allowed-tools:
       | choco | `choco install gh -y` |
       | scoop | `scoop install gh` |
       | brew | `brew install gh` |
-      | apt | `sudo apt install -y gh` |
-      | yum | `sudo yum install -y gh` |
+      | apt/yum | 수동 설치 안내로 폴백 (gh는 기본 저장소에 미포함, 공식 저장소 등록 필요) |
 
    d. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
    e. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
@@ -128,7 +127,7 @@ allowed-tools:
    c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
-      | winget | `winget install --id TortoiseSVN.TortoiseSVN --accept-source-agreements --accept-package-agreements` |
+      | winget | `winget install --id SlikSvn.SlikSvn --accept-source-agreements --accept-package-agreements` |
       | choco | `choco install svn -y` |
       | scoop | `scoop install svn` |
       | brew | `brew install subversion` |
@@ -207,12 +206,13 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
    question: "SVN 비밀번호를 입력해주세요."
    ```
 
-4. 입력받은 자격 증명으로 `svn info --username {사용자명} --password {비밀번호} --non-interactive`를 실행하여 인증을 확인한다.
+4. 입력받은 자격 증명으로 인증을 확인한다. 비밀번호는 프로세스 목록에 노출되지 않도록 stdin으로 전달한다:
+   `echo "{비밀번호}" | svn info --username {사용자명} --password-from-stdin --non-interactive`
    - 성공 → 자격 증명이 SVN 캐시에 저장됨. `SVN 인증 : 완료 ✅` 출력.
    - 실패 → "인증에 실패했습니다. 사용자명/비밀번호를 확인해주세요." 출력 후 1회 재시도.
    - 재시도도 실패 → "SVN 인증을 건너뜁니다. `svn update` 등 실행 시 인증이 요청될 수 있습니다." 출력 후 계속 진행.
 
-5. **주의**: 비밀번호는 로그에 남지 않도록 한다. `--password` 인자는 SVN 캐시 저장 목적으로만 사용하며, config.json 등에 저장하지 않는다.
+5. **주의**: 비밀번호는 커맨드 라인 인자(`--password`)로 전달하지 않는다. 반드시 `--password-from-stdin`을 사용하여 프로세스 목록이나 셸 히스토리에 남지 않도록 한다. config.json 등에도 저장하지 않는다.
 
 ### 3단계: context/ 초기 구조 안내
 
