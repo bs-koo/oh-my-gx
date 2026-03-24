@@ -39,18 +39,22 @@ allowed-tools:
 
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
-1. `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다. (`.git/`이 상위에 있어도 감지됨)
-2. `svn info 2>/dev/null`로 SVN 워킹 카피인지 확인한다. (`.svn/`이 상위에 있어도 감지됨)
+1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
+2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
 3. 결과에 따라 분기:
-   - Git만 성공 → `VCS_TYPE = "git"`
-   - SVN만 성공 → `VCS_TYPE = "svn"`
-   - 둘 다 성공 → AskUserQuestion: "Git과 SVN이 모두 감지되었습니다. 어떤 VCS를 사용하시겠습니까?" 선택지: `git`, `svn`
-   - 둘 다 실패 → AskUserQuestion: "VCS를 감지하지 못했습니다. 사용 중인 VCS를 선택해주세요." 선택지: `git`, `svn`, `없음 (VCS 미사용)`
-     - `없음` 선택 시 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
-4. `.claude/config.json`의 `"vcs"` 필드를 확인한다:
-   - 이미 값이 설정되어 있고 감지 결과와 **동일**하면 → 갱신 없이 `VCS 감지 : 완료 ✅ ({VCS_TYPE}, 기존 설정 유지)` 출력.
-   - 이미 값이 설정되어 있지만 감지 결과와 **다르면** → AskUserQuestion: "기존 설정({기존값})과 감지 결과({감지값})가 다릅니다. 어떤 값을 사용하시겠습니까?" 선택지: 기존값, 감지값.
-   - 값이 비어있으면 → `VCS_TYPE` 값으로 갱신한다 (Edit).
+   - **성공** → `VCS_TYPE = "git"`
+   - **실패** → AskUserQuestion:
+     ```
+     question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요."
+     options:
+       - { value: "git", label: "Git — 새 Git 저장소를 생성합니다" }
+       - { value: "svn", label: "SVN — SVN 프로젝트입니다" }
+       - { value: "none", label: "없음 — VCS를 사용하지 않습니다" }
+     ```
+     - `git` 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
+     - `svn` 선택 → `VCS_TYPE = "svn"`
+     - `없음` 선택 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
+4. `.claude/config.json`의 `"vcs"` 필드를 `VCS_TYPE` 값으로 갱신한다 (Edit).
 5. `VCS 감지 : 완료 ✅ ({VCS_TYPE})` 출력.
 
 이후 단계는 `VCS_TYPE`에 따라 분기한다.
