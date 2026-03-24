@@ -14,11 +14,10 @@ allowed-tools:
   - "Bash(command *)"
   - "Bash(uname *)"
   - "Bash(java *)"
-  - "Bash(winget *)"
-  - "Bash(choco *)"
-  - "Bash(scoop *)"
-  - "Bash(brew *)"
-  - "Bash(sudo *)"
+  - "Bash(winget install *)"
+  - "Bash(choco install *)"
+  - "Bash(scoop install *)"
+  - "Bash(brew install *)"
   - "Bash(test *)"
   - Read
   - Write
@@ -106,42 +105,29 @@ allowed-tools:
 **svn인 경우:**
 1. `which svn` 실행
 2. 있으면 → `svn --version --quiet`로 버전 확인 → `svn : 완료 ✅ (버전)` 출력
-3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
+3. 없으면 → `uname -s`로 OS를 감지하고 설치 안내를 표시한다:
 
-   **설치 시도 순서:**
-   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
-      - `which winget` → Windows (winget, Windows 10/11 기본 내장)
-      - `which choco` → Windows (Chocolatey)
-      - `which scoop` → Windows (Scoop)
-      - `which brew` → macOS/Linux (Homebrew)
-      - `which apt` → Linux (apt)
-      - `which yum` → Linux (yum)
+   ```
+   ⚠️ SVN CLI가 설치되어 있지 않습니다.
+   /dev의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
 
-   b. 패키지 매니저가 감지되면 AskUserQuestion:
-      ```
-      question: "SVN CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
-      options:
-        - { value: "install", label: "설치 — {감지된 패키지 매니저}로 SVN CLI 설치" }
-        - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
-      ```
+   {OS별 안내}
 
-   c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
-      | 패키지 매니저 | 설치 명령 |
-      |-------------|----------|
-      | winget | `winget install --id SlikSvn.SlikSvn --accept-source-agreements --accept-package-agreements` |
-      | choco | `choco install svn -y` |
-      | scoop | `scoop install svn` |
-      | brew | `brew install subversion` |
-      | apt | `sudo apt install -y subversion` |
-      | yum | `sudo yum install -y subversion` |
+   설치 후 터미널을 재시작하고 /setup을 다시 실행하세요.
+   ```
 
-   d. 설치 완료 후 `which svn`으로 재확인 → 성공하면 `svn : 완료 ✅` 출력
-   e. 설치 실패 시 → 수동 설치 안내 출력 후 계속 진행
+   **OS별 안내:**
+   - **Windows**:
+     ```
+     1. https://sliksvn.com/download/ 에서 SlikSvn (64 bit)을 다운로드하세요.
+     2. 다운로드된 .msi 파일을 더블클릭하여 설치를 실행하세요.
+     3. 설치가 완료되면 터미널을 완전히 종료하고 다시 여세요.
+     4. /setup을 다시 실행하세요.
+     ```
+   - **macOS**: `brew install subversion`을 실행하고 터미널을 재시작하세요.
+   - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`을 실행하세요.
 
-   f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내:
-      - **Windows**: https://tortoisesvn.net (설치 시 "command line client tools" 옵션 체크) 또는 Chocolatey/Scoop 설치 후 `/setup` 재실행
-      - **macOS**: `brew install subversion` (Homebrew 먼저 설치)
-      - **Linux**: `sudo apt install subversion` 또는 `sudo yum install subversion`
+   안내 출력 후 `svn : ⚠️ 미설치`로 표시하고 계속 진행한다.
 
 #### JDK
 
