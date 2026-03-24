@@ -65,7 +65,7 @@ references/
     └── 규칙.md
 ```
 
-`/dev` 실행 시 설계·구현·리뷰 에이전트가 자동으로 참조합니다. 없어도 동작하지만, 등록하면 규격 준수를 자동 검증합니다.
+`/gx-dev` 실행 시 설계·구현·리뷰 에이전트가 자동으로 참조합니다. 없어도 동작하지만, 등록하면 규격 준수를 자동 검증합니다.
 
 기존 문서를 그대로 넣어도 동작합니다. 아래는 에이전트가 더 효과적으로 참조하기 위한 권장 팁입니다:
 - 문서 상단에 요약이나 목차를 넣으면 에이전트가 필요한 부분만 탐색합니다
@@ -123,14 +123,14 @@ references/
 PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정합니다. 감지만 하는 audit 모드와 직접 수정하는 rewrite 모드를 지원합니다.
 
 ```
-"/humanizer 제안서.md AI 글쓰기 흔적 교정해줘"
-"/humanizer 소스코드 기반으로 기획서.md를 작성해줘"
-"/humanizer 발표대본.md 소스코드 기반으로 발표 대본 작성해줘"
+"/gx-humanizer 제안서.md AI 글쓰기 흔적 교정해줘"
+"/gx-humanizer 소스코드 기반으로 기획서.md를 작성해줘"
+"/gx-humanizer 발표대본.md 소스코드 기반으로 발표 대본 작성해줘"
 ```
 
 ### research
 
-웹 검색과 문서 분석을 병행하여 도메인 리서치를 수행합니다. 결과물은 `/context --from`으로 context 문서에 반영할 수 있습니다.
+웹 검색과 문서 분석을 병행하여 도메인 리서치를 수행합니다. 결과물은 `/gx-context --from`으로 context 문서에 반영할 수 있습니다.
 
 ```
 "클라우드 네이티브 트렌드 조사해줘"              ← 종합 리포트
@@ -147,7 +147,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 "PR 만들어줘"   ← 커밋 히스토리 분석, PR 제목/본문 자동 생성
 ```
 
-> **SVN 프로젝트**: commit/pull-request는 Git 전용입니다. SVN에서는 `/dev` 리뷰까지 완료 후 `svn commit`을 직접 실행하세요.
+> **SVN 프로젝트**: commit/pull-request는 Git 전용입니다. SVN에서는 `/gx-dev` 리뷰까지 완료 후 `svn commit`을 직접 실행하세요.
 
 ---
 
@@ -201,7 +201,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 <details>
 <summary><b>SVN 프로젝트에서도 사용할 수 있나요?</b></summary>
 
-네. `/setup` 실행 시 VCS를 자동 감지합니다. SVN 프로젝트에서는 `/dev`의 PRD, 설계, 구현, 리뷰까지 동일하게 동작하며, 커밋만 `svn commit`으로 직접 수행하면 됩니다. `/context`, `/lens`, `/research`, `/humanizer`도 모두 사용 가능합니다.
+네. `/gx-setup` 실행 시 VCS를 자동 감지합니다. SVN 프로젝트에서는 `/gx-dev`의 PRD, 설계, 구현, 리뷰까지 동일하게 동작하며, 커밋만 `svn commit`으로 직접 수행하면 됩니다. `/gx-context`, `/gx-lens`, `/gx-research`, `/gx-humanizer`도 모두 사용 가능합니다.
 </details>
 
 <details>
