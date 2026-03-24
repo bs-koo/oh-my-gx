@@ -81,7 +81,9 @@ allowed-tools:
       - `which apt` → Linux (apt)
       - `which yum` → Linux (yum)
 
-   b. 패키지 매니저가 감지되면 AskUserQuestion:
+   b. **apt/yum만 감지된 경우** → gh는 기본 저장소에 미포함되므로 자동 설치를 건너뛰고 수동 안내로 직행한다 (https://cli.github.com).
+
+   c. **그 외 패키지 매니저가 감지되면** AskUserQuestion:
       ```
       question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
       options:
@@ -89,18 +91,17 @@ allowed-tools:
         - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
       ```
 
-   c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
       | winget | `winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements` |
       | choco | `choco install gh -y` |
       | scoop | `scoop install gh` |
       | brew | `brew install gh` |
-      | apt/yum | 수동 설치 안내로 폴백 (gh는 기본 저장소에 미포함, 공식 저장소 등록 필요) |
 
-   d. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
-   e. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
-   f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/setup` 재실행 안내.
+   e. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
+   f. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
+   g. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/setup` 재실행 안내.
 
 **svn인 경우:**
 1. `which svn` 실행
