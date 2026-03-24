@@ -14,6 +14,7 @@ allowed-tools:
   - "Bash(command *)"
   - "Bash(uname *)"
   - "Bash(java *)"
+  - "Bash(winget *)"
   - "Bash(choco *)"
   - "Bash(scoop *)"
   - "Bash(brew *)"
@@ -74,7 +75,8 @@ allowed-tools:
 3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
 
    **설치 시도 순서:**
-   a. OS와 패키지 매니저를 감지한다:
+   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
+      - `which winget` → Windows (winget, Windows 10/11 기본 내장)
       - `which choco` → Windows (Chocolatey)
       - `which scoop` → Windows (Scoop)
       - `which brew` → macOS/Linux (Homebrew)
@@ -92,6 +94,7 @@ allowed-tools:
    c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
+      | winget | `winget install --id TortoiseSVN.TortoiseSVN --accept-source-agreements --accept-package-agreements` |
       | choco | `choco install svn -y` |
       | scoop | `scoop install svn` |
       | brew | `brew install subversion` |
