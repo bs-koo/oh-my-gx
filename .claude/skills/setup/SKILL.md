@@ -117,8 +117,14 @@ allowed-tools:
    ```
 
    **OS별 안내:**
-   - **Windows**: "https://sliksvn.com/download/ 에서 SlikSvn (64 bit)을 다운로드하여 설치하세요."
-   - **macOS**: "`brew install subversion`을 실행하세요."
+   - **Windows**:
+     ```
+     1. https://sliksvn.com/download/ 에서 SlikSvn (64 bit)을 다운로드하세요.
+     2. 다운로드된 .msi 파일을 더블클릭하여 설치를 실행하세요.
+     3. 설치가 완료되면 터미널을 완전히 종료하고 다시 여세요.
+     4. /setup을 다시 실행하세요.
+     ```
+   - **macOS**: "`brew install subversion`을 실행하고 터미널을 재시작하세요."
    - **Linux**: "`sudo apt install subversion` 또는 `sudo yum install subversion`을 실행하세요."
 
    안내 출력 후 `svn : ⚠️ 미설치`로 표시하고 계속 진행한다.
