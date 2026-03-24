@@ -14,6 +14,7 @@ allowed-tools:
   - "Bash(command *)"
   - "Bash(uname *)"
   - "Bash(java *)"
+  - "Bash(winget *)"
   - "Bash(choco *)"
   - "Bash(scoop *)"
   - "Bash(brew *)"
@@ -38,18 +39,22 @@ allowed-tools:
 
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
-1. 프로젝트 루트에서 `.git/` 디렉토리 존재 여부를 확인한다 (`test -d .git`).
-2. 프로젝트 루트에서 `.svn/` 디렉토리 존재 여부를 확인한다 (`test -d .svn`).
+1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
+2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
 3. 결과에 따라 분기:
-   - `.git/`만 존재 → `VCS_TYPE = "git"`
-   - `.svn/`만 존재 → `VCS_TYPE = "svn"`
-   - 둘 다 존재 → AskUserQuestion: "Git과 SVN이 모두 감지되었습니다. 어떤 VCS를 사용하시겠습니까?" 선택지: `git`, `svn`
-   - 둘 다 없음 → AskUserQuestion: "VCS를 감지하지 못했습니다. 사용 중인 VCS를 선택해주세요." 선택지: `git`, `svn`, `없음 (VCS 미사용)`
-     - `없음` 선택 시 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
-4. `.claude/config.json`의 `"vcs"` 필드를 확인한다:
-   - 이미 값이 설정되어 있고 감지 결과와 **동일**하면 → 갱신 없이 `VCS 감지 : 완료 ✅ ({VCS_TYPE}, 기존 설정 유지)` 출력.
-   - 이미 값이 설정되어 있지만 감지 결과와 **다르면** → AskUserQuestion: "기존 설정({기존값})과 감지 결과({감지값})가 다릅니다. 어떤 값을 사용하시겠습니까?" 선택지: 기존값, 감지값.
-   - 값이 비어있으면 → `VCS_TYPE` 값으로 갱신한다 (Edit).
+   - **성공** → `VCS_TYPE = "git"`
+   - **실패** → AskUserQuestion:
+     ```
+     question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요."
+     options:
+       - { value: "git", label: "Git — 새 Git 저장소를 생성합니다" }
+       - { value: "svn", label: "SVN — SVN 프로젝트입니다" }
+       - { value: "none", label: "없음 — VCS를 사용하지 않습니다" }
+     ```
+     - `git` 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
+     - `svn` 선택 → `VCS_TYPE = "svn"`
+     - `없음` 선택 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
+4. `.claude/config.json`의 `"vcs"` 필드를 `VCS_TYPE` 값으로 갱신한다 (Edit).
 5. `VCS 감지 : 완료 ✅ ({VCS_TYPE})` 출력.
 
 이후 단계는 `VCS_TYPE`에 따라 분기한다.
@@ -66,7 +71,37 @@ allowed-tools:
 **git인 경우:**
 1. `which gh` 실행
 2. 있으면 → `gh : 완료 ✅` 출력
-3. 없으면 → 설치 링크를 안내 (https://cli.github.com)
+3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
+
+   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
+      - `which winget` → Windows (winget)
+      - `which choco` → Windows (Chocolatey)
+      - `which scoop` → Windows (Scoop)
+      - `which brew` → macOS/Linux (Homebrew)
+      - `which apt` → Linux (apt)
+      - `which yum` → Linux (yum)
+
+   b. **apt/yum만 감지된 경우** → gh는 기본 저장소에 미포함되므로 자동 설치를 건너뛰고 수동 안내로 직행한다 (https://cli.github.com).
+
+   c. **그 외 패키지 매니저가 감지되면** AskUserQuestion:
+      ```
+      question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
+      options:
+        - { value: "install", label: "설치 — {감지된 패키지 매니저}로 gh CLI 설치" }
+        - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
+      ```
+
+   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+      | 패키지 매니저 | 설치 명령 |
+      |-------------|----------|
+      | winget | `winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements` |
+      | choco | `choco install gh -y` |
+      | scoop | `scoop install gh` |
+      | brew | `brew install gh` |
+
+   e. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
+   f. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
+   g. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/setup` 재실행 안내.
 
 **svn인 경우:**
 1. `which svn` 실행
@@ -74,7 +109,8 @@ allowed-tools:
 3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
 
    **설치 시도 순서:**
-   a. OS와 패키지 매니저를 감지한다:
+   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
+      - `which winget` → Windows (winget, Windows 10/11 기본 내장)
       - `which choco` → Windows (Chocolatey)
       - `which scoop` → Windows (Scoop)
       - `which brew` → macOS/Linux (Homebrew)
@@ -92,6 +128,7 @@ allowed-tools:
    c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
+      | winget | `winget install --id SlikSvn.SlikSvn --accept-source-agreements --accept-package-agreements` |
       | choco | `choco install svn -y` |
       | scoop | `scoop install svn` |
       | brew | `brew install subversion` |
@@ -154,7 +191,29 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 - 성공 → `GH 인증 : 완료 ✅` 출력
 - 실패 → 에러 메시지를 보여주고, 2-1부터 재시도할지 사용자에게 묻는다
 
-**svn인 경우** → 건너뛴다. `인증 : 건너뜀 (SVN)` 출력.
+**svn인 경우** → SVN 자격 증명을 확인한다:
+
+1. `svn info`로 현재 워킹 카피의 인증 상태를 확인한다.
+   - 성공 (자격 증명 캐시됨) → `SVN 인증 : 완료 ✅ (캐시된 자격 증명 사용)` 출력.
+   - 실패 (인증 오류) → 아래 절차로 자격 증명을 설정한다.
+
+2. AskUserQuestion으로 SVN 자격 증명을 입력받는다:
+   ```
+   question: "SVN 인증이 필요합니다. SVN 사용자명을 입력해주세요."
+   ```
+
+3. 사용자명을 받은 후, 비밀번호를 입력받는다:
+   ```
+   question: "SVN 비밀번호를 입력해주세요."
+   ```
+
+4. 입력받은 자격 증명으로 인증을 확인한다. 비밀번호는 프로세스 목록에 노출되지 않도록 stdin으로 전달한다:
+   `echo "{비밀번호}" | svn info --username {사용자명} --password-from-stdin --non-interactive`
+   - 성공 → 자격 증명이 SVN 캐시에 저장됨. `SVN 인증 : 완료 ✅` 출력.
+   - 실패 → "인증에 실패했습니다. 사용자명/비밀번호를 확인해주세요." 출력 후 1회 재시도.
+   - 재시도도 실패 → "SVN 인증을 건너뜁니다. `svn update` 등 실행 시 인증이 요청될 수 있습니다." 출력 후 계속 진행.
+
+5. **주의**: 비밀번호는 커맨드 라인 인자(`--password`)로 전달하지 않는다. 반드시 `--password-from-stdin`을 사용하여 프로세스 목록이나 셸 히스토리에 남지 않도록 한다. config.json 등에도 저장하지 않는다.
 
 ### 3단계: context/ 초기 구조 안내
 

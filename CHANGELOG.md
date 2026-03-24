@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.4.1 (2026-03-24) — setup VCS 감지 및 CLI 자동 설치 개선
+
+### Fixes
+- **VCS 감지 단순화**: `svn info` 감지를 제거하고 `git rev-parse` 성공/실패로 분기. 실패 시 사용자에게 Git/SVN/없음 선택지 제시. Git 선택 시 `git init` 자동 실행
+- **gh CLI 자동 설치**: svn과 동일한 패키지 매니저 자동 설치 패턴 적용. 기존 안내 링크만 표시하던 방식에서 개선
+- **winget 최우선 감지**: Windows 10/11 기본 내장 winget을 최우선 패키지 매니저로 추가. 별도 패키지 매니저 없이 gh/svn CLI 자동 설치 가능
+- **SVN 인증 단계 추가**: 2단계(인증)에서 `svn info`로 캐시된 자격 증명 확인 후, 실패 시 사용자에게 아이디/비밀번호 입력 요청
+- **allowed-tools 보강**: setup 스킬에 winget, choco, scoop, brew, sudo, test 명령 허용 추가
+
 ## v1.4.0 (2026-03-23) — SVN 프로젝트 지원
 
 ### Features
