@@ -67,7 +67,37 @@ allowed-tools:
 **git인 경우:**
 1. `which gh` 실행
 2. 있으면 → `gh : 완료 ✅` 출력
-3. 없으면 → 설치 링크를 안내 (https://cli.github.com)
+3. 없으면 → 패키지 매니저를 감지하여 자동 설치를 시도한다:
+
+   a. OS와 패키지 매니저를 감지한다 (위에서부터 순서대로, 먼저 감지된 것을 사용):
+      - `which winget` → Windows (winget)
+      - `which choco` → Windows (Chocolatey)
+      - `which scoop` → Windows (Scoop)
+      - `which brew` → macOS/Linux (Homebrew)
+      - `which apt` → Linux (apt)
+      - `which yum` → Linux (yum)
+
+   b. 패키지 매니저가 감지되면 AskUserQuestion:
+      ```
+      question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
+      options:
+        - { value: "install", label: "설치 — {감지된 패키지 매니저}로 gh CLI 설치" }
+        - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
+      ```
+
+   c. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+      | 패키지 매니저 | 설치 명령 |
+      |-------------|----------|
+      | winget | `winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements` |
+      | choco | `choco install gh -y` |
+      | scoop | `scoop install gh` |
+      | brew | `brew install gh` |
+      | apt | `sudo apt install -y gh` |
+      | yum | `sudo yum install -y gh` |
+
+   d. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
+   e. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
+   f. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/setup` 재실행 안내.
 
 **svn인 경우:**
 1. `which svn` 실행
@@ -157,7 +187,28 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 - 성공 → `GH 인증 : 완료 ✅` 출력
 - 실패 → 에러 메시지를 보여주고, 2-1부터 재시도할지 사용자에게 묻는다
 
-**svn인 경우** → 건너뛴다. `인증 : 건너뜀 (SVN)` 출력.
+**svn인 경우** → SVN 자격 증명을 확인한다:
+
+1. `svn info`로 현재 워킹 카피의 인증 상태를 확인한다.
+   - 성공 (자격 증명 캐시됨) → `SVN 인증 : 완료 ✅ (캐시된 자격 증명 사용)` 출력.
+   - 실패 (인증 오류) → 아래 절차로 자격 증명을 설정한다.
+
+2. AskUserQuestion으로 SVN 자격 증명을 입력받는다:
+   ```
+   question: "SVN 인증이 필요합니다. SVN 사용자명을 입력해주세요."
+   ```
+
+3. 사용자명을 받은 후, 비밀번호를 입력받는다:
+   ```
+   question: "SVN 비밀번호를 입력해주세요."
+   ```
+
+4. 입력받은 자격 증명으로 `svn info --username {사용자명} --password {비밀번호} --non-interactive`를 실행하여 인증을 확인한다.
+   - 성공 → 자격 증명이 SVN 캐시에 저장됨. `SVN 인증 : 완료 ✅` 출력.
+   - 실패 → "인증에 실패했습니다. 사용자명/비밀번호를 확인해주세요." 출력 후 1회 재시도.
+   - 재시도도 실패 → "SVN 인증을 건너뜁니다. `svn update` 등 실행 시 인증이 요청될 수 있습니다." 출력 후 계속 진행.
+
+5. **주의**: 비밀번호는 로그에 남지 않도록 한다. `--password` 인자는 SVN 캐시 저장 목적으로만 사용하며, config.json 등에 저장하지 않는다.
 
 ### 3단계: context/ 초기 구조 안내
 
