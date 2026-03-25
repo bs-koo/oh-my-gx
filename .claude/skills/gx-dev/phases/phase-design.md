@@ -62,7 +62,7 @@ design-critic 결과 처리:
     ]
   )
   ```
-- **승인** → phase-implement로 진행.
+- **승인** → 다음 Phase로 진행.
 - **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 다음 반복 진행 (Step 0으로 돌아간다).
 - **코드 미리보기** → 아래 "코드 미리보기 루프"로 진입.
 
@@ -113,7 +113,7 @@ AskUserQuestion(
   ]
 )
 ```
-- **승인** → 미리보기에서 생성된 코드를 **그대로 파일에 Write**한다 (coder agent를 재호출하지 않음). 이후 phase-implement의 나머지 단계(테스트 등)가 있으면 진행.
+- **승인** → 미리보기에서 생성된 코드를 **그대로 파일에 Write**한다 (coder agent를 재호출하지 않음). state.md에 `preview-written: true`를 기록한다. 이후 phase-implement에서 이 플래그를 확인하여 Step 0~2(문서 로드, 구현 계획, 배치 구성, coder 디스패치)를 건너뛰고 Step 3(구현 결과 수집) 또는 자기점검(Step 4)부터 진행한다.
 - **코드 미리보기** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
 - **설계로 돌아가기** → 미리보기 결과를 폐기하고 설계 Q&A 루프(Step 0)로 복귀한다.
 - **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.

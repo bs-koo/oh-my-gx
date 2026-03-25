@@ -113,7 +113,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 ### --status 동작
 `--status`가 지정되면 파이프라인을 실행하지 않고 현재 상태만 출력한다:
 
-1. phase-setup의 0.0과 동일한 방식으로 `.dev/state.md`를 탐색한다.
+1. phase-setup의 Step 0과 동일한 방식으로 `.dev/state.md`를 탐색한다.
 2. state.md가 없으면: "진행 중인 파이프라인이 없습니다." 출력 후 종료.
 3. state.md가 있으면 다음을 출력:
    ```
@@ -257,7 +257,7 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 - ...
 ```
 
-**생성**: phase-setup의 Step 0.4에서 초기 맵을 생성한다.
+**생성**: phase-setup의 Step 4에서 초기 맵을 생성한다.
 **누적**: 각 agent 출력에 "탐색 추가 항목" 섹션이 있으면 해당 항목을 맵에 append한다. 누적 맵은 **최대 25개**로 제한한다. 초과 시 참조 파일부터 제거한다.
 **저장**: 코드 맵이 갱신될 때마다 `.dev/codemap.md`에 Write한다.
 **전달**: 모든 agent 호출 시 현재 코드 맵을 프롬프트에 포함한다.
@@ -290,8 +290,8 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `GIT_PREFIX`: `VCS_TYPE`이 `"git"`이면 `git`, `"svn"`이면 `svn`. 소비 프로젝트 루트에서 직접 실행한다.
 - `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `.dev/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
-- `DOMAIN_CONTEXT`: phase-setup 0.3에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
-- `REFERENCES`: phase-setup Step 3.5에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
+- `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
+- `REFERENCES`: phase-setup Step 3(외부 규격 참조 탐색)에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
 - 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행할 때, Bash 작업 디렉토리가 변경되지 않도록 **서브셸**을 사용한다: `(cd ${PROJECT_ROOT} && ./gradlew build)`. 괄호 `()`로 감싸면 서브셸에서 `cd`가 실행되어 부모 셸의 작업 디렉토리가 유지된다.
 
@@ -341,7 +341,7 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 - 코드 맵을 `.dev/codemap.md`에 저장한다 (갱신 시마다).
 - 자기점검 결과를 `.dev/self-check.md`에 저장한다 (phase-implement 자기점검 완료 시).
 - phase-design, phase-implement, phase-review 진입 시 해당 파일들을 Read하여 에이전트 프롬프트에 사용한다.
-- `.gitignore` 보강은 phase-setup의 Step 0.5a에서 프로젝트 타입별로 처리한다 (`.dev/` 포함).
+- `.gitignore` 보강은 phase-setup의 Step 6에서 프로젝트 타입별로 처리한다 (`.dev/` 포함).
 
 ### 진행 상태 추적 (state.md)
 파이프라인 진행 상태를 `.dev/state.md`에 기록하여 세션 재개를 지원한다.

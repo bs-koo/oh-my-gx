@@ -3,6 +3,7 @@
 **최대 2회 반복.**
 
 **문서 로드**: `${PROJECT_ROOT}/.dev/prd.md`와 `${PROJECT_ROOT}/.dev/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다.
+`${PROJECT_ROOT}/.dev/self-check.md`가 존재하면 Read하여 `SELF_CHECK_FINDINGS`와 `SELF_CHECK_QUESTIONS` 변수를 복원한다 (`--resume`으로 phase-review에서 재개하는 경우).
 
 ## Step 0: Mechanical Gate (build + test)
 

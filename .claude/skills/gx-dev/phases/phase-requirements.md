@@ -8,7 +8,7 @@
 - product-owner에게 "경량 PRD 작성"으로 동작할 것을 지시한다.
 - 포함 섹션: 배경 + 요구사항 + 수용 기준만 (3관점 품질 검증, Q&A 생략).
 - 작성 완료 후 사용자에게 전문 표시 + 승인 확인.
-- 승인 → `${PROJECT_ROOT}/.dev/prd.md`에 저장 후 phase-implement로 진행.
+- 승인 → `${PROJECT_ROOT}/.dev/prd.md`에 저장 후 다음 Phase로 진행.
 - 수정 요청 → 1회 수정 후 저장.
 
 hotfix가 아닌 경우 아래 정상 플로우를 따른다.
@@ -50,7 +50,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
     ]
   )
   ```
-- 승인 → phase-design으로 진행.
+- 승인 → 다음 Phase로 진행.
 - 직접 입력 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
 
 **Phase 완료 후 저장**:
