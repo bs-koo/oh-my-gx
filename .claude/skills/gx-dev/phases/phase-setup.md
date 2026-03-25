@@ -40,7 +40,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
 **이어서 진행 시:**
-- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. DEV_DIR이 없으면 브랜치명으로 재구성한다.
+- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. DEV_DIR이 없으면 브랜치명으로 재구성한다(브랜치명의 `/`를 `-`로 치환, Step 5의 DEV_DIR 설정 규칙과 동일).
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/prd.md`, `${DEV_DIR}/design.md`, `${DEV_DIR}/trust-ledger.md`, `${DEV_DIR}/codemap.md`, `${DEV_DIR}/self-check.md`가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
