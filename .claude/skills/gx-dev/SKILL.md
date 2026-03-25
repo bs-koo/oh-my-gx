@@ -182,7 +182,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 
 > **CRITICAL: Phase 스킵 절대 금지.**
 > "요구사항이 명확하다", "범위가 작다", "이미 확정되어 있다", "간단하다" 등 어떤 이유로도 Phase를 건너뛰지 않는다.
-> Phase를 건너뛸 수 있는 유일한 조건은 `--hotfix` 모드와 `--phase` 플래그뿐이다.
+> Phase를 건너뛸 수 있는 유일한 조건은 `--hotfix` 모드, `implement` (경량 구현) 모드, `--phase` 플래그뿐이다.
 > 이 규칙을 위반하면 사용자가 기대하는 PRD, 설계서, 리뷰가 누락되어 품질 사고가 발생한다.
 
 ### Phase 실행 루프
@@ -204,11 +204,12 @@ else:  # NORMAL
 for phase in PHASES:
 
     # 2a. 산출물 게이트 — 이전 Phase 산출물이 없으면 이전 Phase부터 실행 (순서 중요: 상위 의존성 먼저 체크)
+    # 참고: implement(경량 구현) 모드는 PRD/설계서 없이 진행하므로 게이트 제외
     if phase == "design" and not exists(".dev/prd.md"):
         → phase-requirements부터 실행
-    if phase == "implement" and not exists(".dev/prd.md"):
+    if phase == "implement" and not implement_mode and not exists(".dev/prd.md"):
         → phase-requirements부터 실행
-    if phase == "implement" and not hotfix and not exists(".dev/design.md"):
+    if phase == "implement" and not hotfix and not implement_mode and not exists(".dev/design.md"):
         → phase-design부터 실행
     if phase == "review" and 변경사항이 없음:
         # VCS_TYPE == "git": git diff --stat이 비어있음
@@ -297,9 +298,25 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 ### 베이스 브랜치 감지
 `--base`가 지정되었으면 해당 브랜치를 사용한다. 미지정이면 자동 감지:
 1. `git branch --list main master develop`로 존재하는 브랜치를 확인한다.
-2. 존재하는 브랜치가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택지 제시 (예: main, develop).
+2. 존재하는 브랜치가 **2개 이상**이면:
+   ```
+   AskUserQuestion(
+     question: "베이스 브랜치를 선택해주세요.",
+     options: [
+       { value: "<branch1>", label: "<branch1>" },
+       { value: "<branch2>", label: "<branch2>" },
+       ...감지된 브랜치별 옵션
+     ]
+   )
+   ```
 3. 존재하는 브랜치가 **1개**이면 → 해당 브랜치를 베이스로 자동 선택.
-4. 하나도 없으면 → AskUserQuestion(자유입력)으로 직접 입력을 요청한다.
+4. 하나도 없으면:
+   ```
+   AskUserQuestion(
+     question: "베이스 브랜치를 입력해주세요.",
+     description: "main, master, develop 중 해당 브랜치가 없습니다. 베이스 브랜치명을 직접 입력해주세요."
+   )
+   ```
 
 확정된 베이스 브랜치를 이후 phase-review (diff 계산), phase-complete (PR 생성)에서 사용한다.
 
@@ -392,11 +409,11 @@ execution-log:
 - **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면)
 - **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
 - **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + REFERENCES (있으면)
-- **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). `--hotfix`이면 설계서 대신 PRD + 코드 맵.
+- **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). `--hotfix`이면 설계서 대신 PRD + 코드 맵. `implement` 모드이면 설계서/PRD 대신 ARGS[0] + 코드 맵.
 - **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
 - **coder (수정)**: 수정 항목 목록 + 수정 방안 + 코드 맵 + 프로젝트 루트 경로
 - **qa-manager**: PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 + 코드 맵 + REFERENCES (있으면)
-- **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용)
+- **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용). `implement` 모드이면 PRD 대신 ARGS[0]을 전달
 - **security-auditor (통합 감사)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **researcher (독립 조사)**: 조사 요청 + 코드 맵 (있으면) + 프로젝트 루트 경로
@@ -517,11 +534,11 @@ AskUserQuestion(
   question: "{산출물}을 확인해주세요.",
   options: [
     { value: "approve", label: "승인 — 다음 단계로 진행" },
-    { value: "modify", label: "수정 요청 — 수정할 부분을 알려주세요" }
+    { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
   ]
 )
 ```
-사용자가 "수정 요청"을 선택하면 후속 AskUserQuestion(자유입력)으로 수정 내용을 받는다.
+사용자가 "직접 입력"을 선택하면 후속 AskUserQuestion(자유입력)으로 수정 내용을 받는다.
 
 ---
 

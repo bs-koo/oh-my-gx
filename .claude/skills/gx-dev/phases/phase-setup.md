@@ -13,7 +13,16 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 1. `.dev/state.md`를 탐색한다.
 2. state.md가 존재하고 `status: in_progress`이면:
-   - 사용자에게 AskUserQuestion으로 질문: "이전에 진행하던 작업이 있습니다."
+   - 사용자에게 AskUserQuestion으로 질문:
+     ```
+     AskUserQuestion(
+       question: "이전에 진행하던 작업이 있습니다.",
+       options: [
+         { value: "resume", label: "이어서 진행 — 이전 작업을 재개합니다" },
+         { value: "new", label: "새로 시작 — 새 작업을 시작합니다" }
+       ]
+     )
+     ```
      - "이어서 진행" → 재개
      - "새로 시작" → Step 1로 진행 (Step 7에서 덮어씀)
 3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
@@ -33,7 +42,16 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 **git인 경우** (vcs가 `"git"` 또는 `""` 미설정):
 - `git rev-parse --is-inside-work-tree` 확인.
 - 성공 → `VCS_TYPE` = `"git"`, `GIT_PREFIX` = `git`.
-- 실패 → AskUserQuestion: "Git 저장소가 아닙니다. `git init`으로 생성할까요?"
+- 실패:
+  ```
+  AskUserQuestion(
+    question: "Git 저장소가 아닙니다. git init으로 생성할까요?",
+    options: [
+      { value: "yes", label: "예 — git init을 실행합니다" },
+      { value: "no", label: "아니오 — 작업을 중단합니다" }
+    ]
+  )
+  ```
   - 예 → `git init` 실행 후 계속.
   - 아니오 → 중단.
 

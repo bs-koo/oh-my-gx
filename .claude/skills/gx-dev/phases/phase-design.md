@@ -51,18 +51,74 @@ design-critic 결과 처리:
 - 사용자 답변을 수렴하여 다음 반복으로 전달.
 
 **질문이 없으면** ("추가 확인 사항 없음. 설계가 완료되었습니다."):
-- **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
+- 설계 승인 선택지를 제시한다:
   ```
   AskUserQuestion(
     question: "설계를 확인해주세요.",
     options: [
       { value: "approve", label: "승인 — 구현 단계로 진행" },
-      { value: "modify", label: "수정 요청 — 수정할 부분을 알려주세요" }
+      { value: "preview", label: "코드 미리보기 — 구현될 코드를 먼저 확인합니다" },
+      { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
     ]
   )
   ```
-- 승인 → phase-implement로 진행.
-- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 다음 반복 진행 (Step 0으로 돌아간다).
+- **승인** → phase-implement로 진행.
+- **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 다음 반복 진행 (Step 0으로 돌아간다).
+- **코드 미리보기** → 아래 "코드 미리보기 루프"로 진입.
+
+---
+
+### 코드 미리보기 루프
+
+사용자가 "코드 미리보기"를 선택하면 다음을 수행한다. **사용자가 "승인" 또는 "설계로 돌아가기"를 선택할 때까지 반복한다.**
+
+**Preview Step 1**: coder agent를 **미리보기 모드**로 호출한다.
+`Task(subagent_type="coder")` — prompt에 다음을 포함:
+- 확정된 설계서 (architect 출력)
+- 코드 맵 (누적된 상태)
+- 프로젝트 타입, 디렉토리 구조, 컨벤션
+- 프로젝트 루트 경로
+- **"미리보기 모드: 코드를 생성하되 파일에 Write하지 않는다. 생성한 코드를 전문 출력한다."**
+- 이전 미리보기 피드백 (있으면): 사용자의 수정사항을 반영하여 재생성
+
+**Preview Step 2**: 설계 규모에 따라 출력 방식을 분기한다.
+
+**소형·중형** (변경 파일 10개 미만):
+- 생성된 코드를 **전체 표시**한다.
+
+**대형** (변경 파일 10개 이상):
+- 변경 파일 목록을 먼저 표시한다.
+- 파일 선택 AskUserQuestion을 제시한다:
+  ```
+  AskUserQuestion(
+    question: "미리볼 파일을 선택해주세요.",
+    options: [
+      { value: "all", label: "전체 보기 — 모든 파일의 코드를 표시합니다" },
+      { value: "select", label: "파일 선택 — 확인할 파일을 선택합니다" }
+    ]
+  )
+  ```
+  - **전체 보기** → 모든 파일의 코드를 표시.
+  - **파일 선택** → 후속 AskUserQuestion(multiSelect)으로 파일 목록을 제시하여 선택한 파일만 표시.
+
+**Preview Step 3**: 코드 표시 후 선택지를 제시한다.
+```
+AskUserQuestion(
+  question: "코드를 확인해주세요.",
+  options: [
+    { value: "approve", label: "승인 — 이 코드로 구현 진행" },
+    { value: "preview-again", label: "코드 미리보기 — 수정된 코드를 다시 확인합니다" },
+    { value: "back", label: "설계로 돌아가기 — 설계를 다시 수정합니다" },
+    { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
+  ]
+)
+```
+- **승인** → 미리보기에서 생성된 코드를 **그대로 파일에 Write**한다 (coder agent를 재호출하지 않음). 이후 phase-implement의 나머지 단계(테스트 등)가 있으면 진행.
+- **코드 미리보기** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
+- **설계로 돌아가기** → 미리보기 결과를 폐기하고 설계 Q&A 루프(Step 0)로 복귀한다.
+- **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
+
+---
 
 **Phase 완료 후 저장**: 확정된 설계 문서를 `${PROJECT_ROOT}/.dev/design.md`에 Write한다.
 

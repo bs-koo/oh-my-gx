@@ -46,12 +46,12 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
     question: "PRD를 확인해주세요.",
     options: [
       { value: "approve", label: "승인 — 설계 단계로 진행" },
-      { value: "modify", label: "수정 요청 — 수정할 부분을 알려주세요" }
+      { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
     ]
   )
   ```
 - 승인 → phase-design으로 진행.
-- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
+- 직접 입력 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
 
 **Phase 완료 후 저장**:
 1. `${PROJECT_ROOT}/.dev/` 디렉토리가 없으면 생성한다.
