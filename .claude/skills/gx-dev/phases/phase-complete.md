@@ -2,14 +2,15 @@
 
 각 단계가 실패하면 사용자에게 보고하고 진행 여부를 확인한다.
 
+## Step 0-pre: diff 갱신
+phase-review 이후 coder 수정이 있었을 수 있으므로 diff를 갱신한다. 이 단계는 인수 검증 여부와 무관하게 항상 실행한다.
+- **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
+- **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
+
 ## Step 0: 인수 검증 (ProductOwner)
 PRD가 없으면 이 단계를 건너뛴다.
 
-PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한다.
-
-**diff 갱신**: phase-review 이후 coder 수정이 있었을 수 있으므로 diff를 갱신한다.
-- **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
-- **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
+PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
 
 `Task(subagent_type="product-owner")` — prompt에 다음을 포함:
 - PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
@@ -56,9 +57,9 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 `Skill(skill: "oh-my-gx:gx-pull-request")`을 호출하여 PR을 생성한다. args를 통해 dev 컨텍스트를 전달한다:
 
 1. **args 구성**:
-   - `--background .dev/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `implement` (경량 구현) 모드이면 PRD가 없으므로 `--background`를 생략한다.
-   - `--extra-section .dev/trust-ledger.md`: Trust Ledger가 존재하면 Audit Summary 섹션을 Checklist 앞에 삽입. 파일이 없으면 `--extra-section`을 생략한다.
-   - 예: `Skill(skill: "oh-my-gx:gx-pull-request", args: "--background .dev/prd.md --extra-section .dev/trust-ledger.md")`
+   - `--background ${DEV_DIR}/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `implement` (경량 구현) 모드이면 PRD가 없으므로 `--background`를 생략한다.
+   - `--extra-section ${DEV_DIR}/trust-ledger.md`: Trust Ledger가 존재하면 Audit Summary 섹션을 Checklist 앞에 삽입. 파일이 없으면 `--extra-section`을 생략한다.
+   - 예: `Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/prd.md --extra-section ${DEV_DIR}/trust-ledger.md")`
 2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/gx-pull-request`로 PR을 생성할 수 있습니다."
 3. **PR 생성 후 알림**: `pull-request` 스킬이 PR 생성 후 내부적으로 알림 절차를 수행한다. 오케스트레이터가 별도로 알림을 처리할 필요 없다.
 
@@ -78,7 +79,7 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 ## Step 4: context 환류 제안
 
-`DOMAIN_CONTEXT`가 있고, PRD(`.dev/prd.md`) 또는 설계서(`.dev/design.md`)가 존재하면 실행한다. 그 외에는 건너뛴다 (`implement` 모드 등 PRD/설계서가 없는 경우 포함).
+`DOMAIN_CONTEXT`가 있고, PRD(`${DEV_DIR}/prd.md`) 또는 설계서(`${DEV_DIR}/design.md`)가 존재하면 실행한다. 그 외에는 건너뛴다 (`implement` 모드 등 PRD/설계서가 없는 경우 포함).
 
 PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제안한다:
 
@@ -102,7 +103,7 @@ AskUserQuestion(
 **임의 반영 금지**: 사용자 승인 없이 context 문서를 수정하지 않는다.
 
 ## Step 5: 진행 상태 완료
-`.dev/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
+`${DEV_DIR}/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
 
 ## Step 6: 다음 단계
 

@@ -2,8 +2,8 @@
 
 **최대 2회 반복.**
 
-**문서 로드**: `${PROJECT_ROOT}/.dev/prd.md`와 `${PROJECT_ROOT}/.dev/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다.
-`${PROJECT_ROOT}/.dev/self-check.md`가 존재하면 Read하여 `SELF_CHECK_FINDINGS`와 `SELF_CHECK_QUESTIONS` 변수를 복원한다 (`--resume`으로 phase-review에서 재개하는 경우).
+**문서 로드**: `${DEV_DIR}/prd.md`와 `${DEV_DIR}/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다.
+`${DEV_DIR}/self-check.md`가 존재하면 Read하여 `SELF_CHECK_FINDINGS`와 `SELF_CHECK_QUESTIONS` 변수를 복원한다 (`--resume`으로 phase-review에서 재개하는 경우).
 
 ## Step 0: Mechanical Gate (build + test)
 
@@ -114,7 +114,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 **Step 3**: 두 Task 완료 후 결과를 합산한다.
 
-1. ZT 감사 결과를 Trust Ledger로 구성하고 `${PROJECT_ROOT}/.dev/trust-ledger.md`에 저장한다.
+1. ZT 감사 결과를 Trust Ledger로 구성하고 `${DEV_DIR}/trust-ledger.md`에 저장한다.
 2. QA의 CERTAIN + ZT의 CRITICAL/HIGH/MEDIUM을 합산하여 **통합 findings**를 구성한다.
 3. 중복 항목은 병합한다 (같은 파일:라인을 둘 다 지적한 경우).
 4. 사용자에게 **요약만** 표시한다 (Agent 전문 출력 금지):
@@ -122,7 +122,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
    리뷰 완료:
    - QA: Critical N건, Warning N건, Info N건, QUESTION N건
    - ZT: CRITICAL N건, HIGH N건, MEDIUM N건
-   - Trust Ledger: .dev/trust-ledger.md에 저장됨
+   - Trust Ledger: ${DEV_DIR}/trust-ledger.md에 저장됨
    ```
 
 **Step 4**: 결과 처리 (의사코드)

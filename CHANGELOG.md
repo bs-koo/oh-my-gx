@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.5.1 (2026-03-25) — gx-dev 구동 안정성 및 브랜치별 산출물 분리
+
+### Features
+- **.dev/ 브랜치별 폴더 분리**: `DEV_DIR` 변수 도입으로 `.dev/{branch-slug}/` 형식으로 브랜치별 산출물 격리. 여러 기능을 번갈아 개발해도 PRD/설계서/state가 유실되지 않음
+- **복수 작업 resume 선택**: `--resume` 시 `in_progress` 상태 작업이 여러 개면 AskUserQuestion으로 선택 가능
+
+### Fixes
+- **implement(경량 구현) 모드 보강**: 산출물 게이트에 implement 모드 예외 추가, phase-implement에 경량 구현 분기 신규 추가, Context Slicing에 coder/qa-manager implement 분기 반영
+- **hotfix 인수검증 모순 수정**: phase-complete에서 hotfix가 인수검증을 건너뛴다는 잘못된 노트 제거 (hotfix는 경량 PRD를 생성하므로 인수검증 실행이 맞음)
+- **SVN VCS_TYPE 설정 누락**: phase-setup SVN 분기에서 `VCS_TYPE = "svn"` 명시 추가
+- **Step 번호 참조 정합성**: SKILL.md의 phase-setup Step 참조를 실제 번호 체계(Step 0~7)와 일치시킴
+- **Phase 진행 표현 통일**: Phase 파일의 "phase-X로 진행"을 "다음 Phase로 진행"으로 통일하여 루프 기반 실행과 일관성 확보
+- **diff 갱신 독립 Step 분리**: phase-complete의 diff 갱신을 인수검증 블록에서 분리하여 PRD 부재 시에도 실행
+- **SELF_CHECK 변수 복원**: phase-review 문서 로드에 self-check.md Read 절차 추가
+- **코드 미리보기 연계**: phase-design 승인 후 `preview-written` 플래그로 phase-implement Step 건너뛰기 분기 추가
+- **--resume implement 모드 복원**: phase-implement에서 mode 필드 확인 후 Step 1/1.5 건너뛰기 로직 추가
+
+### Improvements
+- **AskUserQuestion 구조화**: 전 파일의 평문 AskUserQuestion 11건을 JSON 구조화 형식(question/options/description)으로 변환
+- **승인/수정 패턴 통일**: value 네이밍을 `modify` → `input`으로 일관되게 통일
+- **PR 머지 규칙 완화**: 머지 금지 규칙 제거, force push 금지만 유지하여 사용자 자율성 확보
+
 ## v1.5.0 (2026-03-24) — 스킬 네임스페이스 gx- prefix 추가
 
 ### Breaking Changes
