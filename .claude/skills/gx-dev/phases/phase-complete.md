@@ -64,7 +64,7 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 ## Step 3: 도메인 status.md 갱신
 
-`DOMAIN_CONTEXT`가 있고 (phase-setup에서 도메인 매칭 성공), Step 0 인수 검증이 ACCEPT이면 실행한다. 그 외에는 건너뛴다.
+`DOMAIN_CONTEXT`가 있고 (phase-setup에서 도메인 매칭 성공), Step 0 인수 검증이 ACCEPT이면 실행한다. Step 0이 실행되지 않았으면 (PRD 부재, `implement` 모드 등) 건너뛴다. 그 외에도 건너뛴다.
 
 1. Step 0 인수 검증 결과에서 **통과한 AC 목록**을 추출한다 (예: AC-1, AC-4, AC-7).
 2. 매칭된 도메인의 `context/{domain}/status.md`를 Read한다.
@@ -78,7 +78,7 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 ## Step 4: context 환류 제안
 
-`DOMAIN_CONTEXT`가 있으면 실행한다. 없으면 건너뛴다.
+`DOMAIN_CONTEXT`가 있고, PRD(`.dev/prd.md`) 또는 설계서(`.dev/design.md`)가 존재하면 실행한다. 그 외에는 건너뛴다 (`implement` 모드 등 PRD/설계서가 없는 경우 포함).
 
 PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제안한다:
 

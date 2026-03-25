@@ -57,7 +57,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 **svn인 경우:**
 - `svn info` 확인.
-- 성공 → `GIT_PREFIX` = `svn`.
+- 성공 → `VCS_TYPE` = `"svn"`, `GIT_PREFIX` = `svn`.
 - 실패 → "SVN 작업 복사본이 아닙니다." 출력 후 중단.
 
 ## Step 2: 베이스 브랜치 결정
