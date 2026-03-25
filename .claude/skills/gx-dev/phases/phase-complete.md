@@ -19,11 +19,20 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 
 **결과를 사용자에게 요약만 보고한다** (Agent 전문 출력 금지):
 - **ACCEPT**: "인수 검증 통과. 모든 [Must] 수용 기준 충족." 다음 단계 진행.
-- **REJECT**: "인수 검증 미통과. [Must] 미충족 N건:" + 미충족 항목 목록만 표시. 수정 여부를 확인한다.
+- **REJECT**: "인수 검증 미통과. [Must] 미충족 N건:" + 미충족 항목 목록만 표시. 수정 여부를 확인한다:
+  ```
+  AskUserQuestion(
+    question: "인수 검증에서 미충족 항목이 있습니다. 자동 수정할까요?",
+    options: [
+      { value: "fix", label: "수정 — 미충족 항목을 자동 수정합니다" },
+      { value: "skip", label: "건너뛰기 — 현재 상태로 다음 단계로 진행합니다" }
+    ]
+  )
+  ```
   - 수정 선택 → coder로 수정 후 인수 검증 1회 재실행.
   - 건너뛰기 선택 → 다음 단계 진행.
 
-위 Step 0 진입 조건에 의해 PRD 부재 또는 `--hotfix` 모드이면 이 단계 전체가 건너뛰어진다.
+> **참고**: PRD가 없는 경우(`implement` 경량 구현 모드 등) 이 단계가 건너뛰어진다. `--hotfix` 모드는 경량 PRD를 생성하므로 인수 검증이 **실행**된다.
 
 ## Step 1: Commit
 
@@ -47,7 +56,7 @@ PRD가 있으면 (`.dev/prd.md`), product-owner에게 인수 검증을 요청한
 `Skill(skill: "oh-my-gx:gx-pull-request")`을 호출하여 PR을 생성한다. args를 통해 dev 컨텍스트를 전달한다:
 
 1. **args 구성**:
-   - `--background .dev/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `--hotfix` 모드이면 PRD가 없으므로 `--background`를 생략한다.
+   - `--background .dev/prd.md`: PRD의 "배경"과 "요구사항"을 Background 섹션에 반영. `implement` (경량 구현) 모드이면 PRD가 없으므로 `--background`를 생략한다.
    - `--extra-section .dev/trust-ledger.md`: Trust Ledger가 존재하면 Audit Summary 섹션을 Checklist 앞에 삽입. 파일이 없으면 `--extra-section`을 생략한다.
    - 예: `Skill(skill: "oh-my-gx:gx-pull-request", args: "--background .dev/prd.md --extra-section .dev/trust-ledger.md")`
 2. pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/gx-pull-request`로 PR을 생성할 수 있습니다."
@@ -77,8 +86,16 @@ PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제
 2. **주제 문서 후보**: PRD 제목과 배경을 기반으로, 주제 문서 생성을 제안한다.
 3. **architecture.md 갱신 후보**: 설계서에 새로운 구조적 결정(레이어, 의존관계 등)이 있으면 인덱스 갱신을 제안한다.
 
-사용자에게 AskUserQuestion으로 제안:
-- "context 문서에 반영할까요?" + 후보 목록 표시
+후보 목록을 표시한 후:
+```
+AskUserQuestion(
+  question: "위 항목을 context 문서에 반영할까요?",
+  options: [
+    { value: "apply", label: "반영 — context 문서를 갱신합니다" },
+    { value: "skip", label: "건너뛰기 — 다음 단계로 진행합니다" }
+  ]
+)
+```
 - 반영 선택 → 해당 파일 Edit/Write. 주제 문서 생성 시 architecture.md 인덱스에 링크 추가.
 - 건너뛰기 선택 → 다음 단계 진행.
 
