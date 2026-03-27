@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.5.2 (2026-03-27) — .dev/ 산출물 선별적 git 추적
+
+### Improvements
+- **.dev/ 산출물 팀 공유**: prd.md, design.md, trust-ledger.md, codemap.md는 git 추적 대상으로 유지하여 팀원 간 PRD/설계서/감사 이력 공유 가능
+- **세션 전용 파일만 ignore**: state.md, diff.txt, self-check.md만 .gitignore 대상으로 분리
+- **DEV_DIR fallback slug 규칙 명시**: --resume 시 DEV_DIR 복원에서 브랜치명의 `/`→`-` 치환 규칙을 명시
+
 ## v1.5.1 (2026-03-25) — gx-dev 구동 안정성 및 브랜치별 산출물 분리
 
 ### Features
