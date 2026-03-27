@@ -342,7 +342,7 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 - 코드 맵을 `${DEV_DIR}/codemap.md`에 저장한다 (갱신 시마다).
 - 자기점검 결과를 `${DEV_DIR}/self-check.md`에 저장한다 (phase-implement 자기점검 완료 시).
 - phase-design, phase-implement, phase-review 진입 시 해당 파일들을 Read하여 에이전트 프롬프트에 사용한다.
-- `.gitignore` 보강은 phase-setup의 Step 6에서 프로젝트 타입별로 처리한다 (`.dev/` 포함).
+- `.gitignore` 보강은 phase-setup의 Step 6에서 프로젝트 타입별로 처리한다. `.dev/` 내 세션 전용 파일(`state.md`, `diff.txt`, `self-check.md`)만 ignore하고, 산출물(`prd.md`, `design.md`, `trust-ledger.md`, `codemap.md`)은 git 추적 대상으로 유지한다.
 
 ### 진행 상태 추적 (state.md)
 파이프라인 진행 상태를 `${DEV_DIR}/state.md`에 기록하여 세션 재개를 지원한다.
