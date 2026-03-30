@@ -54,17 +54,16 @@ design-critic 결과 처리:
 - 설계 승인 선택지를 제시한다:
   ```
   AskUserQuestion(
-    question: "설계를 확인해주세요.",
+    question: "설계를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
     options: [
       { value: "approve", label: "승인 — 구현 단계로 진행" },
-      { value: "preview", label: "코드 미리보기 — 구현될 코드를 먼저 확인합니다" },
-      { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
+      { value: "preview", label: "코드 미리보기 — 구현될 코드를 먼저 확인합니다" }
     ]
   )
   ```
 - **승인** → 다음 Phase로 진행.
-- **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 다음 반복 진행 (Step 0으로 돌아간다).
 - **코드 미리보기** → 아래 "코드 미리보기 루프"로 진입.
+- **직접 입력(Other)** → 입력된 수정 내용을 반영하여 다음 반복 진행 (Step 0으로 돌아간다).
 
 ---
 
@@ -104,19 +103,18 @@ design-critic 결과 처리:
 **Preview Step 3**: 코드 표시 후 선택지를 제시한다.
 ```
 AskUserQuestion(
-  question: "코드를 확인해주세요.",
+  question: "코드를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
   options: [
     { value: "approve", label: "승인 — 이 코드로 구현 진행" },
-    { value: "preview-again", label: "코드 미리보기 — 수정된 코드를 다시 확인합니다" },
-    { value: "back", label: "설계로 돌아가기 — 설계를 다시 수정합니다" },
-    { value: "input", label: "직접 입력 — 수정사항을 직접 입력합니다" }
+    { value: "preview-again", label: "코드 미리보기 — 수정 후 코드를 다시 확인합니다" },
+    { value: "back", label: "설계로 돌아가기 — 설계를 다시 수정합니다" }
   ]
 )
 ```
 - **승인** → 미리보기에서 생성된 코드를 **그대로 파일에 Write**한다 (coder agent를 재호출하지 않음). state.md에 `preview-written: true`를 기록한다. 이후 phase-implement에서 이 플래그를 확인하여 Step 0~2(문서 로드, 구현 계획, 배치 구성, coder 디스패치)를 건너뛰고 Step 3(구현 결과 수집) 또는 자기점검(Step 4)부터 진행한다.
 - **코드 미리보기** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
 - **설계로 돌아가기** → 미리보기 결과를 폐기하고 설계 Q&A 루프(Step 0)로 복귀한다.
-- **직접 입력** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
+- **직접 입력(Other)** → 입력된 수정사항을 반영하여 Preview Step 1로 돌아간다.
 
 ---
 
