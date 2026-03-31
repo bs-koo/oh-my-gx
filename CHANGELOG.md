@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.6.1 (2026-03-31) — 모든 모드에서 context 동기화 지원
+
+### Features
+- **context 최신화 (Step 3-0)**: phase-setup에서 베이스 브랜치 기준으로 context/를 자동 최신화. 작업 브랜치 변경 감지 시 사용자 확인 후 덮어쓰기
+- **커밋 기반 status.md 갱신 (경로 B)**: HOTFIX/IMPLEMENT 모드에서 커밋 메시지 ↔ status.md 항목을 대조하여 사용자 확인 후 갱신
+- **diff 기반 context 환류**: HOTFIX(diff+경량PRD), IMPLEMENT(diff only)에서도 glossary/architecture 갱신 후보를 추출하여 제안
+- **context 자동 커밋 + 조건부 push**: status.md 갱신/환류 반영 시 별도 커밋 생성, context 커밋이 1건 이상일 때만 추가 push
+
+### Fixes
+- **HOTFIX+REJECT 보호**: HOTFIX 모드에서 인수검증 REJECT 시 status.md 갱신을 건너뛰도록 분기 규칙 추가
+- **--resume context 복원**: 재개 시 context 최신화(Step 3-0) + DOMAIN_CONTEXT 탐색을 독립적으로 재실행
+- **SVN 가드**: phase-complete Step 3에 SVN 건너뛰기 명시 (브랜치 기반 커밋 로그 비교 불가)
+- **BASE_BRANCH 변수 등록**: SKILL.md 공유 변수 목록에 BASE_BRANCH 추가
+- **git diff 명령 수정**: Step 3-0에서 `diff HEAD` → `diff BASE_BRANCH HEAD`로 변경하여 커밋된 context 변경도 감지
+- **매칭 알고리즘 명시**: 경로 B에서 FR/BR ID 직접 매칭(우선) + 키워드 매칭(보조) 규칙 추가
+- **Step 참조 통일**: --resume의 "Step 3.5" → "Step 3의 5번 항목"으로 정정
+
 ## v1.6.0 (2026-03-30) — 병렬 배치 설계 도입 및 승인 UX 개선
 
 ### Features
