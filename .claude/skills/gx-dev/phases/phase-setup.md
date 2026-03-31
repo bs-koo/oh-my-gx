@@ -43,7 +43,9 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 - state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. DEV_DIR이 없으면 브랜치명으로 재구성한다(브랜치명의 `/`를 `-`로 치환, Step 5의 DEV_DIR 설정 규칙과 동일).
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/prd.md`, `${DEV_DIR}/design.md`, `${DEV_DIR}/trust-ledger.md`, `${DEV_DIR}/codemap.md`, `${DEV_DIR}/self-check.md`가 있으면 Read하여 맥락 복원.
-- `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
+- `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3의 5번 항목)을 재실행하여 `REFERENCES`를 복원한다.
+- `context/` 디렉토리가 있고 베이스 브랜치가 있으면 Step 3-0 (context 최신화)을 재실행한다.
+- Step 3의 도메인 컨텍스트 탐색(4번 항목)을 재실행하여 `DOMAIN_CONTEXT`를 복원한다. 이 단계는 Step 3-0과 독립적이다 — 베이스 브랜치가 없어 Step 3-0을 건너뛰더라도 `DOMAIN_CONTEXT` 복원은 실행한다.
 - phases 맵에서 마지막 in_progress Phase를 찾아 재개.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.
 
@@ -84,6 +86,37 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 1. `git remote get-url origin`으로 remote 존재를 확인한다. 없으면 건너뛴다.
 2. `git checkout <base-branch>`를 실행한다. 실패 시 경고를 표시하고 현재 로컬 상태로 계속 진행한다.
 3. checkout 성공 시, `git pull origin <base-branch>`를 실행한다. pull 실패 시 (네트워크 오류 등) 경고를 표시하고 현재 로컬 상태로 계속 진행한다.
+
+## Step 3-0: context 최신화
+
+**git인 경우에만 실행한다.** svn인 경우 건너뛴다.
+
+`context/` 디렉토리가 존재하고, 베이스 브랜치(Step 2에서 결정)가 있으면 실행한다. 둘 중 하나라도 없으면 건너뛴다.
+
+작업 브랜치의 `context/`가 베이스 브랜치보다 오래되었을 수 있다 (다른 개발자가 context를 갱신한 경우). 파이프라인 시작 전에 최신 상태로 맞춘다.
+
+> **참고**: 새 작업 흐름에서는 이 시점에 아직 작업 브랜치가 생성되지 않았다 (Step 5에서 생성). 따라서 현재 HEAD는 베이스 브랜치이고, diff는 항상 "차이 없음"이 되어 이 Step은 no-op이다. 이 Step이 실질적으로 동작하는 경우는 **`--resume`으로 재개할 때**와 **기존 작업 브랜치에서 파이프라인을 다시 시작할 때**이다.
+
+1. `${GIT_PREFIX} diff ${BASE_BRANCH} -- context/`로 차이를 확인한다.
+2. **차이가 없으면** → 건너뛴다.
+3. **차이가 있으면**:
+   a. `${GIT_PREFIX} diff ${BASE_BRANCH} HEAD -- context/`로 **작업 브랜치의 커밋이 context를 변경했는지** 확인한다 (커밋된 변경 + 워킹 디렉토리 변경 모두 포함).
+   b. **작업 브랜치에 context 변경이 없으면** → 안전하게 덮어쓴다:
+      - `${GIT_PREFIX} checkout ${BASE_BRANCH} -- context/`로 베이스 브랜치의 context를 가져온다.
+      - 사용자에게 보고한다: "context/를 ${BASE_BRANCH} 기준으로 최신화했습니다."
+   c. **작업 브랜치에도 context 변경이 있으면** → 충돌 가능성이 있으므로 사용자에게 확인한다:
+      ```
+      AskUserQuestion(
+        question: "작업 브랜치와 베이스 브랜치 모두 context/가 변경되었습니다. 베이스 기준으로 덮어쓸까요?",
+        options: [
+          { value: "overwrite", label: "덮어쓰기 — 베이스 브랜치 기준으로 최신화합니다 (작업 브랜치 변경 유실)" },
+          { value: "keep", label: "유지 — 현재 상태를 유지하고 진행합니다" }
+        ]
+      )
+      ```
+      - 덮어쓰기 선택 → `${GIT_PREFIX} checkout ${BASE_BRANCH} -- context/` 실행.
+      - 유지 선택 → 현재 상태로 계속 진행한다.
+   d. 실패 시 경고를 표시하고 현재 상태로 계속 진행한다.
 
 ## Step 3: 프로젝트 정보 수집
 `PROJECT_ROOT = ./` (현재 디렉토리).
