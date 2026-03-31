@@ -97,11 +97,11 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 > **참고**: 새 작업 흐름에서는 이 시점에 아직 작업 브랜치가 생성되지 않았다 (Step 5에서 생성). 따라서 현재 HEAD는 베이스 브랜치이고, diff는 항상 "차이 없음"이 되어 이 Step은 no-op이다. 이 Step이 실질적으로 동작하는 경우는 **`--resume`으로 재개할 때**와 **기존 작업 브랜치에서 파이프라인을 다시 시작할 때**이다.
 
-1. `${GIT_PREFIX} diff ${BASE_BRANCH} HEAD -- context/`로 **커밋된** 차이를 확인한다.
+1. `${GIT_PREFIX} diff ${BASE_BRANCH}... -- context/`로 차이를 확인한다. triple-dot(`...`)은 merge-base 기준으로 비교하므로, 베이스 브랜치에 새 커밋이 추가되어도 작업 브랜치의 순수 변경만 감지한다.
 2. **차이가 없으면** → 건너뛴다.
 3. **차이가 있으면**:
    a. 작업 브랜치에서 context를 변경했는지 2단계로 확인한다:
-      - `${GIT_PREFIX} diff ${BASE_BRANCH} HEAD -- context/` — 커밋된 변경 (이미 항목 1에서 확인했으므로 결과 재사용)
+      - `${GIT_PREFIX} diff ${BASE_BRANCH}... -- context/` — 커밋된 변경 (이미 항목 1에서 확인했으므로 결과 재사용)
       - `${GIT_PREFIX} diff HEAD -- context/` — 미커밋(워킹 디렉토리 + 스테이징) 변경
       - 둘 중 하나라도 차이가 있으면 "작업 브랜치에 context 변경이 있음"으로 판단한다.
    b. **작업 브랜치에 context 변경이 없으면** → 안전하게 덮어쓴다:

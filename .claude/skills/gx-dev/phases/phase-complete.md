@@ -183,10 +183,12 @@ AskUserQuestion(
 )
 ```
 - 반영 선택 → 해당 파일 Edit/Write. 주제 문서 생성 시 architecture.md 인덱스에 링크 추가. 반영된 context 변경을 커밋한다:
-  1. `${GIT_PREFIX} add context/`로 context 변경사항을 스테이징한다.
-  2. `${GIT_PREFIX} diff --cached --quiet -- context/`로 실제 변경이 있는지 확인한다.
-  3. 변경이 있으면 커밋: `${GIT_PREFIX} commit -m "docs: [context] {domain} 환류 반영 — {갱신된 항목 목록}"`
-  4. 변경이 없으면 건너뛴다.
+  - **git인 경우**:
+    1. `${GIT_PREFIX} add context/`로 context 변경사항을 스테이징한다.
+    2. `${GIT_PREFIX} diff --cached --quiet -- context/`로 실제 변경이 있는지 확인한다.
+    3. 변경이 있으면 커밋: `${GIT_PREFIX} commit -m "docs: [context] {domain} 환류 반영 — {갱신된 항목 목록}"`
+    4. 변경이 없으면 건너뛴다.
+  - **svn인 경우**: 자동 커밋하지 않는다. "context 문서가 갱신되었습니다. `svn commit`으로 반영해주세요." 안내만 출력한다.
 - 건너뛰기 선택 → 다음 단계 진행.
 
 **임의 반영 금지**: 사용자 승인 없이 context 문서를 수정하지 않는다.
