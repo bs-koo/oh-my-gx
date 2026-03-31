@@ -290,6 +290,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `GIT_PREFIX`: `VCS_TYPE`이 `"git"`이면 `git`, `"svn"`이면 `svn`. 소비 프로젝트 루트에서 직접 실행한다.
 - `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
 - `DEV_DIR`: 브랜치별 산출물 디렉토리. `.dev/{branch-slug}` 형식. branch-slug는 브랜치명에서 `/`를 `-`로 치환한 값 (예: `feat/login` → `.dev/feat-login`). phase-setup Step 5에서 브랜치 결정 후 설정한다. SVN은 `.dev/trunk`. 이후 모든 Phase에서 산출물 Read/Write 경로의 기준이 된다.
+- `BASE_BRANCH`: phase-setup Step 2에서 결정된 베이스 브랜치 (예: `main`, `develop`). state.md의 `base` 필드에 기록된다. SVN인 경우 미사용. phase-setup Step 3-0(context 최신화), phase-complete Step 3(경로 B 커밋 로그 비교), Step 4(diff 기반 환류)에서 사용한다.
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `${DEV_DIR}/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
 - `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
 - `REFERENCES`: phase-setup Step 3(외부 규격 참조 탐색)에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
