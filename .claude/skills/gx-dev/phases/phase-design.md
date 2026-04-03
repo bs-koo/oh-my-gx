@@ -56,65 +56,12 @@ design-critic 결과 처리:
   AskUserQuestion(
     question: "설계를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
     options: [
-      { value: "approve", label: "승인 — 구현 단계로 진행" },
-      { value: "preview", label: "코드 미리보기 — 구현될 코드를 먼저 확인합니다" }
+      { value: "approve", label: "승인 — 구현 단계로 진행" }
     ]
   )
   ```
 - **승인** → 다음 Phase로 진행.
-- **코드 미리보기** → 아래 "코드 미리보기 루프"로 진입.
 - **직접 입력(Other)** → 입력된 수정 내용을 반영하여 다음 반복 진행 (Step 0으로 돌아간다).
-
----
-
-### 코드 미리보기 루프
-
-사용자가 "코드 미리보기"를 선택하면 다음을 수행한다. **사용자가 "승인" 또는 "설계로 돌아가기"를 선택할 때까지 반복한다.**
-
-**Preview Step 1**: coder agent를 **미리보기 모드**로 호출한다.
-`Task(subagent_type="coder")` — prompt에 다음을 포함:
-- 확정된 설계서 (architect 출력)
-- 코드 맵 (누적된 상태)
-- 프로젝트 타입, 디렉토리 구조, 컨벤션
-- 프로젝트 루트 경로
-- **"미리보기 모드: 코드를 생성하되 파일에 Write하지 않는다. 생성한 코드를 전문 출력한다."**
-- 이전 미리보기 피드백 (있으면): 사용자의 수정사항을 반영하여 재생성
-
-**Preview Step 2**: 설계 규모에 따라 출력 방식을 분기한다.
-
-**소형·중형** (변경 파일 10개 미만):
-- 생성된 코드를 **전체 표시**한다.
-
-**대형** (변경 파일 10개 이상):
-- 변경 파일 목록을 먼저 표시한다.
-- 파일 선택 AskUserQuestion을 제시한다:
-  ```
-  AskUserQuestion(
-    question: "미리볼 파일을 선택해주세요.",
-    options: [
-      { value: "all", label: "전체 보기 — 모든 파일의 코드를 표시합니다" },
-      { value: "select", label: "파일 선택 — 확인할 파일을 선택합니다" }
-    ]
-  )
-  ```
-  - **전체 보기** → 모든 파일의 코드를 표시.
-  - **파일 선택** → 후속 AskUserQuestion(multiSelect)으로 파일 목록을 제시하여 선택한 파일만 표시.
-
-**Preview Step 3**: 코드 표시 후 선택지를 제시한다.
-```
-AskUserQuestion(
-  question: "코드를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
-  options: [
-    { value: "approve", label: "승인 — 이 코드로 구현 진행" },
-    { value: "preview-again", label: "코드 미리보기 — 수정 후 코드를 다시 확인합니다" },
-    { value: "back", label: "설계로 돌아가기 — 설계를 다시 수정합니다" }
-  ]
-)
-```
-- **승인** → 미리보기에서 생성된 코드를 **그대로 파일에 Write**한다 (coder agent를 재호출하지 않음). state.md에 `preview-written: true`를 기록한다. 이후 phase-implement에서 이 플래그를 확인하여 Step 0~2(문서 로드, 구현 계획, 배치 구성, coder 디스패치)를 건너뛰고 Step 3(구현 결과 수집) 또는 자기점검(Step 4)부터 진행한다.
-- **코드 미리보기** → 후속 AskUserQuestion(자유입력)으로 수정사항을 받아 Preview Step 1로 돌아간다.
-- **설계로 돌아가기** → 미리보기 결과를 폐기하고 설계 Q&A 루프(Step 0)로 복귀한다.
-- **직접 입력(Other)** → 입력된 수정사항을 반영하여 Preview Step 1로 돌아간다.
 
 ---
 

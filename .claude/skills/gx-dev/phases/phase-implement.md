@@ -18,15 +18,7 @@
   - prompt: "다음 요청을 참고하여 구현하라: {ARGS[0]}. 코드 맵을 참고하라." + REFERENCES (있으면): "아래 외부 규격/표준을 구현 시 준수하라. 필요 시 Read하여 상세 내용을 확인하라." + REFERENCES 테이블
 - 자기점검은 동일하게 실행한다. 단, PRD가 없으므로 자기점검(Step 5)에서 qa-manager에게 PRD 대신 ARGS[0]을 전달한다.
 
-## 코드 미리보기 승인 분기
-
-state.md에 `preview-written: true`가 기록되어 있으면 (phase-design에서 코드 미리보기 승인 후 파일이 이미 Write된 경우):
-- Step 0~2(문서 로드, 구현 계획, 배치 구성, coder 디스패치)를 건너뛴다.
-- Step 3(구현 결과 수집)부터 시작한다. 미리보기에서 Write된 파일 목록을 기반으로 결과를 수집한다.
-- 자기점검은 동일하게 실행한다.
-- state.md에서 `preview-written` 플래그를 제거한다.
-
-hotfix도 경량 구현 모드도 코드 미리보기도 아닌 경우 아래 정상 플로우를 따른다.
+hotfix도 경량 구현 모드도 아닌 경우 아래 정상 플로우를 따른다.
 
 ## 구현
 
@@ -263,7 +255,6 @@ steps:
 ## --resume 호환
 
 - state.md의 `mode` 필드를 확인하여 `implement` (경량 구현) 모드이면 Step 1, Step 1.5를 건너뛰고 Step 2(coder 디스패치)부터 시작한다. `hotfix` 모드도 동일.
-- state.md에 `preview-written: true`가 있으면 코드 미리보기 승인 분기를 따른다.
 - `"배치 구성"` → Step 1.5부터 재실행
 - `"coder 구현 (B2)"` → B1 결과는 파일에 반영됨. `execution-log`에서 이전 배치 결과 복원 후 B2부터 재개
 - `"자기점검"` → Step 4(변경사항 수집)부터 재실행
