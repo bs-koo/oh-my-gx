@@ -27,6 +27,7 @@ allowed-tools:
   - Glob
   - Grep
   - Task
+  - Skill
   - AskUserQuestion
 ---
 
