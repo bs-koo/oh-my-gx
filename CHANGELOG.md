@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.2 (2026-04-03) — Skill 도구 누락 수정 및 코드 미리보기 제거
+
+### Fixes
+- **phase-complete Skill 호출 불가 수정**: gx-dev SKILL.md의 `allowed-tools`에 `Skill` 도구가 누락되어 phase-complete에서 `/gx-commit`, `/gx-pull-request` 스킬 호출이 차단되던 버그 수정
+
+### Removed
+- **코드 미리보기 기능 제거**: phase-design의 미리보기 선택지, phase-implement의 Step 1-preview 전체, preview-written 분기를 제거. coder agent가 Write/Edit 도구에 접근 가능하여 미리보기 모드에서도 실제 파일 수정을 방지할 수 없는 구조적 한계로 삭제
+
 ## v1.6.1 (2026-03-31) — 모든 모드에서 context 동기화 지원
 
 ### Features
