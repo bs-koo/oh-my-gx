@@ -122,9 +122,9 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    c. **작업 브랜치에도 context 변경이 있으면** → 충돌 가능성이 있으므로 사용자에게 확인한다:
       ```
       AskUserQuestion(
-        header: "context 충돌",
         questions: [{
           question: "작업 브랜치와 베이스 브랜치 모두 context/가 변경되었습니다. 베이스 기준으로 덮어쓸까요?",
+          header: "context 충돌",
           multiSelect: false,
           options: [
             { label: "덮어쓰기", description: "베이스 브랜치 기준으로 최신화합니다 (작업 브랜치 변경 유실)" },
