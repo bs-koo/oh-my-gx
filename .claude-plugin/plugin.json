@@ -1,7 +1,7 @@
 {
   "name": "oh-my-gx",
   "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 구현, 리뷰, PR까지 에이전트 팀이 처리합니다.",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "author": {
     "name": "bs-koo"
   },

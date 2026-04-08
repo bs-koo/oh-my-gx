@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.6.3 (2026-04-08) — AskUserQuestion 스키마 수정
+
+### Fixes
+- **AskUserQuestion "invalid tool parameter" 에러 수정**: gx-dev 스킬의 모든 AskUserQuestion 호출 패턴을 실제 도구 스키마(`questions` 배열, `header`, `multiSelect`, `{ label, description }`)에 맞게 수정. 설계/PRD 단계에서 마크다운이 렌더링되지 않고 에러가 발생하던 문제 해결
+- **승인 패턴 options 최소 2개 준수**: 기존 "승인" 단일 옵션 → "승인" + "수정 요청" 2개로 변경 (스키마 `minItems: 2` 준수)
+- **"직접 입력" 중복 옵션 제거**: UI가 자동 제공하는 "Other"와 중복되던 "직접 입력" 선택지를 모든 phase에서 제거
+
+### Added
+- **AskUserQuestion 스키마 규칙 섹션**: SKILL.md에 `questions` 배열 필수, `header` 최대 12자, `options` 2~4개, `preview` 선택 등 스키마 규칙을 명문화
+
 ## v1.6.2 (2026-04-03) — Skill 도구 누락 수정 및 코드 미리보기 제거
 
 ### Fixes
