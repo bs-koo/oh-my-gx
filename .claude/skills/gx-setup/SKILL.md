@@ -42,11 +42,14 @@ allowed-tools:
    - **성공** → `VCS_TYPE = "git"`
    - **실패** → AskUserQuestion:
      ```
-     question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요."
-     options:
-       - { value: "git", label: "Git — 새 Git 저장소를 생성합니다" }
-       - { value: "svn", label: "SVN — SVN 프로젝트입니다" }
-       - { value: "none", label: "없음 — VCS를 사용하지 않습니다" }
+     questions:
+       - header: "VCS 선택"
+         question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요."
+         multiSelect: false
+         options:
+           - { label: "Git", description: "새 Git 저장소를 생성합니다" }
+           - { label: "SVN", description: "SVN 프로젝트입니다" }
+           - { label: "없음", description: "VCS를 사용하지 않습니다" }
      ```
      - `git` 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
      - `svn` 선택 → `VCS_TYPE = "svn"`
@@ -82,10 +85,13 @@ allowed-tools:
 
    c. **그 외 패키지 매니저가 감지되면** AskUserQuestion:
       ```
-      question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
-      options:
-        - { value: "install", label: "설치 — {감지된 패키지 매니저}로 gh CLI 설치" }
-        - { value: "skip", label: "건너뛰기 — 나중에 직접 설치" }
+      questions:
+        - header: "gh CLI 설치"
+          question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
+          multiSelect: false
+          options:
+            - { label: "설치", description: "{감지된 패키지 매니저}로 gh CLI 설치" }
+            - { label: "건너뛰기", description: "나중에 직접 설치" }
       ```
 
    d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
@@ -237,9 +243,13 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 
    AskUserQuestion:
    ```
-   question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요."
-   options:
-     - { label: "건너뛰기", description: "나중에 설정합니다" }
+   questions:
+     - header: "웹훅 URL 입력"
+       question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요."
+       multiSelect: false
+       options:
+         - { label: "URL 직접 입력", description: "웹훅 URL을 붙여넣습니다" }
+         - { label: "건너뛰기", description: "나중에 설정합니다" }
    ```
 
    - 건너뛰기 → 건너뜀

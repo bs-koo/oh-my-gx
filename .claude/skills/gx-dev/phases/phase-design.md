@@ -54,14 +54,19 @@ design-critic 결과 처리:
 - 설계 승인 선택지를 제시한다:
   ```
   AskUserQuestion(
-    question: "설계를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
-    options: [
-      { value: "approve", label: "승인 — 구현 단계로 진행" }
-    ]
+    questions: [{
+      question: "설계를 확인해주세요.",
+      header: "설계 확인",
+      options: [
+        { label: "승인", description: "구현 단계로 진행" },
+        { label: "수정 요청", description: "수정할 사항을 직접 입력합니다" }
+      ],
+      multiSelect: false
+    }]
   )
   ```
 - **승인** → 다음 Phase로 진행.
-- **직접 입력(Other)** → 입력된 수정 내용을 반영하여 다음 반복 진행 (Step 0으로 돌아간다).
+- **수정 요청 또는 Other** → 입력된 수정 내용을 반영하여 다음 반복 진행 (Step 0으로 돌아간다).
 
 ---
 
