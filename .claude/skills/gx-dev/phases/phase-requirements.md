@@ -43,14 +43,19 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 - **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
   ```
   AskUserQuestion(
-    question: "PRD를 확인해주세요. 수정할 사항이 있으면 직접 입력해주세요.",
-    options: [
-      { value: "approve", label: "승인 — 설계 단계로 진행" }
-    ]
+    questions: [{
+      question: "PRD를 확인해주세요.",
+      header: "PRD 확인",
+      options: [
+        { label: "승인", description: "설계 단계로 진행" },
+        { label: "수정 요청", description: "수정할 사항을 직접 입력합니다" }
+      ],
+      multiSelect: false
+    }]
   )
   ```
 - 승인 → 다음 Phase로 진행.
-- 직접 입력(Other) → 입력된 수정 내용을 반영하여 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
+- 수정 요청 또는 Other → 입력된 수정 내용을 반영하여 product-owner를 다시 호출 → Step 2로 돌아가 반복한다.
 
 **Phase 완료 후 저장**:
 1. `mkdir -p ${DEV_DIR}`로 디렉토리 존재를 보장한다.

@@ -9,12 +9,16 @@
 4. `in_progress`가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택을 요청한다:
    ```
    AskUserQuestion(
-     question: "재개할 수 있는 작업이 여러 개 있습니다. 어떤 작업을 재개할까요?",
-     options: [
-       { value: "<branch-slug-1>", label: "<branch-1> — <args-1>" },
-       { value: "<branch-slug-2>", label: "<branch-2> — <args-2>" },
-       ...각 state.md의 branch + args로 옵션 생성
-     ]
+     questions: [{
+       question: "재개할 수 있는 작업이 여러 개 있습니다. 어떤 작업을 재개할까요?",
+       header: "재개 작업 선택",
+       multiSelect: false,
+       options: [
+         { label: "<branch-1>", description: "<args-1>" },
+         { label: "<branch-2>", description: "<args-2>" },
+         ...각 state.md의 branch + args로 옵션 생성
+       ]
+     }]
    )
    ```
 5. state.md가 없거나 모두 `status: completed`이면 → "재개할 작업이 없습니다." 출력 후 종료.
@@ -28,11 +32,15 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    - 사용자에게 AskUserQuestion으로 질문:
      ```
      AskUserQuestion(
-       question: "이전에 진행하던 작업이 있습니다.",
-       options: [
-         { value: "resume", label: "이어서 진행 — 이전 작업을 재개합니다" },
-         { value: "new", label: "새로 시작 — 새 작업을 시작합니다" }
-       ]
+       questions: [{
+         question: "이전에 진행하던 작업이 있습니다. 어떻게 할까요?",
+         header: "이전 작업 감지",
+         multiSelect: false,
+         options: [
+           { label: "이어서 진행", description: "이전 작업을 재개합니다" },
+           { label: "새로 시작", description: "새 작업을 시작합니다" }
+         ]
+       }]
      )
      ```
      - "이어서 진행" → 재개
@@ -59,11 +67,15 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 - 실패:
   ```
   AskUserQuestion(
-    question: "Git 저장소가 아닙니다. git init으로 생성할까요?",
-    options: [
-      { value: "yes", label: "예 — git init을 실행합니다" },
-      { value: "no", label: "아니오 — 작업을 중단합니다" }
-    ]
+    questions: [{
+      question: "Git 저장소가 아닙니다. git init으로 생성할까요?",
+      header: "git init",
+      multiSelect: false,
+      options: [
+        { label: "예", description: "git init을 실행합니다" },
+        { label: "아니오", description: "작업을 중단합니다" }
+      ]
+    }]
   )
   ```
   - 예 → `git init` 실행 후 계속.
@@ -110,11 +122,15 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    c. **작업 브랜치에도 context 변경이 있으면** → 충돌 가능성이 있으므로 사용자에게 확인한다:
       ```
       AskUserQuestion(
-        question: "작업 브랜치와 베이스 브랜치 모두 context/가 변경되었습니다. 베이스 기준으로 덮어쓸까요?",
-        options: [
-          { value: "overwrite", label: "덮어쓰기 — 베이스 브랜치 기준으로 최신화합니다 (작업 브랜치 변경 유실)" },
-          { value: "keep", label: "유지 — 현재 상태를 유지하고 진행합니다" }
-        ]
+        header: "context 충돌",
+        questions: [{
+          question: "작업 브랜치와 베이스 브랜치 모두 context/가 변경되었습니다. 베이스 기준으로 덮어쓸까요?",
+          multiSelect: false,
+          options: [
+            { label: "덮어쓰기", description: "베이스 브랜치 기준으로 최신화합니다 (작업 브랜치 변경 유실)" },
+            { label: "유지", description: "현재 상태를 유지하고 진행합니다" }
+          ]
+        }]
       )
       ```
       - 덮어쓰기 선택 → `${GIT_PREFIX} checkout ${BASE_BRANCH} -- context/` 실행.
