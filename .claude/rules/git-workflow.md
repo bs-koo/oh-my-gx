@@ -26,7 +26,7 @@
 
 ### 커밋 규칙
 
-**스킬 우선 사용:** 커밋은 `/gx-commit`, PR은 `/gx-pull-request` 스킬을 사용하세요. git 명령어를 직접 실행하지 마세요.
+커밋/PR 스킬 라우팅 규칙은 `.claude/rules/skill-routing.md`를 따른다.
 
 ### 최신 상태 유지
 

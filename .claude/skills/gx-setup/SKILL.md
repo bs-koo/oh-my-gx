@@ -40,20 +40,24 @@ allowed-tools:
 2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
 3. 결과에 따라 분기:
    - **성공** → `VCS_TYPE = "git"`
-   - **실패** → AskUserQuestion:
+   - **실패** →
      ```
-     questions:
-       - header: "VCS 선택"
-         question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요."
-         multiSelect: false
-         options:
-           - { label: "Git", description: "새 Git 저장소를 생성합니다" }
-           - { label: "SVN", description: "SVN 프로젝트입니다" }
-           - { label: "없음", description: "VCS를 사용하지 않습니다" }
+     AskUserQuestion(
+       questions: [{
+         header: "VCS 선택",
+         question: "Git 저장소가 감지되지 않았습니다. 프로젝트 환경을 선택해주세요.",
+         multiSelect: false,
+         options: [
+           { label: "Git", description: "새 Git 저장소를 생성합니다" },
+           { label: "SVN", description: "SVN 프로젝트입니다" },
+           { label: "없음", description: "VCS를 사용하지 않습니다" }
+         ]
+       }]
+     )
      ```
-     - `git` 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
-     - `svn` 선택 → `VCS_TYPE = "svn"`
-     - `없음` 선택 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
+     - "Git" 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
+     - "SVN" 선택 → `VCS_TYPE = "svn"`
+     - "없음" 선택 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
 4. `.claude/config.json`의 `"vcs"` 필드를 `VCS_TYPE` 값으로 갱신한다 (Edit).
 5. `VCS 감지 : 완료 ✅ ({VCS_TYPE})` 출력.
 
@@ -83,15 +87,19 @@ allowed-tools:
 
    b. **apt/yum만 감지된 경우** → gh는 기본 저장소에 미포함되므로 자동 설치를 건너뛰고 수동 안내로 직행한다 (https://cli.github.com).
 
-   c. **그 외 패키지 매니저가 감지되면** AskUserQuestion:
+   c. **그 외 패키지 매니저가 감지되면**:
       ```
-      questions:
-        - header: "gh CLI 설치"
-          question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?"
-          multiSelect: false
-          options:
-            - { label: "설치", description: "{감지된 패키지 매니저}로 gh CLI 설치" }
-            - { label: "건너뛰기", description: "나중에 직접 설치" }
+      AskUserQuestion(
+        questions: [{
+          header: "gh CLI 설치",
+          question: "gh CLI가 설치되어 있지 않습니다. 자동 설치하시겠습니까?",
+          multiSelect: false,
+          options: [
+            { label: "설치", description: "{감지된 패키지 매니저}로 gh CLI 설치" },
+            { label: "건너뛰기", description: "나중에 직접 설치" }
+          ]
+        }]
+      )
       ```
 
    d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
@@ -173,7 +181,20 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 인증을 완료하면 알려주세요.
 ```
 
-`AskUserQuestion`으로 사용자가 인증 완료를 알릴 때까지 대기한다.
+사용자에게 인증 완료 여부를 묻는다:
+```
+AskUserQuestion(
+  questions: [{
+    header: "GH 인증",
+    question: "GitHub 로그인을 완료하셨나요?",
+    multiSelect: false,
+    options: [
+      { label: "완료", description: "인증을 완료했습니다. 다음 단계로 진행합니다" },
+      { label: "재시도", description: "인증 URL을 다시 표시합니다" }
+    ]
+  }]
+)
+```
 
 #### 2-3. 인증 확인
 
@@ -181,29 +202,24 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
 - 성공 → `GH 인증 : 완료 ✅` 출력
 - 실패 → 에러 메시지를 보여주고, 2-1부터 재시도할지 사용자에게 묻는다
 
-**svn인 경우** → SVN 자격 증명을 확인한다:
+**svn인 경우** → SVN 자격 증명 캐시 여부만 확인한다:
 
 1. `svn info`로 현재 워킹 카피의 인증 상태를 확인한다.
    - 성공 (자격 증명 캐시됨) → `SVN 인증 : 완료 ✅ (캐시된 자격 증명 사용)` 출력.
-   - 실패 (인증 오류) → 아래 절차로 자격 증명을 설정한다.
+   - 실패 (인증 오류) → 아래 안내 후 **진행한다** (자격 증명을 직접 수집하지 않는다):
+     ```
+     SVN 인증 : 미설정
 
-2. AskUserQuestion으로 SVN 자격 증명을 입력받는다:
-   ```
-   question: "SVN 인증이 필요합니다. SVN 사용자명을 입력해주세요."
-   ```
+     보안상 SVN 사용자명/비밀번호를 대화로 수집하지 않습니다.
+     터미널에서 직접 아래 명령으로 자격 증명을 캐시한 뒤 다시 실행해주세요:
 
-3. 사용자명을 받은 후, 비밀번호를 입력받는다:
-   ```
-   question: "SVN 비밀번호를 입력해주세요."
-   ```
+       svn info <저장소 URL>
 
-4. 입력받은 자격 증명으로 인증을 확인한다. 비밀번호는 프로세스 목록에 노출되지 않도록 stdin으로 전달한다:
-   `echo "{비밀번호}" | svn info --username {사용자명} --password-from-stdin --non-interactive`
-   - 성공 → 자격 증명이 SVN 캐시에 저장됨. `SVN 인증 : 완료 ✅` 출력.
-   - 실패 → "인증에 실패했습니다. 사용자명/비밀번호를 확인해주세요." 출력 후 1회 재시도.
-   - 재시도도 실패 → "SVN 인증을 건너뜁니다. `svn update` 등 실행 시 인증이 요청될 수 있습니다." 출력 후 계속 진행.
+     최초 1회 인증 성공 시 SVN이 자격 증명을 자동 캐시합니다.
+     ```
+   - `SVN 인증 : 건너뜀` 출력 후 다음 단계로 진행.
 
-5. **주의**: 비밀번호는 커맨드 라인 인자(`--password`)로 전달하지 않는다. 반드시 `--password-from-stdin`을 사용하여 프로세스 목록이나 셸 히스토리에 남지 않도록 한다. config.json 등에도 저장하지 않는다.
+2. **주의**: 어떤 경우에도 AskUserQuestion으로 사용자명/비밀번호를 수집하지 않는다. 비밀번호는 프롬프트 히스토리, 세션 로그, 옵션 description 등에 노출될 위험이 있다.
 
 ### 3단계: context/ 초기 구조 안내
 
@@ -223,9 +239,22 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
      `Google Chat 연동 : 완료 ✅ (기존 설정 사용)` 출력. 건너뜀.
    - `webhookUrl`이 비어있으면 → 2번으로.
 
-2. AskUserQuestion: "Google Chat 웹훅 알림을 연동하시겠습니까? (PR 생성 시 Chat Space에 알림)"
-   - 아니오 → 건너뜀
-   - 예 → 3번으로
+2. 사용자에게 연동 여부를 묻는다:
+   ```
+   AskUserQuestion(
+     questions: [{
+       header: "Chat 연동",
+       question: "Google Chat 웹훅 알림을 연동하시겠습니까? (PR 생성 시 Chat Space에 알림)",
+       multiSelect: false,
+       options: [
+         { label: "연동", description: "웹훅 URL을 입력받아 연동합니다" },
+         { label: "건너뛰기", description: "연동하지 않고 진행합니다" }
+       ]
+     }]
+   )
+   ```
+   - "건너뛰기" → 건너뜀
+   - "연동" → 3번으로
 
 3. 웹훅 URL 생성 가이드를 표시한 후 AskUserQuestion으로 URL을 받는다:
 
@@ -241,15 +270,18 @@ gh auth login --hostname github.com --git-protocol https --web 2>&1
    6. 생성된 웹훅 URL을 복사합니다.
    ```
 
-   AskUserQuestion:
    ```
-   questions:
-     - header: "웹훅 URL 입력"
-       question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요."
-       multiSelect: false
-       options:
-         - { label: "URL 직접 입력", description: "웹훅 URL을 붙여넣습니다" }
-         - { label: "건너뛰기", description: "나중에 설정합니다" }
+   AskUserQuestion(
+     questions: [{
+       header: "웹훅 URL 입력",
+       question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요.",
+       multiSelect: false,
+       options: [
+         { label: "URL 직접 입력", description: "웹훅 URL을 붙여넣습니다" },
+         { label: "건너뛰기", description: "나중에 설정합니다" }
+       ]
+     }]
+   )
    ```
 
    - 건너뛰기 → 건너뜀

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6.4 (2026-04-10) — AskUserQuestion 전수 구조화 및 스킬 강제 강화
+
+### Fixes
+- **커밋/PR 스킬 강제 3중 방어**: gx-dev 파이프라인이 길어져 컨텍스트 압축 후 오케스트레이터가 `git commit`/`gh pr create`를 직접 실행하는 문제를 방지. `phase-complete.md` 상단 CRITICAL 경고, `gx-dev/SKILL.md` "커밋/PR 스킬 강제" 섹션, `skill-routing.md` "내부 파이프라인에서도 동일 적용" 섹션 3곳에 명시
+- **AskUserQuestion 비구조화 호출 일소**: 플러그인 전체에서 서술형/인라인/YAML 형태로 남아있던 AskUserQuestion 호출을 모두 JSON 스키마(`questions: [{header, question, multiSelect, options}]`)로 변환 (gx-commit, gx-context, gx-setup, gx-research, gx-humanizer, gx-pull-request, gx-lens, gx-dev phases 전반)
+- **자유 입력 Other 유도 패턴 통일**: 사용자가 자유 입력해야 하는 질문에서 `"직접 입력"`/`"답변 입력"`/`"주제 입력"` 같은 모호한 메타 라벨을 `"Other로 입력"` + `"Other로 이동해서 ~을 자연어로 입력해주세요"` description으로 통일. 사용자가 라벨을 실제 입력 버튼으로 오인하던 UX 문제 해결
+- **모드/VCS 선택 매핑 정합성**: gx-dev 모드 선택(`normal`→`"전체 파이프라인"`)과 gx-setup VCS 선택(`git`→`"Git"`)의 후속 처리 텍스트를 새 label과 일치시킴
+- **SVN 비밀번호 수집 제거**: gx-setup에서 SVN 사용자명/비밀번호를 AskUserQuestion으로 수집하던 보안 이슈 제거. 대신 사용자에게 터미널에서 `svn info <URL>`로 사전 캐시하도록 안내
+- **중복 규칙 통합**: agents/*.md 9개 파일에 중복 정의된 한국어/이모지/사과 규칙을 `.claude/rules/behavior.md`의 "8. 소통 원칙" 섹션으로 통합. `git-workflow.md`의 커밋 규칙은 `skill-routing.md` 참조로 축약
+
+### Added
+- **AskUserQuestion 스키마 규칙 확장**: `questions` 배열 한계를 `1~4개`에서 `1~5개`로 확장 (gx-context B-2 검증 질문 5개 일괄 호출 지원). 자유 입력 가이드 라벨 패턴 명문화
+
 ## v1.6.3 (2026-04-08) — AskUserQuestion 스키마 수정
 
 ### Fixes

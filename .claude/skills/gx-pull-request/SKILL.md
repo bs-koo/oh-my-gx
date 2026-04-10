@@ -30,9 +30,37 @@ allowed-tools:
 Arguments:
 - ARGS[0] (optional): 베이스 브랜치. 미지정 시 자동 감지:
   1. `git branch --list main master develop`로 존재하는 브랜치 확인
-  2. 존재하는 브랜치가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택지 제시 (예: main, develop)
+  2. 존재하는 브랜치가 **2개 이상**이면 → 다음과 같이 선택을 요청한다:
+     ```
+     AskUserQuestion(
+       questions: [{
+         header: "베이스 브랜치",
+         question: "어떤 브랜치를 베이스로 사용할까요?",
+         multiSelect: false,
+         options: [
+           { label: "<감지된 브랜치 1>", description: "예: main" },
+           { label: "<감지된 브랜치 2>", description: "예: develop" }
+         ]
+       }]
+     )
+     ```
   3. 존재하는 브랜치가 **1개**이면 → 해당 브랜치를 베이스로 자동 선택
-  4. 하나도 없으면 → AskUserQuestion(자유입력)으로 직접 입력 요청
+  4. 하나도 없으면 → 다음과 같이 직접 입력을 요청한다:
+     ```
+     AskUserQuestion(
+       questions: [{
+         header: "베이스 브랜치",
+         question: "main/master/develop 브랜치가 감지되지 않았습니다. 베이스 브랜치명을 입력해주세요.",
+         multiSelect: false,
+         options: [
+           { label: "Other로 입력", description: "Other로 이동해서 베이스 브랜치명을 자연어로 입력해주세요" },
+           { label: "취소", description: "PR 생성을 중단합니다" }
+         ]
+       }]
+     )
+     ```
+     - Other로 입력된 브랜치명 → 해당 브랜치를 베이스로 사용.
+     - "취소" → "베이스 브랜치 미확정으로 PR 생성을 중단합니다." 출력 후 **즉시 종료**.
 - `--background <파일경로>` (optional): Background 섹션에 반영할 비즈니스 맥락 파일. 지정 시 해당 파일을 Read하여 "배경"과 "요구사항"을 Background 섹션에 포함한다. git log 기반 배경과 함께 병합하여 작성.
 - `--extra-section <파일경로>` (optional): Checklist 앞에 삽입할 추가 섹션 파일. 지정 시 해당 파일을 Read하여 요약본을 Checklist 직전에 삽입한다. (예: Trust Ledger → `## Audit Summary` 섹션 생성)
 
