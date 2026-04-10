@@ -277,7 +277,7 @@ AskUserQuestion(
        question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요.",
        multiSelect: false,
        options: [
-         { label: "URL 직접 입력", description: "웹훅 URL을 붙여넣습니다" },
+         { label: "Other로 입력", description: "Other로 이동해서 웹훅 URL을 붙여넣어주세요" },
          { label: "건너뛰기", description: "나중에 설정합니다" }
        ]
      }]

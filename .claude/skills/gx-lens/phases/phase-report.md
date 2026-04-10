@@ -126,7 +126,7 @@ AskUserQuestion(
 )
 ```
 
-- 사용자가 "아이디어 입력" 또는 Other로 내용을 입력하면 → 아이디어를 입력받은 것으로 처리한다.
+- 사용자가 Other로 내용을 입력하면 → 아이디어를 입력받은 것으로 처리한다.
 
 - **아이디어를 입력받으면**:
   - `IDEA_CONTEXT = { idea: <입력된 아이디어>, clarifications: null }`
