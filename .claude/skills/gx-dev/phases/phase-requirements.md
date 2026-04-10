@@ -48,7 +48,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
       header: "PRD 확인",
       options: [
         { label: "승인", description: "설계 단계로 진행" },
-        { label: "수정 요청", description: "수정할 사항을 직접 입력합니다" }
+        { label: "수정 요청", description: "Other로 이동해서 수정할 사항을 자연어로 입력해주세요" }
       ],
       multiSelect: false
     }]

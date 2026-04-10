@@ -91,9 +91,9 @@ AskUserQuestion(
 )
 ```
 
-- `normal` 선택 → NORMAL 모드 (전체 Phase 실행)
-- `hotfix` 선택 → HOTFIX 모드
-- `implement` 선택 → 경량 구현 모드: setup → implement → complete (설계/리뷰 생략, 커밋/PR은 포함)
+- "전체 파이프라인" 선택 → NORMAL 모드 (전체 Phase 실행)
+- "긴급 수정" 선택 → HOTFIX 모드
+- "구현만" 선택 → 경량 구현 모드: setup → implement → complete (설계/리뷰 생략, 커밋/PR은 포함)
 
 ### 모드 판정 결과 기록
 
@@ -239,6 +239,13 @@ for phase in PHASES:
 
 Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, design-critic, coder, qa-manager, security-auditor)을 사용한다.
 외부 Agent(sisyphus-junior, sisyphus-junior-high 등)로 대체하지 않는다.
+
+### 커밋/PR 스킬 강제
+
+커밋과 PR 생성은 반드시 Skill 도구로 위임한다. 오케스트레이터가 `git commit`, `gh pr create` 등을 직접 실행하지 않는다.
+- 커밋: `Skill(skill: "oh-my-gx:gx-commit")`
+- PR: `Skill(skill: "oh-my-gx:gx-pull-request")`
+- 스킬 호출 실패 시 직접 명령어로 우회하지 않고, 사용자에게 보고한다.
 
 ## 코드 맵
 
@@ -546,11 +553,12 @@ AskUserQuestion(
 
 #### AskUserQuestion 스키마 규칙
 
-- **questions 배열 필수**: 최상위에 반드시 `questions: [{ ... }]` 배열로 감싼다. 1~4개 질문 가능.
+- **questions 배열 필수**: 최상위에 반드시 `questions: [{ ... }]` 배열로 감싼다. 1~5개 질문 가능.
 - **header 필수**: 각 질문에 `header` (최대 12자)를 지정한다. 칩/태그로 표시된다.
 - **options 필수**: 2~4개. 각 옵션은 `{ label, description }` 구조. `value` 필드는 없다.
 - **multiSelect 필수**: 기본 `false`. 에이전트가 "복수 선택 가능"으로 표시하면 `true`.
-- **"Other" 자동 제공**: UI가 항상 "Other"(직접 입력) 선택지를 자동 추가한다. 스킬에서 별도로 "직접 입력" 옵션을 넣지 않는다.
+- **"Other" 자동 제공**: UI가 항상 "Other" 선택지를 자동 추가하며, Other를 누르면 자유 입력 창이 열린다.
+- **자유 입력 가이드 라벨**: 예상 답변 후보가 2개 이상 떠오르면 그 후보를 options에 넣는다. 후보를 제시할 수 없는 개방형 질문이면 `{ label: "Other로 입력", description: "Other로 이동해서 자연어로 입력해주세요" }`를 사용자 유도 옵션으로 배치한다. `"직접 입력"`, `"답변 입력"`, `"주제 입력"` 같은 모호한 메타 라벨은 사용하지 않는다 — 사용자가 해당 옵션을 실제 입력 버튼으로 오인한다.
 - **preview (선택)**: 옵션에 `preview` 필드를 추가하면 마크다운 미리보기가 표시된다. 산출물 비교 시 유용하다.
 
 #### 변환 규칙
@@ -569,7 +577,7 @@ AskUserQuestion(
     header: "산출물 확인",
     options: [
       { label: "승인", description: "다음 단계로 진행" },
-      { label: "수정 요청", description: "수정할 사항을 직접 입력합니다" }
+      { label: "수정 요청", description: "Other로 이동해서 수정할 사항을 자연어로 입력해주세요" }
     ],
     multiSelect: false
   }]

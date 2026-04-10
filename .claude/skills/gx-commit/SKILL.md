@@ -58,7 +58,22 @@ Arguments:
 1. `git branch --show-current`로 브랜치명 확인
 2. 첫 번째 `/` 앞의 세그먼트를 타입으로 사용 (예: `feat/login` → `feat`)
 3. 허용 타입: `.claude/config.json` → `conventions.branchTypes` 참조
-4. 브랜치명에서 타입을 추출할 수 없으면 (main, develop 등): AskUserQuestion으로 타입을 선택받는다
+4. 브랜치명에서 타입을 추출할 수 없으면 (main, develop 등):
+   ```
+   AskUserQuestion(
+     questions: [{
+       header: "커밋 타입",
+       question: "브랜치명에서 타입을 추출할 수 없습니다. 커밋 타입을 선택해주세요.",
+       multiSelect: false,
+       options: [
+         { label: "feat", description: "새 기능" },
+         { label: "fix", description: "버그 수정" },
+         { label: "refactor", description: "리팩토링" },
+         { label: "Other로 입력", description: "Other로 이동해서 다른 타입(docs, test, chore 등)을 자연어로 입력해주세요" }
+       ]
+     }]
+   )
+   ```
 
 ## 커밋 메시지 생성
 
@@ -112,13 +127,21 @@ feat: 로그인 기능 추가
 2. `context/*/PROJECTS.md`를 Glob으로 탐색한다. 없으면 건너뛴다.
 3. 각 `PROJECTS.md`를 Read하여 프로젝트 매핑(소스 경로 패턴)을 파싱한다.
 4. 커밋된 파일 목록(`git diff --name-only HEAD~1..HEAD`)과 각 도메인의 소스 경로 패턴을 대조한다.
-5. 매칭되는 도메인이 있으면 AskUserQuestion:
+5. 매칭되는 도메인이 있으면:
    ```
-   "{도메인} 도메인(context/{도메인}/)과 관련된 파일이 변경되었습니다.
-   context를 동기화할까요?"
+   AskUserQuestion(
+     questions: [{
+       header: "context 동기화",
+       question: "{도메인} 도메인(context/{도메인}/)과 관련된 파일이 변경되었습니다. context를 동기화할까요?",
+       multiSelect: false,
+       options: [
+         { label: "동기화", description: "context 동기화 안내를 출력합니다" },
+         { label: "건너뛰기", description: "동기화하지 않고 진행합니다" }
+       ]
+     }]
+   )
    ```
-   - 옵션: "예 — context 동기화" / "아니오 — 건너뜀"
-   - "예" 선택 시: 안내만 출력한다. "`/gx-context {도메인} 동기화해줘`로 동기화할 수 있습니다." (commit 스킬 내에서 context 스킬을 직접 실행하지 않는다)
+   - "동기화" 선택 시: 안내만 출력한다. "`/gx-context {도메인} 동기화해줘`로 동기화할 수 있습니다." (commit 스킬 내에서 context 스킬을 직접 실행하지 않는다)
 6. 매칭되는 도메인이 없으면 이 단계를 건너뛴다.
 
 **금지**: `Co-Authored-By` 라인을 절대 추가하지 말 것.
