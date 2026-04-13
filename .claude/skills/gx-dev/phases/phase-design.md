@@ -78,6 +78,6 @@ design-critic 결과 처리:
 설계 확정: <제목>
 - 변경 범위: N개 파일 (신규 N, 수정 N)
 - 구현 순서: N단계
-- 저장: ${DEV_DIR}/design.md
+- 전문 확인: ${DEV_DIR}/design.md
 ```
 이후 Phase에서 설계서가 필요하면 파일을 Read하여 Agent prompt에 포함한다.
