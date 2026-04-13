@@ -135,7 +135,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
    리뷰 완료:
    - QA: Critical N건, Warning N건, Info N건, QUESTION N건
    - ZT: CRITICAL N건, HIGH N건, MEDIUM N건
-   - Trust Ledger: ${DEV_DIR}/trust-ledger.md에 저장됨
+   - 전문 확인: ${DEV_DIR}/trust-ledger.md
    ```
 
 **Step 4**: 결과 처리 (의사코드)

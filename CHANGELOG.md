@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.5 (2026-04-13) — gx-dev Phase 완료 요약에 전문 확인 안내 추가
+
+### Fixes
+- **Phase 완료 요약에 산출물 전문 경로 명시**: gx-dev 파이프라인의 각 Phase 완료 요약이 `저장: ${DEV_DIR}/*.md`처럼 저장 사실만 알려주어, 사용자가 생성된 산출물을 어디서 확인해야 하는지 안내가 부족하던 문제 해결. phase-requirements(PRD), phase-design(설계서), phase-review(Trust Ledger), phase-implement(자기점검) 네 곳의 요약 출력에 `전문 확인: ${DEV_DIR}/*.md` 문구를 추가하여 사용자가 즉시 원본을 열어볼 수 있도록 개선
+
 ## v1.6.4 (2026-04-10) — AskUserQuestion 전수 구조화 및 스킬 강제 강화
 
 ### Fixes
