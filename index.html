@@ -436,6 +436,7 @@
     <a href="#context-skill">context</a>
     <a href="#dev-pipeline">dev</a>
     <a href="#lens-skill">lens</a>
+    <a href="#tech-debt-skill">tech-debt</a>
     <a href="#research-skill">research</a>
     <a href="#humanizer-skill">humanizer</a>
     <a href="#commit-pr">commit / PR</a>
@@ -448,7 +449,7 @@
   <!-- Overview -->
   <section id="overview">
     <h2>개요</h2>
-    <p>oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인입니다. 8개 스킬, 9개 에이전트가 협업하여 자연어 요청 하나로 전체 개발 사이클을 수행합니다.</p>
+    <p>oh-my-gx는 Claude Code 위에서 동작하는 개발 자동화 플러그인입니다. 9개 스킬, 9개 에이전트가 협업하여 자연어 요청 하나로 전체 개발 사이클을 수행합니다.</p>
 
     <div class="card-grid">
       <div class="card">
@@ -486,7 +487,7 @@
 
   <!-- Skills -->
   <section id="skills">
-    <h2>8개 스킬</h2>
+    <h2>9개 스킬</h2>
 
     <table>
       <thead>
@@ -521,6 +522,12 @@
           <td>코드에서 비즈니스 정책 추출</td>
           <td>Explore + architect + security-auditor</td>
           <td>요약, 상세, 영향도분석</td>
+        </tr>
+        <tr>
+          <td><a href="#tech-debt-skill"><strong>tech-debt</strong></a></td>
+          <td>기술 부채 탐지 + 우선순위 로드맵</td>
+          <td>Explore 병렬 (코드/아키/테스트)</td>
+          <td>code, arch, deps, test, all</td>
         </tr>
         <tr>
           <td><a href="#research-skill"><strong>research</strong></a></td>
@@ -899,6 +906,75 @@ references/
       <li><span class="flow-title">(선택) Impact</span> — architect + security-auditor 병렬 분석</li>
       <li><span class="flow-title">(선택) Impact-Report</span> — PO 친화적 영향도 보고서</li>
     </ol>
+  </section>
+
+  <!-- Tech Debt -->
+  <section id="tech-debt-skill">
+    <h2>tech-debt — 기술 부채 분석</h2>
+    <p>코드베이스를 4가지 유형(코드 / 아키텍처 / 의존성 / 테스트)별로 스캔하여 기술 부채를 찾고, <strong>심각도 × 수정 용이성 × 영향 범위</strong> 3축 기반 우선순위 로드맵을 출력합니다. <strong>읽기 전용</strong> — 코드를 수정하지 않습니다.</p>
+
+    <h3>페르소나: 기술 부채 분석가</h3>
+    <blockquote>
+      코드베이스의 건강 상태를 진단합니다.<br>
+      개발자와 테크리드가 <strong>"어디가 아프고, 뭘 먼저 고쳐야 하나"</strong>를 판단할 수 있도록 돕습니다.<br>
+      <code>gx-lens</code>가 비즈니스 정책을 본다면, <code>tech-debt</code>는 기술 품질을 봅니다.
+    </blockquote>
+
+    <h3>4가지 부채 유형</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">code</div>
+        <div class="card-desc">복잡도(300줄+ 파일, God 클래스), 중복 로직, dead code, 네이밍 컨벤션 혼용, TODO/FIXME/HACK 카운트</div>
+      </div>
+      <div class="card">
+        <div class="card-title">arch</div>
+        <div class="card-desc">순환 의존성 A→B→A, 레이어 위반(domain이 controller 참조), 책임 분리 실패, 매직 넘버/하드코딩 산재</div>
+      </div>
+      <div class="card">
+        <div class="card-title">deps</div>
+        <div class="card-desc">Spring Boot / eGovFrame EOL 체크, <code>npm audit</code>, <code>pip audit</code>, outdated 패키지, 고정되지 않은 버전 식별</div>
+      </div>
+      <div class="card">
+        <div class="card-title">test</div>
+        <div class="card-desc">테스트 없는 소스 파일 매핑, assertion 없는 테스트, 단위/통합/E2E 비율, 헬퍼/픽스처 존재 여부</div>
+      </div>
+    </div>
+
+    <h3>Health Score (A~F)</h3>
+    <table>
+      <thead><tr><th>등급</th><th>점수</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td><strong>A</strong></td><td>90+</td><td>건강. 유지보수 여유 있음</td></tr>
+        <tr><td><strong>B</strong></td><td>75+</td><td>양호. 소규모 개선 권장</td></tr>
+        <tr><td><strong>C</strong></td><td>60+</td><td>주의. 부채 누적 시작</td></tr>
+        <tr><td><strong>D</strong></td><td>40+</td><td>경고. 계획적 리팩토링 필요</td></tr>
+        <tr><td><strong>F</strong></td><td>40 미만</td><td>위험. 구조적 개선 시급</td></tr>
+      </tbody>
+    </table>
+    <p>감산 공식: CRITICAL -15점 / HIGH -5점 / MEDIUM -2점 / LOW -1점 (100점에서 차감, 최저 0점)</p>
+
+    <h3>우선순위 산정 (3축 가중치)</h3>
+    <table>
+      <thead><tr><th>요소</th><th>가중치</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><strong>심각도</strong></td><td>40%</td><td>CRITICAL(4) > HIGH(3) > MEDIUM(2) > LOW(1)</td></tr>
+        <tr><td><strong>수정 용이성</strong></td><td>30%</td><td>소(3, Quick Win) > 중(2) > 대(1)</td></tr>
+        <tr><td><strong>영향 범위</strong></td><td>30%</td><td>광범위(3) > 제한적(2) > 국소적(1)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>context / references 연동</h3>
+    <ul class="flow">
+      <li><span class="flow-title">context/{도메인}/architecture.md</span> — 의도된 아키텍처 vs 실제 구조를 비교</li>
+      <li><span class="flow-title">references/</span> — 시큐어코딩·eGovFrame·API 표준의 금지 패턴/필수 규칙 위반 탐지</li>
+    </ul>
+
+    <h3>사용 예시</h3>
+    <pre><code>"기술 부채 확인해줘"              ← 전체 프로젝트
+/gx-tech-debt 결제 도메인         ← 특정 도메인만
+/gx-tech-debt --type deps         ← 의존성만
+/gx-tech-debt --type arch         ← 아키텍처 위반만
+/gx-tech-debt src/main/kotlin     ← 특정 경로만</code></pre>
   </section>
 
   <!-- Research -->

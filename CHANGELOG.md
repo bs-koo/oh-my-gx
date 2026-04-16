@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.7.0 (2026-04-16) — gx-tech-debt 스킬 추가
+
+### Features
+- **gx-tech-debt**: 코드베이스 기술 부채 분석 스킬 추가 (ttutak 플러그인 `tech-debt` 이식)
+  - 4가지 유형별 부채 감지: 코드(복잡도·중복·dead code·네이밍) / 아키텍처(순환 의존성·레이어 위반·책임 분리) / 의존성(EOL·outdated·취약점) / 테스트(커버리지·품질·구조)
+  - Health Score (100점 만점, A~F 등급) 산출
+  - 심각도 × 수정 용이성 × 영향 범위 3축 기반 우선순위 로드맵
+  - Java/Kotlin(Gradle), Node(npm), Python(pip) 의존성 분석 + 범용 모드
+  - `context/{도메인}/architecture.md`와 연계한 "의도된 구조 vs 실제 구조" 비교
+  - `references/` 외부 규격 문서 연동 (시큐어코딩·eGovFrame·API 표준 등)
+  - 읽기 전용, `gx-lens`와 역할 분리 (기술 부채 vs 비즈니스 정책)
+  - SVN 프로젝트 루트 감지 지원 (`svn info`)
+  - 자연어 트리거: "기술 부채", "부채 분석", "부채 확인"
+
 ## v1.6.5 (2026-04-13) — gx-dev Phase 완료 요약에 전문 확인 안내 추가
 
 ### Fixes
