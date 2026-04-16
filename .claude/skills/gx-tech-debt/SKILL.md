@@ -22,7 +22,7 @@ allowed-tools:
   - Bash(npm outdated *)
   - Bash(npm audit *)
   - Bash(pip list *)
-  - Bash(pip audit *)
+  - Bash(pip-audit *)
   # 읽기 도구
   - Read
   - Glob
@@ -102,7 +102,7 @@ allowed-tools:
 ## 공유 상수
 
 - `SOURCE_EXTENSIONS`: `"*.{kt,java,ts,tsx,js,jsx,py,go,rs,swift,scala,groovy}"`
-- `EXCLUDE_PATHS`: `build/, out/, dist/, target/, .gradle/, node_modules/, .dev/, .claude/, .github/, venv/, .venv/, __pycache__/, worktrees/`
+- `EXCLUDE_PATHS`: `build/, out/, dist/, target/, .gradle/, node_modules/, .dev/, .claude/, .github/, .git/, .svn/, venv/, .venv/, __pycache__/, worktrees/`
 
 Agent 프롬프트에 위 상수를 포함하여 빌드 산출물과 의존성 디렉토리를 탐색 대상에서 제외한다.
 
@@ -124,8 +124,8 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 - 같은 이름의 메서드가 다른 클래스에 존재하는지 확인한다.
 
 **복잡도:**
-- 파일 크기가 300줄을 초과하는 파일을 식별한다.
-- 한 클래스/모듈에 public 메서드가 15개 이상인 경우를 식별한다 (God 클래스 후보).
+- 파일 크기가 500줄을 초과하는 파일을 식별한다 (공공 SI 레거시 코드베이스 기준).
+- 한 클래스/모듈에 public 메서드가 20개 이상인 경우를 식별한다 (God 클래스 후보).
 - 깊은 중첩 (3단계 이상 if/for) 패턴을 Grep으로 탐색한다.
 
 **Dead Code:**
@@ -174,7 +174,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 **java/kotlin:**
 1. `build.gradle.kts` 또는 `build.gradle`을 Read하여 의존성 목록을 파악한다.
-2. `./gradlew dependencies` 실행이 가능하면 (`timeout: 60000`) 의존성 트리를 확인한다.
+2. `./gradlew dependencies` 실행이 가능하면 (`timeout: 180000`) 의존성 트리를 확인한다. Gradle은 대규모 프로젝트에서 캐시 워밍업과 그래프 구성에 1분 이상 소요되는 경우가 빈번하므로 3분으로 설정한다.
 3. 주요 프레임워크 버전 (Spring Boot, JDK, eGovFrame 등)의 EOL 여부를 확인한다.
 
 **node:**
@@ -186,7 +186,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 1. `requirements.txt` 또는 `pyproject.toml`을 Read한다.
 2. 버전 고정 여부 (pinned vs unpinned)를 확인한다.
 3. `pip list --outdated --format=json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. non-zero 종료코드 시에도 stdout JSON을 우선 파싱한다.
-4. `pip audit --format=json` (`timeout: 30000`)이 실행 가능하면 알려진 취약점을 확인한다. 동일하게 stdout 기준으로 파싱한다.
+4. `pip-audit --format=json` (`timeout: 30000`)이 실행 가능하면 알려진 취약점을 확인한다. 동일하게 stdout 기준으로 파싱한다.
 
 **범용 (감지 불가):**
 - 이 유형을 건너뛴다.

@@ -153,7 +153,7 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 ```
 
 - **Health Score**: 100점 만점 A~F 등급으로 건강 상태 표시
-- **의존성 스캔**: Java/Kotlin(Gradle), Node(npm audit/outdated), Python(pip audit) 자동 점검
+- **의존성 스캔**: Java/Kotlin(Gradle), Node(npm audit/outdated), Python(pip-audit) 자동 점검
 - **아키텍처 비교**: `context/{도메인}/architecture.md`가 있으면 의도된 구조 vs 실제 구조 비교
 - **외부 규격**: `references/` 문서에 명시된 금지 패턴/필수 규칙 위반도 탐지
 - `gx-lens`와 역할 분리: `gx-lens`는 비즈니스 정책, `gx-tech-debt`는 기술 품질
