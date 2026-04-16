@@ -39,6 +39,7 @@
 | "이어서 해줘" | dev (재개) |
 | ".dev/prd.md AI 흔적 교정해줘" | humanizer |
 | "클라우드 네이티브 트렌드 조사해줘" | research |
+| "기술 부채 확인해줘" | tech-debt |
 | "커밋해줘" | commit |
 | "PR 만들어줘" | pull-request |
 
@@ -139,6 +140,23 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 ```
 
 조사 결과는 `.research/` 디렉토리에 저장되며, 모든 발견에 출처 URL이 명시됩니다.
+
+### tech-debt
+
+코드베이스의 기술 부채를 4가지 유형(코드 / 아키텍처 / 의존성 / 테스트)별로 분석하고, 심각도 × 수정 용이성 × 영향 범위를 기반으로 우선순위 로드맵을 제공합니다. **읽기 전용** — 코드를 수정하지 않습니다.
+
+```
+"기술 부채 확인해줘"                             ← 전체 프로젝트 분석
+"/gx-tech-debt 결제 도메인"                      ← 특정 도메인만
+"/gx-tech-debt --type deps"                      ← 의존성만 점검
+"/gx-tech-debt --type arch"                      ← 아키텍처 위반만
+```
+
+- **Health Score**: 100점 만점 A~F 등급으로 건강 상태 표시
+- **의존성 스캔**: Java/Kotlin(Gradle), Node(npm audit/outdated), Python(pip-audit) 자동 점검
+- **아키텍처 비교**: `context/{도메인}/architecture.md`가 있으면 의도된 구조 vs 실제 구조 비교
+- **외부 규격**: `references/` 문서에 명시된 금지 패턴/필수 규칙 위반도 탐지
+- `gx-lens`와 역할 분리: `gx-lens`는 비즈니스 정책, `gx-tech-debt`는 기술 품질
 
 ### commit / pull-request
 
