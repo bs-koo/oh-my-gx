@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.8.0 (2026-05-04) — gx-cross-review 스킬 추가
+
+### Features
+- **gx-cross-review**: dev 산출물 기반 교차 검증 리뷰 스킬 추가
+  - `/gx-dev` 완료 후 단발 호출 전용. PRD/설계서/Trust Ledger/self-check/codemap을 컨텍스트로 주입하여 "약속 대비 충실도"를 검증
+  - 기본 `/codex:review`와 차별점: 일반 코드 품질이 아닌 AC 충족 매트릭스 + 설계 범위 이탈 + 신규 위험만 보고. trust-ledger·self-check 기반 중복 차단
+  - **advisor 2종 선택**: codex(GPT-5.4 다른 모델 관점) / claude(oh-my-gx 자체 qa-manager + security-auditor를 cross-review 미션으로 호출, omc 의존 없음)
+  - **codex 미설치 시**: 자동 설치/인증 없이 안내만 (`npm install -g @openai/codex` + `/codex:setup`)
+  - **산출물 부재 fallback**: prd.md/design.md 둘 다 없으면 일반 모드(diff-only)로 graceful degrade
+  - **한국어 강제**: prompt에 `<language>` 블록 + 영어 응답 시 한국어 정규화 후처리
+  - **자동 수정 금지**: 발견 항목별 AskUserQuestion으로 수정 위임 옵션 제공 (전부 / 일부 선택 / 직접 입력 / 전부 건너뛰기). 승인된 항목만 coder 위임
+  - **컨텍스트 폭발 방지**: 우선순위 슬라이싱 규칙 (PRD 수용기준+설계 변경범위+diff 1순위, trust-ledger 2순위, codemap 3순위, references 4순위)
+  - 결과는 `${DEV_DIR}/cross-review.md` + 원시 응답 `${DEV_DIR}/cross-review.raw.md` 보존
+  - 자연어 트리거: "교차 리뷰", "교차 검증", "cross review", "크로스 리뷰"
+
 ## v1.7.0 (2026-04-16) — gx-tech-debt 스킬 추가
 
 ### Features

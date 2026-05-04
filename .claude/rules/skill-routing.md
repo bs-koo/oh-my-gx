@@ -8,6 +8,7 @@
 |------------|----------|
 | `커밋`, `커밋해`, `커밋해줘`, `commit` | `/gx-commit` |
 | `PR`, `PR 올려`, `PR 생성`, `풀리퀘`, `pull request` | `/gx-pull-request` |
+| `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
 
 ## 순차 스킬 체이닝
 
