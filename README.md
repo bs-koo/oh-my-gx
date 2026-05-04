@@ -40,6 +40,7 @@
 | ".dev/prd.md AI 흔적 교정해줘" | humanizer |
 | "클라우드 네이티브 트렌드 조사해줘" | research |
 | "기술 부채 확인해줘" | tech-debt |
+| "교차 리뷰 해줘" | cross-review |
 | "커밋해줘" | commit |
 | "PR 만들어줘" | pull-request |
 
@@ -157,6 +158,26 @@ PRD나 설계 문서에서 AI 글쓰기 패턴(40+가지)을 감지하고 교정
 - **아키텍처 비교**: `context/{도메인}/architecture.md`가 있으면 의도된 구조 vs 실제 구조 비교
 - **외부 규격**: `references/` 문서에 명시된 금지 패턴/필수 규칙 위반도 탐지
 - `gx-lens`와 역할 분리: `gx-lens`는 비즈니스 정책, `gx-tech-debt`는 기술 품질
+
+### cross-review
+
+`/gx-dev` 완료 후 단발 호출 전용. PRD/설계서/Trust Ledger 등 dev 산출물을 컨텍스트로 주입하여 "약속 대비 충실도"를 교차 검증합니다. 일반 코드 품질 리뷰가 아닌 **AC 충족 + 설계 범위 이탈 + 신규 위험만** 보고합니다.
+
+```
+"교차 리뷰 해줘"                                   ← 호출 시 advisor 선택 (codex / claude)
+"/gx-cross-review --advisor codex"                ← codex 강제 (다른 모델 관점)
+"/gx-cross-review --advisor claude"               ← qa-manager + security-auditor를 cross 미션으로 호출
+"/gx-cross-review --scope stat"                   ← 변경이 큰 경우 stat 모드
+```
+
+- **codex 선택 시**: GPT-5.4가 dev 산출물과 diff를 함께 검토. codex CLI 미설치 시 안내만 (자동 설치 X).
+- **claude 선택 시**: oh-my-gx의 자체 에이전트만 사용 (omc 의존 없음).
+- **산출물 부재 시**: 일반 모드로 graceful degrade.
+- **자동 수정 금지**: 발견 항목별 사용자 승인(전부/일부/직접 입력/전부 건너뛰기) 후 coder에 위임.
+
+결과는 `${DEV_DIR}/cross-review.md`에 저장됩니다 (advisor 무관 통일).
+
+> **별도 codex 플러그인 필요**: codex advisor 사용 시 `openai/codex-plugin-cc`가 별도로 설치되어 있어야 합니다 (`/plugin marketplace add openai/codex-plugin-cc` → `/plugin install codex@openai-codex`).
 
 ### commit / pull-request
 
