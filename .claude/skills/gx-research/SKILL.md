@@ -38,6 +38,8 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - **모호한 표현을 허용하지 않는다.** "일반적으로", "대부분" 대신 구체적 데이터를 찾는다.
 - **교차 검증한다.** 단일 출처의 주장은 다른 출처로 확인한다 (꼼꼼 모드).
 - **검색 실패를 숨기지 않는다.** 찾지 못한 정보는 ❓로 남기고 명시한다.
+- **차단된 페이지를 즉시 포기하지 않는다.** 응답이 길이/시그니처 키워드로 차단 판정되면 Jina Reader(`r.jina.ai`)로 재시도한다. 호출 상한 도달 또는 재시도 실패 시 ❓로 명시한다.
+- **기술/학술/한국 뉴스 주제는 공식 API를 병행 시도한다.** 키워드에 신호 단어가 있으면 WebSearch와 함께 Phase 0 API를 호출하여 결과 품질을 보강한다.
 
 ## 런타임 디렉토리
 
@@ -119,12 +121,51 @@ AskUserQuestion(
 - **웹 리서치**: 최신 뉴스, 블로그, 업계 리포트 대상 키워드
 - **문서 리서치**: 공식 문서, 기술 스펙, 학술 자료 대상 키워드
 
-**2-2. 검색 실행**
+**2-2a. Phase 0 공식 API 검사**
+
+주제와 키워드를 **lowercase + Unicode NFC 정규화** 후 아래 신호 단어를 **substring** 검사한다 (단어 경계 미요구). 매칭된 카테고리가 있으면 해당 API를 WebSearch와 **병행** WebFetch로 호출한다. URL의 `{키워드}` 자리는 **URL-encode**한다 (한국어·공백·특수문자 안전 처리).
+
+Phase 0 API 카탈로그:
+
+| 카테고리 | 신호 단어 | API 엔드포인트 | 응답 처리 힌트 |
+|----------|----------|---------------|---------------|
+| 학술 논문 | `arxiv`, `논문`, `paper`, `preprint` | `http://export.arxiv.org/api/query?search_query=all:{키워드}&max_results=10` | Atom XML → entry별 title·summary·author·published 추출 |
+| 오픈소스 저장소 | `github`, `repo`, `오픈소스`, `라이브러리` | `https://api.github.com/search/repositories?q={키워드}&per_page=10` | JSON items → full_name·description·stargazers_count·language |
+| Hacker News | `hacker news`, `hn`, `해커뉴스` | `https://hn.algolia.com/api/v1/search?query={키워드}&hitsPerPage=10` | hits → title·url·points·num_comments |
+| 프로그래밍 Q&A | `stackoverflow`, `스택오버플로우` | `https://api.stackexchange.com/2.3/search?intitle={키워드}&site=stackoverflow&order=desc&sort=votes` | items → title·link·score·answer_count |
+| npm 패키지 | `npm`, `노드 패키지`, `node package` | `https://registry.npmjs.org/-/v1/search?text={키워드}&size=10` | objects[].package → name·description·version·links.repository |
+| PyPI 패키지 | `pypi`, `파이썬 패키지`, `python package` | `https://pypi.org/pypi/{정확한 패키지명}/json` | info → name·summary·version·project_url. 404면 결과 없음으로 기록 |
+| 백과사전 | `wikipedia`, `위키`, `정의`, `용어` | `https://ko.wikipedia.org/api/rest_v1/page/summary/{topic}` | title·extract·content_urls.desktop.page. 404 시 영어 fallback 1회: `https://en.wikipedia.org/api/rest_v1/page/summary/{topic}` |
+| 한국 종합 뉴스 | "최근/최신/뉴스/보도" 중 1개 + 정치/사회/경제/IT 도메인 키워드 (단순 기술 키워드만 있으면 미매칭) | `https://news.google.com/rss/search?q={키워드}&hl=ko&gl=KR&ceid=KR:ko` | RSS item별 title·link·pubDate·source. 최근 10건 |
+
+**모드 차등**:
+- 꼼꼼: 매칭된 모든 카테고리 호출
+- 빠르게: 매칭된 카테고리 중 **최대 2개** 호출 (관련도 순: 긴 신호어 우선 → 주제 등장 위치 우선)
+
+**Phase 0 응답 실패 정책**: API 호출이 4xx/5xx거나 응답 검증 실패 시 **Jina Reader 재시도는 하지 않는다** (무인증 공개 API라 차단 가능성 낮음). 즉시 findings.md "Phase 0 결과" 섹션에 `❓ {카테고리}: API 응답 실패`를 기록하고 다음 카테고리로 진행한다.
+
+매칭된 카테고리가 없으면 이 단계를 건너뛰고 2-2b로 진행한다.
+
+**2-2b. WebSearch + WebFetch 실행**
 
 1. 키워드별 WebSearch 실행
 2. 검색 결과에서 유용한 URL 선별 (꼼꼼: 최대 10개, 빠르게: 최대 5개)
-3. WebFetch로 선별된 URL의 내용 수집
-4. `.research/findings.md`에 중간 결과 기록
+3. WebFetch로 선별된 URL 수집. **각 URL에 대해 응답 검증 후 필요 시 Jina Reader 재시도**:
+
+   **응답 검증 규칙** (다음 중 하나라도 해당 시 검증 실패):
+   - HTTP 에러: 4xx 또는 5xx (404, 403, 429, 5xx 모두 포함)
+   - 응답 길이 < 500자
+   - 차단 시그니처 키워드 포함 (lowercase 검사): `checking your browser`, `ray id`, `captcha`, `access denied`, `verify you are human`, `attention required`, `request blocked`
+     - 주의: `cloudflare` 단독 키워드는 사용하지 않는다. 정상 페이지(Cloudflare 사용 후기·블로그)에 일상적으로 등장하여 오탐 발생.
+
+   **Jina Reader 재시도 절차**:
+   - 호출 카운터 < 상한일 때만 시도 (꼼꼼: 5회 / 빠르게: 3회 per 리서치)
+   - URL 형식: `https://r.jina.ai/{원본 URL}` — 원본 URL을 **URL-encode 하지 않고 그대로** path로 붙인다 (Jina 정책)
+   - Jina 응답이 429거나 본문에 `rate limit` 포함 시 즉시 ❓ 기록 + 이번 리서치에서 추가 Jina 호출 중단 (서킷 브레이커)
+   - Jina 응답이 검증 통과면 결과 채택, `via Jina Reader` 표기
+   - Jina 응답도 검증 실패면 ❓ 기록 후 다음 URL로 진행
+
+4. `.research/findings.md`에 결과 기록 (Phase 0 결과 + WebSearch 결과 병합). 매 실행 시 기존 findings.md를 덮어쓴다.
 
 **findings.md 형식:**
 
@@ -137,14 +178,30 @@ AskUserQuestion(
 
 ---
 
+### Phase 0 결과 (공식 API)
+
+(매칭된 카테고리가 있을 때만 기록. 없으면 "매칭된 카테고리 없음" 한 줄)
+
+#### arXiv (검색어: {키워드})
+- [{논문 제목}]({URL}) — {저자}, {published} | {요약 1줄}
+- ...
+
+#### GitHub (검색어: {키워드})
+- [{org/repo}]({URL}) — ⭐{stars} | {description}
+- ...
+
+---
+
 ### 키워드: {키워드1}
 
 #### [{페이지 제목}]({URL})
 - 핵심 내용 요약
 - 관련 데이터/수치
 
-#### [{페이지 제목}]({URL})
+#### [{페이지 제목}]({URL}) — via Jina Reader
 - 핵심 내용 요약
+
+#### ❓ {원본 URL}: 원본 + Jina 모두 검증 실패 (사유 한 줄)
 
 ---
 
