@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.10.0 (2026-05-14) — gx-research에 insane-search 정수 도입
+
+### Features
+- **Phase 0 공식 API 우선 인덱스**: 키워드에 기술/학술/한국 뉴스 신호 단어(`arxiv`, `github`, `hacker news`, `stackoverflow`, `npm`, `pypi`, `wikipedia`, `최근/뉴스` 등)가 포함되면 WebSearch와 **병행** 공식 API를 호출하여 1차 결과 품질을 보강
+  - 8개 카탈로그: arXiv Atom, GitHub Search, HN Algolia, Stack Exchange, npm Registry, PyPI JSON, Wikipedia REST(한→영 fallback 1회), Google News RSS
+  - 키워드 매칭: lowercase + Unicode NFC 정규화 후 substring 검사 (단어 경계 미요구)
+  - 모드 차등: 꼼꼼은 매칭된 모든 카테고리, 빠르게는 최대 2개 (관련도 순)
+  - 키워드 URL-encode 필수, Phase 0 응답 실패 시 graceful degrade (Jina 재시도 안 함, ❓로 기록 후 WebSearch 흐름 계속)
+- **Jina Reader 재시도 (`r.jina.ai`)**: WebFetch 응답이 차단 판정되면 무인증 Jina Reader로 재시도하여 한국 블로그·기술 매체·일부 SPA 사이트 커버리지 향상
+  - 검증 신호: HTTP 4xx/5xx, 응답 < 500자, 차단 시그니처 키워드 7종(`checking your browser`, `ray id`, `captcha`, `access denied`, `verify you are human`, `attention required`, `request blocked`)
+  - `cloudflare` 단독 키워드는 검사에서 제외 (정상 페이지 오탐 방지)
+  - 호출 상한: 꼼꼼 5회 / 빠르게 3회 per 리서치
+  - 429 응답 또는 본문에 `rate limit` 포함 시 서킷 브레이커 작동 (이번 리서치에서 추가 Jina 호출 중단)
+  - URL 형식: `https://r.jina.ai/{원본 URL}` (원본 URL을 URL-encode 하지 않고 그대로 path로 붙임)
+- **findings.md 템플릿 확장**: "Phase 0 결과" 섹션 추가. 매 실행 덮어쓰기 정책 명시
+
 ## v1.9.0 (2026-05-14) — gx-dev·gx-context Q&A를 순차 인터뷰로 전환
 
 ### Features
