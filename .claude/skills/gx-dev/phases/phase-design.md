@@ -49,7 +49,7 @@ design-critic 결과 처리:
 - 설계 초안을 사용자에게 출력한다.
 - Agent 출력의 "확인이 필요한 사항"을 **질문 큐**로 구성한다.
 - **순차 질문 루프**를 실행한다 (큐가 비워질 때까지):
-  1. 큐에서 질문 1개를 꺼내 `AskUserQuestion(questions: [질문 1개])`로 제시한다. 권장 답변이 있으면 description에 포함한다.
+  1. 큐에서 질문 1개를 꺼내 `AskUserQuestion(questions: [질문 1개])`로 제시한다. AskUserQuestion 포맷(유형별 변환, `(Recommended)` 라벨, 비기술적 표현 의역 등)은 **SKILL.md 공유 규칙**의 `에이전트 질문 → AskUserQuestion 변환 규칙`을 따른다.
   2. 답변을 평가한다:
      - **명확하고 충분**: 큐의 다음 항목으로 이동
      - **모호하거나 불완전**: 파고들기 질문을 생성하여 큐 앞에 삽입 후 재질문
