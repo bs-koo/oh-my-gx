@@ -76,7 +76,7 @@ AskUserQuestion(
 격리된 서브에이전트 호출:
 
 ```
-Task(subagent_type="general-purpose"):
+Task(subagent_type="red-writer"):
   description: "Write failing test for: {AC}"
   prompt: |
     당신은 RED 단계 테스트 작성 전담자입니다.
@@ -151,7 +151,7 @@ green 에이전트가 통과를 위한 최소 코드를 작성합니다.
 | "이번 한 번만 예외" | 첫 예외가 규칙이 된다 |
 | "프로토타입이니까 TDD 생략" | 프로토타입이 그대로 운영에 간다. 처음부터 TDD |
 
-자세한 격파 표는 `.claude/rules/tdd-iron-law.md` 참조.
+자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
 
 ---
 

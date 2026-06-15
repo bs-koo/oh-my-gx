@@ -152,7 +152,7 @@ commit/PR 진입은 차단됩니다.
 | "급하니 일부 테스트만 실행" | 일부 실행은 검증 아님. 전체 또는 명확한 격리 |
 | "테스트가 flaky해서 무시" | flaky test는 fix 대상. 무시는 부채 누적 |
 
-자세한 격파 표는 `.claude/rules/tdd-iron-law.md` 참조.
+자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
 
 ---
 

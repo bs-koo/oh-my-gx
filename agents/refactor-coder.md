@@ -15,6 +15,13 @@ description: |
   assistant: refactor-coder가 깨진 변경을 즉시 롤백하고 "Extract Method 시도 → 실패 → 롤백, 매직 넘버 상수화만 성공" 보고
   </example>
 model: sonnet
+tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # refactor-coder

@@ -15,6 +15,11 @@ description: |
   assistant: verifier가 Iron Law 3 위반임을 명시하고 신선한 실행 증거 없이는 진입 차단
   </example>
 model: haiku
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # verifier

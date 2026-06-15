@@ -15,6 +15,13 @@ description: |
   assistant: red-writer가 PasswordValidatorTest.shouldReject401()을 작성하고 실패 메시지를 캡처하여 보고
   </example>
 model: sonnet
+tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # red-writer

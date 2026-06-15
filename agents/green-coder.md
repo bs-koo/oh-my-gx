@@ -15,6 +15,13 @@ description: |
   assistant: green-coder가 YAGNI 위반을 거부하고 "예외 메시지는 다음 RED 단계로 미루세요"로 응답
   </example>
 model: sonnet
+tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # green-coder

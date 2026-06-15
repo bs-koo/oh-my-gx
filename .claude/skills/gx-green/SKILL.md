@@ -73,7 +73,7 @@ oh-my-gx:gx-green — GREEN 단계 진입.
 격리된 서브에이전트 호출:
 
 ```
-Task(subagent_type="general-purpose"):
+Task(subagent_type="green-coder"):
   description: "Write minimum code to pass: {test}"
   prompt: |
     당신은 GREEN 단계 최소 코드 작성 전담자입니다.

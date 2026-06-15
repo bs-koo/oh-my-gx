@@ -15,6 +15,10 @@ description: |
   assistant: test-architect가 score 4/10 TESTABILITY FAIL → "DI로 PaymentRepository 추출 권고" + architect 재설계 요청
   </example>
 model: opus
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 # test-architect
@@ -25,7 +29,7 @@ model: opus
 
 1. **각 컴포넌트의 테스트 전략**을 명시합니다 (단위/통합/E2E + 모의 전략).
 2. **testability score**를 1-10으로 산정합니다.
-3. testability < 7 → **재설계 권고**. design-critic에 위임.
+3. testability < 7 → **재설계 권고**. 오케스트레이터에 architect 재설계 요청을 보고한다 (직접 다른 에이전트를 호출하지 않는다).
 
 ## 입력
 

@@ -14,10 +14,11 @@ graphify-out/
 .kiro/
 .sisyphus/
 .dev/
+# skill-creator: oh-my-gx 자체 스킬이 아닌 외부 스킬 생성기 디렉토리
 .claude/skills/skill-creator/
 skills-lock.json
 
-# 발표/배포 산출물
+# 발표/배포 산출물 (루트 한정 — references/ 하위 규격문서는 추적 유지)
 export.pdf
-*.pptx
-docs/presentation-script.md
+/*.pptx
+docs/presentation-*.md

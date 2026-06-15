@@ -15,6 +15,10 @@ description: |
   assistant: spec-reviewer가 평가 범위 외임을 명시하고 quality-reviewer 호출을 권고
   </example>
 model: sonnet
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 # spec-reviewer
@@ -66,7 +70,7 @@ model: sonnet
 ## 판정
 
 - ✅ 모두 충족 → quality-reviewer 단계 진입 가능
-- ⚠️ 부분 / ❌ 미충족 → coder 재호출 필요. 다음 단계 진입 금지
+- ⚠️ 부분 / ❌ 미충족 → green-coder/red-writer 재호출 필요. 다음 단계 진입 금지
 ```
 
 ## 금지 사항

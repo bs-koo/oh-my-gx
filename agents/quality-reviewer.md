@@ -15,6 +15,10 @@ description: |
   assistant: quality-reviewer가 Iron Law 위반임을 명시하고 spec-reviewer 재호출을 요구
   </example>
 model: opus
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 # quality-reviewer
@@ -82,8 +86,8 @@ model: opus
 ## 판정
 
 - Critical 0 + Important 0 → 다음 단계 진입 가능
-- Critical N > 0 → coder 재호출. 진입 차단
-- Important N > 0 → coder 재호출. 진입 차단
+- Critical N > 0 → refactor-coder/green-coder 재호출. 진입 차단
+- Important N > 0 → refactor-coder/green-coder 재호출. 진입 차단
 - Minor만 있음 → 다음 단계 진입 가능 (Minor는 메모만)
 ```
 
