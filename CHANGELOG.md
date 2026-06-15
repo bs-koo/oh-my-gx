@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.11.0 (2026-06-15) — gx-tdd TDD 강제 파이프라인 편입
+
+### Features
+- **gx-tdd 스킬 신설**: 기존 `gx-dev`(일반 개발)와 별개로 RED-GREEN-REFACTOR 사이클을 강제하는 TDD 개발 파이프라인을 추가. 6-Phase 구조(setup → requirements → design → implement → review → complete)는 gx-dev와 동일하되 각 단계에 TDD 게이트를 추가
+  - requirements: AC를 Given-When-Then 형식으로 강제 (자동 테스트 변환 가능성 검증)
+  - design: `test-architect`가 testability score(1-10) 산정, 7 미만이면 재설계
+  - implement: 단일 coder 대신 `red-writer → green-coder → refactor-coder` 격리 순차 사이클
+  - review: `spec-reviewer`(AC 충족) → `quality-reviewer`(코드 품질) + `security-auditor` 순차 게이트
+  - complete: `gx-verify` 게이트(신선한 테스트 실행 증거) 통과 후에만 commit/PR 진입
+  - hotfix 경로(`--hotfix`): design·정식 review는 생략하되 RGR 사이클과 verify 게이트는 유지 (급해도 회귀 테스트 선행)
+- **TDD 전용 에이전트 7종 추가**: `red-writer`, `green-coder`, `refactor-coder`(구현 RGR), `test-architect`(testability), `spec-reviewer`·`quality-reviewer`(리뷰 2단계), `verifier`(완료 게이트)
+- **TDD 보조 스킬 4종 추가**: `gx-red`, `gx-green`, `gx-refactor`, `gx-verify` (파이프라인 내부 자동 호출 + 명시적 키워드 단독 호출)
+- **Iron Law 격리**: `tdd-iron-law.md`를 `.claude/rules`가 아닌 `gx-tdd/references/`에 격리하여 일반 gx-dev 갈래는 TDD 강제의 영향을 받지 않음
+- **verify 게이트는 gx-tdd가 조립**: 공유 스킬(`gx-commit`/`gx-pull-request`)은 무수정 유지. gx-tdd의 phase-complete가 `gx-verify → gx-commit → gx-pull-request` 순서를 직접 조립
+- **라우팅 추가**: `skill-routing.md`에 "TDD로 개발/테스트 먼저" → `gx-tdd`, "개발해줘" → `gx-dev` 분기 명시
+
 ## v1.10.0 (2026-05-14) — gx-research에 insane-search 정수 도입
 
 ### Features

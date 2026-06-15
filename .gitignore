@@ -5,3 +5,19 @@
 .omc
 .research/
 .db-query/
+# graphify 코드 그래프 산출물
+graphify-out/
+
+# 도구/세션 산출물 (작업 무관)
+.agent/
+.agents/
+.kiro/
+.sisyphus/
+.dev/
+.claude/skills/skill-creator/
+skills-lock.json
+
+# 발표/배포 산출물
+export.pdf
+*.pptx
+docs/presentation-script.md
