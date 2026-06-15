@@ -80,11 +80,15 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 - **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
   ```
   AskUserQuestion(
-    question: "PRD를 확인해주세요.",
-    options: [
-      { value: "approve", label: "승인 — 설계 단계로 진행" },
-      { value: "modify", label: "수정 요청 — 수정할 부분을 알려주세요" }
-    ]
+    questions: [{
+      question: "PRD를 확인해주세요.",
+      header: "산출물 확인",
+      options: [
+        { label: "승인", description: "설계 단계로 진행" },
+        { label: "수정 요청", description: "Other로 이동해서 수정할 부분을 자연어로 입력해주세요" }
+      ],
+      multiSelect: false
+    }]
   )
   ```
 - 승인 → phase-design으로 진행.
@@ -118,12 +122,16 @@ PRD 저장 전에 오케스트레이터가 **AC 형식 검증**을 수행한다.
 게이트 실패가 product-owner 재호출 1회로도 해결 안 되면:
 ```
 AskUserQuestion(
-  question: "G-W-T 게이트 미통과 항목이 있습니다. 어떻게 진행할까요?",
-  options: [
-    { value: "fix", label: "직접 수정 — PRD를 직접 G-W-T 형식으로 고침" },
-    { value: "accept_risk", label: "위험 수용 — RGR 사이클 진입 시 해당 AC는 건너뛸 수 있음 명시" },
-    { value: "abort", label: "중단 — 요구사항을 재정의" }
-  ]
+  questions: [{
+    question: "G-W-T 게이트 미통과 항목이 있습니다. 어떻게 진행할까요?",
+    header: "게이트 처리",
+    options: [
+      { label: "직접 수정", description: "PRD를 직접 G-W-T 형식으로 고침" },
+      { label: "위험 수용", description: "RGR 사이클 진입 시 해당 AC는 건너뛸 수 있음 명시" },
+      { label: "중단", description: "요구사항을 재정의" }
+    ],
+    multiSelect: false
+  }]
 )
 ```
 

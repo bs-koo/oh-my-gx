@@ -66,8 +66,15 @@ oh-my-gx:gx-red — RED 단계 진입.
 단독 호출 시 위 정보가 없으면 사용자에게 질문:
 ```
 AskUserQuestion(
-  question: "어떤 동작을 테스트할까요?",
-  description: "예: 잘못된 비밀번호 로그인 시 401 응답"
+  questions: [{
+    question: "어떤 동작을 테스트할까요?",
+    header: "테스트 대상",
+    options: [
+      { label: "잘못된 입력 거부", description: "예: 잘못된 비밀번호 로그인 시 401 응답" },
+      { label: "정상 경로 검증", description: "예: 유효한 입력에 대한 성공 응답" }
+    ],
+    multiSelect: false
+  }]
 )
 ```
 

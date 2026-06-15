@@ -66,11 +66,15 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 
 ```
 AskUserQuestion(
-  question: "RGR 태스크 분해를 확인해주세요.",
-  options: [
-    { value: "approve", label: "승인 — RGR 사이클 시작" },
-    { value: "modify", label: "수정 요청 — 변경할 항목을 알려주세요" }
-  ]
+  questions: [{
+    question: "RGR 태스크 분해를 확인해주세요.",
+    header: "산출물 확인",
+    options: [
+      { label: "승인", description: "RGR 사이클 시작" },
+      { label: "수정 요청", description: "Other로 이동해서 변경할 항목을 자연어로 입력해주세요" }
+    ],
+    multiSelect: false
+  }]
 )
 ```
 

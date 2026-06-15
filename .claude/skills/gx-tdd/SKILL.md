@@ -161,9 +161,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | ~~coder~~ | (deprecated — red-writer/green-coder/refactor-coder로 분해) | — | — |
 
 ### VERIFICATION
-| Agent | 역할 | 관점 | 모델 |
-|-------|------|------|------|
-| **verifier** | **완료 검증 게이트 (신규)** | **"실행 증거 없이 완료 주장 금지"** | **haiku** |
+완료 검증은 **에이전트가 아니라 `oh-my-gx:gx-verify` 스킬**이 담당한다. phase-complete의 Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출되어 테스트/빌드를 직접 실행하고 0 failures를 확인한다.
 
 ### ANALYSIS
 | Agent | 역할 | 관점 | 모델 |
@@ -180,7 +178,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 
 - 비판적 분석 / 구조적 설계 / 코드 품질 리뷰 / testability 평가: **opus** — 추론 깊이 우선
 - PRD 작성 / spec 리뷰 / RED-GREEN-REFACTOR 구현 / 보안 감사 / 정체 탈출: **sonnet** — 비용 효율 우선
-- verify 게이트 (직접 명령 실행 검증): **haiku** — 단순 검증 + 비용 최소화
+- verify 게이트: **`oh-my-gx:gx-verify` 스킬**이 담당 (별도 에이전트 아님). 테스트/빌드 직접 실행 + 0 failures 확인
 - Mechanical Gate 결과 판단: 오케스트레이터가 직접 수행 — 에이전트 불필요
 
 ### Deprecated 에이전트 처리
@@ -198,13 +196,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
 | implement | phase-implement.md | **red-writer → green-coder → refactor-coder (격리 순차)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **spec-reviewer → quality-reviewer (순차 강제)** + security-auditor (quality와 병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
-| complete | phase-complete.md | **verifier** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
+| complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
 - requirements/design에 **사전 게이트** (G-W-T, testability)
 - implement는 단일 coder가 아니라 **격리된 3 에이전트 순차 사이클**
 - review는 병렬이 아니라 **spec → quality 순차** (spec 우선)
-- complete는 **verifier 우선 호출** (verify 통과 없이 commit 진입 금지)
+- complete는 **gx-verify 스킬 우선 호출** (verify 통과 없이 commit 진입 금지)
 
 ### Hotfix 경로 (`--hotfix`)
 
@@ -289,7 +287,7 @@ for phase in PHASES:
 
 ### Agent 팀 강제
 
-Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, green-coder, refactor-coder, spec-reviewer, quality-reviewer, security-auditor, verifier, researcher, hacker, simplifier)을 사용한다.
+Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, green-coder, refactor-coder, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)을 사용한다. (완료 검증은 별도 에이전트가 아니라 `oh-my-gx:gx-verify` 스킬이 담당한다.)
 
 **Iron Law**: 다음 에이전트는 oh-my-gx:gx-tdd에서 **절대 호출하지 않는다** (deprecated):
 - `coder` — red-writer/green-coder/refactor-coder로 분해됨
@@ -388,7 +386,6 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 - phase-design 완료 시 확정된 설계 문서를 `${DEV_DIR}/design.md`에 저장한다.
 - Trust Ledger를 `${DEV_DIR}/trust-ledger.md`에 저장한다.
 - 코드 맵을 `${DEV_DIR}/codemap.md`에 저장한다 (갱신 시마다).
-- 자기점검 결과를 `${DEV_DIR}/self-check.md`에 저장한다 (phase-implement 자기점검 완료 시).
 - phase-design, phase-implement, phase-review 진입 시 해당 파일들을 Read하여 에이전트 프롬프트에 사용한다.
 - `.gitignore` 보강은 phase-setup의 Step 0.5a에서 프로젝트 타입별로 처리한다 (`.dev/` 패턴 — 브랜치별 하위 폴더 전체 포함).
 
@@ -464,7 +461,7 @@ execution-log:
 
 #### PRODUCT
 - **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + **"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** 지시
-- **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + **verifier 보고서 (`${DEV_DIR}/verify-report.md`)**
+- **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
 
 #### PLANNING
 - **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + REFERENCES (있으면) + **"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** 지시
@@ -487,7 +484,7 @@ execution-log:
 - **security-auditor (통합 감사, quality와 병렬)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
 
 #### VERIFICATION
-- **verifier (완료 게이트)** ← 신규: 프로젝트 타입 (config.json) + 프로젝트 루트 경로 + **"테스트 명령을 직접 실행. 캐시 결과 사용 금지. 0 failures 확인"** 지시. PRD/설계서/diff 모두 전달하지 않음 (실행 결과만 수집).
+- **gx-verify (스킬, 완료 게이트)**: phase-complete Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출. config.json의 projectTypes 기반으로 테스트/빌드 명령을 직접 실행. 캐시 결과 사용 금지, 0 failures 확인. 에이전트 Task가 아니므로 Context Slicing(입력 전달) 대상이 아니다.
 
 #### ANALYSIS / RECOVERY
 - **researcher (독립 조사)**: 조사 요청 + 코드 맵 (있으면) + 프로젝트 루트 경로
@@ -497,7 +494,7 @@ execution-log:
 각 에이전트에 전달하는 입력 크기가 `.claude/config.json`의 `contextLimits`를 초과하면, 우선순위가 낮은 섹션부터 요약 또는 생략한다.
 
 ### 병렬 실행 규칙
-읽기 전용 Agent(product-owner, architect, test-architect, design-critic, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier, verifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
+읽기 전용 Agent(product-owner, architect, test-architect, design-critic, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
 1. 하나의 메시지에서 여러 `Task()` 호출을 동시에 발행한다.
 2. 모든 병렬 Task가 완료된 후 결과를 합산한다 (Gate 로직).
 3. 쓰기 Agent(red-writer, green-coder, refactor-coder)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.

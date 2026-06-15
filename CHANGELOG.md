@@ -10,7 +10,7 @@
   - review: `spec-reviewer`(AC 충족) → `quality-reviewer`(코드 품질) + `security-auditor` 순차 게이트
   - complete: `gx-verify` 게이트(신선한 테스트 실행 증거) 통과 후에만 commit/PR 진입
   - hotfix 경로(`--hotfix`): design·정식 review는 생략하되 RGR 사이클과 verify 게이트는 유지 (급해도 회귀 테스트 선행)
-- **TDD 전용 에이전트 7종 추가**: `red-writer`, `green-coder`, `refactor-coder`(구현 RGR), `test-architect`(testability), `spec-reviewer`·`quality-reviewer`(리뷰 2단계), `verifier`(완료 게이트)
+- **TDD 전용 에이전트 6종 추가**: `red-writer`, `green-coder`, `refactor-coder`(구현 RGR), `test-architect`(testability), `spec-reviewer`·`quality-reviewer`(리뷰 2단계). 완료 검증은 `gx-verify` 스킬이 담당
 - **TDD 보조 스킬 4종 추가**: `gx-red`, `gx-green`, `gx-refactor`, `gx-verify` (파이프라인 내부 자동 호출 + 명시적 키워드 단독 호출)
 - **Iron Law 격리**: `tdd-iron-law.md`를 `.claude/rules`가 아닌 `gx-tdd/references/`에 격리하여 일반 gx-dev 갈래는 TDD 강제의 영향을 받지 않음
 - **verify 게이트는 gx-tdd가 조립**: 공유 스킬(`gx-commit`/`gx-pull-request`)은 무수정 유지. gx-tdd의 phase-complete가 `gx-verify → gx-commit → gx-pull-request` 순서를 직접 조립
