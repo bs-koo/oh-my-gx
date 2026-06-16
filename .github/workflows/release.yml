@@ -45,7 +45,7 @@ jobs:
             echo "title=v${VERSION}" >> "$GITHUB_OUTPUT"
           fi
           # Extract section between current version header and next version header
-          BODY=$(awk "/^## v${VERSION}/,/^## v[0-9]/" CHANGELOG.md | head -n -1 | tail -n +2)
+          BODY=$(awk "/^## v${VERSION} /{flag=1; next} /^## v[0-9]/{flag=0} flag" CHANGELOG.md)
           # Write to file to preserve newlines
           echo "$BODY" > /tmp/release_body.md
 
