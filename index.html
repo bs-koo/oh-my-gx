@@ -703,7 +703,7 @@
     <div>
       <span class="badge badge-dot">Claude Code 플러그인</span>
       <h1 class="display-xl">자연어 한 줄로<br>개발 사이클 전체를.</h1>
-      <p class="lead">GX 사업본부 개발자를 위한 자동화 플러그인. PRD·설계·구현·리뷰·PR까지, 역할이 분리된 에이전트 팀이 단계별 승인을 거쳐 처리합니다.</p>
+      <p class="lead">GX 사업본부 개발자를 위한 자동화 플러그인입니다. PRD·설계·구현·리뷰·PR까지, 역할을 나눠 맡은 에이전트 팀이 단계마다 승인을 받으며 처리합니다.</p>
       <div class="hero-actions">
         <a href="#usage" class="btn btn-primary">시작하기</a>
         <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
@@ -742,7 +742,7 @@
     <div class="section-head">
       <p class="eyebrow">사용법</p>
       <h2 class="display-lg">명령어를 외울 필요 없습니다</h2>
-      <p>자연어로 의도를 말하면 알맞은 스킬이 발동됩니다. "TDD로" 같은 키워드가 있으면 tdd 파이프라인으로 자동 분기합니다.</p>
+      <p>명령어를 외울 필요는 없습니다. 자연어로 말하면 의도에 맞는 스킬이 알아서 발동되고, "TDD로" 같은 키워드가 있으면 tdd 파이프라인으로 갈립니다.</p>
     </div>
 
     <div class="usage-list">
@@ -770,7 +770,7 @@
     <div class="section-head">
       <p class="eyebrow">두 가지 개발 파이프라인</p>
       <h2 class="display-lg">dev — 어떤 걸 쓰나 — tdd</h2>
-      <p>같은 6단계 골격(요구사항 → 설계 → 구현 → 리뷰 → 완료)을 공유하되, tdd는 RED-GREEN-REFACTOR 격리와 verify 게이트를 강제합니다.</p>
+      <p>요구사항 → 설계 → 구현 → 리뷰 → 완료라는 같은 6단계 골격을 쓰지만, tdd는 여기에 RED-GREEN-REFACTOR 격리와 verify 게이트를 강제로 끼웁니다.</p>
     </div>
 
     <div class="compare">
@@ -818,7 +818,7 @@
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
       <h2 class="display-lg">15개 스킬이 사이클을 나눠 맡습니다</h2>
-      <p>각 스킬은 한 가지 역할에 집중합니다. 단독으로 호출할 수도, dev/tdd 파이프라인 안에서 자동으로 엮일 수도 있습니다.</p>
+      <p>스킬 하나는 한 가지 역할만 맡습니다. 단독으로 불러 써도 되고, dev/tdd 파이프라인 안에서 자동으로 엮여 돌아가기도 합니다.</p>
     </div>
 
     <!-- context -->
@@ -826,7 +826,7 @@
       <div class="feature-text">
         <span class="badge">도메인 지식</span>
         <h3 class="display-sm">context</h3>
-        <p>기획서·요구사항 문서·코드베이스를 분석해 도메인 지식을 <code>context/{도메인}/</code>에 등록합니다. 등록된 context는 dev·tdd 실행 시 자동 참조됩니다.</p>
+        <p>기획서·요구사항 문서·코드베이스를 분석해 도메인 지식을 <code>context/{도메인}/</code>에 등록합니다. 한번 등록해두면 dev·tdd를 실행할 때 자동으로 참조됩니다.</p>
         <ul class="feature-list">
           <li><strong>스캔</strong> — 패키지 구조·엔티티·API 분석으로 도메인 자동 생성</li>
           <li><strong>문서 기반</strong> — PDF·이미지·텍스트에서 context 추출</li>
@@ -854,7 +854,7 @@
       <div class="feature-text">
         <span class="badge">전체 파이프라인</span>
         <h3 class="display-sm">dev</h3>
-        <p>자연어 요청 하나로 PRD부터 PR까지 전체 사이클을 수행합니다. 요청을 분석해 normal·hotfix·단일단계·재개 모드를 자동 결정합니다.</p>
+        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 normal·hotfix·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다.</p>
         <ul class="feature-list">
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
@@ -883,7 +883,7 @@
       <div class="feature-text">
         <span class="badge badge-coral">TDD 강제</span>
         <h3 class="display-sm">tdd</h3>
-        <p>dev와 동일한 6단계 골격에 TDD 게이트를 강제한 파이프라인입니다. 구현이 RED-GREEN-REFACTOR로 격리되고, 완료 전 verify 게이트를 반드시 통과해야 합니다.</p>
+        <p>dev와 같은 6단계 골격에 TDD 게이트를 강제로 끼운 파이프라인입니다. 구현은 RED-GREEN-REFACTOR 사이클로 격리되고, 완료 전에는 verify 게이트를 반드시 통과해야 합니다.</p>
         <ul class="feature-list">
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
@@ -915,12 +915,12 @@
       <div class="card-dark">
         <span class="card-icon">✻</span>
         <div class="card-title">red</div>
-        <p>실패하는 테스트를 먼저 작성합니다. 의도된 실패를 확인한 뒤 다음 단계로 넘깁니다.</p>
+        <p>실패하는 테스트를 먼저 짭니다. 의도한 실패를 눈으로 확인한 뒤에야 다음 단계로 넘어갑니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
         <div class="card-title">green</div>
-        <p>테스트를 통과시키는 최소 코드만 작성합니다. YAGNI 원칙으로 과잉 구현을 차단합니다.</p>
+        <p>테스트를 통과시킬 최소한의 코드만 짭니다. YAGNI 원칙으로 과잉 구현을 막습니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
@@ -930,7 +930,7 @@
       <div class="card-dark">
         <span class="card-icon">✻</span>
         <div class="card-title">verify</div>
-        <p>"should work" 같은 추측 표현을 차단하고, 실제 테스트 실행 증거 없이는 완료를 인정하지 않습니다.</p>
+        <p>"should work" 같은 추측성 표현을 막습니다. 실제 테스트 실행 증거가 없으면 완료로 쳐주지 않습니다.</p>
       </div>
     </div>
   </div>
@@ -942,39 +942,39 @@
     <div class="section-head">
       <p class="eyebrow">분석 · 글쓰기 스킬</p>
       <h2 class="display-lg">코드를 읽고, 글을 다듬습니다</h2>
-      <p>구현과 별개로 단독 호출하는 읽기 전용·문서 스킬입니다.</p>
+      <p>구현 파이프라인과 따로 단독으로 부르는 읽기 전용·문서 스킬입니다.</p>
     </div>
 
     <div class="grid grid-3">
       <div class="card">
         <span class="card-icon">◆</span>
         <h3>lens</h3>
-        <p>코드에서 비즈니스 정책을 찾아 PO·PD가 읽을 보고서로 출력합니다. 코드를 수정하지 않습니다. 변경 아이디어를 이어 입력하면 복잡도·리스크까지 분석합니다.</p>
+        <p>코드에 묻혀 있는 비즈니스 정책을 찾아 PO·PD가 읽을 수 있는 보고서로 뽑아냅니다. 코드는 건드리지 않습니다. 변경 아이디어를 이어 말하면 복잡도와 리스크까지 분석해줍니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
         <h3>tech-debt</h3>
-        <p>코드·아키텍처·의존성·테스트 4가지 유형으로 부채를 스캔하고, 심각도 × 수정 용이성 × 영향 범위로 우선순위 로드맵과 A~F Health Score를 제공합니다. 읽기 전용.</p>
+        <p>기술 부채를 코드·아키텍처·의존성·테스트 네 가지 유형으로 나눠 스캔하고, 심각도 × 수정 용이성 × 영향 범위를 따져 우선순위 로드맵과 A~F Health Score를 내놓습니다. 읽기 전용이라 코드는 손대지 않습니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
         <h3>research</h3>
-        <p>웹 검색과 문서 분석을 병행해 출처가 명확한 리서치를 수행합니다. 종합 리포트·비교표·핵심 요약 형태로 <code>.research/</code>에 저장하고 context에 반영할 수 있습니다.</p>
+        <p>웹 검색과 문서 분석을 함께 돌려 도메인 리서치를 수행합니다. 결과는 종합 리포트·비교표·핵심 요약 형태로 <code>.research/</code>에 저장되고, 모든 발견에 출처 URL이 붙어 context에 그대로 반영할 수 있습니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
         <h3>cross-review</h3>
-        <p>dev·tdd 완료 후 단발 호출. PRD·설계서·Trust Ledger를 주입해 "약속 대비 충실도"를 교차 검증합니다. AC 충족·범위 이탈·신규 위험만 보고. codex 또는 claude advisor 선택.</p>
+        <p>dev·tdd를 끝낸 뒤 한 번만 부릅니다. PRD·설계서·Trust Ledger를 컨텍스트로 넣어 "약속한 대로 만들었는가"를 교차 검증하고, AC 충족·범위 이탈·신규 위험만 짚어 보고합니다. advisor는 codex 또는 claude 중에서 고릅니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
         <h3>commit · pull-request</h3>
-        <p>브랜치명에서 타입을 파싱해 한국어 커밋을, 커밋 히스토리를 분석해 PR 제목·본문을 자동 생성합니다. Git 전용 — SVN은 <code>svn commit</code>을 직접 실행합니다.</p>
+        <p>브랜치명에서 타입을 파싱해 한국어 커밋 메시지를 만들고, 커밋 히스토리를 분석해 PR 제목·본문을 자동으로 써줍니다. Git 전용이라 SVN에서는 <code>svn commit</code>을 직접 실행하세요.</p>
       </div>
       <div class="card" style="background:var(--surface-cream-strong)">
         <span class="card-icon">◆</span>
         <h3>setup</h3>
-        <p>플러그인 설치 후 최초 1회. VCS(Git/SVN)를 자동 감지하고 gh CLI·인증·Google Chat 웹훅을 확인합니다.</p>
+        <p>플러그인을 설치한 뒤 한 번만 실행하면 됩니다. VCS(Git/SVN)를 자동으로 감지하고 gh CLI·인증·Google Chat 웹훅을 점검합니다.</p>
       </div>
     </div>
 
@@ -983,7 +983,7 @@
       <div class="feature-text">
         <span class="badge badge-coral">v4.0 · 3모드</span>
         <h3 class="display-sm">humanizer</h3>
-        <p>AI 글쓰기 패턴 40여 종(한국어 K1–K19 / 영어 E1–E19 / 공통 C1–C6)을 감지하고 교정합니다. "정밀/꼼꼼히/--strict" 또는 8,000자 초과 시 strict로 자동 승급합니다.</p>
+        <p>AI 글쓰기 패턴 40여 종(한국어 K1–K19 / 영어 E1–E19 / 공통 C1–C6)을 감지하고 교정합니다. "정밀/꼼꼼히/--strict"라고 명시하거나 입력이 8,000자를 넘으면 자동으로 strict로 올라갑니다.</p>
         <ul class="feature-list">
           <li><strong>audit</strong> — 감지 리포트만 (수정 안 함)</li>
           <li><strong>rewrite</strong> — 감지 + 교정 + 변경률 상한(30% 경고 / 50% 중단)</li>
@@ -1016,7 +1016,7 @@
     <div class="section-head">
       <p class="eyebrow">에이전트 팀</p>
       <h2 class="display-lg">17개 에이전트, 하나의 관점씩</h2>
-      <p>스킬은 내부적으로 직무별 에이전트 팀을 호출합니다. 각 에이전트는 하나의 관점만 책임지고, 작업 특성에 따라 Opus·Sonnet 모델이 배정됩니다.</p>
+      <p>스킬은 내부적으로 직무별 에이전트 팀을 부릅니다. 에이전트 하나는 관점 하나만 맡고, 작업 성격에 따라 Opus나 Sonnet 모델이 배정됩니다.</p>
     </div>
 
     <div class="agent-group">
@@ -1068,7 +1068,7 @@
     <div class="callout-coral">
       <p class="eyebrow">안전장치</p>
       <h2 class="display-md">자동화하되, 위험한 일은 사람에게.</h2>
-      <p>PR 생성까지만 자동화합니다. 머지·강제 푸시·민감 파일은 설정 수준에서 차단되거나 사람의 확인을 거칩니다.</p>
+      <p>자동화는 PR 생성까지입니다. 머지·강제 푸시·민감 파일은 설정 수준에서 막히거나 사람의 확인을 거칩니다.</p>
       <div class="safeguard-grid">
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -1110,35 +1110,35 @@
     <div class="faq-list">
       <details open>
         <summary>dev와 tdd 중 뭘 써야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">일반 기능 개발은 dev, 테스트를 먼저 작성하고 회귀를 막아야 하는 작업은 tdd입니다. "TDD로", "테스트 먼저" 같은 키워드를 쓰면 자동으로 tdd가 발동합니다. 애매하면 어느 방식으로 진행할지 물어봅니다.</div>
+        <div class="faq-body">일반 기능 개발이라면 dev, 테스트를 먼저 짜고 회귀를 막아야 하는 작업이라면 tdd입니다. "TDD로", "테스트 먼저" 같은 키워드를 쓰면 tdd가 자동으로 발동합니다. 애매할 때는 어느 방식으로 갈지 물어봅니다.</div>
       </details>
       <details>
         <summary>context 없이도 dev/tdd를 실행할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">네. 없어도 동작합니다. 다만 context를 등록하면 AI가 도메인 용어를 정확히 이해하여 더 정확한 코드를 생성합니다.</div>
+        <div class="faq-body">네, 없어도 동작합니다. 다만 context를 등록해두면 AI가 도메인 용어를 정확히 이해해 더 정확한 코드를 만듭니다.</div>
       </details>
       <details>
         <summary>dev/tdd를 실행하면 바로 코드를 짜나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. PO 에이전트가 먼저 Q&amp;A로 요구사항을 구체화하고(PRD), 설계자가 기술 설계를 거친 뒤 사용자가 승인해야 구현에 들어갑니다. 각 단계마다 선택형·자유입력형 질문으로 확인을 받습니다.</div>
+        <div class="faq-body">아닙니다. PO 에이전트가 먼저 Q&amp;A로 요구사항을 다듬어 PRD를 만들고, 설계자가 기술 설계를 마친 다음, 사용자가 승인해야 구현에 들어갑니다. 단계마다 선택형이나 자유입력형 질문으로 확인을 받습니다.</div>
       </details>
       <details>
         <summary>도중에 멈추면 처음부터 다시 해야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. "이어서 해줘"라고 말하면 <code>.dev/state.md</code>에 저장된 진행 상태를 기반으로 중단된 단계부터 재개합니다.</div>
+        <div class="faq-body">아닙니다. "이어서 해줘"라고 말하면 <code>.dev/state.md</code>에 저장된 진행 상태를 읽어 멈춘 단계부터 다시 시작합니다.</div>
       </details>
       <details>
         <summary>humanizer의 strict 모드는 일반 모드와 뭐가 다른가요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">audit·rewrite는 단일 스킬이 가볍게 처리합니다. strict는 윤문 후 humanizer-fidelity가 의미 훼손(수치·고유명사·인용 변형)을, humanizer-naturalness가 과윤문·AI티 잔존을 교차 검증하고 필요 시 재윤문합니다. 8,000자 초과 시 자동으로 strict로 전환됩니다.</div>
+        <div class="faq-body">audit·rewrite는 단일 스킬이 가볍게 처리합니다. strict는 윤문을 마친 뒤 humanizer-fidelity가 의미 훼손(수치·고유명사·인용 변형)을, humanizer-naturalness가 과윤문·AI티 잔존을 교차 검증하고, 필요하면 다시 윤문합니다. 8,000자를 넘으면 자동으로 strict로 전환됩니다.</div>
       </details>
       <details>
         <summary>PR이 자동으로 머지되나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. PR 생성까지만 자동화합니다. <code>gh pr merge</code>는 설정 수준에서 차단되어 있습니다.</div>
+        <div class="faq-body">아닙니다. 자동화는 PR 생성까지입니다. <code>gh pr merge</code>는 설정 수준에서 막혀 있습니다.</div>
       </details>
       <details>
         <summary>SVN 프로젝트에서도 사용할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">네. <code>/gx-setup</code> 실행 시 VCS를 자동 감지합니다. SVN 프로젝트에서는 PRD·설계·구현·리뷰까지 동일하게 동작하며, 커밋만 <code>svn commit</code>으로 직접 수행합니다.</div>
+        <div class="faq-body">네. <code>/gx-setup</code>을 실행하면 VCS를 자동으로 감지합니다. SVN 프로젝트에서도 PRD·설계·구현·리뷰까지 똑같이 동작하고, 커밋만 <code>svn commit</code>으로 직접 하면 됩니다.</div>
       </details>
       <details>
         <summary>플러그인 업데이트는 어떻게 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body"><code>/plugin marketplace update oh-my-gx</code> 를 실행합니다.</div>
+        <div class="faq-body"><code>/plugin marketplace update oh-my-gx</code> 를 실행하면 됩니다.</div>
       </details>
     </div>
   </div>
@@ -1148,7 +1148,7 @@
 <section class="band-dark cta-band">
   <div class="container">
     <h2 class="display-lg">지금 설치하고 한 줄로 시작하세요</h2>
-    <p>Claude Code CLI에서 마켓플레이스를 추가하고 플러그인을 설치하면 끝입니다.</p>
+    <p>Claude Code CLI에서 마켓플레이스를 추가하고 플러그인을 설치하면 그걸로 끝입니다.</p>
     <div class="cta-actions">
       <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-primary">GitHub 저장소</a>
       <a href="https://github.com/bs-koo/oh-my-gx/releases/latest" class="btn btn-on-dark">릴리스 노트</a>
