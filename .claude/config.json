@@ -71,6 +71,8 @@
     "green-coder": { "maxInputLines": 1000, "note": "실패 테스트 + 설계서 인터페이스" },
     "refactor-coder": { "maxInputLines": 1000, "note": "정리 대상 파일 + 항목" },
     "spec-reviewer": { "maxInputLines": 1500, "note": "PRD 요구사항/수용 기준 + diff" },
-    "quality-reviewer": { "maxInputLines": 1500, "note": "diff + 코드 맵 + 컨벤션" }
+    "quality-reviewer": { "maxInputLines": 1500, "note": "diff + 코드 맵 + 컨벤션" },
+    "humanizer-fidelity": { "maxInputLines": 1500, "note": "원문 + 윤문본 + 변경 diff" },
+    "humanizer-naturalness": { "maxInputLines": 1200, "note": "윤문본 + 탐지 리포트" }
   }
 }

@@ -26,7 +26,7 @@
 
 1. 출력 품질 신뢰성: 의미 보존 검증, 과윤문 방지, 변경률 상한
 2. 산출물·이력 관리: 단계별 파일 저장, run-id 기반 이력
-3. 한국어 윤문 심도: (현행 패턴 유지, 후속 보강 여지)
+3. 한국어 윤문 심도: 장르별 치환 처방 + 핵심 학술 근거를 patterns-ko에 보강 (taxonomy 전수 이식은 비범위)
 4. 처리 구조 파이프라인화: 정밀 모드의 검증 단계 분리
 
 ## 3. 핵심 결정
@@ -124,14 +124,15 @@ final.md + summary.md
 - `.claude/skills/gx-humanizer/SKILL.md`: 3모드 체계, strict 오케스트레이션, 변경률 상한, 산출물 규칙
 - `.claude/config.json`: 신규 2개 에이전트 contextLimits 등록
 - `.gitignore`: `.humanize/` 추가
+- `references/patterns-ko.md`: 장르별 치환 처방 표 + 주요 K 패턴 핵심 학술 근거 보강 (목표 3)
 
 ### 유지 (수정 없음)
-- `references/patterns-ko.md`, `patterns-en.md`, `patterns-common.md`
+- `references/patterns-en.md`, `patterns-common.md`
 
 ## 10. 비범위 (Out of Scope)
 
 - 웹 서비스화 (humanize-korean의 web-service-spec 미흡수)
-- taxonomy SSOT 학술 분류 체계 전면 이식 (현행 패턴 체계 유지, 후속 과제)
+- taxonomy SSOT 전수 이식(40+ 패턴 전수·논문 29편 인용) — 핵심 근거·장르 처방만 흡수하고 전수 이식은 후속 과제
 - 모델별(GPT/Claude/Gemini) 패턴 분포 차등
 
 ## 11. 검증 전략
@@ -140,3 +141,4 @@ final.md + summary.md
 - strict 모드에서 의미 훼손 케이스를 fidelity가 잡아 롤백하는지
 - 변경률 50% 초과 입력에서 강제 중단되는지
 - 영어 텍스트가 strict에서도 정상 처리되는지 (양국어 회귀 없음)
+- 장르별 치환 처방이 rewrite 결과에 실제 반영되는지 (목표 3)
