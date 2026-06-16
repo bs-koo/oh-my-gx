@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.12.0 (2026-06-16) — gx-humanizer v4.0: humanize-korean 우수 요소 흡수
+
+### Features
+- **gx-humanizer 3모드 체계**: 기존 audit/rewrite에 `strict` 모드 신설. "정밀/꼼꼼히/--strict" 명시 또는 입력 8,000자 초과 시 자동 승급(1줄 고지). audit/rewrite 기본 경량 동작은 그대로 유지
+- **strict 검증 에이전트 2종 신설** (opus, 한/영 양국어): `humanizer-fidelity`(의미 보존 감사 — 사실·수치·고유명사·직접인용·인과관계·순서 훼손 탐지, edit 단위 pass/rollback), `humanizer-naturalness`(과윤문·AI티 잔존·장르 이탈 검토, accept/rewrite_round/rollback)
+- **strict 오케스트레이션**: 탐지·윤문 → fidelity 감사 → naturalness 검토 순차 파이프라인. 재윤문 루프 최대 2회 후 사람 개입 보고
+- **안전장치 흡수**: 변경률 30% 경고 / 50% 강제 중단(어절 기준), Write/Edit 경로 가드(`.humanize/` 하위 제한), 입력=데이터 프롬프트 인젝션 방어
+- **산출물·이력 관리**: `.humanize/{run-id}/`(run-id=`YYYY-MM-DD-NNN`) 모드 연동 — 기본은 final.md+summary.md, strict는 단계별 7파일(01_input~05_naturalness+final+summary)
+- **patterns-ko 보강**: 장르별 치환 처방표 + 주요 K 패턴 학술 근거 추가 (taxonomy 전수 이식은 후속 과제)
+- **유지(회귀 없음)**: 한/영 양국어 패턴(K/E/C), 콘텐츠 6유형 기준, "글에 숨결 불어넣기", audit/rewrite 경량 동작
+
 ## v1.11.0 (2026-06-15) — gx-tdd TDD 강제 파이프라인 편입
 
 ### Features

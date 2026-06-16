@@ -36,8 +36,11 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          # 정규식에서 점(.)이 any char로 해석되지 않도록 이스케이프한 버전 패턴 생성
+          VERSION_RE=$(printf '%s' "$VERSION" | sed 's/\./\\./g')
+          # 버전 뒤 경계(공백/괄호/줄끝)를 앵커로 강제하여 substring 충돌 방지 (예: v1.1.0이 v1.11.0에 매칭되지 않도록)
           # Extract title description from header: "## v1.3.0 (date) — description"
-          HEADER=$(grep "^## v${VERSION}" CHANGELOG.md | head -1)
+          HEADER=$(grep -E "^## v${VERSION_RE}([ (]|$)" CHANGELOG.md | head -1)
           TITLE_DESC=$(echo "$HEADER" | sed -n 's/.*— \(.*\)/\1/p')
           if [ -n "$TITLE_DESC" ]; then
             echo "title=v${VERSION} — ${TITLE_DESC}" >> "$GITHUB_OUTPUT"
@@ -45,7 +48,8 @@ jobs:
             echo "title=v${VERSION}" >> "$GITHUB_OUTPUT"
           fi
           # Extract section between current version header and next version header
-          BODY=$(awk "/^## v${VERSION}/,/^## v[0-9]/" CHANGELOG.md | head -n -1 | tail -n +2)
+          # 현재 버전 헤더는 공백/괄호/줄끝 경계를 모두 허용 (공백 없는 "## v1.5.0"도 매칭)
+          BODY=$(awk "/^## v${VERSION_RE}([ (]|\$)/{flag=1; next} /^## v[0-9]/{flag=0} flag" CHANGELOG.md)
           # Write to file to preserve newlines
           echo "$BODY" > /tmp/release_body.md
 
