@@ -769,33 +769,49 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">두 가지 개발 파이프라인</p>
-      <h2 class="display-lg">dev — 어떤 걸 쓰나 — tdd</h2>
-      <p>요구사항 → 설계 → 구현 → 리뷰 → 완료라는 같은 6단계 골격을 쓰지만, tdd는 여기에 RED-GREEN-REFACTOR 격리와 verify 게이트를 강제로 끼웁니다.</p>
+      <h2 class="display-lg">dev vs tdd — 어떤 걸 쓰나</h2>
+      <p>둘은 같은 6단계 골격을 공유하지만 <strong>구현을 끌고 가는 방식이 정반대</strong>입니다. dev는 설계를 확정한 뒤 구현하고, tdd는 실패 테스트를 먼저 쓰고 그걸 통과시키며 구현합니다.</p>
     </div>
 
     <div class="compare">
       <div class="ch">구분</div>
-      <div class="ch">dev</div>
-      <div class="ch ch-tdd">tdd</div>
+      <div class="ch">dev — 설계 우선</div>
+      <div class="ch ch-tdd">tdd — 테스트 우선</div>
+
+      <div class="rk">접근</div>
+      <div>설계 확정 → 구현 → 사후 검증</div>
+      <div class="hl">실패 테스트 먼저 → 통과시키며 구현</div>
+
+      <div class="rk">요구사항</div>
+      <div>자연어 수용 기준</div>
+      <div class="hl">Given-When-Then 강제</div>
 
       <div class="rk">구현 방식</div>
-      <div>coder가 설계 기반 구현</div>
-      <div class="hl">RED → GREEN → REFACTOR 격리 사이클 강제</div>
+      <div>coder가 설계대로 한 번에</div>
+      <div class="hl">RED → GREEN → REFACTOR 격리 사이클</div>
 
       <div class="rk">리뷰</div>
       <div>qa + security 병렬</div>
-      <div class="hl">spec → quality 순차 강제</div>
+      <div class="hl">spec(AC) → quality(품질) 순차</div>
 
       <div class="rk">완료 게이트</div>
       <div>qa 통과 → commit</div>
-      <div class="hl">verify 게이트(실제 테스트 실행 증거) → commit</div>
+      <div class="hl">verify 게이트(테스트 실행 증거) → commit</div>
+
+      <div class="rk">테스트</div>
+      <div>선택 — 있으면 좋음</div>
+      <div class="hl">필수 — 없으면 진행 불가</div>
 
       <div class="rk">언제 쓰나</div>
-      <div>일반 기능 개발</div>
-      <div class="hl">테스트 우선 · 회귀 안전이 중요한 작업</div>
+      <div>UI·설정·문서, 외부 연동, 프로토타입, 레거시</div>
+      <div class="hl">핵심 로직(결제·인증), 계산·검증, 버그 수정, 리팩토링</div>
     </div>
 
-    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">정상 경로 (Normal)</p>
+    <p style="margin:28px auto 0; max-width:780px; text-align:center; font-size:15px; line-height:1.7;">
+      <strong style="color:var(--accent-amber)">한 줄 기준</strong> — "이 작업의 정답을 자동 테스트로 표현할 수 있고, 그래야 하는가?" 예면 <strong>tdd</strong>, 아니오·애매하면 <strong>dev</strong>.
+    </p>
+
+    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">정상 경로 (Normal) · dev·tdd 공통 6단계</p>
     <div class="pipeline">
       <div class="pipe-step"><div class="ps-name">Setup</div><div class="ps-sub">환경 준비</div></div>
       <div class="pipe-arrow">→</div>
@@ -803,9 +819,9 @@
       <div class="pipe-arrow">→</div>
       <div class="pipe-step"><div class="ps-name">Design</div><div class="ps-sub">기술 설계</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Implement</div><div class="ps-sub">구현 · 자기점검</div></div>
+      <div class="pipe-step"><div class="ps-name">Implement</div><div class="ps-sub">구현 · RGR</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Review</div><div class="ps-sub">QA · 보안</div></div>
+      <div class="pipe-step"><div class="ps-name">Review</div><div class="ps-sub">리뷰 · 보안</div></div>
       <div class="pipe-arrow">→</div>
       <div class="pipe-step"><div class="ps-name">Complete</div><div class="ps-sub">커밋 · PR</div></div>
     </div>
@@ -883,7 +899,7 @@
       <div class="feature-text">
         <span class="badge badge-coral">TDD 강제</span>
         <h3 class="display-sm">tdd</h3>
-        <p>dev와 같은 6단계 골격에 TDD 게이트를 강제로 끼운 파이프라인입니다. 구현은 RED-GREEN-REFACTOR 사이클로 격리되고, 완료 전에는 verify 게이트를 반드시 통과해야 합니다.</p>
+        <p>dev와 같은 6단계 골격을 쓰지만 <strong>구현을 테스트가 끌고 가는</strong> 별도 파이프라인입니다. 실패 테스트를 먼저 쓰고 통과시키며 구현하고 정리하며, 완료 전에는 verify 게이트를 반드시 통과해야 합니다. 결제·인증·계산처럼 정답을 테스트로 표현할 수 있는 작업에 씁니다.</p>
         <ul class="feature-list">
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
@@ -1110,7 +1126,7 @@
     <div class="faq-list">
       <details open>
         <summary>dev와 tdd 중 뭘 써야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">일반 기능 개발이라면 dev, 테스트를 먼저 짜고 회귀를 막아야 하는 작업이라면 tdd입니다. "TDD로", "테스트 먼저" 같은 키워드를 쓰면 tdd가 자동으로 발동합니다. 애매할 때는 어느 방식으로 갈지 물어봅니다.</div>
+        <div class="faq-body">판단 기준은 "정답을 자동 테스트로 표현할 수 있고, 그래야 하는가"입니다. 결제·인증·정산 같은 핵심 로직, 계산·검증, 버그 수정(재현 테스트 먼저), 리팩토링이라면 tdd가 맞습니다. UI·설정·문서 변경, 외부 연동, 프로토타입처럼 테스트로 명세를 떨어뜨리기 어려운 작업이라면 dev가 낫습니다. "TDD로", "테스트 먼저" 키워드를 쓰면 tdd가 자동 발동하고, 애매하면 어느 방식으로 갈지 물어봅니다.</div>
       </details>
       <details>
         <summary>context 없이도 dev/tdd를 실행할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>

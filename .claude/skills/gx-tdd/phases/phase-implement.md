@@ -304,10 +304,15 @@ RGR 사이클 완료: {N}개 태스크
 
 phase-review로 인계하기 위해 diff를 수집한다.
 
-1. `${GIT_PREFIX} add -A`로 스테이징한다.
+**git인 경우:**
+1. `git add -A`로 스테이징한다.
 2. **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트한다 (`git diff --cached`를 Bash 단독 실행하지 않는다).
 
 이 스테이징은 phase-review의 diff 수집과 phase-complete의 commit까지 유지된다.
+
+**svn인 경우:**
+1. 스테이징 불필요 (SVN은 staging 개념 없음).
+2. `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다.
 
 ---
 

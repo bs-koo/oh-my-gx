@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.12.1 (2026-06-17) — gx-tdd 정합성 수정 및 dev/tdd 문서 명확화
+
+### Fixes
+- **gx-tdd 깨진 "구현만" 경량 모드 제거**: phase-implement에 처리 분기가 없어 실동작이 불가능했고, Iron Law 1(실패 테스트 우선)과도 충돌. 설계를 건너뛰는 빠른 경로는 hotfix(경량 PRD + RGR + verify)로 대체
+- **gx-tdd SVN 지원 추가**: gx-dev의 svn 분기를 이식 — phase-setup(VCS 확인·베이스 브랜치·작업환경·ignore), phase-implement·review(변경 수집), phase-complete(commit/PR/status.md), 공유 규칙(VCS_TYPE/GIT_PREFIX/DEV_DIR). SVN은 commit/PR을 건너뛰고 `svn commit` 안내로 처리
+- **deprecated 에이전트 라벨링**: `coder`·`qa-manager` 설명에 "gx-dev 전용" 명시 (gx-tdd는 red/green/refactor-coder, spec/quality-reviewer 사용)
+
+### Docs
+- **dev vs tdd 설명 개편**: README·GitHub Pages에서 "같은 골격"이 아니라 "정반대 접근(설계 우선 vs 테스트 우선)"으로 재프레이밍. 비교표 확장(접근·요구사항·테스트·언제 쓰나), 선택 기준("정답을 자동 테스트로 표현할 수 있고 그래야 하는가") 명문화, FAQ 보강
+
 ## v1.12.0 (2026-06-16) — gx-humanizer v4.0: humanize-korean 우수 요소 흡수
 
 ### Features
