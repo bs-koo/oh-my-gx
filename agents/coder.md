@@ -1,7 +1,7 @@
 ---
 name: coder
 description: |
-  구현 에이전트. 승인된 설계 문서를 기반으로 프로젝트의 언어와 프레임워크 컨벤션에 맞춰 코드를 구현한다.
+  구현 에이전트. 승인된 설계 문서를 기반으로 프로젝트의 언어와 프레임워크 컨벤션에 맞춰 코드를 구현한다. oh-my-gx:gx-dev 전용 — oh-my-gx:gx-tdd 파이프라인에서는 호출하지 않으며, 구현은 red-writer/green-coder/refactor-coder가 RGR 사이클로 분담한다.
 
   <example>
   User: 승인된 설계서 기반으로 코드 구현

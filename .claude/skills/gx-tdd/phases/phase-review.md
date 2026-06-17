@@ -66,11 +66,16 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 ## Step 1: 변경사항 수집 및 파일 저장
 
-작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행한다.
-- **전체 플로우** (phase-setup부터 진행): `${GIT_PREFIX} add -A`로 스테이징한 후, **Diff 수집 규칙**에 따라 `--cached` diff를 `DIFF_FILE`에 리다이렉트한다.
-- **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD <base-branch>)...HEAD`를 `DIFF_FILE`에 리다이렉트한다.
+**git인 경우** (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행):
+- **전체 플로우** (phase-setup부터 진행): `git add -A`로 스테이징한 후, **Diff 수집 규칙**에 따라 `--cached` diff를 `DIFF_FILE`에 리다이렉트한다.
+- **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. `git diff $(git merge-base HEAD <base-branch>)...HEAD`를 `DIFF_FILE`에 리다이렉트한다.
+
+**svn인 경우**:
+- `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다. staging 없이 한 단계로 끝난다.
 
 ### Step 1.1: diff 공백 안전장치
+
+**svn인 경우** → `svn diff`가 0줄이면 "변경사항이 없습니다" 보고 후 중단한다. 이하 git 전용 (브랜치 커밋 비교).
 
 `wc -l < ${DIFF_FILE}`로 라인 수를 확인한다. **0줄**이면 사용자가 파이프라인 도중 수동 커밋을 끼워 넣었을 가능성이 있다.
 

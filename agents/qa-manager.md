@@ -1,7 +1,7 @@
 ---
 name: qa-manager
 description: |
-  QA 매니저 에이전트. 코드 리뷰와 스펙 충족을 검증한다. "스펙대로 만들었는가?"를 확인하며, 확실한 문제(CERTAIN)와 확인이 필요한 사항(QUESTION)을 분류하여 보고한다.
+  QA 매니저 에이전트. 코드 리뷰와 스펙 충족을 검증한다. "스펙대로 만들었는가?"를 확인하며, 확실한 문제(CERTAIN)와 확인이 필요한 사항(QUESTION)을 분류하여 보고한다. oh-my-gx:gx-dev 전용 — oh-my-gx:gx-tdd 파이프라인에서는 호출하지 않으며, 리뷰는 spec-reviewer(AC 충족)/quality-reviewer(코드 품질)가 분담한다.
 
   <example>
   User: 구현된 코드 리뷰 요청
