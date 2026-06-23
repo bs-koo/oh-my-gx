@@ -38,7 +38,7 @@ NO BEHAVIOR CHANGES DURING REFACTOR
 
 ## 사용 시점
 
-- `oh-my-gx:gx-green` 완료 직후 자동 호출
+- 보조 스킬 체이닝: `oh-my-gx:gx-green` 완료 직후 자동 호출 (gx-tdd 파이프라인은 이 스킬 대신 refactor-coder 에이전트를 직접 디스패치)
 - 단독 호출 금지 (반드시 GREEN 상태가 선행되어야 함)
 - 호출 시 GREEN 상태 검증:
   ```

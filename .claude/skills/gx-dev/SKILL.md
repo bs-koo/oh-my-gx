@@ -8,8 +8,14 @@ allowed-tools:
   - Bash(svn *)
   - Bash(gh *)
   - Bash(GH_HOST= *)
-  # 빌드
+  # 빌드/테스트
   - Bash(./gradlew *)
+  - Bash(npm *)
+  - Bash(bun *)
+  - Bash(npx *)
+  - Bash(pnpm *)
+  - Bash(pytest *)
+  - Bash(go *)
   # 파일 시스템
   - Bash(test *)
   - Bash(mkdir *)

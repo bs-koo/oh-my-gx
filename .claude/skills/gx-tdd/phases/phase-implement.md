@@ -6,9 +6,9 @@
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
-이 Phase는 **격리된 3 에이전트가 순차 사이클로 동작**한다:
-- **red-writer** → 실패 테스트 작성 (프로덕션 코드 안 봄)
-- **green-coder** → 통과 최소 코드 (테스트와 스펙만 봄)
+이 Phase는 **3 에이전트가 순차 사이클로 동작**한다:
+- **red-writer** → 실패 테스트 작성 (**진짜 격리** — 기존 프로덕션 코드를 보지 않음)
+- **green-coder** → 통과 최소 코드 (입력은 실패 테스트+시그니처로 한정하되, 구현을 위한 기존 코드 Read는 허용 — red-writer 수준의 차단 아님)
 - **refactor-coder** → 안전한 정리 (동작 변경 금지)
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.

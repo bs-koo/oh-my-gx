@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.12.2 (2026-06-23) — gx-tdd TDD 정합성·모호점 정리
+
+### Fixes
+- **보조 스킬 호출 관계 명확화 (A)**: gx-red의 부정확한 description("gx-tdd 파이프라인 내부 자동 호출")을 정정. phase-implement는 보조 스킬(gx-red/gx-green/gx-refactor)을 거치지 않고 `red-writer`/`green-coder`/`refactor-coder` 에이전트를 직접 `Task` 디스패치한다는 사실을 gx-tdd SKILL.md "스킬 참조 경로"에 명시. 디스패치 프롬프트가 phase-implement와 보조 스킬 양쪽에 중복 정의되어 있어 발생하는 드리프트 주의 추가
+- **비-gradle 프로젝트 검증 권한 갭 (B)**: gx-tdd·gx-dev의 `allowed-tools`에 `npm`/`bun`/`npx`/`pnpm`/`pytest`/`go` 추가. 오케스트레이터 직접 검증(verify_green/refactor, mechanical gate)이 gradle만 화이트리스트에 있어 node·python·go 프로젝트에서 매번 권한 프롬프트가 뜨던 문제 해소
+- **리뷰 결함 처리 경로 통일 (C)**: quality-reviewer 출력("refactor/green 재호출")과 phase-review Step 4 처리("새 AC로 RGR")의 서술 불일치를 해소. 결함을 `[동작결함]`/`[동작불변]`으로 표기하여 일관 라우팅
+- **품질 결함의 불필요한 RED 강제 제거 (D)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `refactor-coder` 단독(기존 테스트 GREEN 유지, 새 RED 불필요)으로, 동작 결함만 RGR 사이클(RED 선행)로 분기. mechanical gate의 빌드/테스트 실패 처리도 "새 RED-GREEN 사이클"이라는 모순을 "진행 중 GREEN의 연장 / 깨진 기존 테스트가 RED 역할"로 정정. green-coder의 "격리" 용어를 "입력 범위 제한"으로 명확화(red-writer의 코드 차단과 구분)
+
 ## v1.12.1 (2026-06-17) — gx-tdd 정합성 수정 및 dev/tdd 문서 명확화
 
 ### Fixes

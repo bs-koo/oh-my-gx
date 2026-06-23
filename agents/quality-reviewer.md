@@ -83,11 +83,20 @@ tools:
 ### Minor (N건)
 - {파일}:{라인} — {문제}
 
+## 수정 경로 분류
+
+각 결함을 **동작 변경 동반 여부**로 구분하여 보고한다. 오케스트레이터는 이 분류대로 수정 경로를 라우팅한다.
+
+- **동작 결함** (Critical 전부 + Important 중 동작 변경을 동반하는 항목 — 잘못된 에러 핸들링, 누락된 분기, race condition 등): 새 AC로 정의하여 **RGR 사이클**(red-writer → green-coder → refactor-coder)로 수정. 결함을 재현하는 실패 테스트가 선행되어야 한다.
+- **동작 불변 품질 결함** (Important 중 DRY 위반/네이밍/매직 넘버/추상화 정리 + Minor 전부): **refactor-coder 단독**으로 기존 테스트 GREEN을 유지하며 정리. 동작이 바뀌지 않으므로 새 RED는 불필요하다.
+
+각 항목 끝에 `→ [동작결함]` 또는 `→ [동작불변]`을 표기한다.
+
 ## 판정
 
 - Critical 0 + Important 0 → 다음 단계 진입 가능
-- Critical N > 0 → refactor-coder/green-coder 재호출. 진입 차단
-- Important N > 0 → refactor-coder/green-coder 재호출. 진입 차단
+- Critical N > 0 → 동작 결함 경로(RGR)로 수정. 진입 차단
+- Important N > 0 → 위 분류에 따라 RGR 또는 refactor-coder 단독으로 수정. 진입 차단
 - Minor만 있음 → 다음 단계 진입 가능 (Minor는 메모만)
 ```
 

@@ -39,7 +39,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 감지된 빌드 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 0-2로 진행.
-3. **실패** → RGR 사이클 위반 신호. `Task(subagent_type="green-coder")`에 빌드 에러 + 관련 테스트 전달하여 새 RED-GREEN 사이클로 수정 시도. **단, 직접 수정(coder 호출) 금지**. RGR 사이클로만 수정.
+3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.**
 4. 수정 후 빌드를 **1회 재시도**한다.
 5. **재시도 성공** → Step 0-2로 진행.
 6. **재시도 실패** → 사용자에게 빌드 에러 표시 후 AskUserQuestion: "빌드 실패. 직접 수정 후 계속 / 중단".
@@ -51,7 +51,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 테스트 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 1로 진행.
-3. **실패** → green-coder/refactor-coder에 회귀 수정 위임 (RGR 사이클 재진입). coder 직접 호출 금지.
+3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `green-coder`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `refactor-coder`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지.
 4. 수정 후 테스트를 **1회 재시도**한다.
 5. **재시도 성공** → Step 1로 진행.
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
@@ -281,28 +281,45 @@ findings = {
 
 ### Step 4.4: 결과 처리 (의사코드)
 
+> 결함을 **동작 결함**과 **동작 불변 품질 결함**으로 분류하여 수정 경로를 달리한다 (quality-reviewer의 `[동작결함]`/`[동작불변]` 표기 사용).
+> - **동작 결함** → RGR 사이클(RED 선행). 결함을 재현하는 실패 테스트가 먼저 있어야 한다 (Iron Law 1).
+> - **동작 불변 품질 결함**(DRY/네이밍/매직넘버/추상화 정리) → refactor-coder 단독. 기존 테스트 GREEN 유지하며 정리하므로 새 RED 불필요 (= RGR의 REFACTOR 단계).
+
 ```
 did_fix = false
 
-# 4a: Critical/Important 자동 수정 (quality + security)
-critical_items = quality.Critical + security.CRITICAL + quality.Important + security.HIGH
-if critical_items:
+# 분류
+behavior_defects = quality.Critical + security.CRITICAL + security.HIGH
+                   + (quality.Important 중 [동작결함] 표기 항목)
+refactor_only    = (quality.Important 중 [동작불변] 표기 항목)   # DRY/네이밍/매직넘버/추상화
+
+# 4a: 동작 결함 → RGR 사이클 (실패 테스트 선행)
+if behavior_defects:
     해당 항목 사용자에게 표시
-    AskUserQuestion: "RGR 사이클로 수정할까요?"
-      - "예 (RGR)" → 각 항목을 새 AC로 정의 → phase-implement RGR 사이클 진입
+    AskUserQuestion: "동작 결함을 RGR 사이클로 수정할까요?"
+      - "예 (RGR)" → 각 항목을 새 AC로 정의 → phase-implement RGR 사이클 진입 (RED부터)
       - "수동 수정" → 사용자 수정 후 phase-review 재호출
       - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
     did_fix = true (RGR 선택 시)
 
-# 4b: 반복 판단
+# 4b: 동작 불변 품질 결함 → refactor-coder 단독 (새 RED 없음)
+if refactor_only:
+    해당 항목 사용자에게 표시
+    AskUserQuestion: "동작 불변 정리를 수행할까요?"
+      - "예" → Task(subagent_type="refactor-coder")로 정리 → 전체 테스트 GREEN 재확인
+      - "건너뛰기" → Trust Ledger/메모에 기록
+    did_fix = true (수행 시)
+
+# 4c: 반복 판단
 if did_fix:
     → 다음 반복 (Step 2부터 재실행: spec → quality)
 else:
-    # Critical/Important 없는 경우
-    if Minor 또는 MEDIUM 항목 있음:
+    # 동작 결함도 동작 불변 결함도 없는 경우
+    if Minor(quality) 또는 MEDIUM(security) 항목 있음:
         항목 목록 표시 + "수정할까요?" 확인
         if 수정 선택:
-            RGR 사이클 진입 → 단발성 확인 리뷰 (반복 카운트 미포함)
+            동작 불변 → refactor-coder 단독, 동작 결함 → RGR 사이클
+            → 단발성 확인 리뷰 (반복 카운트 미포함)
         else:
             → phase-complete
     else:
@@ -355,7 +372,10 @@ execution-log:
 이 Phase에서 절대 수행하지 않는 동작:
 - ❌ spec-reviewer 미통과 상태에서 quality-reviewer 호출 — Iron Law 위반
 - ❌ spec-reviewer와 quality-reviewer 병렬 호출 — 순서 강제 위반
-- ❌ coder 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
+- ❌ `coder`(deprecated) 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
+- ❌ 동작 결함을 실패 테스트 없이 green-coder로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지
+
+**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `refactor-coder` **단독 호출**로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
 
 위반 감지 시 즉시 중단하고 spec-reviewer부터 재시작한다.
