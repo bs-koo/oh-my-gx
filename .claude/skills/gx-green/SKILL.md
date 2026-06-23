@@ -38,8 +38,8 @@ NO MORE CODE THAN NECESSARY TO PASS THE TEST
 
 ## 사용 시점
 
-- `oh-my-gx:gx-red` 완료 직후 자동 호출
-- 단독 호출 금지 (반드시 RED 상태가 선행되어야 함)
+- 보조 스킬 체이닝: `oh-my-gx:gx-red` 완료 직후 자동 호출 (gx-tdd 파이프라인은 이 스킬 대신 green-coder 에이전트를 직접 디스패치)
+- RED 선행 없이 단독 호출 금지 (RED 상태가 이미 있으면 단독 호출 가능 — skill-routing의 'GREEN 단계' 단독 호출은 이 경우를 가리킨다)
 - 호출 시 RED 상태 검증:
   ```
   실패하는 테스트가 있는가? Bash로 테스트 실행하여 확인.

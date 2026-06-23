@@ -1,7 +1,7 @@
 ---
 name: gx-red
 version: 1.0.0
-description: "RED 단계 - 실패 테스트를 우선 작성. Iron Law: 코드 작성 전 반드시 호출. gx-tdd 파이프라인의 red-green-refactor 내부 자동 호출. 단독 호출도 가능."
+description: "RED 단계 - 실패 테스트를 우선 작성. Iron Law: 코드 작성 전 반드시 호출. 'RED 단계'·'실패 테스트 먼저' 키워드로 단독 호출하는 스킬. gx-tdd 파이프라인은 이 스킬을 거치지 않고 red-writer 에이전트를 직접 디스패치한다."
 argument-hint: "<테스트 대상 설명>"
 allowed-tools:
   - Read
@@ -38,8 +38,10 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 ## 사용 시점
 
-- `oh-my-gx:gx-tdd` 파이프라인의 red-green-refactor Phase 내부 자동 호출
 - 단독 호출: 사용자가 "RED 단계" 또는 "실패 테스트 먼저"를 명시
+- 보조 스킬 체이닝: 단독 RED 실행 후 `oh-my-gx:gx-green`으로 이어지는 경로
+
+> **gx-tdd 파이프라인과의 관계**: `oh-my-gx:gx-tdd`의 phase-implement는 이 스킬을 호출하지 않고 `red-writer` 에이전트를 직접 디스패치한다. 즉 gx-red는 단독 호출 또는 보조 스킬 체이닝 경로 전용이며, 파이프라인 내부의 RGR 사이클 제어·검증은 오케스트레이터가 직접 수행한다.
 
 ---
 
@@ -142,8 +144,8 @@ RED 단계 완료:
 green 에이전트가 통과를 위한 최소 코드를 작성합니다.
 ```
 
-오케스트레이터(`oh-my-gx:gx-tdd`)가 호출했으면 자동으로 green 단계 진입.
-단독 호출이면 사용자에게 다음 단계 안내.
+보조 스킬 체이닝으로 호출됐으면 자동으로 green 단계로 인계한다. (gx-tdd 파이프라인은 이 스킬을 거치지 않고 green-coder 에이전트를 직접 디스패치하므로 여기로 오지 않는다.)
+단독 호출이면 사용자에게 다음 단계를 안내한다.
 
 ---
 

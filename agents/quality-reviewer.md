@@ -72,22 +72,32 @@ tools:
 ```
 ## 코드 품질 리뷰
 
-### Critical (N건)
+### Critical (N건) — 전부 [동작결함]
 - {파일}:{라인} — {문제}
   - 권고: {수정 방안}
 
-### Important (N건)
-- {파일}:{라인} — {문제}
+### Important (N건) — 항목마다 분류 표기 필수
+- {파일}:{라인} — {문제} → [동작결함|동작불변]
   - 권고: {수정 방안}
 
-### Minor (N건)
+### Minor (N건) — 전부 [동작불변], 비차단
 - {파일}:{라인} — {문제}
+
+## 수정 경로 분류
+
+각 결함을 **동작 변경 동반 여부**로 구분하여 보고한다. 오케스트레이터는 이 분류대로 수정 경로를 라우팅한다.
+
+- **동작 결함** (Critical 전부 + Important 중 동작 변경을 동반하는 항목 — 잘못된 에러 핸들링, 누락된 분기, race condition 등): 새 AC로 정의하여 **RGR 사이클**(red-writer → green-coder → refactor-coder)로 수정. 결함을 재현하는 실패 테스트가 선행되어야 한다.
+- **동작 불변 품질 결함** (Important 중 DRY 위반/네이밍/매직 넘버/추상화 정리): **refactor-coder 단독**으로 기존 테스트 GREEN을 유지하며 정리. 동작이 바뀌지 않으므로 새 RED는 불필요하다.
+- **Minor**: 동작 불변이며 **비차단**. 기본은 메모만 하고, 사용자가 원할 때만 refactor-coder로 정리한다 (다음 단계 진입을 막지 않음).
+
+**Important 항목은** 끝에 `→ [동작결함]` 또는 `→ [동작불변]`을 표기한다 (오케스트레이터의 라우팅 키). 표기를 누락하면 오케스트레이터가 안전하게 **동작결함(RED 선행)으로 fallback**하므로, 동작 불변 정리로 충분한 항목은 누락 없이 `[동작불변]`을 표기해야 불필요한 RGR을 피한다. Critical은 전부 동작결함, Minor는 전부 동작불변으로 자동 간주하므로 표기를 생략해도 된다.
 
 ## 판정
 
 - Critical 0 + Important 0 → 다음 단계 진입 가능
-- Critical N > 0 → refactor-coder/green-coder 재호출. 진입 차단
-- Important N > 0 → refactor-coder/green-coder 재호출. 진입 차단
+- Critical N > 0 → 동작 결함 경로(RGR)로 수정. 진입 차단
+- Important N > 0 → 위 분류에 따라 RGR 또는 refactor-coder 단독으로 수정. 진입 차단
 - Minor만 있음 → 다음 단계 진입 가능 (Minor는 메모만)
 ```
 

@@ -3,7 +3,7 @@ name: gx-tdd
 version: 1.0.0
 description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰(spec→quality) → verify → 커밋/PR. TDD 사이클 강제 + verify 게이트. 일반 개발은 oh-my-gx:gx-dev 사용."
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
+allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
 ---
 
 # gx-tdd
@@ -20,7 +20,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 |------|--------|----------------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가** |
-| implement | coder 단일 호출 | **RED → GREEN → REFACTOR (격리 3에이전트)** |
+| implement | coder 단일 호출 | **RED → GREEN → REFACTOR (3에이전트 순차; red-writer만 코드 격리)** |
 | review | qa+security 병렬 | **spec → quality 순차 강제** |
 | complete | qa 통과 → commit | **verify 게이트 → commit** |
 
@@ -32,11 +32,17 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 Phase 파일이나 다른 스킬을 Read할 때, 현재 작업 디렉토리(프로젝트 루트)를 기준으로 절대 경로를 구성한다.
 
 다른 스킬의 프로세스를 실행할 때 **반드시 `Skill` 도구로 호출**한다:
-- 테스트: `Skill("oh-my-gx:gx-verify")`
+- 테스트(완료 게이트): `Skill("oh-my-gx:gx-verify")`
 - 커밋: `Skill("oh-my-gx:gx-commit")`
 - PR 생성: `Skill("oh-my-gx:gx-pull-request")`
 
 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
+
+> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`/`green-coder`/`refactor-coder` 에이전트를 **직접 `Task`로 디스패치**하며, 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
+>
+> **드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
+> - **디스패치 프롬프트**(red-writer/green-coder/refactor-coder): phase-implement.md(Step 2-R/G/F)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b의 refactor-coder 호출은 Step 2-F를 **포인터 참조**하므로 2-F만 고치면 따라온다.
+> - **마커 분류**(`[동작결함]`/`[동작불변]`): `agents/quality-reviewer.md`가 SSOT이며, phase-review의 Task A 프롬프트·Step 4.4 의사코드에 라우팅 강제를 위해 재명시된다.
 
 ## 인자
 
@@ -152,7 +158,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer + quality-reviewer로 분해) | — | — |
 
-### EXECUTION (RED-GREEN-REFACTOR 격리)
+### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | **red-writer** | **실패 테스트 작성 전담 (신규)** | **"테스트만 작성" — 프로덕션 코드 안 봄** | **sonnet** |
@@ -194,13 +200,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner | **AC = Given-When-Then 강제** (Skill `oh-my-gx:gx-context` 게이트) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer → green-coder → refactor-coder (격리 순차)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| implement | phase-implement.md | **red-writer → green-coder → refactor-coder (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **spec-reviewer → quality-reviewer (순차 강제)** + security-auditor (quality와 병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
 - requirements/design에 **사전 게이트** (G-W-T, testability)
-- implement는 단일 coder가 아니라 **격리된 3 에이전트 순차 사이클**
+- implement는 단일 coder가 아니라 **3 에이전트 순차 사이클** (red-writer만 기존 코드 격리; green/refactor는 입력 범위만 제한)
 - review는 병렬이 아니라 **spec → quality 순차** (spec 우선)
 - complete는 **gx-verify 스킬 우선 호출** (verify 통과 없이 commit 진입 금지)
 
@@ -356,7 +362,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `DOMAIN_CONTEXT`: phase-setup 0.3에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
 - `REFERENCES`: phase-setup Step 3.1(병렬 수집)의 외부 규격 참조 항목에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
-- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행할 때, Bash 작업 디렉토리가 변경되지 않도록 **서브셸**을 사용한다: `(cd ${PROJECT_ROOT} && ./gradlew build)`. 괄호 `()`로 감싸면 서브셸에서 `cd`가 실행되어 부모 셸의 작업 디렉토리가 유지된다.
+- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행한다. `PROJECT_ROOT`가 기본값 `./`이면 **bare 명령**으로 실행한다 (예: `npm test`, `./gradlew build`) — `allowed-tools`의 prefix 패턴(`Bash(npm *)` 등)과 매칭되어 권한 프롬프트가 뜨지 않는다. `PROJECT_ROOT`가 `./`가 아닌 경우에만 작업 디렉토리 보존을 위해 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다 — 단 이 서브셸 형태는 `(cd`로 시작하여 prefix 패턴과 매칭되지 않으므로 권한 프롬프트가 뜰 수 있다 (gradle 포함 모든 명령에 적용되는 기존 한계).
 
 ### 베이스 브랜치 감지
 
@@ -473,9 +479,9 @@ execution-log:
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **test-architect (testability 평가)** ← 신규: 설계서 + PRD의 "수용 기준" + 코드 맵 + 프로젝트 루트 경로 + **"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** 지시
 
-#### EXECUTION (RED-GREEN-REFACTOR 격리)
+#### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
 - **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오) + 설계서의 testability 섹션 + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리). "테스트만 작성. 프로덕션 코드 작성 금지" 지시.
-- **green-coder (GREEN)** ← 신규: 실패 테스트 (파일/코드/에러 메시지) + 설계서 인터페이스 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (격리). "테스트만 통과시키는 최소 코드. 과잉 구현 금지" 지시.
+- **green-coder (GREEN)** ← 신규: 실패 테스트 (파일/코드/에러 메시지) + 설계서 인터페이스 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. green-coder는 구현을 위해 기존 코드를 Read할 수 있으며, 다만 전체 문서 대신 대상 시그니처만 전달받는다). "테스트만 통과시키는 최소 코드. 과잉 구현 금지" 지시.
 - **refactor-coder (REFACTOR)** ← 신규: 정리 대상 파일 목록 + 정리 항목 (중복/네이밍/구조) + 프로젝트 루트 경로. "GREEN 유지하며 정리만. 동작 변경 금지" 지시.
 
 #### Deprecated (oh-my-gx:gx-tdd에서 절대 호출 안 함)

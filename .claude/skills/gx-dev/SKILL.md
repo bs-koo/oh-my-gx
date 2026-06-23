@@ -8,8 +8,15 @@ allowed-tools:
   - Bash(svn *)
   - Bash(gh *)
   - Bash(GH_HOST= *)
-  # 빌드
+  # 빌드/테스트
   - Bash(./gradlew *)
+  - Bash(npm *)
+  - Bash(bun *)
+  - Bash(npx *)
+  - Bash(pnpm *)
+  - Bash(yarn *)
+  - Bash(pytest *)
+  - Bash(go *)
   # 파일 시스템
   - Bash(test *)
   - Bash(mkdir *)
@@ -306,7 +313,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
 - `REFERENCES`: phase-setup Step 3(외부 규격 참조 탐색)에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
-- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행할 때, Bash 작업 디렉토리가 변경되지 않도록 **서브셸**을 사용한다: `(cd ${PROJECT_ROOT} && ./gradlew build)`. 괄호 `()`로 감싸면 서브셸에서 `cd`가 실행되어 부모 셸의 작업 디렉토리가 유지된다.
+- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행한다. `PROJECT_ROOT`가 기본값 `./`이면 **bare 명령**으로 실행한다 (예: `npm test`, `./gradlew build`) — `allowed-tools`의 prefix 패턴(`Bash(npm *)` 등)과 매칭되어 권한 프롬프트가 뜨지 않는다. `PROJECT_ROOT`가 `./`가 아닌 경우에만 작업 디렉토리 보존을 위해 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다 — 단 이 서브셸 형태는 `(cd`로 시작하여 prefix 패턴과 매칭되지 않으므로 권한 프롬프트가 뜰 수 있다 (gradle 포함 모든 명령에 적용되는 기존 한계).
 
 ### 베이스 브랜치 감지
 `--base`가 지정되었으면 해당 브랜치를 사용한다. 미지정이면 자동 감지:
