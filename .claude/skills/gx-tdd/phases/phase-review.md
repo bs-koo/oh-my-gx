@@ -195,12 +195,13 @@ Task(subagent_type="quality-reviewer"):
 
     [출력 형식]
     ## 코드 품질 리뷰
-    ### Critical (N건)
+    ### Critical (N건) — 전부 [동작결함]
     - {파일}:{라인} — {문제}
       - 권고: {수정 방안}
-    ### Important (N건)
-    - ...
-    ### Minor (N건)
+    ### Important (N건) — 항목마다 [동작결함|동작불변] 표기 필수 (오케스트레이터 라우팅 키)
+    - {파일}:{라인} — {문제} → [동작결함|동작불변]
+      - 권고: {수정 방안}
+    ### Minor (N건) — 전부 [동작불변], 비차단
     - ...
 
     ## 판정
@@ -288,9 +289,9 @@ findings = {
 ```
 did_fix = false
 
-# 분류
+# 분류 (무표기 Important는 안전하게 동작 결함으로 간주 → RED 선행)
 behavior_defects = quality.Critical + security.CRITICAL + security.HIGH
-                   + (quality.Important 중 [동작결함] 표기 항목)
+                   + (quality.Important 중 [동작결함] 표기 또는 무표기 항목)
 refactor_only    = (quality.Important 중 [동작불변] 표기 항목)   # DRY/네이밍/매직넘버/추상화
 
 # 4a: 동작 결함 → RGR 사이클 (실패 테스트 선행)
@@ -306,7 +307,10 @@ if behavior_defects:
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → Task(subagent_type="refactor-coder")로 정리 → 전체 테스트 GREEN 재확인
+      - "예" → Task(subagent_type="refactor-coder"):
+               입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT
+               (phase-implement Step 2-F의 refactor-coder 디스패치 프롬프트 형식 재사용)
+               → 정리 후 전체 테스트 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록
     did_fix = true (수행 시)
 
