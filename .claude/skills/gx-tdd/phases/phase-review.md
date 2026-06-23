@@ -329,7 +329,8 @@ else:
     if Minor(quality) 또는 MEDIUM(security) 항목 있음:
         항목 목록 표시 + "수정할까요?" 확인
         if 수정 선택:
-            동작 불변 → refactor-coder 단독, 동작 결함 → RGR 사이클
+            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → refactor-coder 단독,
+            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 refactor-coder 단독)
             → 단발성 확인 리뷰 (반복 카운트 미포함)
         else:
             → phase-complete

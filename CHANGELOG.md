@@ -8,6 +8,7 @@
 - **리뷰 결함 처리 경로 통일 (C)**: quality-reviewer 출력("refactor/green 재호출")과 phase-review Step 4 처리("새 AC로 RGR")의 서술 불일치를 해소. 결함을 `[동작결함]`/`[동작불변]`으로 표기하여 일관 라우팅
 - **품질 결함의 불필요한 RED 강제 제거 (D)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `refactor-coder` 단독(기존 테스트 GREEN 유지, 새 RED 불필요)으로, 동작 결함만 RGR 사이클(RED 선행)로 분기. mechanical gate의 빌드/테스트 실패 처리도 "새 RED-GREEN 사이클"이라는 모순을 "진행 중 GREEN의 연장 / 깨진 기존 테스트가 RED 역할"로 정정. green-coder의 "격리" 용어를 "입력 범위 제한"으로 명확화(red-writer의 코드 차단과 구분)
 - **코드리뷰 반영 (critic·Gemini)**: (C 보강) quality-reviewer 출력 형식과 phase-review Task A 프롬프트에 `[동작결함|동작불변]` 마커 슬롯을 추가하여, Step4 라우팅이 실제로 동작하도록 producer↔consumer를 일치시킴(지시만 있고 출력 예시엔 마커가 없던 자기모순 해소). 무표기 Important는 동작결함으로 안전 fallback. (#3) phase-review Step4b의 refactor-coder 단독 호출에 입력(정리 대상=동작불변 항목의 파일:라인+권고) 명시. quality-reviewer의 Minor 분류와 게이팅(비차단) 문구 정리
+- **멀티 finder 리뷰 후속 정합 (xhigh)**: security-auditor 출력에 라우팅 마커가 없어 Step4가 보안 결함을 분류 못 하던 갭(동작 변경 여부 분류 규칙 추가, 4c MEDIUM 포함), gx-red 본문의 'gx-tdd가 호출하면 green 진입' 잔존 서술과 gx-green/gx-refactor의 '단독 호출 금지' 정책을 skill-routing과 정합, gx-tdd SKILL.md 요약표·EXECUTION 헤더의 '격리 3에이전트'를 '순차; red-writer만 코드 격리'로 정정(green-coder는 진짜 격리가 아님), phase-review Step4b refactor-coder의 GREEN 선행·입력 전제 명시, Hotfix H3의 green-coder 역할 모순을 RGR(red-writer 선행)로 정정, 드리프트 경고에 SSOT·Step4b 포인터 참조 보완, Step4c 죽은 경로 정리
 
 ## v1.12.1 (2026-06-17) — gx-tdd 정합성 수정 및 dev/tdd 문서 명확화
 
