@@ -39,7 +39,7 @@ NO BEHAVIOR CHANGES DURING REFACTOR
 ## 사용 시점
 
 - 보조 스킬 체이닝: `oh-my-gx:gx-green` 완료 직후 자동 호출 (gx-tdd 파이프라인은 이 스킬 대신 refactor-coder 에이전트를 직접 디스패치)
-- 단독 호출 금지 (반드시 GREEN 상태가 선행되어야 함)
+- GREEN 선행 없이 단독 호출 금지 (GREEN 상태가 이미 있으면 단독 호출 가능 — skill-routing의 'REFACTOR 단계' 단독 호출은 이 경우를 가리킨다)
 - 호출 시 GREEN 상태 검증:
   ```
   대상 테스트가 통과하는가? Bash로 테스트 실행하여 확인.

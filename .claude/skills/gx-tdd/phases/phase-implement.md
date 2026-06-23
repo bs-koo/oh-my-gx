@@ -334,7 +334,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 **Step H3**: 결과 분기:
 - CRITICAL/HIGH 0건 → "hotfix 감사 통과" 보고 후 phase-complete로 진행.
 - CRITICAL/HIGH 1건 이상 → AskUserQuestion:
-  - "자동 수정 시도" → `Task(subagent_type="green-coder")` (RGR 재진입: 보안 항목을 새 AC로 간주하여 새 RED부터)
+  - "자동 수정 시도" → **RGR 사이클 재진입**: 보안 항목을 새 AC로 정의하여 red-writer(새 실패 테스트) → green-coder → refactor-coder 순서로 수정한다 (Step 2-R/G/F 재실행). green-coder를 RED 없이 직접 호출하지 않는다.
   - "이대로 진행" → 위험 수용 기록
   - "중단" → state.md에 `status: cancelled`
 

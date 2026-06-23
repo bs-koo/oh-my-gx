@@ -290,9 +290,14 @@ findings = {
 did_fix = false
 
 # 분류 (무표기 Important는 안전하게 동작 결함으로 간주 → RED 선행)
-behavior_defects = quality.Critical + security.CRITICAL + security.HIGH
+# security 결함은 마커가 없으므로 동작 변경 여부로 분류한다:
+#   동작 변경 동반(인증 우회·입력검증 누락 등) → behavior_defects
+#   동작 불변(하드코딩 시크릿 제거·로그 마스킹·설정 변경) → refactor_only
+#   모호하면 보수적으로 behavior_defects(RED 선행). 이 기준은 4c의 security MEDIUM에도 동일 적용.
+behavior_defects = quality.Critical + (security 중 동작 변경 동반; CRITICAL/HIGH 기본)
                    + (quality.Important 중 [동작결함] 표기 또는 무표기 항목)
-refactor_only    = (quality.Important 중 [동작불변] 표기 항목)   # DRY/네이밍/매직넘버/추상화
+refactor_only    = (quality.Important 중 [동작불변] 표기 항목)        # DRY/네이밍/매직넘버/추상화
+                   + (security 중 동작 불변이 명백한 항목)            # 시크릿 제거 등
 
 # 4a: 동작 결함 → RGR 사이클 (실패 테스트 선행)
 if behavior_defects:
@@ -304,12 +309,14 @@ if behavior_defects:
     did_fix = true (RGR 선택 시)
 
 # 4b: 동작 불변 품질 결함 → refactor-coder 단독 (새 RED 없음)
+#  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → refactor-coder의 GREEN 선행 조건 충족
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
       - "예" → Task(subagent_type="refactor-coder"):
-               입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT
-               (phase-implement Step 2-F의 refactor-coder 디스패치 프롬프트 형식 재사용)
+               입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT.
+               디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement Step 2-F를 따르되,
+               "정리 대상"은 green 산출물이 아니라 위 리뷰 findings이며 GREEN 기준선은 Step0에서 통과한 전체 테스트다.
                → 정리 후 전체 테스트 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록
     did_fix = true (수행 시)

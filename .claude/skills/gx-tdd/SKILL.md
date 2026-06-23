@@ -20,7 +20,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 |------|--------|----------------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가** |
-| implement | coder 단일 호출 | **RED → GREEN → REFACTOR (격리 3에이전트)** |
+| implement | coder 단일 호출 | **RED → GREEN → REFACTOR (3에이전트 순차; red-writer만 코드 격리)** |
 | review | qa+security 병렬 | **spec → quality 순차 강제** |
 | complete | qa 통과 → commit | **verify 게이트 → commit** |
 
@@ -156,7 +156,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer + quality-reviewer로 분해) | — | — |
 
-### EXECUTION (RED-GREEN-REFACTOR 격리)
+### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | **red-writer** | **실패 테스트 작성 전담 (신규)** | **"테스트만 작성" — 프로덕션 코드 안 봄** | **sonnet** |
@@ -198,13 +198,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner | **AC = Given-When-Then 강제** (Skill `oh-my-gx:gx-context` 게이트) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer → green-coder → refactor-coder (격리 순차)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| implement | phase-implement.md | **red-writer → green-coder → refactor-coder (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **spec-reviewer → quality-reviewer (순차 강제)** + security-auditor (quality와 병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
 - requirements/design에 **사전 게이트** (G-W-T, testability)
-- implement는 단일 coder가 아니라 **격리된 3 에이전트 순차 사이클**
+- implement는 단일 coder가 아니라 **3 에이전트 순차 사이클** (red-writer만 기존 코드 격리; green/refactor는 입력 범위만 제한)
 - review는 병렬이 아니라 **spec → quality 순차** (spec 우선)
 - complete는 **gx-verify 스킬 우선 호출** (verify 통과 없이 commit 진입 금지)
 
@@ -477,7 +477,7 @@ execution-log:
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **test-architect (testability 평가)** ← 신규: 설계서 + PRD의 "수용 기준" + 코드 맵 + 프로젝트 루트 경로 + **"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** 지시
 
-#### EXECUTION (RED-GREEN-REFACTOR 격리)
+#### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
 - **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오) + 설계서의 testability 섹션 + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리). "테스트만 작성. 프로덕션 코드 작성 금지" 지시.
 - **green-coder (GREEN)** ← 신규: 실패 테스트 (파일/코드/에러 메시지) + 설계서 인터페이스 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. green-coder는 구현을 위해 기존 코드를 Read할 수 있으며, 다만 전체 문서 대신 대상 시그니처만 전달받는다). "테스트만 통과시키는 최소 코드. 과잉 구현 금지" 지시.
 - **refactor-coder (REFACTOR)** ← 신규: 정리 대상 파일 목록 + 정리 항목 (중복/네이밍/구조) + 프로젝트 루트 경로. "GREEN 유지하며 정리만. 동작 변경 금지" 지시.
