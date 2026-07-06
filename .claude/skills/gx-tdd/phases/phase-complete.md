@@ -32,7 +32,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
   1. verify가 실패 테스트/빌드 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:
      - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
-     - "수동 수정" → 사용자 수정 후 phase-complete 재호출
+     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
      - "중단" → state.md에 `status: cancelled` 기록
   3. 자동 수정은 시도하지 않음 (RGR 사이클로만 수정. coder 직접 호출 금지)
 
@@ -80,7 +80,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 1. Step -1 verify 게이트가 실패로 차단하면, 사용자에게 실패 항목을 표시한다.
 2. AskUserQuestion:
    - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
-   - "수동 수정" → 사용자 수정 후 phase-complete 재호출
+   - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
    - "중단" → cancelled 기록
 3. **coder 직접 호출 금지** — RGR 사이클로만 수정한다.
 

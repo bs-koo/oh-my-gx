@@ -22,7 +22,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    - 사용자에게 AskUserQuestion으로 질문: "이전에 진행하던 작업이 있습니다."
      - "이어서 진행" → 재개
      - "새로 시작" → Step 1로 진행 (Step 7에서 덮어씀)
-3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
+4. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
 ### 0.1 재개 정합성 체크 (이어서 진행 선택 시)
 

@@ -86,4 +86,4 @@ tools:
 다음 생각이 들면 STOP:
 - "AC는 충족하지만 코드가 너무 복잡함" → 평가 범위 외
 - "이 부분 네이밍이 어색함" → 평가 범위 외
-- "테스트는 통과하지만 케이스가 부족함" → AC 명세 부족 issue, qa-manager에게 위임
+- "테스트는 통과하지만 케이스가 부족함" → AC 명세 부족 issue — 오케스트레이터에 보고 (product-owner의 PRD 보강 권고. qa-manager는 deprecated로 호출 금지)

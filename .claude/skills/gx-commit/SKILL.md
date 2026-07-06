@@ -45,6 +45,7 @@ Arguments:
 
 - Git 저장소인지 확인
 - **작업 디렉토리 보정**: `git rev-parse --show-toplevel`로 Git 루트를 확인한다. 현재 디렉토리와 다르면 (워크스페이스 root에서 호출된 경우 등), 이후 모든 git/빌드 명령을 Git 루트 기준 서브셸 `(cd <git-root> && <명령>)`로 실행한다.
+- **gx-tdd verify 경고 게이트**: `.dev/{현재 브랜치 slug}/state.md`가 존재하고 `status: in_progress`이며 `steps.complete`에 `verify-gate` 항목이 있는데 `completed`가 아니면 — verify 게이트 미통과 상태의 커밋이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 선택 시 커밋 결과 보고에 "verify 미통과 커밋"을 명시). `verify-gate` 항목이 없는 state.md(gx-dev 등)에는 적용하지 않는다.
 - 커밋할 변경사항이 있는지 확인 (없으면: "커밋할 변경사항이 없습니다.")
 - 커밋 전에 빌드를 실행한다:
   - `.claude/config.json`의 `projectTypes`에서 프로젝트 타입을 감지한다 (빌드/설정 파일 기준).

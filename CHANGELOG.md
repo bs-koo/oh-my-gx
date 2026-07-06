@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.13.1 (2026-07-06) — gx-tdd 재감사 반영: 본선 밖 우회로 봉합
+
+### Fixes
+- **[HIGH] review 진입 게이트 오중단 수정**: SKILL.md 실행 루프 2a의 "변경 없음" 판정이 unstaged(`git diff --stat`)만 확인해 implement Step 5의 스테이징 이후 **모든 정상 실행이 review 문턱에서 오중단**되던 사전 존재 결함을 staged+unstaged 동시 확인(+svn 분기)으로 수정
+- **[HIGH] gx-verify 0개 테스트 통과 차단**: 판정 기준에 "테스트 1건 이상 실행" 추가. "No tests found"류 0개 실행은 통과가 아니라 차단(위험 수용 선택 시 기록)
+- **[HIGH] `--phase complete` TDD 이행 게이트**: RGR·리뷰 완료 기록 없는 단독 complete 실행 시 위험 수용 확인 + trust-ledger "TDD 미이행 완료 실행" 기록 의무화. tdd-iron-law의 Iron Law 2 문면도 `--phase` 탈출구를 인정하도록 정합화
+- **[MED] 자연어 "커밋" verify 우회 방지**: skill-routing에 gx-tdd 진행 중(verify-gate 미통과) 커밋/PR 의도를 `--phase complete`로 안내하는 분기 추가 + gx-commit에 조건부 verify 경고 게이트 신설 (verify-gate 항목 없는 gx-dev state.md에는 미적용)
+- **[MED] porcelain 스냅샷 영속화**: 저장 위치를 `${DEV_DIR}/rgr-t{N}-porcelain.txt` 파일로 확정 (--resume 재개 시 기준선 유지, svn은 `svn status` 사용)
+- **[MED] `--phase implement` state.md 부트스트랩**: 환경 감지에 최소 골격 생성 규칙 추가 (기준선 게이트 기록 → 이후 `--phase complete` verify가 로드 가능)
+- **[MED] 위험 수용 기록 공백 봉합**: 미해결 Critical "현재 상태로 진행"·"수동 수정" 재주입 경로에 기록 의무 추가, Step 4.1이 quality-reviewer Critical/Important 요약도 trust-ledger에 영속화
+- **[LOW] 기타**: verify_refactor에 테스트 수 감소 감지(삭제 방지), hotfix에도 G-W-T 기계 검증 게이트 적용, G-W-T 위험 수용 의미 명확화(구현 제외이지 무테스트 구현 아님), gx-verify 로그 디렉토리 mkdir 보장·차단 시 복귀 경로의 파이프라인/단독 분리, spec-reviewer의 deprecated qa-manager 위임 잔재 제거, 프로젝트 타입명 정합(kotlin-gradle→java-spring), phase-setup 번호 중복·옛 Step 번호 잔재 정리
+- **[LOW] gx-dev 동일 결함 동시 수정**: review 진입 "변경 없음" 게이트의 unstaged-only 오판(gx-dev도 implement Step 4가 스테이징을 유지하므로 동일 오중단)과 kotlin-gradle 타입명 표기를 gx-tdd와 같은 방식으로 정합
+
 ## v1.13.0 (2026-07-06) — gx-tdd 테스트 품질 축 보강 (superpowers 원본 대조 이식)
 
 ### Features

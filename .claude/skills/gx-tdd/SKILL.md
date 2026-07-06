@@ -275,7 +275,9 @@ for phase in PHASES:
             → 사용자 경고: "design.md에 testability 평가가 누락됨. red-writer가 격리 전략을 모름."
             → phase-design 재실행 (test-architect 호출 강제)
 
-    if phase == "review" and git diff --stat이 비어있음:
+    if phase == "review" and 변경사항 없음:
+        # git: `git diff --cached --stat`과 `git diff --stat`이 **모두** 비어있을 때만 (implement Step 5가 전부 스테이징하므로 --cached 확인 필수 — unstaged만 보면 정상 실행을 오중단한다)
+        # svn: `svn status` 출력이 비어있을 때
         → "변경사항이 없습니다" 보고 후 중단
 
     # 2b. Phase 파일 Read (필수)
@@ -415,7 +417,7 @@ status: in_progress
 vcs-type: git
 branch: JIRA-123
 base: main
-project-type: kotlin-gradle
+project-type: java-spring
 project-root: ./
 args: "[JIRA-123] 로그인 기능 추가"
 flags: --hotfix
@@ -469,7 +471,7 @@ execution-log:
 - **G-W-T / testability 게이트 결과**: `execution-log`에 `gate: G-W-T` 또는 `agent: test-architect` 엔트리로 기록.
 - **verify 게이트 결과**: complete Step -1의 verify 게이트 결과를 `execution-log`에 기록 (gx-commit은 공유 무수정 스킬이라 verify를 호출하지 않음). verify가 "위험 수용"으로 통과를 보고하면 오케스트레이터가 trust-ledger에도 기록한다.
 - **기준선 게이트 결과**: phase-implement Step 0.5에서 최상위 필드 `warnings-baseline: N`을 기록한다. 추출 불가 시 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다.
-- `--resume` 시 `current-step`에서 재개한다 (Phase 처음부터가 아닌 중단 Step부터). 재개 전에 phase-setup Step 0.1 정합성 체크(브랜치/HEAD)를 수행한다. RGR 사이클 재개 시 `red/green/refactor` 단계별로 매칭 (태스크의 `test-file-hash`도 함께 복원하여 verify_green 무결성 기준선을 유지).
+- `--resume` 시 `current-step`에서 재개한다 (Phase 처음부터가 아닌 중단 Step부터). 재개 전에 phase-setup Step 0.1 정합성 체크(브랜치/HEAD)를 수행한다. RGR 사이클 재개 시 `red/green/refactor` 단계별로 매칭 (태스크의 `test-file-hash`와 `${DEV_DIR}/rgr-t{N}-porcelain.txt` 스냅샷 파일을 함께 사용하여 verify_green 무결성 기준선을 유지).
 - 에이전트 호출 완료 시: `execution-log`에 엔트리 추가 (agent명, result 요약). deprecated 에이전트(coder/qa-manager)는 절대 기록되지 않는다.
 - Gate 실행 결과도 `execution-log`에 기록한다 (mechanical-gate, G-W-T, testability, verify, spec-review, quality-review).
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
@@ -660,13 +662,14 @@ AskUserQuestion(
 - `--phase design`: setup (필요 시) + requirements + design만 실행. 대화 맥락에 요구사항이 없고 `${DEV_DIR}/prd.md`도 없으면 requirements부터 시작.
 - `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `${DEV_DIR}/design.md`도 없으면: "설계서가 필요합니다. `/gx-tdd --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
 - `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰).
-- `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (인수 검증, test, commit, PR, status 갱신).
+- `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (인수 검증, test, commit, PR, status 갱신). **TDD 이행 게이트**: state.md에 `phases.implement`·`phases.review`의 completed 기록이 없으면 — RGR·리뷰를 거치지 않은 변경일 수 있다 — AskUserQuestion으로 위험 수용을 확인하고, 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행한다.
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
 > 1. `.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
 > 2. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
 > 3. `PROJECT_ROOT` = 현재 디렉토리.
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `DEV_DIR = .dev/trunk/`.
+> 5. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`status: in_progress`, `branch`, `flags: --phase {name}`). `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있다.
 
 ---
 

@@ -66,7 +66,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 | 프로젝트 타입 | 테스트 명령 | 빌드 명령 |
 |--------------|------------|----------|
-| java/kotlin | `./gradlew test` | `./gradlew build` |
+| java-spring (gradle) | `./gradlew test` | `./gradlew build` |
 | node | `npm test` | `npm run build` |
 | python | `pytest` | (없음) |
 | go | `go test ./...` | `go build ./...` |
@@ -97,7 +97,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 경고 수 (baseline 비교용 — 아래 측정 규약 참조)
 
 **경고 측정 규약 (SSOT — phase-implement Step 0.5의 baseline 기록도 이 규약을 따른다)**:
-1. 명령 출력을 파일로 캡처한다: `<명령> > ${DEV_DIR}/verify-{test|build}.log 2>&1` (파이프가 아닌 **리다이렉트** — exit code가 원 명령의 것으로 유지된다). exit code를 먼저 확인한 뒤 로그를 분석한다.
+1. `mkdir -p ${DEV_DIR}`로 디렉토리 존재를 보장한 뒤, 명령 출력을 파일로 캡처한다: `<명령> > ${DEV_DIR}/verify-{test|build}.log 2>&1` (파이프가 아닌 **리다이렉트** — exit code가 원 명령의 것으로 유지된다). exit code를 먼저 확인한 뒤 로그를 분석한다.
 2. 카운트: java-spring은 `grep -ci "warning" <로그>`, node는 `grep -ci "warn" <로그>`, 그 외 타입은 미지원 (카운트 생략·보고만).
 3. 이 카운트는 요약 라인("N warnings")·로그 노이즈를 포함하는 **근사치**다. baseline보다 증가했을 때는 차단 전에 **로그 원문에서 실제 경고 라인을 대조**하여 신규 경고인지 확인한다. 노이즈·빌드 캐시 재출력으로 판정되면 차단하지 않고 "측정 노이즈"로 보고한다.
 4. baseline과 현재 측정은 **동일한 명령(config.json projectTypes의 test·build)·동일한 규약**을 사용해야 유효하다.
@@ -124,8 +124,9 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 ```
 
 판정:
-- ✅ 테스트 0 failures + 빌드 exit 0 + (baseline 있으면) 신규 경고 0건 → **게이트 통과**
+- ✅ 테스트 **1건 이상 실행** + 0 failures + 빌드 exit 0 + (baseline 있으면) 신규 경고 0건 → **게이트 통과**
 - ❌ 어느 하나라도 실패 → **게이트 차단**
+- **0개 테스트 실행 감지** ("No tests found", 통과 수 0 등): 통과가 아니라 **차단**이다. AskUserQuestion — "테스트 명령/경로 확인 후 재실행" / "위험 수용 (테스트 부재 상태로 진행 — 보고에 명시, trust-ledger 기록은 오케스트레이터)" / "중단"
 - **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 → 먼저 측정 규약 3항에 따라 로그 원문을 대조한다. **실제 신규 경고로 확인되면** → **게이트 차단**. AskUserQuestion: "신규 경고 {증가분}건이 감지되었습니다."
   - "수정 후 재실행" → 사용자/RGR 수정 후 verify 재호출
   - "위험 수용" → 통과로 처리하되 보고에 "위험 수용: 신규 경고 {N}건"을 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
@@ -158,8 +159,9 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 빌드: success
 
 조치:
-1. 실패한 테스트의 원인을 분석합니다 (oh-my-gx:gx-red로 복귀)
-2. 수정 후 다시 verify 게이트를 호출합니다
+1. 파이프라인(oh-my-gx:gx-tdd) 호출이면 → phase-complete Step -1의 처리 분기(RGR 수정/수동 수정/중단)를 따릅니다
+2. 단독 호출이면 → 실패 원인 분석 후 oh-my-gx:gx-red 복귀를 권고합니다
+3. 수정 후 다시 verify 게이트를 호출합니다
 
 commit/PR 진입은 차단됩니다.
 ```
@@ -180,6 +182,7 @@ commit/PR 진입은 차단됩니다.
 | "급하니 일부 테스트만 실행" | 일부 실행은 검증 아님. 전체 또는 명확한 격리 |
 | "테스트가 flaky해서 무시" | flaky test는 fix 대상. 무시는 부채 누적 |
 | "실행할 테스트가 없으니 통과" | 명령 미감지는 통과가 아니라 차단 사유. 직접 입력 또는 중단 |
+| "명령이 성공했고 실패도 없으니 통과" | 0개 실행은 검증이 아니다. 최소 1건 실행을 확인하라 |
 
 자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
 
@@ -222,9 +225,10 @@ verify 차단 시 사용자에게 알릴 때:
 
 ## 다른 스킬 호출 시 절대 규칙 (Iron Law)
 
-✅ 올바름:
+✅ 올바름 (단독 호출 시):
 - `Skill("oh-my-gx:gx-red")` — 차단 시 RED 단계 복귀
 - `Skill("oh-my-gx:gx-commit")` — 통과 시 커밋 진입
+(파이프라인 호출이면 복귀·커밋 주체는 오케스트레이터다 — phase-complete가 인수 검증 후 commit을 호출한다)
 
 ❌ 금지:
 - `Skill("red")`, `Skill("commit")` — 접두사 누락

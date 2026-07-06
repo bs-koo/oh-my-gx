@@ -20,7 +20,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 오케스트레이터가 `--hotfix` 모드이면:
 - Step 0에서 설계서(`design.md`) 로드를 건너뛴다. PRD(`prd.md`)는 로드한다.
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
-- Step 1(구현 계획 승인), Step 1.5(태스크 분해)도 건너뛴다.
+- Step 1(태스크 분해)과 Step 1.2(승인 게이트)도 건너뛴다.
 - **RGR 사이클은 유지**한다 (hotfix여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
   - green-coder 입력: 실패 테스트 + 기존 코드 인터페이스 (설계서 없음).
@@ -178,7 +178,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
 5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — 정상 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. hotfix 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
-6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain` 스냅샷을 기록한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선).
+6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다).
 7. ✅ 실패 정상 → GREEN으로 진행.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
@@ -226,10 +226,10 @@ Task(subagent_type="oh-my-gx:green-coder"):
 
 **verify_green**: 오케스트레이터가 직접 검증. **저비용 검사(1~2번)를 테스트 실행보다 먼저 수행한다.**
 1. **테스트 결함 의심 확인**: green-coder가 "테스트 결함 의심"을 보고했으면 (해시 일치 여부와 무관) → 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (green-coder가 테스트를 고치지 않는다).
-2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`을 verify_red 스냅샷과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다.
+2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다.
    - 무단 수정 감지 (해시 불일치 또는 타 테스트 파일 변경) → 해당 테스트를 RED 산출물(red 결과의 테스트 코드)로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조). **재차 위반 시** 사이클을 중단하고 사용자에게 보고한다.
 3. 대상 테스트 통과 확인.
-4. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인.
+4. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인. **전체 테스트 수를 기록**한다 (verify_refactor의 테스트 삭제 감지 기준).
 5. **과잉 구현 감지**:
    - 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지 ({N줄}). YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
 6. ✅ 통과 + 회귀 없음 + 무결성 유지 → REFACTOR로 진행.
@@ -284,9 +284,10 @@ Task(subagent_type="oh-my-gx:refactor-coder"):
 
 **verify_refactor**: 오케스트레이터가 직접 검증.
 1. 전체 테스트 실행 → 모든 테스트 통과 확인.
-2. public 인터페이스 시그니처 변경 없음 확인.
-3. ❌ 테스트 실패 → refactor-coder에 즉시 롤백 요청. 롤백 실패 시 사용자에게 보고.
-4. ✅ GREEN 유지 → 태스크 완료. 다음 태스크로 진행.
+2. **테스트 수 확인**: 전체 테스트 수가 verify_green 시점보다 줄었으면 사유를 확인한다 (정당한 정리를 넘는 테스트 삭제는 금지 — 무단 삭제면 롤백 요청).
+3. public 인터페이스 시그니처 변경 없음 확인.
+4. ❌ 테스트 실패 → refactor-coder에 즉시 롤백 요청. 롤백 실패 시 사용자에게 보고.
+5. ✅ GREEN 유지 → 태스크 완료. 다음 태스크로 진행.
 
 `current-step`을 `"RGR T{N}: REFACTOR"`로 갱신.
 

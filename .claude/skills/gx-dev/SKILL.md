@@ -223,7 +223,7 @@ for phase in PHASES:
     if phase == "implement" and not hotfix and not implement_mode and not exists("${DEV_DIR}/design.md"):
         → phase-design부터 실행
     if phase == "review" and 변경사항이 없음:
-        # VCS_TYPE == "git": git diff --stat이 비어있음
+        # VCS_TYPE == "git": `git diff --cached --stat`과 `git diff --stat`이 **모두** 비어있을 때만 (implement Step 4가 전부 스테이징하므로 --cached 확인 필수 — unstaged만 보면 정상 실행을 오중단한다)
         # VCS_TYPE == "svn": svn status가 비어있음
         → "변경사항이 없습니다" 보고 후 중단
 
@@ -384,7 +384,7 @@ vcs-type: git
 branch: JIRA-123
 base: main
 dev-dir: .dev/JIRA-123
-project-type: kotlin-gradle
+project-type: java-spring
 project-root: ./
 args: "[JIRA-123] 로그인 기능 추가"
 flags: --hotfix
