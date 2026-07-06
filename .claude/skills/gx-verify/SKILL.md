@@ -53,12 +53,12 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 ### Step 0.5: 경고 baseline 로드
 
-`oh-my-gx:gx-tdd` 파이프라인의 phase-review(mechanical gate)가 기록한 경고 baseline을 로드한다. gx-verify는 무인자 독립 스킬이므로 `DEV_DIR`을 자체 계산한다:
+`oh-my-gx:gx-tdd` 파이프라인의 phase-implement(Step 0.5 기준선 게이트)가 기록한 경고 baseline을 로드한다. gx-verify는 무인자 독립 스킬이므로 `DEV_DIR`을 자체 계산한다:
 
 1. `.claude/config.json`의 `vcs` 값을 확인한다 (없으면 `git`).
-2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `DEV_DIR = .dev/trunk/`.
-3. `${DEV_DIR}/state.md`가 존재하고 execution-log에 `warnings-baseline: N`이 있으면 로드한다.
-4. 파일이 없거나 baseline이 없으면 (단독 호출 등) → **baseline 없음**으로 진행한다 (Step 4에서 경고 수 보고만, 비교 차단 없음).
+2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. 결과가 빈 문자열(detached HEAD 등)이면 baseline 탐색을 건너뛰고 그 사실을 보고한다. **svn**: `DEV_DIR = .dev/trunk/`.
+3. `${DEV_DIR}/state.md`가 존재하고 **`status: in_progress`**(진행 중 파이프라인)이며 최상위 필드 `warnings-baseline: N`이 있으면 로드한다. **`status: completed`인 옛 파이프라인의 baseline은 로드하지 않는다** (stale 기준에 의한 오차단 방지).
+4. 조건 미충족(파일 없음·완료 상태·필드 없음 — 단독 호출 등)이면 → **baseline 없음**으로 진행한다 (Step 4에서 경고 수 보고만, 비교 차단 없음).
 
 ### Step 1: 검증 명령 식별
 
@@ -77,6 +77,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.
 - AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다."
   - "직접 입력" → 입력받은 명령으로 Step 2 진행
+  - "건너뛰기 (위험 수용)" → 테스트 검증 없이 진행하되, 보고에 "위험 수용: 검증 명령 미감지"를 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
   - "중단" → 게이트 차단 유지. commit/PR 진입 불가를 보고
 
 ### Step 2: 테스트 실행 (직접)
@@ -93,7 +94,13 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 테스트 통과 수 / 실패 수
 - 실행 시간
 - 출력 마지막 30줄 (실패 시 분석용)
-- 경고 수 (baseline 비교용 — 추출: java-spring은 출력에서 `grep -ci "warning"`, node는 `grep -ci "warn"`, 그 외 타입은 미지원·보고만)
+- 경고 수 (baseline 비교용 — 아래 측정 규약 참조)
+
+**경고 측정 규약 (SSOT — phase-implement Step 0.5의 baseline 기록도 이 규약을 따른다)**:
+1. 명령 출력을 파일로 캡처한다: `<명령> > ${DEV_DIR}/verify-{test|build}.log 2>&1` (파이프가 아닌 **리다이렉트** — exit code가 원 명령의 것으로 유지된다). exit code를 먼저 확인한 뒤 로그를 분석한다.
+2. 카운트: java-spring은 `grep -ci "warning" <로그>`, node는 `grep -ci "warn" <로그>`, 그 외 타입은 미지원 (카운트 생략·보고만).
+3. 이 카운트는 요약 라인("N warnings")·로그 노이즈를 포함하는 **근사치**다. baseline보다 증가했을 때는 차단 전에 **로그 원문에서 실제 경고 라인을 대조**하여 신규 경고인지 확인한다. 노이즈·빌드 캐시 재출력으로 판정되면 차단하지 않고 "측정 노이즈"로 보고한다.
+4. baseline과 현재 측정은 **동일한 명령(config.json projectTypes의 test·build)·동일한 규약**을 사용해야 유효하다.
 
 ### Step 3: 빌드 실행 (직접)
 
@@ -119,9 +126,9 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 판정:
 - ✅ 테스트 0 failures + 빌드 exit 0 + (baseline 있으면) 신규 경고 0건 → **게이트 통과**
 - ❌ 어느 하나라도 실패 → **게이트 차단**
-- **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 → **게이트 차단**. AskUserQuestion: "신규 경고 {증가분}건이 감지되었습니다."
+- **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 → 먼저 측정 규약 3항에 따라 로그 원문을 대조한다. **실제 신규 경고로 확인되면** → **게이트 차단**. AskUserQuestion: "신규 경고 {증가분}건이 감지되었습니다."
   - "수정 후 재실행" → 사용자/RGR 수정 후 verify 재호출
-  - "위험 수용" → trust-ledger에 기록 후 통과
+  - "위험 수용" → 통과로 처리하되 보고에 "위험 수용: 신규 경고 {N}건"을 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
 - baseline이 없으면 (단독 호출 등) 경고 수를 **보고만** 한다 (비교 차단 없음)
 
 ### Step 5-A: 게이트 통과

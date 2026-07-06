@@ -19,6 +19,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 오케스트레이터가 `--hotfix` 모드이면:
 - Step 0에서 설계서(`design.md`) 로드를 건너뛴다. PRD(`prd.md`)는 로드한다.
+- **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
 - Step 1(구현 계획 승인), Step 1.5(태스크 분해)도 건너뛴다.
 - **RGR 사이클은 유지**한다 (hotfix여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
@@ -35,6 +36,17 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 - `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read하여 설계서를 로드한다. **testability 섹션**(phase-design에서 test-architect가 추가)을 확인한다.
 - `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 PRD를 로드한다. **수용 기준(AC) Given-When-Then 시나리오**를 추출한다.
 - testability 섹션이 누락된 설계서면 사용자에게 경고: "testability 평가가 누락된 설계서입니다. phase-design을 재실행해야 RGR 격리 컨텍스트를 구성할 수 있습니다."
+- `ANTI_PATTERNS_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/testing-anti-patterns.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). red-writer·quality-reviewer 프롬프트에 이 경로를 전달한다.
+
+## Step 0.5: 기준선 게이트 (RGR 시작 전)
+
+RGR 사이클 진입 전에 전체 테스트+빌드를 1회 실행한다 (명령은 config.json `projectTypes`의 test·build. 출력 캡처·경고 수 추출은 **gx-verify Step 2의 경고 측정 규약(SSOT)** 을 따른다):
+
+1. **기준 GREEN 확인**: 기존 테스트가 깨져 있으면 사용자에게 보고하고 진행 여부를 확인한다 (깨진 기준 위에서는 RGR의 회귀 판정이 성립하지 않는다).
+2. **warnings-baseline 기록**: 테스트+빌드 출력의 경고 수를 세어 state.md **최상위 필드** `warnings-baseline: N`으로 기록한다. phase-complete의 verify 게이트가 이 값과 비교하여 **이번 구현이 유입한 경고부터** 차단한다 (기존 경고는 허용).
+3. 테스트 명령 미감지·추출 불가 시 baseline을 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다 (**조용한 0 기록 금지** — 0과 미측정은 다르다).
+
+hotfix 모드에서도 실행한다 (RGR이 강제되므로). `current-step`을 `"기준선 게이트"`로 갱신.
 
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 
@@ -126,9 +138,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
     2. 기존 프로덕션 코드를 보지 않습니다. AC와 설계서 인터페이스만 봅니다.
     3. 테스트가 반드시 실패해야 합니다.
 
-    [테스트 품질 가드 — 상세: .claude/skills/gx-tdd/references/testing-anti-patterns.md]
+    [테스트 품질 가드 — 상세: {ANTI_PATTERNS_PATH}. 파일 부재 시 아래 요약이 기준의 전부]
     - 모의(mock)의 동작이 아니라 실제 동작을 검증합니다.
-    - 모의 구조는 설계서 testability 섹션의 인터페이스만 근거로 구성합니다. 없는 필드를 추측하지 않으며, 부족하면 "설계서 인터페이스 불충분"으로 보고합니다.
+    - 모의 구조는 설계서 testability 섹션의 인터페이스만 근거로 구성합니다 (설계서가 없는 hotfix 등에서는 AC와 기존 테스트 스타일만 근거). 없는 필드를 추측하지 않으며, 부족하면 "설계서 인터페이스 불충분"으로 보고합니다.
     - 프로덕션 클래스에 테스트 전용 메서드를 요구하지 않습니다.
 
     [AC (Given-When-Then)]
@@ -165,8 +177,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
 2. **실패 확인** (통과 시 잘못된 테스트 → red-writer 재호출).
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
-5. **테스트 파일 해시 기록**: `git hash-object {테스트 파일}` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작).
-6. ✅ 실패 정상 → GREEN으로 진행.
+5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — 정상 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. hotfix 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
+6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain` 스냅샷을 기록한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선).
+7. ✅ 실패 정상 → GREEN으로 진행.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
 
@@ -211,16 +224,16 @@ Task(subagent_type="oh-my-gx:green-coder"):
     - 테스트 결함 의심: {없음 | 사유}
 ```
 
-**verify_green**: 오케스트레이터가 직접 검증.
-1. 대상 테스트 통과 확인.
-2. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인.
-3. **테스트 무결성 확인**: `git hash-object {테스트 파일}`을 재실행하여 verify_red의 `test-file-hash`와 비교한다.
-   - 불일치 + green-coder가 "테스트 결함 의심" 보고 → 사유 확인 후 **red-writer 재호출** (테스트 재작성. green-coder가 테스트를 고치지 않는다).
-   - 불일치 + 결함 보고 없음 → 테스트를 RED 산출물로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조).
-4. **과잉 구현 감지**:
+**verify_green**: 오케스트레이터가 직접 검증. **저비용 검사(1~2번)를 테스트 실행보다 먼저 수행한다.**
+1. **테스트 결함 의심 확인**: green-coder가 "테스트 결함 의심"을 보고했으면 (해시 일치 여부와 무관) → 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (green-coder가 테스트를 고치지 않는다).
+2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`을 verify_red 스냅샷과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다.
+   - 무단 수정 감지 (해시 불일치 또는 타 테스트 파일 변경) → 해당 테스트를 RED 산출물(red 결과의 테스트 코드)로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조). **재차 위반 시** 사이클을 중단하고 사용자에게 보고한다.
+3. 대상 테스트 통과 확인.
+4. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인.
+5. **과잉 구현 감지**:
    - 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지 ({N줄}). YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
-5. ✅ 통과 + 회귀 없음 + 무결성 유지 → REFACTOR로 진행.
-6. ❌ 실패 → green-coder 재호출 (에러 메시지 전달, 최대 2회).
+6. ✅ 통과 + 회귀 없음 + 무결성 유지 → REFACTOR로 진행.
+7. ❌ 실패 → green-coder 재호출 (에러 메시지 전달, 최대 2회).
 
 `current-step`을 `"RGR T{N}: GREEN"`으로 갱신.
 
@@ -252,6 +265,7 @@ Task(subagent_type="oh-my-gx:refactor-coder"):
     - 변수/함수 이름 개선 (Rename)
     - 구조 정리 (Extract Class, Move Method)
     - 매직 넘버 상수화
+    - 테스트 코드 정리 (모의 동작 검증을 실제 동작 검증으로 교체, 테스트 전용 프로덕션 메서드를 테스트 유틸리티로 이동 — 검증 강도를 낮추지 않는 범위. 프로덕션 호출자가 0인 테스트 전용 메서드 제거는 허용)
 
     [수행 불가능한 정리]
     - 동작 변경
@@ -396,6 +410,7 @@ steps:
 
 ## --resume 호환
 
+- `"기준선 게이트"` → Step 0.5부터 재실행
 - `"태스크 분해 승인"` → Step 1.1부터 재실행
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: GREEN"` → 해당 태스크의 GREEN부터 재시작 (RED는 file에서 복원)

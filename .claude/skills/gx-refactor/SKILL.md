@@ -107,6 +107,7 @@ Task(subagent_type="oh-my-gx:refactor-coder"):
     - 변수/함수 이름 개선 (Rename)
     - 구조 정리 (Extract Class, Move Method)
     - 매직 넘버 상수화
+    - 테스트 코드 정리 (모의 동작 검증을 실제 동작 검증으로 교체, 테스트 전용 프로덕션 메서드를 테스트 유틸리티로 이동 — 검증 강도를 낮추지 않는 범위)
 
     수행 절차:
     1. 정리 1건 수행
