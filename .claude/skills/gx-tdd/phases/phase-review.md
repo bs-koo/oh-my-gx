@@ -39,14 +39,14 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 감지된 빌드 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 0-2로 진행.
-3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.**
+3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.**
 4. 수정 후 빌드를 **1회 재시도**한다.
 5. **재시도 성공** → Step 0-2로 진행.
 6. **재시도 실패** → 사용자에게 빌드 에러 표시 후 AskUserQuestion: "빌드 실패. 직접 수정 후 계속 / 중단".
 
 ### Step 0-2: Test
 
-**테스트 명령 결정**: config.json `projectTypes`의 `test` 필드를 사용한다. 없으면 건너뛴다.
+**테스트 명령 결정**: config.json `projectTypes`의 `test` 필드를 사용한다. 없으면 → AskUserQuestion: "테스트 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기. **조용히 건너뛰지 않는다** — 건너뛰기 선택 시 위험 수용으로 간주하고 trust-ledger에 "테스트 미검증 리뷰" 항목을 기록한다.
 
 **실행 흐름**:
 1. 테스트 명령을 `PROJECT_ROOT`에서 실행한다.
@@ -56,9 +56,23 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 5. **재시도 성공** → Step 1로 진행.
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
 
+### Step 0-3: 경고 baseline 기록
+
+빌드·테스트 출력의 경고 수를 세어 state.md의 execution-log에 `warnings-baseline: N`으로 기록한다. complete Phase의 verify 게이트(`oh-my-gx:gx-verify`)가 이 값과 비교하여 **신규 경고**를 차단한다 (기존 경고는 허용).
+
+**경고 수 추출 방법** (config.json `projectTypes` 기준):
+
+| 프로젝트 타입 | 추출 방법 |
+|---------------|----------|
+| java-spring (gradle) | 빌드/테스트 출력에서 `grep -ci "warning"` (javac `warning:` + deprecation 포함) |
+| node | 빌드/테스트 출력에서 `grep -ci "warn"` (npm/tsc/eslint warning 라인) |
+| 그 외 | 경고 카운트 미지원 — baseline을 기록하지 않는다 |
+
+추출 불가(출력 캡처 실패 등) 시 baseline을 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다 (**조용한 0 기록 금지** — 0과 미측정은 다르다).
+
 ### Gate 통과 기준
 
-build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요).
+build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요). 경고는 이 Gate에서 차단하지 않는다 (baseline 기록만, 차단은 verify 게이트).
 
 ---
 
@@ -93,7 +107,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 > **Iron Law**: spec-reviewer가 통과(✅)해야 Step 3 진입 가능. 미통과 시 quality-reviewer 호출 금지.
 
 ```
-Task(subagent_type="spec-reviewer"):
+Task(subagent_type="oh-my-gx:spec-reviewer"):
   description: "Spec compliance review"
   prompt: |
     당신은 spec 준수 검증 전담자입니다.
@@ -168,7 +182,7 @@ Task(subagent_type="spec-reviewer"):
 ### Task A: quality-reviewer (코드 품질만)
 
 ```
-Task(subagent_type="quality-reviewer"):
+Task(subagent_type="oh-my-gx:quality-reviewer"):
   description: "Code quality review (post-spec-pass)"
   prompt: |
     당신은 코드 품질 검증 전담자입니다.
@@ -190,7 +204,7 @@ Task(subagent_type="quality-reviewer"):
 
     [평가 영역]
     - Critical: 보안 취약점, 데이터 손실, race condition, null pointer, 무한 루프
-    - Important: DRY 위반, 단일 책임 위반, 매직 넘버, 잘못된 추상화, 컨벤션 위반
+    - Important: DRY 위반, 단일 책임 위반, 매직 넘버, 잘못된 추상화, 컨벤션 위반, 테스트 코드 품질(모의 동작 검증·테스트 전용 메서드·불완전 모킹 → [동작불변])
     - Minor: 가독성, 주석 개선, import 정리
 
     [출력 형식]
@@ -213,7 +227,7 @@ Task(subagent_type="quality-reviewer"):
 ### Task B: security-auditor (통합 감사)
 
 ```
-Task(subagent_type="security-auditor"):
+Task(subagent_type="oh-my-gx:security-auditor"):
   description: "Security audit (parallel with quality)"
   prompt: |
     [PRD 전체]
@@ -313,7 +327,7 @@ if behavior_defects:
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → Task(subagent_type="refactor-coder"):
+      - "예" → Task(subagent_type="oh-my-gx:refactor-coder"):
                입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT.
                디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement Step 2-F를 따르되,
                "정리 대상"은 green 산출물이 아니라 위 리뷰 findings이며 GREEN 기준선은 Step0에서 통과한 전체 테스트다.

@@ -65,7 +65,7 @@ oh-my-gx:gx-green — GREEN 단계 진입.
 ./gradlew test --tests <테스트>  # 또는 npm test -- <테스트>
 ```
 
-- ✅ 실패하면 → 정상. Step 2 진행
+- ✅ 실패하면 → 정상. `git hash-object {테스트 파일}`로 해시를 기록해두고 (Step 3 무결성 비교 기준) Step 2 진행
 - ❌ 통과하면 → "이미 구현이 있습니다. RED 단계로 복귀하세요." 중단
 
 ### Step 2: 최소 코드 작성 (green-coder 디스패치)
@@ -73,7 +73,7 @@ oh-my-gx:gx-green — GREEN 단계 진입.
 격리된 서브에이전트 호출:
 
 ```
-Task(subagent_type="green-coder"):
+Task(subagent_type="oh-my-gx:green-coder"):
   description: "Write minimum code to pass: {test}"
   prompt: |
     당신은 GREEN 단계 최소 코드 작성 전담자입니다.
@@ -82,6 +82,7 @@ Task(subagent_type="green-coder"):
     1. 실패 테스트 1개만 통과시키는 최소 코드만 작성합니다.
     2. 추가 기능, 에러 핸들링, 검증, 로깅을 미리 넣지 않습니다.
     3. "어차피 나중에 필요"는 YAGNI 위반. 지금 필요한 것만.
+    4. 테스트 파일을 수정하지 않습니다. 테스트가 실패하면 코드를 고치고, 테스트를 고치지 않습니다. 테스트 결함이 의심되면 수정하지 말고 "테스트 결함 의심"으로 보고합니다.
 
     실패 테스트:
     - 파일: {경로}
@@ -102,6 +103,7 @@ Task(subagent_type="green-coder"):
     - 통과 확인 명령: {명령}
     - 통과 메시지: {메시지}
     - 다른 테스트 영향: {0건 또는 영향 받은 테스트 목록}
+    - 테스트 결함 의심: {없음 | 사유}
 ```
 
 ### Step 3: 통과 확인 (verification)
@@ -111,7 +113,8 @@ green-coder 보고 후 직접 검증:
 1. 대상 테스트 명령 실행
 2. **통과** 확인
 3. **다른 테스트 영향 없음** 확인 (전체 테스트 실행)
-4. **과잉 구현 감지**:
+4. **테스트 무결성 확인**: `git hash-object {테스트 파일}`을 재실행하여 Step 1에서 기록한 해시와 비교. 불일치 시 테스트를 원복하고 green-coder 재호출, "테스트 결함 의심" 보고가 있으면 `oh-my-gx:gx-red`로 복귀
+5. **과잉 구현 감지**:
    - 추가된 메서드/필드 중 테스트에서 사용 안 한 것 → 삭제 권고
    - 미리 추가된 에러 핸들링 → 다음 RED 단계로 미루기
 

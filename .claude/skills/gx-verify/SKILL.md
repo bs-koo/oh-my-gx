@@ -51,6 +51,15 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 증거 없이 다음 단계 진입 불가.
 ```
 
+### Step 0.5: 경고 baseline 로드
+
+`oh-my-gx:gx-tdd` 파이프라인의 phase-review(mechanical gate)가 기록한 경고 baseline을 로드한다. gx-verify는 무인자 독립 스킬이므로 `DEV_DIR`을 자체 계산한다:
+
+1. `.claude/config.json`의 `vcs` 값을 확인한다 (없으면 `git`).
+2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `DEV_DIR = .dev/trunk/`.
+3. `${DEV_DIR}/state.md`가 존재하고 execution-log에 `warnings-baseline: N`이 있으면 로드한다.
+4. 파일이 없거나 baseline이 없으면 (단독 호출 등) → **baseline 없음**으로 진행한다 (Step 4에서 경고 수 보고만, 비교 차단 없음).
+
 ### Step 1: 검증 명령 식별
 
 프로젝트 타입별 검증 명령:
@@ -63,6 +72,12 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 | go | `go test ./...` | `go build ./...` |
 
 `.claude/config.json`의 `projectTypes` 설정에서 감지.
+
+**감지 실패 시 (config.json 부재·projectTypes 미매칭·명령 결정 불가)**:
+- 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.
+- AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다."
+  - "직접 입력" → 입력받은 명령으로 Step 2 진행
+  - "중단" → 게이트 차단 유지. commit/PR 진입 불가를 보고
 
 ### Step 2: 테스트 실행 (직접)
 
@@ -78,6 +93,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 테스트 통과 수 / 실패 수
 - 실행 시간
 - 출력 마지막 30줄 (실패 시 분석용)
+- 경고 수 (baseline 비교용 — 추출: java-spring은 출력에서 `grep -ci "warning"`, node는 `grep -ci "warn"`, 그 외 타입은 미지원·보고만)
 
 ### Step 3: 빌드 실행 (직접)
 
@@ -88,7 +104,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 수집 정보:
 - exit code
 - 빌드 시간
-- 경고 수 (있으면 보고)
+- 경고 수 (baseline 비교용 — 추출 방법은 Step 2와 동일)
 
 ### Step 4: 증거 분석
 
@@ -96,12 +112,17 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 검증 결과:
 - 테스트: {N pass, M fail} (exit code: {0|1})
 - 빌드: {success|failure} (exit code: {0|1})
+- 경고: {N건} (baseline: {M건 | 없음})
 - 실행 시각: {timestamp}
 ```
 
 판정:
-- ✅ 테스트 0 failures + 빌드 exit 0 → **게이트 통과**
+- ✅ 테스트 0 failures + 빌드 exit 0 + (baseline 있으면) 신규 경고 0건 → **게이트 통과**
 - ❌ 어느 하나라도 실패 → **게이트 차단**
+- **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 → **게이트 차단**. AskUserQuestion: "신규 경고 {증가분}건이 감지되었습니다."
+  - "수정 후 재실행" → 사용자/RGR 수정 후 verify 재호출
+  - "위험 수용" → trust-ledger에 기록 후 통과
+- baseline이 없으면 (단독 호출 등) 경고 수를 **보고만** 한다 (비교 차단 없음)
 
 ### Step 5-A: 게이트 통과
 
@@ -151,6 +172,7 @@ commit/PR 진입은 차단됩니다.
 | "에이전트가 통과했다고 보고" | 에이전트 보고는 검증이 아님. 직접 실행 |
 | "급하니 일부 테스트만 실행" | 일부 실행은 검증 아님. 전체 또는 명확한 격리 |
 | "테스트가 flaky해서 무시" | flaky test는 fix 대상. 무시는 부채 누적 |
+| "실행할 테스트가 없으니 통과" | 명령 미감지는 통과가 아니라 차단 사유. 직접 입력 또는 중단 |
 
 자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
 

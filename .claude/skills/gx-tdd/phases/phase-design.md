@@ -21,7 +21,7 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 **Step 0**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 확정된 PRD를 로드한다.
 
 **Task**: architect agent를 호출한다 (설계).
-`Task(subagent_type="architect")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:architect")` — prompt에 다음을 포함:
 - 확정된 PRD (Step 0에서 로드)
 - 코드 맵 (누적된 상태)
 - 프로젝트 타입, 디렉토리 구조, 컨벤션 (phase-setup에서 수집한 정보)
@@ -49,7 +49,7 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 
 **Step 3-A**: design-critic (조건부 — 중형/대형만).
 
-`Task(subagent_type="design-critic")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:design-critic")` — prompt에 다음을 포함:
 - architect의 설계 초안 (Step 1에서 받은 출력)
 - PRD (Step 0에서 로드)
 - 코드 맵 (누적된 상태)
@@ -59,7 +59,7 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 **Step 3-B**: test-architect (필수, 항상 호출).
 
 ```
-Task(subagent_type="test-architect"):
+Task(subagent_type="oh-my-gx:test-architect"):
   description: "Testability evaluation"
   prompt: |
     당신은 testability 평가 전담자입니다.

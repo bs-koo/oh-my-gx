@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.13.0 (2026-07-06) — gx-tdd 테스트 품질 축 보강 (superpowers 원본 대조 이식)
+
+### Features
+- **testing-anti-patterns 이식**: superpowers 원본의 모의(mock) 4대 anti-pattern(모의 동작 테스트·프로덕션 테스트 전용 메서드·이해 없는 모킹·불완전 모킹)을 `gx-tdd/references/testing-anti-patterns.md`로 한국어 이식. red-writer(작성 시 게이트)·quality-reviewer(Important 평가 영역, `[동작불변]` 라우팅)에 연결. red-writer 격리 특화 규칙 추가 — 모의 근거는 설계서 testability 인터페이스가 유일하며, 부족하면 "설계서 인터페이스 불충분"으로 보고
+- **신규 경고 차단 게이트**: phase-review mechanical gate가 경고 수를 `warnings-baseline`으로 기록(java-spring/node 추출법 정의, 그 외 타입은 미지원 명시·조용한 0 기록 금지)하고, gx-verify가 Step 0.5(DEV_DIR 자체 계산)로 로드하여 baseline 대비 증가 시 게이트 차단(수정 재실행/위험 수용 선택). baseline 없는 단독 호출은 보고만(기존 동작 유지)
+
+### Fixes
+- **green-coder 테스트 수정 금지 (superpowers "Fix code, not test" 이식 누락)**: 절대 규칙·금지 사항에 "테스트가 실패하면 코드를 고치고, 테스트를 고치지 않는다" 추가 + "테스트 결함 의심" 보고 필드 신설. verify_red가 `git hash-object`로 테스트 파일 해시를 기록하고 verify_green이 재해시 비교로 무단 수정을 기계적으로 감지 — 무단 수정은 원복+green-coder 재호출, 결함 보고는 red-writer 재작성으로 라우팅
+- **테스트 명령 감지 공백 봉합**: phase-review Step 0-2의 "없으면 건너뛴다"(조용한 스킵)를 AskUserQuestion 폴백 + trust-ledger 위험 수용 기록으로 교체. gx-verify에 "감지 실패 = 게이트 차단이 기본값, 조용한 통과는 Iron Law 3 위반" 절차 신설
+- **Good Tests 3기준 주입**: red-writer에 superpowers 원본의 테스트 품질 기준(하나의 동작만·이름이 검증 동작을 설명·실제 코드 우선, 모의는 불가피할 때만) 이식
+- **디스패치 이름 접두사 통일**: gx-tdd phase 5종 + gx-red/gx-green/gx-refactor의 `subagent_type` 16곳을 `oh-my-gx:` 접두사 정식 이름으로 통일하고 SKILL.md에 디스패치 이름 규칙 명문화 (접두사형 해석은 dry-run으로 검증 완료). gx-dev·gx-cross-review·gx-lens·gx-tech-debt의 bare 이름은 후속 이슈
+- **red-writer 격리 표현 정직화**: "진짜 격리" → "지시 기반 격리"(도구 레벨 차단이 아님을 명시). 출력에 "참조한 파일" 자기신고 필드를 추가하고 verify_red가 프로덕션 소스 참조(오염된 RED)를 검증 후 폐기·재호출
+
 ## v1.12.2 (2026-06-23) — gx-tdd TDD 정합성·모호점 정리
 
 ### Fixes

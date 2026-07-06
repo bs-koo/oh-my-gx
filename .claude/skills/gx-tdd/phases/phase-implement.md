@@ -7,7 +7,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
 이 Phase는 **3 에이전트가 순차 사이클로 동작**한다:
-- **red-writer** → 실패 테스트 작성 (**진짜 격리** — 기존 프로덕션 코드를 보지 않음)
+- **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님)
 - **green-coder** → 통과 최소 코드 (입력은 실패 테스트+시그니처로 한정하되, 구현을 위한 기존 코드 Read는 허용 — red-writer 수준의 차단 아님)
 - **refactor-coder** → 안전한 정리 (동작 변경 금지)
 
@@ -116,7 +116,7 @@ for task in tasks:
 ### Step 2-R: RED (red-writer 디스패치)
 
 ```
-Task(subagent_type="red-writer"):
+Task(subagent_type="oh-my-gx:red-writer"):
   description: "RED: Write failing test for {AC-N}"
   prompt: |
     당신은 RED 단계 테스트 작성 전담자입니다.
@@ -125,6 +125,11 @@ Task(subagent_type="red-writer"):
     1. 프로덕션 코드를 작성하지 않습니다. 테스트 파일만 작성합니다.
     2. 기존 프로덕션 코드를 보지 않습니다. AC와 설계서 인터페이스만 봅니다.
     3. 테스트가 반드시 실패해야 합니다.
+
+    [테스트 품질 가드 — 상세: .claude/skills/gx-tdd/references/testing-anti-patterns.md]
+    - 모의(mock)의 동작이 아니라 실제 동작을 검증합니다.
+    - 모의 구조는 설계서 testability 섹션의 인터페이스만 근거로 구성합니다. 없는 필드를 추측하지 않으며, 부족하면 "설계서 인터페이스 불충분"으로 보고합니다.
+    - 프로덕션 클래스에 테스트 전용 메서드를 요구하지 않습니다.
 
     [AC (Given-When-Then)]
     {태스크가 매핑된 AC 시나리오}
@@ -139,7 +144,10 @@ Task(subagent_type="red-writer"):
     {PROJECT_ROOT}
 
     [작업]
-    1. AC를 검증하는 최소 테스트 1개 작성
+    1. AC를 검증하는 최소 테스트 1개 작성. 테스트 품질 3기준 준수:
+       - 하나의 동작만 검증 (이름에 '그리고'가 필요하면 분리)
+       - 이름이 검증하는 동작을 설명
+       - 실제 코드 우선, 모의는 불가피할 때만
     2. 테스트 명령 실행으로 실패 확인 (에러 메시지 캡처)
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
 
@@ -149,13 +157,16 @@ Task(subagent_type="red-writer"):
     - 실패 확인 명령: {명령}
     - 실패 메시지: {메시지 마지막 10줄}
     - 실패 사유: {유형}
+    - 참조한 파일: {Read/Grep으로 참조한 파일 전체 목록}
 ```
 
 **verify_red**: 오케스트레이터가 직접 검증.
 1. red-writer가 보고한 테스트 명령을 직접 실행.
 2. **실패 확인** (통과 시 잘못된 테스트 → red-writer 재호출).
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
-4. ✅ 실패 정상 → GREEN으로 진행.
+4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
+5. **테스트 파일 해시 기록**: `git hash-object {테스트 파일}` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작).
+6. ✅ 실패 정상 → GREEN으로 진행.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
 
@@ -164,7 +175,7 @@ Task(subagent_type="red-writer"):
 ### Step 2-G: GREEN (green-coder 디스패치)
 
 ```
-Task(subagent_type="green-coder"):
+Task(subagent_type="oh-my-gx:green-coder"):
   description: "GREEN: Pass test {test-name}"
   prompt: |
     당신은 GREEN 단계 최소 코드 작성 전담자입니다.
@@ -173,6 +184,7 @@ Task(subagent_type="green-coder"):
     1. 실패 테스트 1개만 통과시키는 최소 코드만 작성합니다.
     2. 추가 기능, 에러 핸들링, 검증, 로깅을 미리 넣지 않습니다 (YAGNI).
     3. 다른 테스트가 깨지지 않는지 확인합니다.
+    4. 테스트 파일을 수정하지 않습니다. 테스트가 실패하면 코드를 고치고, 테스트를 고치지 않습니다. 테스트 자체 결함이 의심되면 수정하지 말고 "테스트 결함 의심"으로 보고합니다.
 
     [실패 테스트]
     - 파일: {red 결과의 테스트 파일}
@@ -196,15 +208,19 @@ Task(subagent_type="green-coder"):
     - 통과 확인 명령: {명령}
     - 통과 메시지: {N pass}
     - 다른 테스트 영향: {0건 또는 영향 받은 테스트 목록}
+    - 테스트 결함 의심: {없음 | 사유}
 ```
 
 **verify_green**: 오케스트레이터가 직접 검증.
 1. 대상 테스트 통과 확인.
 2. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인.
-3. **과잉 구현 감지**:
+3. **테스트 무결성 확인**: `git hash-object {테스트 파일}`을 재실행하여 verify_red의 `test-file-hash`와 비교한다.
+   - 불일치 + green-coder가 "테스트 결함 의심" 보고 → 사유 확인 후 **red-writer 재호출** (테스트 재작성. green-coder가 테스트를 고치지 않는다).
+   - 불일치 + 결함 보고 없음 → 테스트를 RED 산출물로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조).
+4. **과잉 구현 감지**:
    - 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지 ({N줄}). YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
-4. ✅ 통과 + 회귀 없음 → REFACTOR로 진행.
-5. ❌ 실패 → green-coder 재호출 (에러 메시지 전달, 최대 2회).
+5. ✅ 통과 + 회귀 없음 + 무결성 유지 → REFACTOR로 진행.
+6. ❌ 실패 → green-coder 재호출 (에러 메시지 전달, 최대 2회).
 
 `current-step`을 `"RGR T{N}: GREEN"`으로 갱신.
 
@@ -213,7 +229,7 @@ Task(subagent_type="green-coder"):
 ### Step 2-F: REFACTOR (refactor-coder 디스패치)
 
 ```
-Task(subagent_type="refactor-coder"):
+Task(subagent_type="oh-my-gx:refactor-coder"):
   description: "REFACTOR: Clean up {component}"
   prompt: |
     당신은 REFACTOR 단계 정리 전담자입니다.
@@ -322,7 +338,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 
 `phase-review`를 hotfix에서 건너뛰면서 security-auditor가 호출되지 않던 공백을 보완한다. CRITICAL/HIGH만 보고하도록 범위를 제한하여 hotfix의 경량성을 유지한다.
 
-**Step H1**: `Task(subagent_type="security-auditor")` — prompt에 다음을 포함:
+**Step H1**: `Task(subagent_type="oh-my-gx:security-auditor")` — prompt에 다음을 포함:
 - 경량 PRD (`${DEV_DIR}/prd.md` Read)
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - 코드 맵
