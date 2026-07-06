@@ -84,6 +84,7 @@ Arguments:
 - 현재 브랜치가 베이스 브랜치가 아닌지 확인 — 같으면: "베이스 브랜치에서는 PR을 생성할 수 없습니다."
 - 베이스 브랜치 대비 커밋이 있는지 확인 — 없으면: "PR을 생성할 커밋이 없습니다."
 - 미커밋 변경사항이 있으면 경고하고, 커밋 먼저 할지 진행할지 확인
+- **gx-tdd verify 경고 게이트**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — verify 게이트 미통과 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR"을 명시). `pipeline: gx-tdd` 필드가 없는 state.md(gx-dev 등)에는 적용하지 않는다.
 
 ## GH_HOST 감지
 

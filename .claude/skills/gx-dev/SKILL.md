@@ -223,7 +223,8 @@ for phase in PHASES:
     if phase == "implement" and not hotfix and not implement_mode and not exists("${DEV_DIR}/design.md"):
         → phase-design부터 실행
     if phase == "review" and 변경사항이 없음:
-        # VCS_TYPE == "git": `git diff --cached --stat`과 `git diff --stat`이 **모두** 비어있을 때만 (implement Step 4가 전부 스테이징하므로 --cached 확인 필수 — unstaged만 보면 정상 실행을 오중단한다)
+        # VCS_TYPE == "git": `git status --porcelain`(스테이징·미스테이징·untracked 포함)이 비어있고 **그리고** `git log {base}..HEAD` 커밋도 없을 때만 중단.
+        #      워킹트리 변경 또는 브랜치 커밋 어느 한쪽이라도 있으면 진입한다 (커밋만 있는 경우의 diff 구성은 phase-review가 처리).
         # VCS_TYPE == "svn": svn status가 비어있음
         → "변경사항이 없습니다" 보고 후 중단
 

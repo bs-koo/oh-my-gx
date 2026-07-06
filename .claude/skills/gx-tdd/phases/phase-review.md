@@ -341,7 +341,7 @@ else:
         → phase-complete (클린 통과)
 ```
 
-**2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남으면 사용자에게 명시하고 AskUserQuestion: "수동 수정 후 재리뷰" / "현재 상태로 진행". **"현재 상태로 진행" 선택 시 trust-ledger에 "미해결 Critical 수용" 항목을 기록**한다.
+**2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남으면 사용자에게 명시하고 AskUserQuestion: "수동 수정 후 재리뷰" / "현재 상태로 진행". **"현재 상태로 진행" 선택 시 trust-ledger에 "미해결 Critical 수용" 항목을 기록**하고, "수동 수정 후 재리뷰" 선택 시에는 execution-log에 "수동 수정 재주입"을 기록한다.
 
 ---
 

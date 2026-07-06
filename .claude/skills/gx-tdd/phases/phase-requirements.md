@@ -25,7 +25,7 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 - 작성 완료 후 사용자에게 전문 표시 + 승인 확인.
 - 저장 전에 **G-W-T 검증 게이트**(아래 섹션)를 정상 플로우와 동일하게 수행한다 (hotfix에서도 RGR이 강제되므로 그 전제인 게이트도 유지).
 - 승인 + 게이트 통과 → `${PROJECT_ROOT}/${DEV_DIR}/prd.md`에 저장 후 phase-implement로 진행.
-- 수정 요청 → 1회 수정 후 저장.
+- 수정 요청 → 1회 수정 후 **G-W-T 게이트 재수행 + 재승인**을 거쳐 저장한다 (수정이 형식을 깨뜨릴 수 있으므로 게이트는 저장 전 불변식이다).
 
 hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 
@@ -128,7 +128,7 @@ AskUserQuestion(
     header: "게이트 처리",
     options: [
       { label: "직접 수정", description: "PRD를 직접 G-W-T 형식으로 고침" },
-      { label: "위험 수용", description: "해당 AC를 구현 대상에서 제외 (테스트 없이 구현하는 것이 아님 — trust-ledger에 기록)" },
+      { label: "위험 수용", description: "해당 AC를 구현 대상에서 제외하고 prd.md의 그 AC에 '(제외 — 위험 수용)' 표시 (테스트 없이 구현하는 것이 아님 — trust-ledger에 기록. 유일한 AC가 제외되면 구현 대상이 없으므로 파이프라인을 중단하고 보고)" },
       { label: "중단", description: "요구사항을 재정의" }
     ],
     multiSelect: false

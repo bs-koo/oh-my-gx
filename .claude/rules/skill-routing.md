@@ -11,9 +11,10 @@
 | `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
 
 **gx-tdd 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
-- `.dev/{branch-slug}/state.md`가 존재하고 `status: in_progress`이며 `steps.complete`의 `verify-gate`가 `completed`가 아니면, `커밋`/`PR` 의도를 gx-commit/gx-pull-request로 직행시키지 않는다.
-- 대신 verify 게이트를 포함하는 `/gx-tdd --phase complete` 경로를 안내한다. 사용자가 verify 없이 커밋을 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit의 verify 경고 게이트가 재확인).
-- `verify-gate` 항목이 없는 state.md(gx-dev 등)에는 적용하지 않는다.
+- 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.
+- 판별: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 gx-commit/gx-pull-request로 직행시키지 않는다.
+- 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 사용자가 verify 없이 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit/gx-pull-request의 경고 게이트가 재확인).
+- `pipeline: gx-tdd` 필드가 없는 state.md(gx-dev 등)에는 적용하지 않는다.
 
 ## 개발 파이프라인 분기 (gx-dev vs gx-tdd)
 

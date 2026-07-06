@@ -216,6 +216,7 @@ TMP=$(mktemp); (svn propget svn:ignore . 2>/dev/null; echo .dev) | sort -u > "$T
 ## Step 7: 진행 상태 초기화
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
+- pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
 - vcs-type, branch, base, project-type, project-root, args, flags 기록 (svn은 branch/base 미사용)
 - mode, intent-source 기록 (의도 파싱 결과)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.
