@@ -15,7 +15,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 
 **최대 2회 반복.**
 
-**문서 로드**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`와 `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다.
+**문서 로드**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`와 `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다. `ANTI_PATTERNS_PATH`(gx-tdd 스킬 디렉토리의 `references/testing-anti-patterns.md` 절대 경로 — 플러그인 설치 환경에서는 플러그인 베이스 경로 하위)를 확정한다.
 
 ## Step 0: Mechanical Gate (build + test)
 
@@ -39,26 +39,26 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 감지된 빌드 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 0-2로 진행.
-3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.**
+3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 green-coder가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). green-coder 수정 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 재호출한다 (state.md의 `test-file-hash` 대조).
 4. 수정 후 빌드를 **1회 재시도**한다.
 5. **재시도 성공** → Step 0-2로 진행.
 6. **재시도 실패** → 사용자에게 빌드 에러 표시 후 AskUserQuestion: "빌드 실패. 직접 수정 후 계속 / 중단".
 
 ### Step 0-2: Test
 
-**테스트 명령 결정**: config.json `projectTypes`의 `test` 필드를 사용한다. 없으면 건너뛴다.
+**테스트 명령 결정**: config.json `projectTypes`의 `test` 필드를 사용한다. 없으면 → AskUserQuestion: "테스트 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기. **조용히 건너뛰지 않는다** — 건너뛰기 선택 시 위험 수용으로 간주하고 trust-ledger에 "테스트 미검증 리뷰" 항목을 기록한다.
 
 **실행 흐름**:
 1. 테스트 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 1로 진행.
-3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `green-coder`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `refactor-coder`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지.
+3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `green-coder`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `refactor-coder`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지. green-coder 수정 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재호출 — 프로덕션 코드로만 해결).
 4. 수정 후 테스트를 **1회 재시도**한다.
 5. **재시도 성공** → Step 1로 진행.
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
 
 ### Gate 통과 기준
 
-build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요).
+build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요). 경고는 이 Gate에서 차단하지 않는다 — 경고 baseline은 phase-implement Step 0.5(기준선 게이트)가 기록하고, 차단은 verify 게이트(`oh-my-gx:gx-verify`)가 수행한다.
 
 ---
 
@@ -93,7 +93,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 > **Iron Law**: spec-reviewer가 통과(✅)해야 Step 3 진입 가능. 미통과 시 quality-reviewer 호출 금지.
 
 ```
-Task(subagent_type="spec-reviewer"):
+Task(subagent_type="oh-my-gx:spec-reviewer"):
   description: "Spec compliance review"
   prompt: |
     당신은 spec 준수 검증 전담자입니다.
@@ -168,7 +168,7 @@ Task(subagent_type="spec-reviewer"):
 ### Task A: quality-reviewer (코드 품질만)
 
 ```
-Task(subagent_type="quality-reviewer"):
+Task(subagent_type="oh-my-gx:quality-reviewer"):
   description: "Code quality review (post-spec-pass)"
   prompt: |
     당신은 코드 품질 검증 전담자입니다.
@@ -188,9 +188,12 @@ Task(subagent_type="quality-reviewer"):
     [프로젝트 컨벤션]
     {CLAUDE.md 컨벤션 또는 기존 코드 스타일}
 
+    [테스트 품질 기준 파일]
+    {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read하여 기준으로 사용 (부재 시 평가 영역의 항목 정의로 판정)
+
     [평가 영역]
     - Critical: 보안 취약점, 데이터 손실, race condition, null pointer, 무한 루프
-    - Important: DRY 위반, 단일 책임 위반, 매직 넘버, 잘못된 추상화, 컨벤션 위반
+    - Important: DRY 위반, 단일 책임 위반, 매직 넘버, 잘못된 추상화, 컨벤션 위반, 테스트 코드 품질(모의 동작 검증·테스트 전용 메서드·불완전 모킹 → [동작불변])
     - Minor: 가독성, 주석 개선, import 정리
 
     [출력 형식]
@@ -213,7 +216,7 @@ Task(subagent_type="quality-reviewer"):
 ### Task B: security-auditor (통합 감사)
 
 ```
-Task(subagent_type="security-auditor"):
+Task(subagent_type="oh-my-gx:security-auditor"):
   description: "Security audit (parallel with quality)"
   prompt: |
     [PRD 전체]
@@ -254,7 +257,7 @@ Task(subagent_type="security-auditor"):
 
 ### Step 4.1: Trust Ledger 저장
 
-security-auditor 결과를 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 저장.
+security-auditor 결과를 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 **Write/Append**한다. 기존 항목(Step 0-2의 "테스트 미검증 리뷰" 위험 수용, Step 2.1의 "미충족 AC" 기록 등)을 **덮어쓰지 않고 보존**한다.
 
 ### Step 4.2: 통합 findings 구성
 
@@ -313,7 +316,7 @@ if behavior_defects:
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → Task(subagent_type="refactor-coder"):
+      - "예" → Task(subagent_type="oh-my-gx:refactor-coder"):
                입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT.
                디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement Step 2-F를 따르되,
                "정리 대상"은 green 산출물이 아니라 위 리뷰 findings이며 GREEN 기준선은 Step0에서 통과한 전체 테스트다.
