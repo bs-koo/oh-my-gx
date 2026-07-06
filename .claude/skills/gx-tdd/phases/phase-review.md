@@ -31,7 +31,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 2. CLAUDE.md에 빌드 명령이 없으면 → 프로젝트 타입에서 기본값을 사용한다:
    | 프로젝트 타입 | 기본 빌드 명령 |
    |---------------|---------------|
-   | kotlin-gradle, java-gradle | `./gradlew build -x test` |
+   | java-spring (gradle) | `./gradlew build -x test` |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
    | python | 건너뛰기 (인터프리터 언어) |
 3. 프로젝트 타입으로도 결정 불가 → AskUserQuestion: "빌드 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기.
@@ -149,7 +149,7 @@ Task(subagent_type="oh-my-gx:spec-reviewer"):
   1. 미충족/부분 AC를 사용자에게 표시
   2. AskUserQuestion: "spec 미충족 항목 발견. RGR 사이클로 재구현 시도할까요?"
      - "재구현" → 미충족 AC를 새 태스크로 정의 → `phase-implement`로 복귀 (해당 AC만 RGR)
-     - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출
+     - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
      - "이대로 진행" → 미충족 AC를 trust-ledger에 "미충족 AC" 섹션으로 기록 후 Step 3 진행 (예외)
   3. 재구현 후 spec-reviewer 재호출 (반복 카운트에 포함)
 
@@ -257,7 +257,7 @@ Task(subagent_type="oh-my-gx:security-auditor"):
 
 ### Step 4.1: Trust Ledger 저장
 
-security-auditor 결과를 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 **Write/Append**한다. 기존 항목(Step 0-2의 "테스트 미검증 리뷰" 위험 수용, Step 2.1의 "미충족 AC" 기록 등)을 **덮어쓰지 않고 보존**한다.
+security-auditor 결과와 **quality-reviewer의 Critical/Important 요약**을 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 **Write/Append**한다 (quality 결함도 영속화해야 PR의 Audit Summary와 사후 감사에서 추적된다). 기존 항목(Step 0-2의 "테스트 미검증 리뷰" 위험 수용, Step 2.1의 "미충족 AC" 기록 등)을 **덮어쓰지 않고 보존**한다.
 
 ### Step 4.2: 통합 findings 구성
 
@@ -307,7 +307,7 @@ if behavior_defects:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 결함을 RGR 사이클로 수정할까요?"
       - "예 (RGR)" → 각 항목을 새 AC로 정의 → phase-implement RGR 사이클 진입 (RED부터)
-      - "수동 수정" → 사용자 수정 후 phase-review 재호출
+      - "수동 수정" → 사용자 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
       - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
     did_fix = true (RGR 선택 시)
 
@@ -341,7 +341,7 @@ else:
         → phase-complete (클린 통과)
 ```
 
-**2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남으면 사용자에게 명시하고 AskUserQuestion: "수동 수정 후 재리뷰" / "현재 상태로 진행".
+**2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남으면 사용자에게 명시하고 AskUserQuestion: "수동 수정 후 재리뷰" / "현재 상태로 진행". **"현재 상태로 진행" 선택 시 trust-ledger에 "미해결 Critical 수용" 항목을 기록**하고, "수동 수정 후 재리뷰" 선택 시에는 execution-log에 "수동 수정 재주입"을 기록한다.
 
 ---
 
