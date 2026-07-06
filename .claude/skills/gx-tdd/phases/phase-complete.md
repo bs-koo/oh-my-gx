@@ -87,13 +87,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 > 주의: `oh-my-gx:gx-commit`은 gx-dev와 공유하는 스킬로 verify 실행(테스트 실행 증거 수집)을 포함하지 않는다 (`verify-status` 기반 조건부 경고 게이트만 있다).
 > verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1을 반드시 재실행한다.
 
-**build/test 실패 시 RGR 사이클로 수정 (Iron Law 1):**
-1. Step -1 verify 게이트가 실패로 차단하면, 사용자에게 실패 항목을 표시한다.
-2. AskUserQuestion:
-   - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
-   - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
-   - "중단" → cancelled 기록
-3. **coder 직접 호출 금지** — RGR 사이클로만 수정한다.
+**build/test 실패 시**: Step -1 verify 게이트의 차단 처리 분기를 그대로 따른다 (동일 절차의 이중 서술을 피하기 위해 **Step -1이 단일 기준**이다). `coder`(deprecated) 직접 호출 금지 — 수정은 RGR 사이클로만 한다.
 
 ## Step 2: PR 생성
 

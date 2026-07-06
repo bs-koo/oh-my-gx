@@ -12,7 +12,8 @@
 
 **gx-tdd 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
 - 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.
-- 판별: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 gx-commit/gx-pull-request로 직행시키지 않는다.
+- 판별: 저장소 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환. **svn은 `.dev/trunk/state.md`**)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 커밋/PR로 직행시키지 않는다.
+- **svn 프로젝트**는 gx-commit이 미지원(VCS 가드 종료)이라 스킬 층의 재확인 게이트가 없다 — 이 라우팅 분기가 유일한 방어이므로, `svn commit` 직접 실행 안내 전에 반드시 이 판별을 수행한다.
 - 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 사용자가 verify 없이 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit/gx-pull-request의 경고 게이트가 재확인).
 - `pipeline: gx-tdd` 필드가 없는 state.md(gx-dev 등)에는 적용하지 않는다.
 

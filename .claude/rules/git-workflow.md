@@ -51,6 +51,8 @@ SVN은 브랜치 없이 trunk에서 직접 작업한다. 별도 브랜치 생성
 
 SVN에서는 `/gx-commit`, `/gx-pull-request` 스킬을 지원하지 않는다. `svn commit`을 직접 실행하세요.
 
+단, gx-tdd 파이프라인 진행 중이면(`.dev/trunk/state.md`가 `pipeline: gx-tdd`·`status: in_progress`이고 `verify-status`가 `passed`가 아님) `svn commit` 전에 verify 게이트(`oh-my-gx:gx-verify`) 통과를 먼저 확인한다 — SVN은 스킬 층 재확인 게이트가 없어 이 확인이 유일한 방어다.
+
 ### 최신 상태 유지
 
 **매 요청 시작 전** `svn update`를 실행하여 최신 상태를 동기화하세요.
