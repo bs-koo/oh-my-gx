@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.13.2 (2026-07-06) — 2차 리뷰 상한 밖 잔여 항목 정리
+
+### Fixes
+- **SVN 경로 verify 우회 방지**: skill-routing 판별에 svn 경로(`.dev/trunk/state.md`) 추가 + "svn은 스킬 층 재확인이 없어 라우팅 분기가 유일한 방어" 명시. git-workflow SVN 커밋 규칙에 gx-tdd 진행 중 `svn commit` 전 verify 게이트 확인 의무 추가
+- **phase-complete 쌍둥이 차단 블록 중복 제거**: Step 1의 build/test 실패 처리를 Step -1 차단 처리 포인터로 축소 (동일 절차 이중 서술 해소)
+- **드리프트 노트 3건 추가 등재**: state.md 초기화 필드(setup Step 7 정본 ↔ 부트스트랩 골격 부분집합), 무결성 기준선 규약(porcelain·hash·count 3중 위치 + gx-green 의도적 경량판 명시), "수동 수정 재주입" 기록 문구 산재
+
 ## v1.13.1 (2026-07-06) — gx-tdd 재감사 반영: 본선 밖 우회로 봉합
 
 ### Fixes
