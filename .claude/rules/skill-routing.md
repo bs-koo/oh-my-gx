@@ -27,7 +27,7 @@
 **분기 규칙:**
 - 명시적 TDD 키워드(`TDD`, `테스트 먼저`, `테스트 주도`, `RED-GREEN-REFACTOR` 등)가 있으면 `/gx-tdd`를 호출한다.
 - TDD 키워드가 없는 일반 개발 요청은 `/gx-dev`를 호출한다.
-- 두 스킬은 setup/commit/pull-request/context 등 공유 스킬을 동일하게 사용하며, 차이는 구현(RGR 격리)·리뷰(spec→quality)·verify 게이트뿐이다.
+- 두 스킬은 commit/pull-request 공유 스킬을 동일하게 Skill 호출로 사용하고, setup phase 구조와 `context/` 참조 방식도 같다 (단, phase-setup은 각자 별도 파일이며 gx-context는 파이프라인이 호출하지 않는 독립 스킬이다). 차이는 구현(RGR 격리)·리뷰(spec→quality)·verify 게이트뿐이다.
 - 애매하면 사용자에게 어느 방식으로 진행할지 확인한다.
 
 ### TDD 보조 스킬 (단독 호출)

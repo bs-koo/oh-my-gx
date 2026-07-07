@@ -7,7 +7,7 @@
    - **git**: 현재 브랜치명에서 **임시** 경로를 계산한다: `git branch --show-current` → `/`를 `-`로 치환 → `.dev/{branch-slug}/state.md`.
    - **svn**: `.dev/trunk/state.md`.
 2. 해당 경로의 state.md를 탐색한다.
-3. 존재하고 `status: in_progress`이면 → DEV_DIR을 해당 파일의 부모 디렉토리(`.dev/{branch-slug}/`)로 확정하고 바로 재개 (아래 "이어서 진행" 절차).
+3. 존재하고 `status: in_progress`이면 → `pipeline: gx-tdd` 필드를 확인한다. 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개하지 않고 "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. `/gx-dev --resume`으로 재개하세요." 출력 후 종료. 일치하면 DEV_DIR을 해당 파일의 부모 디렉토리(`.dev/{branch-slug}/`)로 확정하고 바로 재개 (아래 "이어서 진행" 절차).
 4. state.md가 없거나 `status: completed`이면 → "재개할 작업이 없습니다." 출력 후 종료.
 
 ### `--resume` 플래그가 없는 경우 (자동 감지)
@@ -19,6 +19,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    - **svn**: `.dev/trunk/state.md`.
 2. 해당 경로의 state.md를 탐색한다.
 3. state.md가 존재하고 `status: in_progress`이면:
+   - `pipeline: gx-tdd` 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개를 제안하지 않는다. "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. `/gx-dev --resume`으로 재개하세요." 안내 후 종료한다 (상태 덮어쓰기 방지).
    - 사용자에게 AskUserQuestion으로 질문: "이전에 진행하던 작업이 있습니다."
      - "이어서 진행" → 재개
      - "새로 시작" → Step 1로 진행 (Step 7에서 덮어씀)
@@ -214,6 +215,7 @@ TMP=$(mktemp); (svn propget svn:ignore . 2>/dev/null; echo .dev) | sort -u > "$T
 이 `DEV_DIR`은 이후 모든 Phase에서 산출물 저장 경로로 사용된다.
 
 ## Step 7: 진행 상태 초기화
+Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline: gx-tdd`가 아니면(gx-dev 등 다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)

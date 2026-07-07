@@ -298,6 +298,7 @@ AskUserQuestion(
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
 /gx-dev {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 💡 화면 설계서가 있다면:
 requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 등록
@@ -309,6 +310,7 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
 /gx-dev {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 ⚠️ SVN 프로젝트:
 - /gx-commit, /gx-pull-request는 SVN에서 미지원

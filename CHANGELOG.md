@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0 반영
+
+### Fixes
+- **서브에이전트 도구명 통일**: gx-lens·gx-tech-debt가 `Agent(...)` 표기로 선언·호출하던 서브에이전트 도구를 플러그인 주류 컨벤션인 `Task(...)`로 통일 (allowed-tools 포함, 나머지 13개 스킬과 정합)
+- **RGR 보조 스킬 드리프트 봉합**: gx-red/gx-green/gx-refactor 디스패치 프롬프트에 phase-implement에만 있던 `[프로젝트 루트]` 전달을 추가(에이전트 정의의 필수 입력이나 단독 호출 경로에서 누락), gx-green 재호출 상한(최대 2회) 명시로 단독 호출 무한 재시도 방지, refactor 금지 목록 3중 불일치 통합 — "성능 최적화"를 phase-implement [수행 불가능한 정리]에, "인터페이스 시그니처 변경(프로덕션 호출자 0인 테스트 전용 메서드 제거 예외)"을 gx-refactor 비대상 목록과 Task 프롬프트에 추가하여 agents/refactor-coder.md와 3곳 모두 일치. gx-red의 tdd-iron-law 참조 경로에 플러그인 설치 환경 주석 보강
+- **--resume 교차 파이프라인 오인 방지**: gx-dev resume/자동 감지가 `pipeline` 필드 있는 state.md(gx-tdd 산출물)를 후보에서 제외하고 해당 파이프라인 재개 명령을 안내, gx-tdd resume/자동 감지는 `pipeline: gx-tdd` 검증 후에만 재개. 양쪽 phase-setup Step 7에 교차 파이프라인 state.md 덮어쓰기 확인 게이트 신설 (verify 게이트 상태 유실 방지)
+- **문서-실체 불일치 정리**: gx-tdd Phase 표의 G-W-T 게이트 오기 정정(Skill gx-context 게이트 → 오케스트레이터 직접 검증), skill-routing "공유 스킬" 문구 정밀화(gx-context는 파이프라인이 호출하지 않는 독립 스킬), git-workflow 보호 브랜치 3종(main/master/develop) 명시 + svn commit 실행 주체(사용자)를 훅 동작과 정합하게 명확화, gx-cross-review에 gx-tdd 관계 명시(description·관계 섹션 — qa-manager 사용이 파이프라인 외부 호출임을 문서화), gx-setup 퀵스타트에 gx-tdd 추가, README 시작 명령 `/oh-my-gx:gx-setup` 정정
+
 ## v1.13.2 (2026-07-06) — 2차 리뷰 상한 밖 잔여 항목 정리
 
 ### Fixes

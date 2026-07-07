@@ -271,6 +271,7 @@ Task(subagent_type="oh-my-gx:refactor-coder"):
     - 동작 변경
     - 새 기능 추가
     - 에러 핸들링 추가
+    - 성능 최적화
     - 인터페이스 시그니처 변경
 
     [출력 형식]

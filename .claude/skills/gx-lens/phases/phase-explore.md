@@ -1,10 +1,10 @@
 # Explore Phase: 코드 탐색
 
-현재 프로젝트에서 `Agent(subagent_type="Explore")`를 1회 호출하여 정책 구현을 탐색한다.
+현재 프로젝트에서 `Task(subagent_type="Explore")`를 1회 호출하여 정책 구현을 탐색한다.
 
 ## 1. Explore 에이전트 호출
 
-`Agent(subagent_type="Explore")` 호출.
+`Task(subagent_type="Explore")` 호출.
 
 ### 프롬프트 구성
 

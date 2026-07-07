@@ -208,7 +208,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | Phase | 파일 | 주 Agent | TDD 강제 사항 | Q&A Loop |
 |-------|------|----------|--------------|----------|
 | setup | phase-setup.md | (inline) | — | No |
-| requirements | phase-requirements.md | product-owner | **AC = Given-When-Then 강제** (Skill `oh-my-gx:gx-context` 게이트) | Yes (max 1) |
+| requirements | phase-requirements.md | product-owner | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
 | implement | phase-implement.md | **red-writer → green-coder → refactor-coder (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **spec-reviewer → quality-reviewer (순차 강제)** + security-auditor (quality와 병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
