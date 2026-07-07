@@ -1,6 +1,9 @@
 # Changelog
 
-## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0 반영
+## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0·P1 반영
+
+### Features
+- **훅 기반 verify 게이트 (P1)**: `pre-tool-guard.sh`에 G3 신설 — 현재 브랜치의 `.dev/{branch-slug}/state.md`가 gx-tdd 진행 중 + `verify-status` 미통과이면 `git commit` 시점에 `permissionDecision: "ask"`로 사용자 확인을 요구. 프롬프트 규율(라우팅·스킬 층)과 무관하게 항상 동작하는 결정론적 최종 방어선이며, deny가 아닌 ask라서 문서화된 위험 수용 경로는 유지된다. G2(svn commit 차단)는 실행 주체를 명확화하고 `.dev/trunk/state.md` verify 미통과 시 경고를 덧붙인다. git-workflow·skill-routing의 방어선 서술을 훅 동작과 정합 (시나리오 7종 테스트 통과)
 
 ### Fixes
 - **서브에이전트 도구명 통일**: gx-lens·gx-tech-debt가 `Agent(...)` 표기로 선언·호출하던 서브에이전트 도구를 플러그인 주류 컨벤션인 `Task(...)`로 통일 (allowed-tools 포함, 나머지 13개 스킬과 정합)
