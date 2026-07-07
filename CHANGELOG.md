@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.14.0 (2026-07-07) — 기계 판정 블록 확장 (quality·security)
+
+### Features
+- **quality_verdict/security_verdict 블록**: v1.13.3 spec_verdict 파일럿 검증 후 나머지 리뷰어로 확장. quality-reviewer는 verdict(Critical/Important 기준) + 심각도 집계 + [동작결함] 건수를, security-auditor는 CRITICAL/HIGH/MEDIUM 집계를 출력 맨 마지막 YAML 블록으로 제공. phase-review에 Step 4.0(기계 판정 블록 파싱) 신설 — 블록 우선 → 산문 폴백 → 상충 시 보수적 판정(quality는 FAIL 간주 + 1회 재호출). **개별 항목의 수정 경로 라우팅([동작결함]/[동작불변] 마커)은 기존 산문 계약 유지** — 블록은 게이트 판정·집계만 구조화
+- **security-auditor 스코핑**: 공유 에이전트(gx-dev·gx-lens·gx-cross-review도 호출)이므로 에이전트 정의는 무수정, gx-tdd phase-review Task B 디스패치 프롬프트만 producer로 지정 (다른 호출자 영향 없음)
+- **검증·가드**: 린트에 quality/security verdict producer-consumer 쌍 검사 추가(TDD: 검사 선행 RED → 계약 구현 GREEN), 결함 주입 픽스처(NPE·매직 넘버·하드코딩 시크릿)로 두 에이전트 모의 검증, 드리프트 노트·골든 시나리오 S10 확장. 모의 검증에서 security 블록 집계 오차(산문 3건 vs 블록 4건)를 실측 — Step 4.0에 **집계 불일치 시 산문 열거 기준** 규칙과 프롬프트 건수 재확인 지시를 추가
+
+### Docs
+- **README 재정리**: 목차 신설, 사용법 표를 3분류(개발/분석·지식/품질·마무리)로 재편, 스킬 상세를 워크플로 순서로 재배열하고 dev vs tdd 중복 서술 축소. 오류 정정 — "보조 스킬(red/green/refactor/verify)이 파이프라인에서 자동 호출된다"는 낡은 서술을 실제 구조(에이전트 직접 디스패치, verify만 스킬 호출)로, 보호 브랜치를 main 단독에서 main/master/develop 3종으로. 안전장치에 훅 verify 게이트·정합성 린트 CI 반영, research에 병렬 수집·교차 검증 반영
+
 ## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0·P1 반영
 
 ### Features

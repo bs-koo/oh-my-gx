@@ -60,6 +60,12 @@ grep -q "spec_verdict" agents/spec-reviewer.md \
   || fail "spec_verdict 블록 정의(producer) 누락: agents/spec-reviewer.md"
 grep -q "spec_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "spec_verdict 파싱 규칙(consumer) 누락: phase-review.md"
+grep -q "quality_verdict" agents/quality-reviewer.md \
+  || fail "quality_verdict 블록 정의(producer) 누락: agents/quality-reviewer.md"
+grep -q "quality_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
+  || fail "quality_verdict 파싱 규칙(consumer) 누락: phase-review.md"
+grep -q "security_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
+  || fail "security_verdict 계약(Task B 프롬프트 producer + 파싱 consumer) 누락: phase-review.md"
 [ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달, spec_verdict 쌍"
 
 echo "[4/7] verify 게이트 판별식 키 존재"

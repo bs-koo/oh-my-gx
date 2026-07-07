@@ -102,6 +102,19 @@ tools:
 - Minor만 있음 → 다음 단계 진입 가능 (Minor는 메모만)
 ```
 
+### 기계 판정 블록 (필수)
+
+위 출력의 **맨 마지막**에 아래 YAML 블록을 코드 펜스로 감싸 붙입니다. 오케스트레이터(phase-review Step 4.0)가 산문보다 이 블록을 우선 파싱합니다. 각 건수는 위 목록의 항목 수를 **다시 세어 일치**시킵니다 (불일치 시 오케스트레이터는 산문 열거를 기준으로 삼습니다):
+
+```yaml
+quality_verdict:
+  verdict: PASS            # PASS | FAIL — 산문 판정과 일치 (Critical 또는 Important 1건 이상이면 FAIL, Minor만이면 PASS)
+  critical: 0              # Critical 건수 (전부 동작결함)
+  important: 0             # Important 건수
+  important_behavior: 0    # Important 중 [동작결함] 표기 + 무표기 건수 (무표기는 동작결함으로 간주)
+  minor: 0                 # Minor 건수
+```
+
 ## 금지 사항
 
 - AC 충족 여부 평가 (spec-reviewer 역할)
