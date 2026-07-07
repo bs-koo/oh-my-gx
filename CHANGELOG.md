@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.14.1 (2026-07-07) — 전수 감사 잔여 항목 반영
+
+### Fixed
+- **gx-tdd PR 컨텍스트 전달 실동작화**: phase-complete가 조립한 `pr-context.md`를 gx-pull-request가 "자동 감지"한다는 서술은 소비 로직이 없는 no-op였다 — gx-dev와 동일한 `--background` 명시 인자 전달로 변경. PR 본문에 비즈니스 맥락·Audit Summary가 실제로 반영된다
+- **force-push deny 패턴 보정**: 후행 공백 요구로 bare `git push --force`·`git push origin main -f` 형태가 차단되지 않던 결함 — `*git push*--force*`(--force-with-lease 포함)·`*git push* -f`(말단)·`*git push* -f *` 3패턴으로 교체
+- **README 안전장치 서술 정정**: "`gh pr merge`는 설정 수준에서 막혀 있다"는 과장 제거 — 강제 푸시만 deny 차단이며 머지는 사용자 명시 요청 시에만 수행하는 운영 원칙임을 명시. FAQ의 `.dev/state.md`를 실제 경로 `.dev/{branch-slug}/state.md`로 교정
+- **gx-humanizer 디스패치 접두사**: humanizer-fidelity·humanizer-naturalness bare 이름을 `oh-my-gx:` 접두사로 통일 — 플러그인 설치 환경에서 strict 모드 에이전트 해석 실패 방지
+- **RGR 보조 스킬 Skill 선언**: gx-red·gx-green·gx-refactor·gx-verify가 본문에서 `Skill()` 체이닝을 지시하면서 allowed-tools에 Skill을 선언하지 않던 것을 선언 추가 (자동 체이닝 권한 중단 방지)
+- **green-coder 3회 실패 경로 단일화**: DIMINISHING_RETURNS(→simplifier)와 3-strike 격상(→architect)이 같은 실패 카운트에 상반 지시하던 모호성 제거 — DIMINISHING_RETURNS는 재호출 상한 도달 전 패턴으로 한정하고, 상한 소진 시에는 architect 격상이 우선함을 명시
+- **정합성 린트 확장 ([8/10]~[10/10])**: RGR Skill 선언·humanizer 접두사·deny 패턴 bare 커버 3종 검사 추가
+
+### Docs
+- **guide.md 현행화**: 설치 명령 교정(`/install-plugin` → `/plugin marketplace add` + `/plugin install`), 스킬 경로(`skills/dev` → `skills/gx-dev`)·`.dev/{branch-slug}` 경로 교정, 스킬 맵 15종 반영, gx-tdd·TDD 보조 4종·gx-tech-debt·gx-cross-review 레퍼런스 신설(§4.9~4.12), humanizer strict 모드 반영, 에이전트 17종 주석
+- **presentation-script.md 수치 현행화**: "7개 스킬" → 15개, "9개 에이전트" → 17개, TDD 계열 소개 문단 추가
+- **기타 표기 정비**: spec-reviewer의 qa-manager deprecated 표기에 gx-tdd 한정어 추가(gx-dev에선 현역), gx-verify·phase-review 프로젝트 타입 표에 config SSOT 주석, refactor-coder 인계 입력("식별된 정리 항목")의 생산자를 오케스트레이터로 명시, TDD 계열 에이전트 6종 color 지정, settings.local.json.sample의 무효 `Skill(dev)`/`Skill(commit)` 허용 규칙을 실존 스킬명으로 교정, gx-cross-review의 미사용 Skill 선언 제거
+
 ## v1.14.0 (2026-07-07) — 기계 판정 블록 확장 (quality·security)
 
 ### Features

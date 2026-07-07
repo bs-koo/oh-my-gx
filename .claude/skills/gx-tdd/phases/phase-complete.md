@@ -94,7 +94,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 **svn인 경우** → 건너뛴다 (Step 1에서 이미 건너뜀. SVN은 PR 개념이 없다).
 
 **git인 경우:**
-`Skill("oh-my-gx:gx-pull-request")`를 호출하여 PR을 생성한다. pull-request은 독립 스킬이므로 dev 컨텍스트를 알지 못한다. 오케스트레이터가 **스킬 호출 전에** `${DEV_DIR}/pr-context.md`를 조립하여 비즈니스 맥락을 전달한다.
+`Skill("oh-my-gx:gx-pull-request")`를 호출하여 PR을 생성한다. pull-request은 독립 스킬이므로 dev 컨텍스트를 알지 못하며, **dev 산출물을 자동 감지하지도 않는다**. 오케스트레이터가 **스킬 호출 전에** `${DEV_DIR}/pr-context.md`를 조립하고 `--background` 인자로 명시 전달한다.
 
 ### Step 2-1: `${DEV_DIR}/pr-context.md` 조립 (Skill 호출 전)
 
@@ -113,8 +113,11 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 ### Step 2-2: `Skill("oh-my-gx:gx-pull-request")` 호출
 
-`${DEV_DIR}/pr-context.md` 조립이 완료된 후 `Skill("oh-my-gx:gx-pull-request")`를 호출한다.
-pull-request 스킬이 `${DEV_DIR}/pr-context.md`를 자동 감지하여 PR 본문에 반영한다.
+`${DEV_DIR}/pr-context.md` 조립이 완료된 후 **args로 파일을 명시 전달**하여 호출한다:
+
+`Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/pr-context.md")`
+
+pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다 — 자동 감지는 없다 (gx-dev phase-complete와 동일한 명시 전달 방식).
 
 ### Step 2-3: 후속 처리
 

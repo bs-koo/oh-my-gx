@@ -15,6 +15,7 @@ description: |
   assistant: spec-reviewer가 평가 범위 외임을 명시하고 quality-reviewer 호출을 권고
   </example>
 model: sonnet
+color: purple
 tools:
   - Read
   - Glob
@@ -100,4 +101,4 @@ spec_verdict:
 다음 생각이 들면 STOP:
 - "AC는 충족하지만 코드가 너무 복잡함" → 평가 범위 외
 - "이 부분 네이밍이 어색함" → 평가 범위 외
-- "테스트는 통과하지만 케이스가 부족함" → AC 명세 부족 issue — 오케스트레이터에 보고 (product-owner의 PRD 보강 권고. qa-manager는 deprecated로 호출 금지)
+- "테스트는 통과하지만 케이스가 부족함" → AC 명세 부족 issue — 오케스트레이터에 보고 (product-owner의 PRD 보강 권고. qa-manager는 **gx-tdd 파이프라인 한정 deprecated**로 여기서 호출 금지 — gx-dev에서는 현역)

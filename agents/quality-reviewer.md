@@ -15,6 +15,7 @@ description: |
   assistant: quality-reviewer가 Iron Law 위반임을 명시하고 spec-reviewer 재호출을 요구
   </example>
 model: opus
+color: orange
 tools:
   - Read
   - Glob

@@ -9,8 +9,8 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(command:*)",
-      "Skill(dev)",
-      "Skill(commit)",
+      "Skill(oh-my-gx:gx-dev)",
+      "Skill(oh-my-gx:gx-commit)",
       "WebSearch"
     ]
   },
