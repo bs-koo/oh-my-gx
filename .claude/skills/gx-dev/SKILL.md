@@ -248,6 +248,8 @@ for phase in PHASES:
 Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, design-critic, coder, qa-manager, security-auditor)을 사용한다.
 외부 Agent(sisyphus-junior, sisyphus-junior-high 등)로 대체하지 않는다.
 
+**디스패치 이름 규칙**: Task의 `subagent_type`에는 `oh-my-gx:` 접두사가 붙은 정식 이름을 사용한다 (예: `oh-my-gx:coder`). 접두사 없는 bare 이름은 동명의 외부 에이전트와 충돌할 수 있다.
+
 ### 커밋/PR 스킬 강제
 
 커밋과 PR 생성은 반드시 Skill 도구로 위임한다. 오케스트레이터가 `git commit`, `gh pr create` 등을 직접 실행하지 않는다.
@@ -623,4 +625,4 @@ AskUserQuestion(
 - 도구나 명령이 사용 불가하면 대안을 제안한다.
 - 사용자가 중단하면 진행 상황을 저장하고 완료된 내용을 보고한다.
 - phase-review의 ZT 통합 감사가 실패해도 QA 리뷰 결과만으로 진행한다. 감사 실패를 사용자에게 알린다.
-- 2분 이상 소요될 수 있는 Bash 명령(`./gradlew test`, `npm test`, `npm install` 등)에는 `timeout: 300000`(5분)을 설정한다.
+- 2분 이상 소요될 수 있는 Bash 명령(`./gradlew test`, `npm test`, `npm install` 등)에는 `timeout: 300000`(5분, config.json `timeouts.build` 값)을 설정한다.

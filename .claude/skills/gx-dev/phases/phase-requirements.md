@@ -16,7 +16,7 @@ hotfix가 아닌 경우 아래 정상 플로우를 따른다.
 ---
 
 **Step 1**: product-owner agent를 호출한다 (PRD 작성).
-`Task(subagent_type="product-owner")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
 - 기능/버그 설명: ARGS[0]
 - 코드 맵 (phase-setup에서 생성한 초기 맵)
 - 프로젝트 타입, 디렉토리 구조

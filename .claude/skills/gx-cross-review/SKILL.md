@@ -429,7 +429,7 @@ node "${CODEX_COMPANION}" task --prompt-file "${PROMPT_FILE}" \
 
 **Task A: qa-manager (cross-review 미션)**
 
-`Task(subagent_type="qa-manager")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:qa-manager")` — prompt에 다음을 포함:
 
 ```
 [중요] 이 호출은 일반 phase-review가 아닌 gx-cross-review이다.
@@ -458,7 +458,7 @@ node "${CODEX_COMPANION}" task --prompt-file "${PROMPT_FILE}" \
 
 **Task B: security-auditor (cross-review 미션)**
 
-`Task(subagent_type="security-auditor")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:security-auditor")` — prompt에 다음을 포함:
 
 ```
 [중요] 이 호출은 일반 review가 아닌 gx-cross-review이다.
@@ -610,7 +610,7 @@ AskUserQuestion(
 
 #### 전부 수정
 
-모든 항목을 한 번에 `Task(subagent_type="coder")` 수정 모드로 위임:
+모든 항목을 한 번에 `Task(subagent_type="oh-my-gx:coder")` 수정 모드로 위임:
 
 prompt:
 - 수정 항목 목록 전체 (각 항목의 위치, 문제, 권고)
@@ -650,7 +650,7 @@ AskUserQuestion(
 )
 ```
 
-승인된 항목만 모아서 `Task(subagent_type="coder")` 수정 모드로 일괄 위임.
+승인된 항목만 모아서 `Task(subagent_type="oh-my-gx:coder")` 수정 모드로 일괄 위임.
 
 #### 직접 입력
 

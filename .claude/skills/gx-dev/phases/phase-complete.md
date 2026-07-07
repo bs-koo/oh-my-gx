@@ -17,7 +17,7 @@ PRD가 없으면 이 단계를 건너뛴다.
 
 PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
 
-`Task(subagent_type="product-owner")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
 - PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - 코드 맵
@@ -53,7 +53,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 `Skill(skill: "oh-my-gx:gx-commit")`을 호출하여 커밋을 실행한다.
 
 **test 실패 시 자동 수정 (1회):**
-1. commit 스킬이 test 실패로 중단하면, 실패 로그와 코드 맵, PROJECT_ROOT를 `Task(subagent_type="coder")`에 전달하여 수정 요청.
+1. commit 스킬이 test 실패로 중단하면, 실패 로그와 코드 맵, PROJECT_ROOT를 `Task(subagent_type="oh-my-gx:coder")`에 전달하여 수정 요청.
 2. 수정 완료 후 `Skill(skill: "oh-my-gx:gx-commit")`을 재호출한다.
 3. 재호출도 실패하면 사용자에게 실패 목록을 보고하고 진행 여부를 확인한다.
 

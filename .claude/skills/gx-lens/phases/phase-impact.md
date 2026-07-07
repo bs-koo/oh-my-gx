@@ -34,7 +34,7 @@ IDEA_CONTEXT.clarifications가 있으면 동일한 처리를 적용한다.
 ### 1.1 Architect Agent (복잡도 분석)
 
 ```
-Task(subagent_type="architect")
+Task(subagent_type="oh-my-gx:architect")
 ```
 
 **커스텀 지시 프롬프트:**
@@ -95,7 +95,7 @@ Task(subagent_type="architect")
 ### 1.2 Zero Trust Agent (리스크 분석)
 
 ```
-Task(subagent_type="security-auditor")
+Task(subagent_type="oh-my-gx:security-auditor")
 ```
 
 **커스텀 지시 프롬프트:**

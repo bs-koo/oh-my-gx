@@ -697,4 +697,4 @@ AskUserQuestion(
 - 도구나 명령이 사용 불가하면 대안을 제안한다.
 - 사용자가 중단하면 진행 상황을 저장하고 완료된 내용을 보고한다.
 - phase-review의 ZT 통합 감사가 실패해도 QA 리뷰 결과만으로 진행한다. 감사 실패를 사용자에게 알린다.
-- 2분 이상 소요될 수 있는 Bash 명령(`./gradlew test`, `npm test`, `npm install` 등)에는 `timeout: 300000`(5분)을 설정한다.
+- 2분 이상 소요될 수 있는 Bash 명령(`./gradlew test`, `npm test`, `npm install` 등)에는 `timeout: 300000`(5분, config.json `timeouts.build` 값)을 설정한다.

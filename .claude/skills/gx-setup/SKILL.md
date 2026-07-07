@@ -102,7 +102,7 @@ allowed-tools:
       )
       ```
 
-   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000` — config.json `timeouts.install` 값):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
       | winget | `winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements` |
@@ -164,7 +164,7 @@ allowed-tools:
 ```bash
 gh auth login --hostname github.com --git-protocol https --web 2>&1
 ```
-- `timeout: 120000` (2분) 설정
+- `timeout: 120000` (2분, config.json `timeouts.network` 값) 설정
 - 이 명령은 **one-time code**와 인증 URL을 출력한다
 
 #### 2-2. 사용자에게 안내
