@@ -10,7 +10,7 @@
 
 ### 브랜치 규칙
 
-코드를 수정할 때는 **main에서 직접 수정하지 마세요.**
+코드를 수정할 때는 **보호 브랜치(main/master/develop)에서 직접 수정하지 마세요.** (PreToolUse 훅 `pre-tool-guard.sh`가 이 세 브랜치의 커밋을 차단한다.)
 
 1. **파일을 수정하기 전에** 작업 브랜치를 먼저 생성하세요. 수정 후에 브랜치를 만드는 것이 아니라, 브랜치를 만든 뒤 수정을 시작하세요.
 
@@ -27,6 +27,8 @@
 ### 커밋 규칙
 
 커밋/PR 스킬 라우팅 규칙은 `.claude/rules/skill-routing.md`를 따른다.
+
+gx-tdd verify 게이트 미통과 상태의 `git commit`은 PreToolUse 훅(`pre-tool-guard.sh` G3)이 감지하여 사용자 확인(ask)을 요구한다 — 라우팅·스킬 층과 무관하게 항상 동작하는 최종 방어선이다.
 
 ### 최신 상태 유지
 
@@ -49,9 +51,9 @@ SVN은 브랜치 없이 trunk에서 직접 작업한다. 별도 브랜치 생성
 
 ### 커밋 규칙
 
-SVN에서는 `/gx-commit`, `/gx-pull-request` 스킬을 지원하지 않는다. `svn commit`을 직접 실행하세요.
+SVN에서는 `/gx-commit`, `/gx-pull-request` 스킬을 지원하지 않는다. 사용자가 터미널에서 `svn commit`을 직접 실행하도록 안내한다 (PreToolUse 훅이 Claude의 `svn commit` 실행을 차단하므로 대신 실행하지 않는다).
 
-단, gx-tdd 파이프라인 진행 중이면(`.dev/trunk/state.md`가 `pipeline: gx-tdd`·`status: in_progress`이고 `verify-status`가 `passed`가 아님) `svn commit` 전에 verify 게이트(`oh-my-gx:gx-verify`) 통과를 먼저 확인한다 — SVN은 스킬 층 재확인 게이트가 없어 이 확인이 유일한 방어다.
+단, gx-tdd 파이프라인 진행 중이면(`.dev/trunk/state.md`가 `pipeline: gx-tdd`·`status: in_progress`이고 `verify-status`가 `passed`가 아님) `svn commit` 전에 verify 게이트(`oh-my-gx:gx-verify`) 통과를 먼저 확인한다 — SVN은 스킬 층 재확인 게이트가 없어 이 확인이 핵심 방어다. (PreToolUse 훅이 Claude의 `svn commit` 시도를 차단하고 verify 미통과 시 경고를 덧붙이지만, 사용자가 터미널에서 직접 실행하는 커밋에는 개입하지 못한다.)
 
 ### 최신 상태 유지
 

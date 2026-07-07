@@ -102,7 +102,7 @@ allowed-tools:
       )
       ```
 
-   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000`):
+   d. "설치" 선택 시 감지된 패키지 매니저로 설치 (`timeout: 300000` — config.json `timeouts.install` 값):
       | 패키지 매니저 | 설치 명령 |
       |-------------|----------|
       | winget | `winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements` |
@@ -164,7 +164,7 @@ allowed-tools:
 ```bash
 gh auth login --hostname github.com --git-protocol https --web 2>&1
 ```
-- `timeout: 120000` (2분) 설정
+- `timeout: 120000` (2분, config.json `timeouts.network` 값) 설정
 - 이 명령은 **one-time code**와 인증 URL을 출력한다
 
 #### 2-2. 사용자에게 안내
@@ -298,6 +298,7 @@ AskUserQuestion(
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
 /gx-dev {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 💡 화면 설계서가 있다면:
 requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 등록
@@ -309,6 +310,7 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
 /gx-dev {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 ⚠️ SVN 프로젝트:
 - /gx-commit, /gx-pull-request는 SVN에서 미지원

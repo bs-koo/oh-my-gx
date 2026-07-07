@@ -7,7 +7,7 @@
 **Step 0**: `${DEV_DIR}/prd.md`를 Read하여 확정된 PRD를 로드한다.
 
 **Task**: architect agent를 호출한다 (설계).
-`Task(subagent_type="architect")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:architect")` — prompt에 다음을 포함:
 - 확정된 PRD (Step 0에서 로드)
 - 코드 맵 (누적된 상태)
 - 프로젝트 타입, 디렉토리 구조, 컨벤션 (phase-setup에서 수집한 정보)
@@ -29,7 +29,7 @@
 architect 출력의 "설계 규모" 필드가 **소형**이면 이 단계를 건너뛴다. 중형/대형인 경우에만 수행한다.
 
 design-critic agent를 호출한다.
-`Task(subagent_type="design-critic")` — prompt에 다음을 포함:
+`Task(subagent_type="oh-my-gx:design-critic")` — prompt에 다음을 포함:
 - architect의 설계 초안 (Step 1에서 받은 출력)
 - PRD (Step 0에서 로드)
 - 코드 맵 (누적된 상태)

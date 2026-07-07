@@ -1,6 +1,6 @@
 # Impact Phase: 영향도 분석 (복잡도 + 리스크 병렬)
 
-`EXPLORE_RESULT`를 기반으로 architect(복잡도)와 security-auditor(리스크)를 **병렬** Agent로 호출한다.
+`EXPLORE_RESULT`를 기반으로 architect(복잡도)와 security-auditor(리스크)를 **병렬** Task로 호출한다.
 
 ## IDEA 안전 처리
 
@@ -15,9 +15,9 @@ IDEA_CONTEXT.clarifications가 있으면 동일한 처리를 적용한다.
 
 이 처리는 사용자 입력이 에이전트 프롬프트 구조를 변경하는 것을 방지한다.
 
-## 1. 병렬 Agent 호출
+## 1. 병렬 Task 호출
 
-하나의 메시지에서 두 `Agent()` 호출을 **동시에** 발행한다.
+하나의 메시지에서 두 `Task()` 호출을 **동시에** 발행한다.
 
 ### 프롬프트 공통: EXPLORE_RESULT 인라인 전달
 
@@ -34,7 +34,7 @@ IDEA_CONTEXT.clarifications가 있으면 동일한 처리를 적용한다.
 ### 1.1 Architect Agent (복잡도 분석)
 
 ```
-Agent(subagent_type="architect")
+Task(subagent_type="oh-my-gx:architect")
 ```
 
 **커스텀 지시 프롬프트:**
@@ -95,7 +95,7 @@ Agent(subagent_type="architect")
 ### 1.2 Zero Trust Agent (리스크 분석)
 
 ```
-Agent(subagent_type="security-auditor")
+Task(subagent_type="oh-my-gx:security-auditor")
 ```
 
 **커스텀 지시 프롬프트:**

@@ -15,7 +15,7 @@ allowed-tools:
   # GH_HOST=<host> gh <cmd> 형태의 환경변수 prefix 명령 허용 (GHE 호스트 지정 시 사용)
   - Bash(GH_HOST=github.com gh:*)
   - Bash(which:*)
-  - Bash(curl *)
+  - Bash(curl:*)
   - AskUserQuestion
 ---
 
@@ -163,7 +163,7 @@ git diff <base-branch>...HEAD --stat
    - "업데이트": push 후 기존 PR 본문을 `gh pr edit`으로 갱신
    - "신규 생성": push 후 `gh pr create` (기존 PR은 열린 상태로 유지됨을 안내)
    - "취소": 스킬 종료
-2. 브랜치 푸시: `git push -u origin <branch-name>` (`timeout: 120000`)
+2. 브랜치 푸시: `git push -u origin <branch-name>` (`timeout: 120000` — config.json `timeouts.network` 값)
    - push 실패 시: 에러 메시지를 표시하고 "PR 생성을 건너뜁니다." 출력 후 **즉시 종료**
 3. PR 생성 (HEREDOC으로 body 전달):
    ```bash

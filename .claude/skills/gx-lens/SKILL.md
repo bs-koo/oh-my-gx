@@ -18,7 +18,7 @@ allowed-tools:
   - Glob
   - Grep
   # orchestration
-  - Agent
+  - Task
   - AskUserQuestion
 ---
 
@@ -81,9 +81,9 @@ ARGS[0]이 `--`로 시작하면 다음을 응답:
 | Phase | 파일 | 수행 방식 | 설명 |
 |-------|------|-----------|------|
 | Prepare | `phase-prepare.md` | inline | 쿼리에서 키워드 추출 → 현재 프로젝트 확정 |
-| Explore | `phase-explore.md` | Agent(Explore) | 현재 프로젝트에서 정책 구현 발견 |
+| Explore | `phase-explore.md` | Task(Explore) | 현재 프로젝트에서 정책 구현 발견 |
 | Report | `phase-report.md` | inline | 정책 보고서 합성 → 아이디어 질문 |
-| Impact | `phase-impact.md` | Agent 병렬 (architect + security-auditor) | 복잡도 + 리스크 분석 (`--idea` 또는 사용자 응답 시) |
+| Impact | `phase-impact.md` | Task 병렬 (architect + security-auditor) | 복잡도 + 리스크 분석 (`--idea` 또는 사용자 응답 시) |
 | Impact-Report | `phase-impact-report.md` | inline | 복잡도 + 리스크 합성 → PO 보고서 |
 
 ## Phase 라우팅

@@ -28,7 +28,7 @@ allowed-tools:
   - Glob
   - Grep
   # 오케스트레이션
-  - Agent
+  - Task
   - AskUserQuestion
 ---
 
@@ -117,7 +117,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 ### 1-1: 코드 부채 (`code`)
 
-`Agent(subagent_type="Explore")` — 다음을 탐색한다:
+`Task(subagent_type="Explore")` — 다음을 탐색한다:
 
 **중복 코드:**
 - 유사한 로직이 여러 파일에 반복되는 패턴을 Grep으로 탐색한다.
@@ -147,7 +147,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 ### 1-2: 아키텍처 부채 (`arch`)
 
-`Agent(subagent_type="Explore")` — 다음을 탐색한다:
+`Task(subagent_type="Explore")` — 다음을 탐색한다:
 
 **순환 의존성:**
 - import/require 문을 분석하여 A→B→A 패턴을 탐지한다.
@@ -193,7 +193,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 ### 1-4: 테스트 부채 (`test`)
 
-`Agent(subagent_type="Explore")` — 다음을 탐색한다:
+`Task(subagent_type="Explore")` — 다음을 탐색한다:
 
 **커버리지 구조:**
 1. 소스 디렉토리와 테스트 디렉토리의 파일을 매칭한다.

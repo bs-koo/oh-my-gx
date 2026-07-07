@@ -73,6 +73,20 @@ tools:
 - ⚠️ 부분 / ❌ 미충족 → green-coder/red-writer 재호출 필요. 다음 단계 진입 금지
 ```
 
+### 기계 판정 블록 (필수)
+
+위 출력의 **맨 마지막**에 아래 YAML 블록을 코드 펜스로 감싸 붙입니다. 오케스트레이터(phase-review Step 2.1)가 산문보다 이 블록을 우선 파싱합니다:
+
+```yaml
+spec_verdict:
+  verdict: PASS          # PASS | FAIL — 산문 판정과 일치해야 함 (⚠️/❌ 1건 이상이면 FAIL)
+  ac_total: 3            # 전체 AC 수
+  ac_met: 3              # ✅ 건수
+  ac_partial: 0          # ⚠️ 건수
+  ac_unmet: 0            # ❌ 건수
+  unmet_ids: []          # ⚠️/❌ AC ID 목록 (예: [AC-2, AC-3])
+```
+
 ## 금지 사항
 
 - 코드 품질 지적 ("이 코드는 더 간결할 수 있음" 등)

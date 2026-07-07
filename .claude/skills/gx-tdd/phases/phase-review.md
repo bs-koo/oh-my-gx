@@ -138,11 +138,23 @@ Task(subagent_type="oh-my-gx:spec-reviewer"):
     ## 판정
     - 모두 ✅ → SPEC PASS
     - ⚠️/❌ 있음 → SPEC FAIL (재구현 필요)
+
+    ## 기계 판정 블록 (출력 맨 마지막, yaml 코드 펜스로 감싼다)
+    spec_verdict:
+      verdict: PASS | FAIL   # 산문 판정과 일치 (⚠️/❌ 1건 이상이면 FAIL)
+      ac_total: {전체 AC 수}
+      ac_met: {✅ 건수}
+      ac_partial: {⚠️ 건수}
+      ac_unmet: {❌ 건수}
+      unmet_ids: [{⚠️/❌ AC ID 목록, 없으면 빈 배열}]
 ```
 
 ### Step 2.1: spec-reviewer 결과 판정
 
-오케스트레이터가 결과를 분석:
+오케스트레이터가 결과를 분석한다. **판정 소스 우선순위**:
+1. 출력 마지막의 `spec_verdict` YAML 블록을 파싱한다 (`verdict: PASS|FAIL`).
+2. 블록이 없거나 파싱 불가하면 산문 판정(SPEC PASS/FAIL 문구 + AC 매트릭스)으로 폴백한다.
+3. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 spec-reviewer를 1회 재호출한다. 재호출도 상충이면 사용자에게 보고한다.
 
 - **SPEC PASS** (모두 ✅) → Step 3 (quality + security)으로 진행
 - **SPEC FAIL** (⚠️ 또는 ❌ 1건 이상) → 다음 처리:

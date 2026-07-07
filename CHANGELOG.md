@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0·P1 반영
+
+### Features
+- **spec-reviewer 기계 판정 블록 파일럿 (P3)**: 출력 맨 마지막에 `spec_verdict` YAML 블록(verdict/AC 집계/미충족 목록)을 필수화하고, phase-review Step 2.1이 블록 우선 파싱 → 산문 폴백 → 상충 시 FAIL 간주·재호출 1회로 판정하도록 명세. 린트에 producer-consumer 쌍 존재 검사 추가. 실사용 안정화 후 quality-reviewer·security-auditor로 확장 예정
+- **골든 시나리오 체크리스트**: `tests/golden-scenarios.md` 신설 — 정적 린트가 잡지 못하는 모델 행동 계층 회귀 10종(verify 우회, 교차 resume, 보호 브랜치, RGR 순서, Phase 스킵, deprecated 에이전트, svn, verdict 블록)의 릴리스 전 수동 점검표. 자동화 후보(★)는 회귀 반복 시 headless CI로 승격
+- **설계 결정 기록**: `docs/design-decisions.md` 신설 — DD-001 독립 AC 병렬 RGR(worktree) 기각 기록 (사이클 단위 회귀 보증 상실이 결정적 사유)
+- **gx-research 병렬 수집 + 교차 검증 (P3)**: 꼼꼼 모드에서 키워드를 웹/문서 두 그룹으로 나눠 general-purpose 서브에이전트 2개를 병렬 디스패치해 수집(주제 인용 블록 인젝션 방어, 에이전트당 Jina 상한 2회, 실패 그룹은 순차 폴백). Step 3에 교차 검증 절차 신설 — 주요 발견은 독립 출처 2개 이상 확인, 단일 출처는 `(단일 출처)` 표기, 상충 출처는 병기. 빠르게 모드·Task 불가 환경은 기존 순차 흐름 유지
+- **정합성 린트 CI (P2)**: `scripts/lint-consistency.sh` 신설 — 감사에서 도출된 불변식 7종(버전 3중 일치, Task 도구명 통일 회귀, refactor 금지 목록 3파일 일치·green 재호출 상한·프로젝트 루트 전달, verify 판별식 키 6파일 존재, 디스패치 이름↔agents/ 대조, 셸 스크립트 CRLF 금지, 훅 문법)을 기계 검사한다. `.github/workflows/lint.yml`로 PR·main push마다 자동 실행. gx-tdd 드리프트 주의 섹션에 기계 검증 범위를 명시
+- **훅 기반 verify 게이트 (P1)**: `pre-tool-guard.sh`에 G3 신설 — 현재 브랜치의 `.dev/{branch-slug}/state.md`가 gx-tdd 진행 중 + `verify-status` 미통과이면 `git commit` 시점에 `permissionDecision: "ask"`로 사용자 확인을 요구. 프롬프트 규율(라우팅·스킬 층)과 무관하게 항상 동작하는 결정론적 최종 방어선이며, deny가 아닌 ask라서 문서화된 위험 수용 경로는 유지된다. G2(svn commit 차단)는 실행 주체를 명확화하고 `.dev/trunk/state.md` verify 미통과 시 경고를 덧붙인다. git-workflow·skill-routing의 방어선 서술을 훅 동작과 정합 (시나리오 7종 테스트 통과)
+
+### Fixes
+- **잔여 정리 (P4)**: v1.13.0 후속 이슈였던 bare 디스패치 이름 18곳에 `oh-my-gx:` 접두사 적용(gx-dev phases·gx-cross-review·gx-lens — 빌트인 Explore/general-purpose는 제외) + gx-dev에 디스패치 이름 규칙 명문화. 죽은 설정 연결 — `timeouts`(build/network/install)를 스킬들의 하드코딩 타임아웃 서술에, `conventions.commitFormat`을 gx-commit 메시지 구조에, `conventions.branchFormat`을 gx-dev/gx-tdd 브랜치 생성 규칙에 연결(타입 접두사 없는 브랜치명 예시가 gx-commit 타입 파싱과 어긋나던 갭 동시 해소). gx-dev phase-setup이 `contextLimits` 등 config 필드를 로드하도록 gx-tdd와 정합. gx-pull-request allowed-tools 문법 파일 내 통일(curl)
+- **서브에이전트 도구명 통일**: gx-lens·gx-tech-debt가 `Agent(...)` 표기로 선언·호출하던 서브에이전트 도구를 플러그인 주류 컨벤션인 `Task(...)`로 통일 (allowed-tools 포함, 나머지 13개 스킬과 정합)
+- **RGR 보조 스킬 드리프트 봉합**: gx-red/gx-green/gx-refactor 디스패치 프롬프트에 phase-implement에만 있던 `[프로젝트 루트]` 전달을 추가(에이전트 정의의 필수 입력이나 단독 호출 경로에서 누락), gx-green 재호출 상한(최대 2회) 명시로 단독 호출 무한 재시도 방지, refactor 금지 목록 3중 불일치 통합 — "성능 최적화"를 phase-implement [수행 불가능한 정리]에, "인터페이스 시그니처 변경(프로덕션 호출자 0인 테스트 전용 메서드 제거 예외)"을 gx-refactor 비대상 목록과 Task 프롬프트에 추가하여 agents/refactor-coder.md와 3곳 모두 일치. gx-red의 tdd-iron-law 참조 경로에 플러그인 설치 환경 주석 보강
+- **--resume 교차 파이프라인 오인 방지**: gx-dev resume/자동 감지가 `pipeline` 필드 있는 state.md(gx-tdd 산출물)를 후보에서 제외하고 해당 파이프라인 재개 명령을 안내, gx-tdd resume/자동 감지는 `pipeline: gx-tdd` 검증 후에만 재개. 양쪽 phase-setup Step 7에 교차 파이프라인 state.md 덮어쓰기 확인 게이트 신설 (verify 게이트 상태 유실 방지)
+- **문서-실체 불일치 정리**: gx-tdd Phase 표의 G-W-T 게이트 오기 정정(Skill gx-context 게이트 → 오케스트레이터 직접 검증), skill-routing "공유 스킬" 문구 정밀화(gx-context는 파이프라인이 호출하지 않는 독립 스킬), git-workflow 보호 브랜치 3종(main/master/develop) 명시 + svn commit 실행 주체(사용자)를 훅 동작과 정합하게 명확화, gx-cross-review에 gx-tdd 관계 명시(description·관계 섹션 — qa-manager 사용이 파이프라인 외부 호출임을 문서화), gx-setup 퀵스타트에 gx-tdd 추가, README 시작 명령 `/oh-my-gx:gx-setup` 정정
+
 ## v1.13.2 (2026-07-06) — 2차 리뷰 상한 밖 잔여 항목 정리
 
 ### Fixes

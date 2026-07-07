@@ -103,6 +103,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
     AC: {Given-When-Then 시나리오}
     설계서 testability 섹션: {대상 컴포넌트의 인터페이스 + 모의 전략}
     기존 테스트 스타일: {프로젝트의 테스트 컨벤션}
+    프로젝트 루트: {절대 경로 — git rev-parse --show-toplevel, svn은 wc-root, 실패 시 pwd. 파일 도구의 기준점}
 
     작업:
     1. AC를 검증하는 최소 테스트 1개 작성. 테스트 품질 3기준 준수:
@@ -171,7 +172,7 @@ green 에이전트가 통과를 위한 최소 코드를 작성합니다.
 | "이번 한 번만 예외" | 첫 예외가 규칙이 된다 |
 | "프로토타입이니까 TDD 생략" | 프로토타입이 그대로 운영에 간다. 처음부터 TDD |
 
-자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
+자세한 격파 표는 gx-tdd 스킬 디렉토리의 `references/tdd-iron-law.md` 참조 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다).
 
 ---
 
