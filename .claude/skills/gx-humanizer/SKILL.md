@@ -237,9 +237,9 @@ audit/rewrite 모드는 이 절차를 거치지 않는다 (현행 경량 동작 
 입력
   ↓ [스킬: 탐지 + 윤문]  (양국어 패턴 K/E/C)
 03_rewrite.md
-  ↓ [humanizer-fidelity]  의미 동등성 감사 → 04_fidelity.json
+  ↓ [oh-my-gx:humanizer-fidelity]  의미 동등성 감사 → 04_fidelity.json
   ↓ (rollback edit 재윤문)
-  ↓ [humanizer-naturalness]  과윤문·AI티 잔존 검토 → 05_naturalness.json
+  ↓ [oh-my-gx:humanizer-naturalness]  과윤문·AI티 잔존 검토 → 05_naturalness.json
   ↓ (재윤문 트리거 시 재실행, 최대 2회)
 final.md + summary.md
 ```

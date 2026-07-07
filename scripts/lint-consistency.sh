@@ -133,6 +133,8 @@ grep -qF 'Bash(*git push*--force*)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push*--force*)' 패턴 누락"
 grep -qF 'Bash(*git push* -f)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push* -f)' (말단 -f) 패턴 누락"
+grep -qF 'Bash(*git push* -f *)' .claude/settings.json \
+  || fail "settings.json deny에 'Bash(*git push* -f *)' (중간 -f) 패턴 누락"
 [ "$FAIL" -eq 0 ] && ok "deny 패턴 bare 형태 커버 확인"
 
 echo
