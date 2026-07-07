@@ -83,11 +83,18 @@ done
 ok "디스패치 이름 전수 확인"
 
 echo "[6/7] 셸 스크립트 CRLF 금지"
-CRLF=$(grep -rlP '\r' --include='*.sh' .claude scripts 2>/dev/null || true)
+# 이식성 주의: grep -P는 macOS(BSD grep)에서 미지원이고, $'\r' 인자는 Git Bash(MSYS2)에서
+# 변환되어 빈 패턴이 되므로 모든 줄에 매칭(오탐)된다. tr|cmp 비교는 세 환경 모두에서 동작한다.
+CRLF=""
+while IFS= read -r f; do
+  if ! tr -d '\r' < "$f" | cmp -s - "$f"; then
+    CRLF="$CRLF $f"
+  fi
+done < <(find .claude scripts -name '*.sh' -type f 2>/dev/null)
 if [ -z "$CRLF" ]; then
   ok "CRLF 없음"
 else
-  fail "CRLF 포함 스크립트: $CRLF"
+  fail "CRLF 포함 스크립트:$CRLF"
 fi
 
 echo "[7/7] 훅 스크립트 문법"

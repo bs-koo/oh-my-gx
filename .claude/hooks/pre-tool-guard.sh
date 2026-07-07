@@ -12,7 +12,9 @@ verify_gate_open() {
   STATE_FILE="$1"
   [ -f "$STATE_FILE" ] || return 1
   grep -q "pipeline: gx-tdd" "$STATE_FILE" 2>/dev/null || return 1
-  grep -v "verify-status" "$STATE_FILE" 2>/dev/null | grep -q "status: in_progress" || return 1
+  # 부분 문자열 매칭 유지(^앵커 금지): state.md 표기(들여쓰기·리스트)가 기계 보증되지 않아
+  # 앵커가 빗나가면 게이트가 조용히 꺼진다. verify-status 값은 pending|passed뿐이라 오탐 없음.
+  grep -q "status: in_progress" "$STATE_FILE" 2>/dev/null || return 1
   grep -q "verify-status: passed" "$STATE_FILE" 2>/dev/null && return 1
   return 0
 }
