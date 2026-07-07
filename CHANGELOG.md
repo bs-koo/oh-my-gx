@@ -3,6 +3,7 @@
 ## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0·P1 반영
 
 ### Features
+- **gx-research 병렬 수집 + 교차 검증 (P3)**: 꼼꼼 모드에서 키워드를 웹/문서 두 그룹으로 나눠 general-purpose 서브에이전트 2개를 병렬 디스패치해 수집(주제 인용 블록 인젝션 방어, 에이전트당 Jina 상한 2회, 실패 그룹은 순차 폴백). Step 3에 교차 검증 절차 신설 — 주요 발견은 독립 출처 2개 이상 확인, 단일 출처는 `(단일 출처)` 표기, 상충 출처는 병기. 빠르게 모드·Task 불가 환경은 기존 순차 흐름 유지
 - **정합성 린트 CI (P2)**: `scripts/lint-consistency.sh` 신설 — 감사에서 도출된 불변식 7종(버전 3중 일치, Task 도구명 통일 회귀, refactor 금지 목록 3파일 일치·green 재호출 상한·프로젝트 루트 전달, verify 판별식 키 6파일 존재, 디스패치 이름↔agents/ 대조, 셸 스크립트 CRLF 금지, 훅 문법)을 기계 검사한다. `.github/workflows/lint.yml`로 PR·main push마다 자동 실행. gx-tdd 드리프트 주의 섹션에 기계 검증 범위를 명시
 - **훅 기반 verify 게이트 (P1)**: `pre-tool-guard.sh`에 G3 신설 — 현재 브랜치의 `.dev/{branch-slug}/state.md`가 gx-tdd 진행 중 + `verify-status` 미통과이면 `git commit` 시점에 `permissionDecision: "ask"`로 사용자 확인을 요구. 프롬프트 규율(라우팅·스킬 층)과 무관하게 항상 동작하는 결정론적 최종 방어선이며, deny가 아닌 ask라서 문서화된 위험 수용 경로는 유지된다. G2(svn commit 차단)는 실행 주체를 명확화하고 `.dev/trunk/state.md` verify 미통과 시 경고를 덧붙인다. git-workflow·skill-routing의 방어선 서술을 훅 동작과 정합 (시나리오 7종 테스트 통과)
 
