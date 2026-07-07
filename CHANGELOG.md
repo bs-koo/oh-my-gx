@@ -9,6 +9,7 @@
 - **gx-humanizer 디스패치 접두사**: humanizer-fidelity·humanizer-naturalness bare 이름을 `oh-my-gx:` 접두사로 통일 — 플러그인 설치 환경에서 strict 모드 에이전트 해석 실패 방지
 - **RGR 보조 스킬 Skill 선언**: gx-red·gx-green·gx-refactor·gx-verify가 본문에서 `Skill()` 체이닝을 지시하면서 allowed-tools에 Skill을 선언하지 않던 것을 선언 추가 (자동 체이닝 권한 중단 방지)
 - **green-coder 3회 실패 경로 단일화**: DIMINISHING_RETURNS(→simplifier)와 3-strike 격상(→architect)이 같은 실패 카운트에 상반 지시하던 모호성 제거 — DIMINISHING_RETURNS는 재호출 상한 도달 전 패턴으로 한정하고, 상한 소진 시에는 architect 격상이 우선함을 명시
+- **gx-dev `--phase review` 단독 실행 종료 계약 명시**: gx-tdd와 동일하게 비체이닝(리뷰 보고로 종료) + 이번 실행이 생성한 골격 state.md의 `status: completed` 갱신을 규정 — 영구 in_progress 잔존 방지, 파이프라인 간 비대칭 해소
 - **정합성 린트 확장 ([8/10]~[10/10])**: RGR Skill 선언·humanizer 접두사·deny 패턴 bare 커버 3종 검사 추가
 
 ### Docs
