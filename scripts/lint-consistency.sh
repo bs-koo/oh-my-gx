@@ -56,7 +56,11 @@ grep -q "최대 2회" .claude/skills/gx-green/SKILL.md \
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md .claude/skills/gx-refactor/SKILL.md; do
   grep -q "프로젝트 루트" "$f" || fail "프로젝트 루트 전달 누락: $f"
 done
-[ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달"
+grep -q "spec_verdict" agents/spec-reviewer.md \
+  || fail "spec_verdict 블록 정의(producer) 누락: agents/spec-reviewer.md"
+grep -q "spec_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
+  || fail "spec_verdict 파싱 규칙(consumer) 누락: phase-review.md"
+[ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달, spec_verdict 쌍"
 
 echo "[4/7] verify 게이트 판별식 키 존재"
 for f in .claude/rules/skill-routing.md .claude/rules/git-workflow.md \
