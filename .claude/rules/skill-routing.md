@@ -18,6 +18,10 @@
 - 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 사용자가 verify 없이 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit/gx-pull-request의 경고 게이트가 재확인).
 - `pipeline: gx-tdd` 필드가 없는 state.md(gx-dev 등)에는 적용하지 않는다.
 
+**gx-ralph 루프 예외:**
+- `oh-my-gx:gx-ralph-iterate`(헤드리스 반복 세션)의 직접 `git commit`은 gx-commit 라우팅 강제의 **명시적 예외**다 — 헤드리스에는 gx-commit의 확인 게이트(AskUserQuestion)에 응답할 사용자가 없다. 커밋 메시지 컨벤션(`{type}: 메시지`, 트레일러 금지)은 동일하게 준수하며, verify 게이트는 훅 G3(`pipeline: gx-ralph` 인식)가 유지한다.
+- 사용자가 루프 실행 중(`.dev/{branch-slug}/ralph.lock` 존재) 커밋/PR을 요청하면: 러너가 실행 중임을 안내하고, 루프 종료(또는 lock 해제 확인) 후 진행하도록 권한다.
+
 ## 개발 파이프라인 분기 (gx-dev vs gx-tdd)
 
 | 사용자 표현 | 호출 스킬 |

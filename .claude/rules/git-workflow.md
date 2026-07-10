@@ -41,6 +41,8 @@ gx-tdd verify 게이트 미통과 상태의 `git commit`은 PreToolUse 훅(`pre-
    - PR이 open이거나 PR이 없으면 **브랜치를 유지** — 임의로 main으로 돌아가지 마세요
 3. **main 브랜치에 있다면**: uncommitted 변경이 없으면 `git pull --rebase --autostash` 실행
 
+**예외 — gx-ralph 반복 세션**: `.dev/{branch-slug}/state.md`가 `pipeline: gx-ralph`이고 같은 디렉토리에 `ralph.lock`이 존재하는 세션(외부 러너가 기동한 헤드리스 반복)에서는 위 절차를 **적용하지 않는다**. 루프 중간의 브랜치 복귀·pull·rebase는 반복 간 상태 정합을 깨뜨린다. 반복 세션은 러너가 준비한 브랜치 그대로 작업한다.
+
 ---
 
 ## SVN 워크플로우 (vcs: "svn")

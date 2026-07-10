@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.15.0 (2026-07-10) — 루프 엔지니어링 도입 (gx-ralph)
+
+### Features
+- **gx-ralph (신규)**: Ralph 루프 패턴의 진입/관제 스킬 — 확정된 PRD의 수용 기준(AC)을 기계 판독 원장(`.dev/{branch-slug}/ac-status.json`)으로 변환하고, 루프 옵션(최대 반복 수)을 AskUserQuestion으로 확정한다. svn·보호 브랜치·PRD 부재·lock 존재 시 진입 차단. `--status` 지원. 상태 계약(원장 스키마·state.md 확장 필드·종료 계약·회귀 정책)의 SSOT
+- **gx-ralph-iterate (신규)**: 헤드리스 반복 1회 스킬 — 미완료 AC 1건 선택 → coder(gx-dev 계열) 또는 RGR 트리오(gx-tdd 계열) 디스패치 → `gx-verify --non-interactive` → **verify-status passed 선기록 → non-interactive 커밋**(훅 G3 순서 계약) → 원장 갱신 → 종료 계약(`<ralph>COMPLETE|CONTINUE|BLOCKED</ralph>`) 출력. AskUserQuestion 금지 철칙 — 헤드리스 세션에는 도구 자체가 존재하지 않음을 실측으로 확인
+- **외부 러너 `scripts/gx-ralph.sh` (신규)**: while 루프가 세션 밖에 있는 정통 Ralph 구조 — 반복마다 `claude -p`로 신선한 컨텍스트 세션을 기동한다. 하드 가드 4종(MAX_ITER 기본 10·반복당 타임아웃 30분·NO_DRIFT 2회 중단·lock) + 사전 조건 assert(git·비보호 브랜치·state/원장 존재·브랜치 일치). 분기 로직은 mock claude 테스트(`scripts/test-gx-ralph.sh`) 12케이스로 검증 (TDD: 테스트 선행 작성)
+- **gx-verify `--non-interactive` 모드**: AskUserQuestion 분기 3곳(검증 명령 미감지·테스트 실행 0건·신규 경고)을 질문 없이 fail-closed 게이트 차단으로 대체. 기본(무인자) 동작은 무변경
+
+### Fixed
+- **pre-tool-guard.sh stdin 결함 (Windows)**: `cat /dev/stdin`이 Windows(Git Bash) 훅 spawn에서 빈 입력을 반환해 **G1(보호 브랜치)·G2(svn)·G3(verify) 가드 전체가 무력 상태**였던 결함을 plain `cat`으로 수정. 헤드리스 스모크 실측 중 발견했으며, 수정 후 헤드리스 deny 재검증 통과 (deny는 --allowedTools보다 우선, ask도 헤드리스에서는 차단됨을 함께 실측)
+- **훅 G3 확장**: verify 게이트 판별을 `pipeline: (gx-tdd|gx-ralph)` 통합 정규식으로 확장 — gx-ralph 반복 커밋에도 컨텍스트 압축·라우팅과 무관한 최종 방어선이 적용된다
+
+### Docs/Infra
+- git-workflow.md("매 요청 시작 전" 브랜치 복귀·pull)·skill-routing.md(gx-commit 강제)에 gx-ralph 반복 세션 예외 명문화
+- 정합성 린트 [11/11] 신설(gx-ralph 판별 키·종료 계약 3파일·ac-status 스키마 키 정합), [4/11] 훅 검사를 주석 비의존 코드 패턴 검사로 일반화, [8/11]에 gx-ralph-iterate Skill 선언 검사 추가
+- README ralph 섹션·사용법 표 추가. 계획·검토 이력: `.sisyphus/plans/2026-07-10-gx-ralph-loop-engineering.md` (Metis 사전 분석 + Momus REVISE 반영)
+
 ## v1.14.1 (2026-07-07) — 전수 감사 잔여 항목 반영
 
 ### Fixed
