@@ -45,14 +45,15 @@ AC_FILE="$DEV_DIR/ac-status.json"
 [ -f "$STATE" ] || fail "$STATE 가 없습니다. /oh-my-gx:gx-ralph 로 먼저 준비하세요"
 grep -q "pipeline: gx-ralph" "$STATE" || fail "state.md가 gx-ralph 파이프라인이 아닙니다"
 grep -q "status: in_progress" "$STATE" || fail "state.md가 in_progress 상태가 아닙니다"
-STATE_BRANCH=$(sed -n 's/^branch:[[:space:]]*//p' "$STATE" | head -1)
+# tr -d '\r': CRLF state.md 방어 — Git Bash sed는 \r을 투명 처리하지만 Linux/macOS sed는 보존해 비교가 깨진다
+STATE_BRANCH=$(sed -n 's/^branch:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
 [ "$STATE_BRANCH" = "$BRANCH" ] || fail "브랜치 불일치 (state: $STATE_BRANCH, 현재: $BRANCH)"
 [ -f "$AC_FILE" ] || fail "$AC_FILE 이 없습니다. /oh-my-gx:gx-ralph 로 먼저 준비하세요"
 
 # ── 최대 반복 수: 인자 > state.md > 기본 10 ──
 MAX_ITER="${1:-}"
 if [ -z "$MAX_ITER" ]; then
-  MAX_ITER=$(sed -n 's/^max-iterations:[[:space:]]*//p' "$STATE" | head -1)
+  MAX_ITER=$(sed -n 's/^max-iterations:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
 fi
 case "$MAX_ITER" in ''|*[!0-9]*) MAX_ITER=10 ;; esac
 
@@ -101,7 +102,7 @@ while [ "$i" -le "$MAX_ITER" ]; do
     "<ralph>COMPLETE</ralph>")
       DONE=$(grep -c '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null || echo "?")
       # 복귀 파이프라인은 origin 분기 — gx-tdd 출발 루프는 spec→quality 리뷰(/gx-tdd)가 정본
-      ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1)
+      ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
       REVIEW_CMD="/gx-dev"; [ "$ORIGIN" = "gx-tdd" ] && REVIEW_CMD="/gx-tdd"
       echo "[gx-ralph] ✅ COMPLETE — 전 AC 완료 (passes=true: $DONE건, 반복 $i회)"
       echo "[gx-ralph] 다음 단계: $REVIEW_CMD --phase review 로 리뷰 → --phase complete 로 인수·PR"

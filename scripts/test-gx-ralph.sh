@@ -133,6 +133,21 @@ case "$OUT" in
 esac
 rm -rf "$SB"
 
+echo "[T10] CRLF state.md에서도 브랜치 검증·origin 분기 동작 (Windows 개행 방어)"
+SB=$(make_sandbox)
+printf 'pipeline: gx-ralph\r\nstatus: in_progress\r\nverify-status: pending\r\nbranch: feat/t\r\nmax-iterations: 10\r\nlast-known-head: none\r\norigin: gx-tdd\r\n' > "$SB/.dev/feat-t/state.md"
+printf '%s\n' COMPLETE > "$SB/scenario.txt"
+OUT=$( cd "$SB" \
+  && GX_RALPH_CLAUDE_CMD="bash $SB/mock-claude.sh" \
+     GX_RALPH_MOCK_SCENARIO="$SB/scenario.txt" \
+     bash "$RUNNER" 2>&1 ); RC=$?
+assert "exit=0 (CRLF 브랜치 비교)" 0 "$RC"
+case "$OUT" in
+  *"/gx-tdd --phase review"*) assert "origin 분기 (CRLF)" 1 1 ;;
+  *)                          assert "origin 분기 (CRLF)" 1 0 ;;
+esac
+rm -rf "$SB"
+
 echo
 echo "결과: $PASS pass, $FAIL fail"
 [ "$FAIL" -eq 0 ] || exit 1
