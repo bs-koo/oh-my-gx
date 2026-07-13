@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>oh-my-gx — GX 사업본부 개발 자동화 플러그인</title>
-  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 15개 스킬과 17개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
+  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 17개 스킬과 17개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -709,7 +709,7 @@
         <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
       </div>
       <div class="hero-meta">
-        <span><strong>15</strong> 스킬</span>
+        <span><strong>17</strong> 스킬</span>
         <span><strong>17</strong> 에이전트</span>
         <span><strong>Git · SVN</strong> 지원</span>
       </div>
@@ -833,7 +833,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
-      <h2 class="display-lg">15개 스킬이 사이클을 나눠 맡습니다</h2>
+      <h2 class="display-lg">17개 스킬이 사이클을 나눠 맡습니다</h2>
       <p>스킬 하나는 한 가지 역할만 맡습니다. 단독으로 불러 써도 되고, dev/tdd 파이프라인 안에서 자동으로 엮여 돌아가기도 합니다.</p>
     </div>
 
@@ -874,6 +874,7 @@
         <ul class="feature-list">
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
+          <li>설계 확정 후 구현 진입 시 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 기본은 대화형 구현</li>
           <li><strong>"이어서 해줘"</strong>로 중단 지점부터 정확히 재개</li>
         </ul>
       </div>
@@ -904,6 +905,7 @@
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
           <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
+          <li>기준선 게이트 통과 후 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
         </ul>
       </div>
@@ -947,6 +949,35 @@
         <span class="card-icon">✻</span>
         <div class="card-title">verify</div>
         <p>"should work" 같은 추측성 표현을 막습니다. 실제 테스트 실행 증거가 없으면 완료로 쳐주지 않습니다.</p>
+      </div>
+    </div>
+
+    <!-- ralph (reverse) -->
+    <div class="feature reverse">
+      <div class="feature-text">
+        <span class="badge badge-coral">무인 반복</span>
+        <h3 class="display-sm">ralph</h3>
+        <p>루프 엔지니어링(Ralph 루프) 스킬입니다. PRD를 승인하고 나면 외부 러너가 반복마다 <strong>새 claude 세션</strong>을 기동해 수용 기준(AC)을 1건씩 구현·verify·커밋합니다. 진행 상태는 대화가 아니라 파일과 git 히스토리에 남고, 사람은 루프가 끝난 뒤 리뷰·인수·PR만 진행합니다. 진입은 <code>/gx-ralph</code> 직접 호출 또는 dev·tdd의 구현 진입 질문에서 "ralph 무인 루프"를 선택 — 두 경로의 동작은 같습니다.</p>
+        <ul class="feature-list">
+          <li><strong>루프당 AC 1건</strong> — 매 반복 신선한 컨텍스트로 작게, 확실하게</li>
+          <li><strong>verify backpressure</strong> — 매 반복 테스트 통과 없이는 커밋 불가</li>
+          <li><strong>4중 안전장치</strong> — 최대 반복·타임아웃·무변화 감지·lock</li>
+          <li>svn·보호 브랜치·PRD 부재·verify 명령 미감지 시 진입 차단</li>
+        </ul>
+      </div>
+      <div class="feature-art">
+        <div class="code-window" role="img" aria-label="ralph 무인 루프 실행 예시">
+          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">scripts/gx-ralph.sh</span></div>
+          <div class="code-body">
+<span class="ln"><span class="c-cmd">&gt;</span> /gx-ralph              <span class="c-dim">AC 원장 준비</span></span>
+<span class="ln"><span class="c-cmd">&gt;</span> bash scripts/gx-ralph.sh</span>
+<span class="ln">  <span class="c-str">반복 1</span>  AC-1 구현 → verify <span class="c-ok">✓</span> → commit</span>
+<span class="ln">  <span class="c-str">반복 2</span>  AC-2 구현 → verify <span class="c-ok">✓</span> → commit</span>
+<span class="ln">  <span class="c-ok">&lt;ralph&gt;COMPLETE&lt;/ralph&gt;</span></span>
+<span class="ln"></span>
+<span class="ln"><span class="c-cmd">&gt;</span> /gx-dev --phase review  <span class="c-dim">사람 복귀</span></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

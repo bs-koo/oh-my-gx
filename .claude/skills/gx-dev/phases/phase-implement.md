@@ -20,6 +20,32 @@
 
 hotfix도 경량 구현 모드도 아닌 경우 아래 정상 플로우를 따른다.
 
+## 구현 방식 확인 (ralph 무인 루프 전환)
+
+정상 플로우 진입 시, Step 0 전에 구현 방식을 사용자에게 **1회** 확인한다.
+
+**질문 생략 조건** (하나라도 해당하면 질문 없이 아래 "구현" 플로우로 직행):
+- hotfix / 경량 구현(implement) 모드 (긴급·경량 경로 — PRD/설계가 없어 루프가 성립하지 않거나 전환 이득이 없음)
+- `--phase implement` 단독 실행 또는 `--resume` 재진입 (진행 방식 의도가 이미 명시됨)
+- `VCS_TYPE`이 `svn` (gx-ralph 미지원)
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "설계가 확정되었습니다. 구현을 어떻게 진행할까요?",
+    header: "구현 방식",
+    options: [
+      { label: "대화형 구현 (Recommended)", description: "이 세션에서 coder가 바로 구현합니다 (기존 방식)" },
+      { label: "ralph 무인 루프", description: "AC를 원장으로 변환하고 외부 러너가 무인 반복합니다. AC가 많거나 자리를 비울 때 적합" }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+- **"대화형 구현"** → 아래 "구현" 플로우를 그대로 진행한다.
+- **"ralph 무인 루프"** → 전환 전에 config.json `projectTypes`의 test 명령을 1회 실행해 **기준 GREEN**을 확인한다 (깨진 기준 위 무인 루프는 첫 반복부터 verify가 차단되어 낭비 — gx-tdd Step 0.5와 동일 근거). 깨져 있으면 실패 요약을 보고하고 전환을 계속할지 재확인한다. 이어서 `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다 (PRD는 requirements phase가 이미 저장 — 로직 중복 없이 진입 스킬 재사용). gx-ralph가 AC 원장 변환·러너 안내까지 완료하면 **이 파이프라인은 여기서 종료한다** — implement/review/complete를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로(`/gx-dev --phase review` → `--phase complete`)는 gx-ralph가 안내한다. Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 구현으로 진행할지 확인한다.
+
 ## 구현
 
 **Task A**: coder 구현.

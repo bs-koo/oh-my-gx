@@ -2,7 +2,7 @@
 name: gx-verify
 version: 1.0.0
 description: "완료 검증 게이트 - 테스트 명령 직접 실행 + 0 failures 확인 필수. commit/PR 진입 차단. 'should work' 표현 금지."
-argument-hint: ""
+argument-hint: "[--non-interactive]"
 allowed-tools:
   - Read
   - Glob
@@ -37,8 +37,18 @@ NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 ## 사용 시점
 
 - `oh-my-gx:gx-tdd` 파이프라인의 complete Phase 진입 전 자동 호출
+- `oh-my-gx:gx-ralph-iterate` 반복 세션의 backpressure 게이트 (`--non-interactive`로 호출)
 - 단독 호출: 사용자가 "완료 검증", "verify 게이트" 명시
 - 위반 감지 시: 다른 스킬이 "should work", "probably passes" 등 추측 표현 사용 시
+
+---
+
+## 모드 (--non-interactive)
+
+ARGS에 `--non-interactive`가 포함되면 **비대화 모드**로 동작한다. 헤드리스 세션(gx-ralph 반복 등) 전용이다 — 헤드리스에는 AskUserQuestion 도구가 존재하지 않아 대화 분기가 성립하지 않는다.
+
+- **기본(무인자)**: 기존 대화형 동작 그대로다. 아래 절차의 AskUserQuestion 분기가 모두 유효하다.
+- **비대화 모드**: AskUserQuestion 분기 3곳(Step 1 감지 실패, Step 4 판정 2·판정 3)을 질문 없이 **fail-closed 게이트 차단**으로 대체한다. 차단 보고는 Step 5-B 형식을 따르고 차단 사유를 명시한다. "위험 수용"·"건너뛰기" 선택지는 비대화 모드에 존재하지 않는다.
 
 ---
 
@@ -76,7 +86,8 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 **감지 실패 시 (config.json 부재·projectTypes 미매칭·명령 결정 불가)**:
 - 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.
-- AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다."
+- **비대화 모드**: 질문 없이 즉시 게이트 차단으로 종료한다 — 보고: "검증 명령 미감지 (비대화 모드 fail-closed)".
+- (대화형) AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다."
   - "직접 입력" → 입력받은 명령으로 Step 2 진행
   - "건너뛰기 (위험 수용)" → 테스트 검증 없이 진행하되, 보고에 "위험 수용: 검증 명령 미감지"를 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
   - "중단" → 게이트 차단 유지. commit/PR 진입 불가를 보고
@@ -126,8 +137,8 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 판정 (아래 순서로 하나씩 평가한다 — **이 목록이 판정의 단일 기준**이다):
 1. 테스트 실패(1건 이상 failures) 또는 빌드 exit ≠ 0 → **게이트 차단**
-2. **테스트 실행 수 확인**: 실행 수가 0건이거나 확인 불가("No tests found", gradle `:test UP-TO-DATE`처럼 콘솔에 개수 미표기)이면 먼저 실행 수를 확정한다 — gradle은 `build/test-results/test/*.xml`의 tests 합계로 확인하고, UP-TO-DATE(캐시)였다면 `./gradlew test --rerun-tasks`로 1회 신선 재실행한다. 확정 후에도 0건이면 → **게이트 차단**. AskUserQuestion — "테스트 명령/경로 확인 후 재실행" / "위험 수용 (테스트 부재 진행 — 보고에 명시, trust-ledger 기록은 오케스트레이터)" / "중단". **단, Step 1에서 이미 '건너뛰기(위험 수용)'를 선택했다면 이 검사를 건너뛴다** (동일 위험의 이중 차단 방지).
-3. **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 측정 규약 3항대로 로그 원문을 대조하고, **실제 신규 경고로 확인되면** → **게이트 차단**. AskUserQuestion — "수정 후 재실행" / "위험 수용 (통과 처리하되 보고에 "위험 수용: 신규 경고 {N}건" 명시, trust-ledger 기록은 오케스트레이터)". baseline이 없으면(단독 호출 등) 경고 수를 보고만 한다.
+2. **테스트 실행 수 확인**: 실행 수가 0건이거나 확인 불가("No tests found", gradle `:test UP-TO-DATE`처럼 콘솔에 개수 미표기)이면 먼저 실행 수를 확정한다 — gradle은 `build/test-results/test/*.xml`의 tests 합계로 확인하고, UP-TO-DATE(캐시)였다면 `./gradlew test --rerun-tasks`로 1회 신선 재실행한다. 확정 후에도 0건이면 → **게이트 차단**. **비대화 모드**: 질문 없이 차단 보고("테스트 실행 0건")로 종료. (대화형) AskUserQuestion — "테스트 명령/경로 확인 후 재실행" / "위험 수용 (테스트 부재 진행 — 보고에 명시, trust-ledger 기록은 오케스트레이터)" / "중단". **단, Step 1에서 이미 '건너뛰기(위험 수용)'를 선택했다면 이 검사를 건너뛴다** (동일 위험의 이중 차단 방지).
+3. **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 측정 규약 3항대로 로그 원문을 대조하고, **실제 신규 경고로 확인되면** → **게이트 차단**. **비대화 모드**: 질문 없이 차단 보고(신규 경고 목록 포함)로 종료. (대화형) AskUserQuestion — "수정 후 재실행" / "위험 수용 (통과 처리하되 보고에 "위험 수용: 신규 경고 {N}건" 명시, trust-ledger 기록은 오케스트레이터)". baseline이 없으면(단독 호출 등) 경고 수를 보고만 한다.
 4. 위 어디에도 걸리지 않음 → **게이트 통과**
 
 ### Step 5-A: 게이트 통과

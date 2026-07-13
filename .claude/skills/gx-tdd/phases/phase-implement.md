@@ -48,6 +48,32 @@ RGR 사이클 진입 전에 전체 테스트+빌드를 1회 실행한다 (명령
 
 hotfix 모드에서도 실행한다 (RGR이 강제되므로). `current-step`을 `"기준선 게이트"`로 갱신.
 
+## Step 0.7: 구현 방식 확인 (ralph 무인 루프 전환)
+
+기준선 게이트 통과 직후, RGR 사이클 진입 전에 구현 방식을 사용자에게 **1회** 확인한다. 기준선 게이트를 먼저 통과시키는 이유: 깨진 기준 위에서 무인 루프를 돌리면 verify가 매 반복 차단되어 루프가 즉시 BLOCKED로 낭비된다 (warnings-baseline도 이 시점에 기록되어 루프의 verify가 신규 경고를 비교할 수 있다).
+
+**질문 생략 조건** (하나라도 해당하면 질문 없이 Step 1로 직행):
+- hotfix 모드 (긴급 경로)
+- `--phase implement` 단독 실행 또는 `--resume` 재진입 (진행 방식 의도가 이미 명시됨)
+- `VCS_TYPE`이 `svn` (gx-ralph 미지원)
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "기준선 게이트를 통과했습니다. RGR 구현을 어떻게 진행할까요?",
+    header: "구현 방식",
+    options: [
+      { label: "대화형 RGR (Recommended)", description: "이 세션에서 RED→GREEN→REFACTOR 사이클을 바로 진행합니다 (기존 방식)" },
+      { label: "ralph 무인 루프", description: "외부 러너가 AC 1건 단위로 무인 반복합니다. 루프 안에서도 RGR 트리오가 유지됩니다 (origin: gx-tdd)" }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+- **"대화형 RGR"** → Step 1로 진행한다.
+- **"ralph 무인 루프"** → `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
+
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 
 설계서의 "구현 순서"와 PRD의 AC를 결합하여 **RGR 사이클 단위 태스크**로 분해한다. 각 태스크는 다음을 만족한다:

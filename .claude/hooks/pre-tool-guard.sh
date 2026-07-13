@@ -4,14 +4,22 @@
 
 set -uo pipefail
 
-INPUT=$(cat /dev/stdin 2>/dev/null || echo '{}')
+# plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
+INPUT=$(cat 2>/dev/null || echo '{}')
 
-# 공통 판별: state.md가 "gx-tdd 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
-# 판별식은 skill-routing.md·gx-commit·gx-pull-request와 동일: pipeline: gx-tdd + status: in_progress + verify-status ≠ passed
+# tool_input.command 값만 추출해 검사한다 — JSON 전체 글롭 매칭은 description 등
+# 다른 필드의 문자열에 오탐한다 (PR 본문의 "svn"+"gx-commit"으로 G2 오발화, 실측 2026-07-13).
+# 값 내부의 이스케이프 따옴표(\")는 유지되고, 비이스케이프 경계("," 또는 "})는 값 내부에
+# 나타날 수 없으므로 그 지점에서 자른다. 추출 실패 시 전체 INPUT으로 폴백(fail-closed 방향).
+CMD=$(printf '%s' "$INPUT" | sed -E 's/.*"command"[[:space:]]*:[[:space:]]*"//; s/([^\\])"[[:space:]]*,[[:space:]]*"[a-zA-Z_]+"[[:space:]]*:.*/\1/; s/([^\\])"[[:space:]]*\}.*/\1/' 2>/dev/null)
+[ -n "$CMD" ] || CMD="$INPUT"
+
+# 공통 판별: state.md가 "verify 게이트 파이프라인(gx-tdd/gx-ralph) 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
+# 판별식은 skill-routing.md·gx-commit·gx-pull-request와 동일: pipeline 키 + status: in_progress + verify-status ≠ passed
 verify_gate_open() {
   STATE_FILE="$1"
   [ -f "$STATE_FILE" ] || return 1
-  grep -q "pipeline: gx-tdd" "$STATE_FILE" 2>/dev/null || return 1
+  grep -qE "pipeline: (gx-tdd|gx-ralph)" "$STATE_FILE" 2>/dev/null || return 1
   # 부분 문자열 매칭 유지(^앵커 금지): state.md 표기(들여쓰기·리스트)가 기계 보증되지 않아
   # 앵커가 빗나가면 게이트가 조용히 꺼진다. verify-status 값은 pending|passed뿐이라 오탐 없음.
   grep -q "status: in_progress" "$STATE_FILE" 2>/dev/null || return 1
@@ -19,13 +27,13 @@ verify_gate_open() {
   return 0
 }
 
-# G1 + G3: git commit 가드
-case "$INPUT" in
-  *git*commit*)
+# G1 + G3: git commit 가드 — 인접 패턴: "git commit"(rtk/체이닝 포함), "git -C <dir> commit", "git -c <opt> commit"
+case "$CMD" in
+  *"git commit"*|*"git -C "*commit*|*"git -c "*commit*)
     GIT_DIR=""
     CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
     if [ -z "$CURRENT_BRANCH" ]; then
-      GIT_DIR=$(echo "$INPUT" | sed -n 's/.*git[[:space:]]\{1,\}-C[[:space:]]\{1,\}\([^[:space:]"]\{1,\}\).*/\1/p' 2>/dev/null || echo "")
+      GIT_DIR=$(echo "$CMD" | sed -n 's/.*git[[:space:]]\{1,\}-C[[:space:]]\{1,\}\([^[:space:]"\\]\{1,\}\).*/\1/p' 2>/dev/null || echo "")
       if [ -n "$GIT_DIR" ] && [ -d "$GIT_DIR" ]; then
         CURRENT_BRANCH=$(git -C "$GIT_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "")
       fi
@@ -61,7 +69,7 @@ EOF
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "ask",
-    "permissionDecisionReason": "gx-tdd verify 게이트 미통과 상태입니다 (.dev/${BRANCH_SLUG}/state.md: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
+    "permissionDecisionReason": "verify 게이트 미통과 상태입니다 (.dev/${BRANCH_SLUG}/state.md: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
   }
 }
 EOF
@@ -72,8 +80,9 @@ EOF
 esac
 
 # G2: SVN 직접 커밋 차단 — Claude 대신 사용자가 터미널에서 실행 (+ verify 미통과 경고)
-case "$INPUT" in
-  *svn*commit*)
+# 인접 패턴("svn commit"/"svn ci"): svn과 commit이 명령 인자에 따로 등장하는 경우(문서 본문 등)의 오탐 방지
+case "$CMD" in
+  *"svn commit"*|*"svn ci"*)
     SVN_REASON="SVN 프로젝트에서는 Claude가 커밋을 실행하지 않습니다. 터미널에서 svn commit을 직접 실행해주세요."
     WC_ROOT=$(svn info --show-item wc-root 2>/dev/null || pwd)
     if verify_gate_open "$WC_ROOT/.dev/trunk/state.md"; then
