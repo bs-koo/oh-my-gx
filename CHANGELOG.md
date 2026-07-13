@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.14.1 (2026-07-07) — 전수 감사 잔여 항목 반영
+
+### Fixed
+- **gx-tdd PR 컨텍스트 전달 실동작화**: phase-complete가 조립한 `pr-context.md`를 gx-pull-request가 "자동 감지"한다는 서술은 소비 로직이 없는 no-op였다 — gx-dev와 동일한 `--background` 명시 인자 전달로 변경. PR 본문에 비즈니스 맥락·Audit Summary가 실제로 반영된다
+- **force-push deny 패턴 보정**: 후행 공백 요구로 bare `git push --force`·`git push origin main -f` 형태가 차단되지 않던 결함 — `*git push*--force*`(--force-with-lease 포함)·`*git push* -f`(말단)·`*git push* -f *` 3패턴으로 교체
+- **README 안전장치 서술 정정**: "`gh pr merge`는 설정 수준에서 막혀 있다"는 과장 제거 — 강제 푸시만 deny 차단이며 머지는 사용자 명시 요청 시에만 수행하는 운영 원칙임을 명시. FAQ의 `.dev/state.md`를 실제 경로 `.dev/{branch-slug}/state.md`로 교정
+- **gx-humanizer 디스패치 접두사**: humanizer-fidelity·humanizer-naturalness bare 이름을 `oh-my-gx:` 접두사로 통일 — 플러그인 설치 환경에서 strict 모드 에이전트 해석 실패 방지
+- **RGR 보조 스킬 Skill 선언**: gx-red·gx-green·gx-refactor·gx-verify가 본문에서 `Skill()` 체이닝을 지시하면서 allowed-tools에 Skill을 선언하지 않던 것을 선언 추가 (자동 체이닝 권한 중단 방지)
+- **green-coder 3회 실패 경로 단일화**: DIMINISHING_RETURNS(→simplifier)와 3-strike 격상(→architect)이 같은 실패 카운트에 상반 지시하던 모호성 제거 — DIMINISHING_RETURNS는 재호출 상한 도달 전 패턴으로 한정하고, 상한 소진 시에는 architect 격상이 우선함을 명시
+- **gx-dev `--phase review` 단독 실행 종료 계약 명시**: gx-tdd와 동일하게 비체이닝(리뷰 보고로 종료) + 이번 실행이 생성한 골격 state.md의 `status: completed` 갱신을 규정 — 영구 in_progress 잔존 방지, 파이프라인 간 비대칭 해소
+- **정합성 린트 확장 ([8/10]~[10/10])**: RGR Skill 선언·humanizer 접두사·deny 패턴 bare 커버 3종 검사 추가
+
+### Docs
+- **guide.md 현행화**: 설치 명령 교정(`/install-plugin` → `/plugin marketplace add` + `/plugin install`), 스킬 경로(`skills/dev` → `skills/gx-dev`)·`.dev/{branch-slug}` 경로 교정, 스킬 맵 15종 반영, gx-tdd·TDD 보조 4종·gx-tech-debt·gx-cross-review 레퍼런스 신설(§4.9~4.12), humanizer strict 모드 반영, 에이전트 17종 주석
+- **presentation-script.md 수치 현행화**: "7개 스킬" → 15개, "9개 에이전트" → 17개, TDD 계열 소개 문단 추가
+- **기타 표기 정비**: spec-reviewer의 qa-manager deprecated 표기에 gx-tdd 한정어 추가(gx-dev에선 현역), gx-verify·phase-review 프로젝트 타입 표에 config SSOT 주석, refactor-coder 인계 입력("식별된 정리 항목")의 생산자를 오케스트레이터로 명시, TDD 계열 에이전트 6종 color 지정, settings.local.json.sample의 무효 `Skill(dev)`/`Skill(commit)` 허용 규칙을 실존 스킬명으로 교정, gx-cross-review의 미사용 Skill 선언 제거
+
+## v1.14.0 (2026-07-07) — 기계 판정 블록 확장 (quality·security)
+
+### Features
+- **quality_verdict/security_verdict 블록**: v1.13.3 spec_verdict 파일럿 검증 후 나머지 리뷰어로 확장. quality-reviewer는 verdict(Critical/Important 기준) + 심각도 집계 + [동작결함] 건수를, security-auditor는 CRITICAL/HIGH/MEDIUM 집계를 출력 맨 마지막 YAML 블록으로 제공. phase-review에 Step 4.0(기계 판정 블록 파싱) 신설 — 블록 우선 → 산문 폴백 → 상충 시 보수적 판정(quality는 FAIL 간주 + 1회 재호출). **개별 항목의 수정 경로 라우팅([동작결함]/[동작불변] 마커)은 기존 산문 계약 유지** — 블록은 게이트 판정·집계만 구조화
+- **security-auditor 스코핑**: 공유 에이전트(gx-dev·gx-lens·gx-cross-review도 호출)이므로 에이전트 정의는 무수정, gx-tdd phase-review Task B 디스패치 프롬프트만 producer로 지정 (다른 호출자 영향 없음)
+- **검증·가드**: 린트에 quality/security verdict producer-consumer 쌍 검사 추가(TDD: 검사 선행 RED → 계약 구현 GREEN), 결함 주입 픽스처(NPE·매직 넘버·하드코딩 시크릿)로 두 에이전트 모의 검증, 드리프트 노트·골든 시나리오 S10 확장. 모의 검증에서 security 블록 집계 오차(산문 3건 vs 블록 4건)를 실측 — Step 4.0에 **집계 불일치 시 산문 열거 기준** 규칙과 프롬프트 건수 재확인 지시를 추가
+
+### Docs
+- **README 재정리**: 목차 신설, 사용법 표를 3분류(개발/분석·지식/품질·마무리)로 재편, 스킬 상세를 워크플로 순서로 재배열하고 dev vs tdd 중복 서술 축소. 오류 정정 — "보조 스킬(red/green/refactor/verify)이 파이프라인에서 자동 호출된다"는 낡은 서술을 실제 구조(에이전트 직접 디스패치, verify만 스킬 호출)로, 보호 브랜치를 main 단독에서 main/master/develop 3종으로. 안전장치에 훅 verify 게이트·정합성 린트 CI 반영, research에 병렬 수집·교차 검증 반영
+
 ## v1.13.3 (2026-07-07) — 스킬 전수 정합성 감사 P0·P1 반영
 
 ### Features

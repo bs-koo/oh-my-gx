@@ -609,7 +609,7 @@ AskUserQuestion(
 - `--phase requirements`: setup (필요 시) + requirements만 실행 (PRD 작성).
 - `--phase design`: setup (필요 시) + requirements + design만 실행. 대화 맥락에 요구사항이 없고 `${DEV_DIR}/prd.md`도 없으면 requirements부터 시작.
 - `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `${DEV_DIR}/design.md`도 없으면: "설계서가 필요합니다. `/gx-dev --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
-- `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰).
+- `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰). **단독 실행은 리뷰 결과 보고로 종료하며 phase-complete로 체이닝하지 않는다** (완료 절차는 `--phase complete`로 별도 실행). 종료 시 이번 실행에서 생성한 골격 state.md라면 `status: completed`로 갱신한다 (영구 in_progress 잔존 방지).
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (test, commit, PR).
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:

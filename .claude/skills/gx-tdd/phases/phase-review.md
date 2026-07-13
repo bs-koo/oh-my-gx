@@ -33,7 +33,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
    |---------------|---------------|
    | java-spring (gradle) | `./gradlew build -x test` |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
-   | python | 건너뛰기 (인터프리터 언어) |
+   | python | 건너뛰기 (인터프리터 언어 — 기본 config 미정의 타입, `projectTypes` 확장 시에만 도달) |
 3. 프로젝트 타입으로도 결정 불가 → AskUserQuestion: "빌드 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기.
 
 **실행 흐름**:
@@ -223,6 +223,14 @@ Task(subagent_type="oh-my-gx:quality-reviewer"):
     - Critical 0 + Important 0 → QUALITY PASS
     - Critical N > 0 또는 Important N > 0 → QUALITY FAIL (수정 필요)
     - Minor만 → QUALITY PASS (Minor는 메모만)
+
+    ## 기계 판정 블록 (출력 맨 마지막, yaml 코드 펜스로 감싼다. 각 건수는 위 목록의 항목 수를 다시 세어 일치시킨다)
+    quality_verdict:
+      verdict: PASS | FAIL   # 산문 판정과 일치 (Critical 또는 Important 1건 이상이면 FAIL)
+      critical: {Critical 건수}
+      important: {Important 건수}
+      important_behavior: {Important 중 [동작결함] 표기 + 무표기 건수}
+      minor: {Minor 건수}
 ```
 
 ### Task B: security-auditor (통합 감사)
@@ -257,6 +265,12 @@ Task(subagent_type="oh-my-gx:security-auditor"):
     - [분류/심각도] 항목 설명
       - 근거: ...
       - 권고: ...
+
+    ## 기계 판정 블록 (출력 맨 마지막, yaml 코드 펜스로 감싼다. 각 건수는 위 목록의 항목 수를 다시 세어 일치시킨다)
+    security_verdict:
+      critical: {CRITICAL 건수}
+      high: {HIGH 건수}
+      medium: {MEDIUM 건수}
 ```
 
 `current-step`을 `"quality-review + security (2단계 병렬)"`로 갱신.
@@ -266,6 +280,15 @@ Task(subagent_type="oh-my-gx:security-auditor"):
 ## Step 4: 결과 합산 및 처리
 
 두 Task 완료 후:
+
+### Step 4.0: 기계 판정 블록 파싱
+
+각 출력 마지막의 YAML 블록을 우선 파싱한다 (Step 2.1의 `spec_verdict`와 동일한 규칙):
+
+- `quality_verdict`: verdict + 심각도 집계. 블록이 없거나 파싱 불가하면 산문(QUALITY PASS/FAIL 문구 + 섹션별 건수)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 quality-reviewer를 1회 재호출한다.
+- `security_verdict`: CRITICAL/HIGH/MEDIUM 집계. 블록 부재 시 산문 집계로 폴백한다 (verdict 필드 없음 — 집계는 Step 4.3 요약과 4c의 MEDIUM 처리에 사용).
+- **집계 불일치 처리 (공통)**: 블록의 건수와 산문 목록의 항목 수가 다르면 **산문 열거를 기준**으로 집계한다 (항목 목록이 원본이고 블록은 요약 — LLM 집계 오류는 모의 검증에서 실측된 사례). 불일치 사실을 Step 4.3 요약에 표기한다.
+- 개별 항목의 수정 경로 라우팅(`[동작결함]`/`[동작불변]` 마커, security 동작 변경 분류)은 **기존 산문 계약을 그대로 사용**한다 — 블록은 게이트 판정과 집계만 구조화한다.
 
 ### Step 4.1: Trust Ledger 저장
 

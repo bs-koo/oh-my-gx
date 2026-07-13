@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Grep
   - Bash
+  - Skill
   - AskUserQuestion
 ---
 
@@ -71,7 +72,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 | python | `pytest` | (없음) |
 | go | `go test ./...` | `go build ./...` |
 
-`.claude/config.json`의 `projectTypes` 설정에서 감지.
+`.claude/config.json`의 `projectTypes` 설정에서 감지. 기본 config는 `java-spring`·`node`만 정의하므로, `python`·`go` 행은 소비 프로젝트가 `projectTypes`에 해당 타입을 추가했을 때만 도달한다.
 
 **감지 실패 시 (config.json 부재·projectTypes 미매칭·명령 결정 불가)**:
 - 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.

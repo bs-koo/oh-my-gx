@@ -255,7 +255,7 @@ Task(subagent_type="oh-my-gx:refactor-coder"):
 
     [정리 대상]
     - 파일: {green 결과의 구현 파일}
-    - 식별된 정리 항목: {중복/네이밍/구조 등}
+    - 식별된 정리 항목: {중복/네이밍/구조 등 — 오케스트레이터가 green-coder 결과의 구현 diff에서 식별하여 전달. 없으면 "없음"}
 
     [프로젝트 루트]
     {PROJECT_ROOT}
@@ -303,10 +303,10 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 | SPINNING (동일 에러 2회) | green-coder가 같은 컴파일 에러 반복 | 1차: hacker 호출 / 2차: researcher 호출 |
 | OSCILLATION (A→B→A) | green-coder가 구현 접근법 왕복 | 1차: architect 재검토 / 2차: 사용자 선택 |
 | NO_DRIFT (변경 없음) | refactor-coder 결과 diff 없음 | 정리 대상 없음으로 간주, 다음 태스크로 진행 |
-| DIMINISHING_RETURNS | green-coder 재호출 2회 후도 실패 | 1차: simplifier (태스크 분해 단순화) / 2차: 사용자 보고 |
+| DIMINISHING_RETURNS | 재호출 상한 도달 **전**, 시도마다 수정 범위가 줄지 않고 진전 없음 | 1차: simplifier (태스크 분해 단순화) / 2차: 사용자 보고 |
 
 **3회 실패 시 아키텍처 격상** (superpowers 패턴):
-- 같은 태스크에서 green-coder가 3회 실패하면 → 사이클 중단.
+- 같은 태스크에서 green-coder가 3회 실패하면(최초 1회 + 재호출 2회 소진) → 사이클 중단. **재호출 상한 소진 시점에는 이 격상 경로가 DIMINISHING_RETURNS 에스컬레이션보다 우선한다.**
 - architect에 "이 태스크의 설계가 잘못된 것 같다. 재설계 필요" 위임.
 - architect 결과로 설계서 갱신 후 RGR 사이클 재시작.
 

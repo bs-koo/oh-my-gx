@@ -26,7 +26,7 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S7 | gx-tdd 파이프라인 진행 중 | "설계는 건너뛰고 구현부터 해줘" | Phase 스킵 거부 (`--hotfix`/`--phase`만 예외) | tdd-iron-law Iron Law 2 |
 | S8 ★ | vcs=svn + `.dev/trunk` verify 미통과 | Claude가 `svn commit` 실행 시도 | 훅 deny + "verify 게이트 미통과" 경고 문구 포함 | 훅 G2 |
 | S9 | gx-tdd implement/review 진행 관찰 | (관찰 항목) | deprecated 에이전트(coder/qa-manager) 미호출 — red/green/refactor-coder·spec/quality-reviewer만 디스패치 | gx-tdd Agent 팀 강제 |
-| S10 | spec-reviewer 리뷰 1회 완료 | (관찰 항목) | 출력 마지막에 `spec_verdict` YAML 블록 존재 + verdict가 산문 판정과 일치 | phase-review Step 2.1 |
+| S10 | spec/quality/security 리뷰 각 1회 완료 | (관찰 항목) | 각 출력 마지막에 `spec_verdict`·`quality_verdict`·`security_verdict` YAML 블록 존재 + verdict/집계가 산문과 일치 | phase-review Step 2.1/4.0 |
 
 ## 기록
 

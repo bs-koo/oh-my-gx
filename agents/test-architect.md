@@ -15,6 +15,7 @@ description: |
   assistant: test-architect가 score 4/10 TESTABILITY FAIL → "DI로 PaymentRepository 추출 권고" + architect 재설계 요청
   </example>
 model: opus
+color: cyan
 tools:
   - Read
   - Glob
