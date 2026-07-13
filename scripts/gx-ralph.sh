@@ -31,7 +31,8 @@ if [ -f ".claude/config.json" ] && grep -q '"vcs"[[:space:]]*:[[:space:]]*"svn"'
   fail "SVN 프로젝트에서는 gx-ralph를 사용할 수 없습니다"
 fi
 
-BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+# symbolic-ref: Git <2.22 호환 + pre-tool-guard.sh와 동일 패턴 (detached HEAD면 빈 값)
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 [ -n "$BRANCH" ] || fail "브랜치를 확인할 수 없습니다 (detached HEAD)"
 case "$BRANCH" in
   main|master|develop) fail "보호 브랜치($BRANCH)에서는 루프를 돌릴 수 없습니다. 작업 브랜치를 사용하세요" ;;
@@ -136,9 +137,9 @@ while [ "$i" -le "$MAX_ITER" ]; do
     NO_DRIFT=0
   fi
 
-  # last-known-head 갱신 (state.md 계약 필드)
+  # last-known-head 갱신 (state.md 계약 필드) — sed -i는 BSD sed(macOS) 비호환이라 임시 파일 사용
   if grep -q "^last-known-head:" "$STATE" 2>/dev/null; then
-    sed -i "s|^last-known-head:.*|last-known-head: $POST_HEAD|" "$STATE"
+    sed "s|^last-known-head:.*|last-known-head: $POST_HEAD|" "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   fi
 
   i=$((i+1))

@@ -13,7 +13,8 @@ make_mock() {
   cat > "$sandbox/mock-claude.sh" <<'MOCK'
 #!/usr/bin/env bash
 step=$(head -1 "$GX_RALPH_MOCK_SCENARIO" 2>/dev/null || echo "")
-sed -i '1d' "$GX_RALPH_MOCK_SCENARIO" 2>/dev/null || true
+# sed -i는 BSD sed(macOS)에서 에러가 삼켜져 시나리오가 소비되지 않음 — 임시 파일 사용
+{ sed '1d' "$GX_RALPH_MOCK_SCENARIO" > "$GX_RALPH_MOCK_SCENARIO.tmp" && mv "$GX_RALPH_MOCK_SCENARIO.tmp" "$GX_RALPH_MOCK_SCENARIO"; } 2>/dev/null || true
 case "$step" in
   CONTINUE_COMMIT)
     echo "x" >> work.txt && git add work.txt >/dev/null 2>&1 && git commit -q -m "feat: mock 구현 (AC-x)" >/dev/null 2>&1

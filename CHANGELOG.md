@@ -16,6 +16,7 @@
 - **iterate 템플릿 id 이중 접두사 수정**: 원장 id가 이미 "AC-1" 형식인데 커밋·progress 템플릿이 `AC-{id}`로 표기되어 문자 그대로 치환 시 "AC-AC-1"이 되던 사양 결함 — `{id}`로 정정하고 린트에 금지 검사 추가
 - **gx-ralph 진입 게이트에 verify 명령 선검사 추가**: `projectTypes` 미감지 프로젝트에서 매 반복 fail-closed 차단 → attempts 3회 소진 후 BLOCKED로 낭비되던 것을 진입 시점 차단·안내로 전환
 - **러너 견고성 4종**: 저장소 루트 자동 이동(하위 디렉토리 실행 시 상대 경로 어긋남 방어), INT/TERM 신호에서도 lock 정리 보장(`trap exit 경유`), 재실행 시 이전 반복 로그를 `logs-{timestamp}/`로 보존(iter-N.log 덮어쓰기 방지 — 테스트 T8), 종료 계약 파싱 패턴 완화(`[^<]*` → `.*`, BLOCKED 사유의 `<` 포함 허용)
+- **macOS 이식성 (PR #58 리뷰 반영)**: 러너·테스트 mock의 `sed -i`(BSD sed 비호환)를 임시 파일 방식으로 교체 — macOS에서 last-known-head 미갱신·mock 시나리오 미소비(테스트 전체 실패)를 유발하던 결함. 러너 브랜치 파싱을 `git symbolic-ref --short HEAD`로 교체(Git <2.22 호환, 훅과 동일 패턴)
 - **gx-tdd origin 폴백 명시**: iterate가 `gx-tdd/phases/phase-implement.md`를 Read할 수 없는 환경(플러그인 설치 경로 차이)에서 BLOCKED 대신 에이전트 기본 역할 계약으로 AC 1건 한정 프롬프트를 직접 구성하도록 규정
 - **복귀 안내 origin 분기 (아키텍트 교차 검증 반영)**: 러너·진입 스킬의 루프 종료 안내가 `/gx-dev --phase review`로 하드코딩되어 gx-tdd 출발 루프가 qa-manager 기반 gx-dev 리뷰로 유도되던 충돌 해소 — origin이 gx-tdd면 `/gx-tdd --phase review`로 분기 (테스트 T9·린트 검사 추가). 함께: gx-dev→ralph 전환 시 기준 GREEN 1회 확인(gx-tdd Step 0.5와 대칭), gx-ralph 재실행 시 기존 `origin` 값 유지 규칙 명시(뒤집힘 방지)
 
