@@ -109,6 +109,29 @@ SB=$(make_sandbox)
 assert "exit=6" 6 "$(run_runner "$SB" "COMPLETE")"
 rm -rf "$SB"
 
+echo "[T8] 재실행 시 이전 반복 로그 보존 (logs-*/ 아카이브)"
+SB=$(make_sandbox)
+assert "1차 exit=0" 0 "$(run_runner "$SB" "COMPLETE")"
+assert "2차 exit=0" 0 "$(run_runner "$SB" "COMPLETE")"
+assert "현재 실행 로그 1개" 1 "$(iter_logs "$SB")"
+ARCHIVED=$(ls -d "$SB"/.dev/feat-t/logs-* 2>/dev/null | wc -l | tr -d ' ')
+assert "아카이브 디렉토리 1개" 1 "$ARCHIVED"
+rm -rf "$SB"
+
+echo "[T9] COMPLETE 복귀 안내 origin 분기 (gx-tdd → /gx-tdd --phase review)"
+SB=$(make_sandbox)
+printf 'origin: gx-tdd\n' >> "$SB/.dev/feat-t/state.md"
+printf '%s\n' COMPLETE > "$SB/scenario.txt"
+OUT=$( cd "$SB" \
+  && GX_RALPH_CLAUDE_CMD="bash $SB/mock-claude.sh" \
+     GX_RALPH_MOCK_SCENARIO="$SB/scenario.txt" \
+     bash "$RUNNER" 2>&1 )
+case "$OUT" in
+  *"/gx-tdd --phase review"*) assert "안내에 /gx-tdd 포함" 1 1 ;;
+  *)                          assert "안내에 /gx-tdd 포함" 1 0 ;;
+esac
+rm -rf "$SB"
+
 echo
 echo "결과: $PASS pass, $FAIL fail"
 [ "$FAIL" -eq 0 ] || exit 1

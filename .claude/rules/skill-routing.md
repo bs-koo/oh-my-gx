@@ -10,13 +10,13 @@
 | `PR`, `PR 올려`, `PR 생성`, `풀리퀘`, `pull request` | `/gx-pull-request` |
 | `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
 
-**gx-tdd 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
+**gx-tdd·gx-ralph 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
 - 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.
-- 판별: 저장소 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환. **svn은 `.dev/trunk/state.md`**)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 커밋/PR로 직행시키지 않는다.
+- 판별: 저장소 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환. **svn은 `.dev/trunk/state.md`**)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 커밋/PR로 직행시키지 않는다.
 - **svn 프로젝트**는 gx-commit이 미지원(VCS 가드 종료)이라 스킬 층의 재확인 게이트가 없다 — PreToolUse 훅이 Claude의 `svn commit` 시도를 차단(verify 미통과 시 경고 포함)하지만 사용자의 터미널 커밋에는 개입하지 못하므로, 이 라우팅 분기가 사용자 안내의 핵심 방어다. `svn commit` 직접 실행 안내 전에 반드시 이 판별을 수행한다.
 - **git 프로젝트**는 라우팅·스킬 층을 우회하더라도 PreToolUse 훅(`pre-tool-guard.sh` G3)이 `git commit` 시점에 verify 미통과를 감지해 사용자 확인(ask)을 요구한다 — 컨텍스트 압축·라우팅 실패와 무관하게 동작하는 최종 방어선.
-- 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 사용자가 verify 없이 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit/gx-pull-request의 경고 게이트가 재확인).
-- `pipeline: gx-tdd` 필드가 없는 state.md(gx-dev 등)에는 적용하지 않는다.
+- 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 판별된 파이프라인이 `gx-ralph`(lock 없음 = 루프 중단 잔여 상태)이면 대신 안내한다: "gx-ralph 루프의 잔여 상태입니다. 러너 재실행으로 루프를 재개하거나, `oh-my-gx:gx-verify` 통과 후 커밋/PR을 진행하세요." 사용자가 verify 없이 명시적으로 고집하면 위험 수용을 확인하고 진행한다 (gx-commit/gx-pull-request의 경고 게이트가 재확인).
+- `pipeline` 필드가 gx-tdd/gx-ralph가 아닌 state.md(gx-dev 등)에는 적용하지 않는다.
 
 **gx-ralph 루프 예외:**
 - `oh-my-gx:gx-ralph-iterate`(헤드리스 반복 세션)의 직접 `git commit`은 gx-commit 라우팅 강제의 **명시적 예외**다 — 헤드리스에는 gx-commit의 확인 게이트(AskUserQuestion)에 응답할 사용자가 없다. 커밋 메시지 컨벤션(`{type}: 메시지`, 트레일러 금지)은 동일하게 준수하며, verify 게이트는 훅 G3(`pipeline: gx-ralph` 인식)가 유지한다.

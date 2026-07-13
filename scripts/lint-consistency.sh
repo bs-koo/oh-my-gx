@@ -13,7 +13,7 @@
 #  8. RGR 보조 스킬 allowed-tools Skill 선언 (본문이 Skill 체이닝 지시)
 #  9. gx-humanizer 에이전트 접두사 (bare humanizer-* 금지)
 # 10. force-push deny 패턴 bare 형태 커버 (settings.json)
-# 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키)
+# 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -163,7 +163,24 @@ for key in passes attempts last_error; do
     grep -q "$key" "$f" || fail "ac-status 스키마 키($key) 누락: $f"
   done
 done
-[ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키 확인"
+# 스킬 층 verify 게이트·라우팅이 gx-ralph를 인식하는지 (훅 G3와 층간 대칭)
+for f in .claude/skills/gx-commit/SKILL.md .claude/skills/gx-pull-request/SKILL.md .claude/rules/skill-routing.md; do
+  grep -q "pipeline: gx-ralph" "$f" || fail "verify 게이트/라우팅이 gx-ralph 미인식: $f"
+done
+# 원장 id는 "AC-1" 형식 — 템플릿의 이중 접두사(AC-{id} → AC-AC-1) 금지
+if grep -rn 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" >/dev/null 2>&1; then
+  fail "이중 접두사 템플릿(AC-{id}) 잔존: $(grep -l 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" | tr '\n' ' ')"
+fi
+# dev/tdd 구현 진입 시 무인 루프 전환 질문이 두 파이프라인 모두에 존재 (드리프트 방지)
+for f in .claude/skills/gx-dev/phases/phase-implement.md .claude/skills/gx-tdd/phases/phase-implement.md; do
+  grep -q "ralph 무인 루프" "$f" || fail "구현 방식 확인(ralph 무인 루프 전환) 누락: $f"
+done
+# 복귀 안내 origin 분기 — gx-tdd 출발 루프가 gx-dev 리뷰(qa-manager)로 유도되지 않도록
+grep -q '/gx-tdd --phase review' "$RALPH_ENTRY" \
+  || fail "복귀 안내 origin 분기(/gx-tdd --phase review) 누락: $RALPH_ENTRY"
+grep -q 'origin:' "$RALPH_RUNNER" \
+  || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
+[ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then

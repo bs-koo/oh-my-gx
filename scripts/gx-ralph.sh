@@ -24,6 +24,8 @@ fail() { echo "[gx-ralph] 사전 조건 실패: $1" >&2; exit 6; }
 
 # ── 사전 조건 assert ──
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "git 저장소가 아닙니다"
+# 상대 경로(.dev/, .claude/config.json)가 저장소 루트 기준이 되도록 이동 (하위 디렉토리 실행 방어)
+cd "$(git rev-parse --show-toplevel)" || fail "저장소 루트로 이동할 수 없습니다"
 
 if [ -f ".claude/config.json" ] && grep -q '"vcs"[[:space:]]*:[[:space:]]*"svn"' .claude/config.json 2>/dev/null; then
   fail "SVN 프로젝트에서는 gx-ralph를 사용할 수 없습니다"
@@ -58,6 +60,16 @@ LOCK="$DEV_DIR/ralph.lock"
 [ -e "$LOCK" ] && fail "lock이 존재합니다 ($LOCK). 다른 러너가 실행 중이거나 비정상 종료 잔재입니다"
 echo "$$ $(date '+%Y-%m-%dT%H:%M:%S')" > "$LOCK"
 trap 'rm -f "$LOCK"' EXIT
+# INT/TERM에서도 EXIT trap을 확실히 경유시킨다 (셸별 신호 시 EXIT trap 발화 차이 방어. SIGKILL은 잔존 → Step 1 게이트 안내로 복구)
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# ── 이전 실행 로그 보존 (재실행 시 iter-N.log 덮어쓰기 방지) ──
+if ls "$DEV_DIR"/iter-*.log >/dev/null 2>&1; then
+  ARCHIVE="$DEV_DIR/logs-$(date '+%Y%m%d-%H%M%S')"
+  mkdir -p "$ARCHIVE" && mv "$DEV_DIR"/iter-*.log "$ARCHIVE"/
+  echo "[gx-ralph] 이전 반복 로그를 $ARCHIVE/ 로 보존"
+fi
 
 # ── 타임아웃 명령 가용성 (없으면 타임아웃 없이 실행) ──
 TIMEOUT_CMD=""
@@ -81,13 +93,17 @@ while [ "$i" -le "$MAX_ITER" ]; do
   MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
   EXIT_CODE=$?
 
-  CONTRACT=$(grep -o '<ralph>[^<]*</ralph>' "$LOG" 2>/dev/null | tail -1)
+  # [^<]* 대신 .* — BLOCKED 사유에 '<'가 포함돼도 계약이 파싱되도록 (계약은 한 줄에 하나)
+  CONTRACT=$(grep -o '<ralph>.*</ralph>' "$LOG" 2>/dev/null | tail -1)
 
   case "$CONTRACT" in
     "<ralph>COMPLETE</ralph>")
       DONE=$(grep -c '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null || echo "?")
+      # 복귀 파이프라인은 origin 분기 — gx-tdd 출발 루프는 spec→quality 리뷰(/gx-tdd)가 정본
+      ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1)
+      REVIEW_CMD="/gx-dev"; [ "$ORIGIN" = "gx-tdd" ] && REVIEW_CMD="/gx-tdd"
       echo "[gx-ralph] ✅ COMPLETE — 전 AC 완료 (passes=true: $DONE건, 반복 $i회)"
-      echo "[gx-ralph] 다음 단계: /gx-dev --phase review 로 리뷰 → --phase complete 로 인수·PR"
+      echo "[gx-ralph] 다음 단계: $REVIEW_CMD --phase review 로 리뷰 → --phase complete 로 인수·PR"
       exit 0
       ;;
     "<ralph>BLOCKED:"*)

@@ -137,6 +137,8 @@ references/
 
 내부에서는 에이전트 팀이 요구사항 → 설계 → 구현 → 리뷰 → 완료로 단계를 나눠 처리합니다. 어떤 작업에 `dev`가 맞는지는 위 [dev vs tdd](#dev-vs-tdd--어떤-걸-쓰나)를 참고하세요.
 
+설계가 확정되면 구현 진입 시점에 **"대화형 구현 vs ralph 무인 루프"** 를 한 번 묻습니다. 기본(대화형)을 고르면 기존과 완전히 동일하게 진행하고, 전환을 고르면 기준 테스트 GREEN을 확인한 뒤 [ralph](#ralph)로 이어집니다 — AC가 많고 자리를 비울 때 유용합니다. hotfix·경량 구현·svn에서는 묻지 않습니다.
+
 ### tdd
 
 `dev`와 같은 6단계 골격을 쓰지만 **구현을 테스트가 끌고 가는** 별도 파이프라인입니다.
@@ -148,7 +150,7 @@ references/
 
 - **requirements**: 수용 기준(AC)을 Given-When-Then 형식으로 강제 (자동 테스트로 변환 가능)
 - **design**: `test-architect`가 testability 점수(1-10)를 매기고, 7 미만이면 재설계
-- **implement**: `red-writer`(실패 테스트) → `green-coder`(통과 최소 코드) → `refactor-coder`(정리)의 격리 순차 사이클
+- **implement**: `red-writer`(실패 테스트) → `green-coder`(통과 최소 코드) → `refactor-coder`(정리)의 격리 순차 사이클. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 **"대화형 RGR vs ralph 무인 루프"** 를 한 번 묻습니다 — 전환해도 루프 안에서 RGR 사이클이 AC 1건 단위로 유지됩니다
 - **review**: `spec-reviewer`(AC 충족) → `quality-reviewer`(코드 품질) 순차 게이트 + `security-auditor`
 - **complete**: `verify` 게이트(신선한 테스트 실행 증거)를 통과해야만 commit/PR
 
@@ -166,7 +168,7 @@ bash scripts/gx-ralph.sh      ← 터미널에서 러너 실행 (무인 반복)
 
 동작 구조:
 
-1. `dev`/`tdd`로 PRD(·설계)를 승인까지 확정합니다 — 루프는 승인된 PRD를 명세로 읽는 소비자입니다
+1. `dev`/`tdd`로 PRD(·설계)를 승인까지 확정합니다 — 루프는 승인된 PRD를 명세로 읽는 소비자입니다. 설계 확정 후 구현 진입 시 파이프라인이 "대화형 구현 vs ralph 무인 루프"를 묻고, 전환을 선택하면 별도 호출 없이 이어집니다
 2. `ralph`가 AC를 `ac-status.json` 원장으로 변환하고 최대 반복 수를 확정합니다
 3. 러너가 반복마다 **새 claude 세션**을 기동합니다 — AC 1건 구현 → verify → 커밋 → 원장 갱신 → 세션 종료. 진행 상태는 대화가 아닌 파일(원장·progress.txt)과 git 히스토리에 영속됩니다
 4. 전 AC 완료 후 사용자가 복귀해 `--phase review` → `--phase complete`로 리뷰·인수·PR을 진행합니다

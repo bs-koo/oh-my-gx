@@ -3,19 +3,27 @@
 ## v1.15.0 (2026-07-10) — 루프 엔지니어링 도입 (gx-ralph)
 
 ### Features
-- **gx-ralph (신규)**: Ralph 루프 패턴의 진입/관제 스킬 — 확정된 PRD의 수용 기준(AC)을 기계 판독 원장(`.dev/{branch-slug}/ac-status.json`)으로 변환하고, 루프 옵션(최대 반복 수)을 AskUserQuestion으로 확정한다. svn·보호 브랜치·PRD 부재·lock 존재 시 진입 차단. `--status` 지원. 상태 계약(원장 스키마·state.md 확장 필드·종료 계약·회귀 정책)의 SSOT
+- **gx-ralph (신규)**: Ralph 루프 패턴의 진입/관제 스킬 — 확정된 PRD의 수용 기준(AC)을 기계 판독 원장(`.dev/{branch-slug}/ac-status.json`)으로 변환하고, 루프 옵션(최대 반복 수)을 AskUserQuestion으로 확정한다. svn·보호 브랜치·PRD 부재·verify 명령 미감지·lock 존재 시 진입 차단. `--status` 지원. 상태 계약(원장 스키마·state.md 확장 필드·종료 계약·회귀 정책)의 SSOT
 - **gx-ralph-iterate (신규)**: 헤드리스 반복 1회 스킬 — 미완료 AC 1건 선택 → coder(gx-dev 계열) 또는 RGR 트리오(gx-tdd 계열) 디스패치 → `gx-verify --non-interactive` → **verify-status passed 선기록 → non-interactive 커밋**(훅 G3 순서 계약) → 원장 갱신 → 종료 계약(`<ralph>COMPLETE|CONTINUE|BLOCKED</ralph>`) 출력. AskUserQuestion 금지 철칙 — 헤드리스 세션에는 도구 자체가 존재하지 않음을 실측으로 확인
-- **외부 러너 `scripts/gx-ralph.sh` (신규)**: while 루프가 세션 밖에 있는 정통 Ralph 구조 — 반복마다 `claude -p`로 신선한 컨텍스트 세션을 기동한다. 하드 가드 4종(MAX_ITER 기본 10·반복당 타임아웃 30분·NO_DRIFT 2회 중단·lock) + 사전 조건 assert(git·비보호 브랜치·state/원장 존재·브랜치 일치). 분기 로직은 mock claude 테스트(`scripts/test-gx-ralph.sh`) 12케이스로 검증 (TDD: 테스트 선행 작성)
+- **외부 러너 `scripts/gx-ralph.sh` (신규)**: while 루프가 세션 밖에 있는 정통 Ralph 구조 — 반복마다 `claude -p`로 신선한 컨텍스트 세션을 기동한다. 하드 가드 4종(MAX_ITER 기본 10·반복당 타임아웃 30분·NO_DRIFT 2회 중단·lock) + 사전 조건 assert(git·비보호 브랜치·state/원장 존재·브랜치 일치). 분기 로직은 mock claude 테스트(`scripts/test-gx-ralph.sh`) T1~T9 17검증으로 확인 (TDD: 테스트 선행 작성)
 - **gx-verify `--non-interactive` 모드**: AskUserQuestion 분기 3곳(검증 명령 미감지·테스트 실행 0건·신규 경고)을 질문 없이 fail-closed 게이트 차단으로 대체. 기본(무인자) 동작은 무변경
+- **dev/tdd → ralph 전환 질문**: gx-dev·gx-tdd phase-implement 진입 시(NORMAL 모드) AskUserQuestion으로 "대화형 구현 vs ralph 무인 루프"를 1회 확인 — 전환 선택 시 `oh-my-gx:gx-ralph`를 Skill로 호출(로직 중복 없이 재사용)하고 파이프라인 종료, 루프 종료 후 `--phase review`/`complete`로 복귀. hotfix·경량 구현·`--phase` 단독·`--resume`·svn은 질문 생략. gx-tdd는 기준선 게이트(Step 0.5) 통과 후 질문(Step 0.7)해 깨진 기준 위 무인 루프를 방지. 두 파이프라인의 Phase 스킵 금지 규칙에 전환 예외 명문화, 린트 [11/11]에 양 파이프라인 존재 검사 추가
 
 ### Fixed
 - **pre-tool-guard.sh stdin 결함 (Windows)**: `cat /dev/stdin`이 Windows(Git Bash) 훅 spawn에서 빈 입력을 반환해 **G1(보호 브랜치)·G2(svn)·G3(verify) 가드 전체가 무력 상태**였던 결함을 plain `cat`으로 수정. 헤드리스 스모크 실측 중 발견했으며, 수정 후 헤드리스 deny 재검증 통과 (deny는 --allowedTools보다 우선, ask도 헤드리스에서는 차단됨을 함께 실측)
 - **훅 G3 확장**: verify 게이트 판별을 `pipeline: (gx-tdd|gx-ralph)` 통합 정규식으로 확장 — gx-ralph 반복 커밋에도 컨텍스트 압축·라우팅과 무관한 최종 방어선이 적용된다
+- **verify 경고 게이트 gx-ralph 확장 (전수 감사 반영)**: gx-commit·gx-pull-request의 스킬 층 경고 게이트와 skill-routing.md 라우팅 분기가 `pipeline: gx-tdd`만 인식해, 루프 중단 잔여 상태(lock 없음·verify-status pending)의 수동 커밋/PR이 훅 G3(ask)에만 의존하던 층간 비대칭 해소 — 판별을 gx-ralph까지 확장하고 러너 재실행/verify 통과 안내를 추가. 린트 [11/11]에 층간 대칭 검사 신설
+- **iterate 템플릿 id 이중 접두사 수정**: 원장 id가 이미 "AC-1" 형식인데 커밋·progress 템플릿이 `AC-{id}`로 표기되어 문자 그대로 치환 시 "AC-AC-1"이 되던 사양 결함 — `{id}`로 정정하고 린트에 금지 검사 추가
+- **gx-ralph 진입 게이트에 verify 명령 선검사 추가**: `projectTypes` 미감지 프로젝트에서 매 반복 fail-closed 차단 → attempts 3회 소진 후 BLOCKED로 낭비되던 것을 진입 시점 차단·안내로 전환
+- **러너 견고성 4종**: 저장소 루트 자동 이동(하위 디렉토리 실행 시 상대 경로 어긋남 방어), INT/TERM 신호에서도 lock 정리 보장(`trap exit 경유`), 재실행 시 이전 반복 로그를 `logs-{timestamp}/`로 보존(iter-N.log 덮어쓰기 방지 — 테스트 T8), 종료 계약 파싱 패턴 완화(`[^<]*` → `.*`, BLOCKED 사유의 `<` 포함 허용)
+- **gx-tdd origin 폴백 명시**: iterate가 `gx-tdd/phases/phase-implement.md`를 Read할 수 없는 환경(플러그인 설치 경로 차이)에서 BLOCKED 대신 에이전트 기본 역할 계약으로 AC 1건 한정 프롬프트를 직접 구성하도록 규정
+- **복귀 안내 origin 분기 (아키텍트 교차 검증 반영)**: 러너·진입 스킬의 루프 종료 안내가 `/gx-dev --phase review`로 하드코딩되어 gx-tdd 출발 루프가 qa-manager 기반 gx-dev 리뷰로 유도되던 충돌 해소 — origin이 gx-tdd면 `/gx-tdd --phase review`로 분기 (테스트 T9·린트 검사 추가). 함께: gx-dev→ralph 전환 시 기준 GREEN 1회 확인(gx-tdd Step 0.5와 대칭), gx-ralph 재실행 시 기존 `origin` 값 유지 규칙 명시(뒤집힘 방지)
 
 ### Docs/Infra
 - git-workflow.md("매 요청 시작 전" 브랜치 복귀·pull)·skill-routing.md(gx-commit 강제)에 gx-ralph 반복 세션 예외 명문화
 - 정합성 린트 [11/11] 신설(gx-ralph 판별 키·종료 계약 3파일·ac-status 스키마 키 정합), [4/11] 훅 검사를 주석 비의존 코드 패턴 검사로 일반화, [8/11]에 gx-ralph-iterate Skill 선언 검사 추가
 - README ralph 섹션·사용법 표 추가. 계획·검토 이력: `.sisyphus/plans/2026-07-10-gx-ralph-loop-engineering.md` (Metis 사전 분석 + Momus REVISE 반영)
+- dev/tdd → ralph 전환 질문을 사용자 문서 3종에 반영 — GitHub Pages(index.html: dev·tdd·ralph 카드), README(dev·tdd 스킬 상세), guide(§4.3 implement 행·§4.9 전환 행·§4.13 진입 차단/복귀 경로 행)
 
 ## v1.14.1 (2026-07-07) — 전수 감사 잔여 항목 반영
 

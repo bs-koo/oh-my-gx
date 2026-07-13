@@ -72,14 +72,14 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 
 - **origin: gx-dev** → `oh-my-gx:coder` 단일 디스패치:
   ```
-  AC {id}: {title}을 구현하라.
+  {id}: {title}을 구현하라.
   - PROJECT_ROOT: ./
   - 요구사항/설계 발췌: {수집한 컨텍스트}
   - 이전 시도 실패 사유 (있으면): {last_error + progress 발췌}
   - 이 AC 하나만 구현한다. 다른 AC 범위를 건드리지 않는다.
   - 완료 후 변경 파일 목록과 요약을 보고하라.
   ```
-- **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/G/F 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다.
+- **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/G/F 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다.
 
 디스패치가 코드 변경을 보고하면 즉시 state.md에 `verify-status: pending`을 기록한다.
 
@@ -92,20 +92,20 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 - **차단 시 (실패 경로)**:
   1. 커밋하지 않는다. `verify-status`는 `pending` 유지.
   2. ac-status.json: 해당 AC `attempts += 1`, `last_error`에 실패 사유 1줄(실패 테스트명 포함), `updated` 갱신.
-  3. progress.txt에 1줄 append: `[iter] AC-{id} 실패: {사유 1줄}`
+  3. progress.txt에 1줄 append: `[iter] {id} 실패: {사유 1줄}` (id는 원장 표기 그대로 — 예: `AC-1`)
   4. `<ralph>CONTINUE</ralph>` 출력 후 종료 — 다음 반복이 신선한 컨텍스트로 재시도한다. 워킹트리의 미커밋 변경은 되돌리지 않고 남긴다 (다음 반복의 재료).
 
 ### Step 4: verify-status 선기록 → 커밋 (통과 시)
 
 1. **커밋보다 먼저** state.md에 `verify-status: passed`를 기록한다 (훅 G3가 커밋 시점에 passed를 요구한다 — 순서 위반 시 헤드리스에서 자기 차단).
 2. 스테이징: `git add -A` 후 `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
-3. 커밋: `git commit -m "{type}: {AC title} (AC-{id})"` — type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않는 gx-ralph 전용 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
+3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않는 gx-ralph 전용 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
 4. 커밋이 훅에 의해 거부되면 → `<ralph>BLOCKED: 커밋 차단 — {훅 사유}</ralph>` 출력 후 종료.
 
 ### Step 5: 원장 갱신
 
 1. ac-status.json: 해당 AC `passes: true`, `updated` 갱신.
-2. progress.txt에 1줄 append: `[iter] AC-{id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
+2. progress.txt에 1줄 append: `[iter] {id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
 
 ### Step 6: 종료 계약 출력
 
