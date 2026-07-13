@@ -4,14 +4,15 @@
 
 set -uo pipefail
 
-INPUT=$(cat /dev/stdin 2>/dev/null || echo '{}')
+# plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
+INPUT=$(cat 2>/dev/null || echo '{}')
 
-# 공통 판별: state.md가 "gx-tdd 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
-# 판별식은 skill-routing.md·gx-commit·gx-pull-request와 동일: pipeline: gx-tdd + status: in_progress + verify-status ≠ passed
+# 공통 판별: state.md가 "verify 게이트 파이프라인(gx-tdd/gx-ralph) 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
+# 판별식은 skill-routing.md·gx-commit·gx-pull-request와 동일: pipeline 키 + status: in_progress + verify-status ≠ passed
 verify_gate_open() {
   STATE_FILE="$1"
   [ -f "$STATE_FILE" ] || return 1
-  grep -q "pipeline: gx-tdd" "$STATE_FILE" 2>/dev/null || return 1
+  grep -qE "pipeline: (gx-tdd|gx-ralph)" "$STATE_FILE" 2>/dev/null || return 1
   # 부분 문자열 매칭 유지(^앵커 금지): state.md 표기(들여쓰기·리스트)가 기계 보증되지 않아
   # 앵커가 빗나가면 게이트가 조용히 꺼진다. verify-status 값은 pending|passed뿐이라 오탐 없음.
   grep -q "status: in_progress" "$STATE_FILE" 2>/dev/null || return 1
@@ -61,7 +62,7 @@ EOF
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "ask",
-    "permissionDecisionReason": "gx-tdd verify 게이트 미통과 상태입니다 (.dev/${BRANCH_SLUG}/state.md: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
+    "permissionDecisionReason": "verify 게이트 미통과 상태입니다 (.dev/${BRANCH_SLUG}/state.md: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
   }
 }
 EOF
