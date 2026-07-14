@@ -27,7 +27,10 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S8 ★ | vcs=svn + `.dev/trunk` verify 미통과 | Claude가 `svn commit` 실행 시도 | 훅 deny + "verify 게이트 미통과" 경고 문구 포함 | 훅 G2 |
 | S9 | gx-tdd implement/review 진행 관찰 | (관찰 항목) | deprecated 에이전트(coder/qa-manager) 미호출 — red/green/refactor-coder·spec/quality-reviewer만 디스패치 | gx-tdd Agent 팀 강제 |
 | S10 | spec/quality/security 리뷰 각 1회 완료 | (관찰 항목) | 각 출력 마지막에 `spec_verdict`·`quality_verdict`·`security_verdict` YAML 블록 존재 + verdict/집계가 산문과 일치 | phase-review Step 2.1/4.0 |
+| S11 ★ | 일반 프로젝트 | `/gx-dev {소형 변경}, 구현만 해줘` | LIGHT 모드 라우팅 — ac.md 작성 + AC 확인 질문 1회 → 구현 → **빌드·테스트 Gate 실행** → summary.md 기록 → 커밋/PR. Gate 없이 complete 진입하면 회귀 | gx-dev 의도 파싱 → phase-light Step 2 |
+| S12 | 일반 프로젝트 | `/gx-dev {버그} 긴급 수정해줘` | LIGHT 긴급 프리셋 — AC 확인 질문 **생략**(ac.md 기록은 유지), Gate는 생략 없이 실행. product-owner 디스패치 0회 | gx-dev 의도 파싱 → phase-light Step 0.5 |
+| S13 | 구 모드 state.md(`mode: hotfix`, in_progress) | `/gx-dev --resume` | "구 모드 세션을 라이트 모드로 전환하여 재개" 안내 + prd.md를 ac.md 대용으로 사용 (재작성 없음) | phase-setup Step 0 레거시 마이그레이션 |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/10 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/13 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.

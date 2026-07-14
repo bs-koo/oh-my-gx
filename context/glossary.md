@@ -14,6 +14,7 @@
 | BaseEntity | 모든 JPA 엔티티의 부모. id, createdAt, updatedAt, deletedAt 자동 관리 |
 | ApiResponse | 통합 API 응답 래퍼. meta(result, errorCode, message) + data |
 | Spotless | Gradle 코드 포맷터 플러그인. 네이버 코딩 컨벤션 적용 |
+| LIGHT 모드 | gx-dev의 소형 변경용 경량 경로 (setup → light → complete). 에이전트 디스패치를 0~1회로 줄이되 기록(ac.md·summary.md)과 Mechanical Gate는 유지. 긴급 프리셋(preset: hotfix)은 AC 확인 질문을 생략 |
 
 ## 네이밍 규칙
 

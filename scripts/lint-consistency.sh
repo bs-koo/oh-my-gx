@@ -14,6 +14,7 @@
 #  9. gx-humanizer 에이전트 접두사 (bare humanizer-* 금지)
 # 10. force-push deny 패턴 bare 형태 커버 (settings.json)
 # 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿)
+# 12. gx-dev LIGHT 모드 계약 (Gate 필수·산출물 계약·레거시 매핑·폐지 모드 잔존 금지)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -22,7 +23,7 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-echo "[1/11] 버전 3중 일치"
+echo "[1/12] 버전 3중 일치"
 V_PLUGIN=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 V_MARKET=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/marketplace.json | head -1)
 V_CHANGE=$(sed -n 's/^## v\([0-9.]*\).*/\1/p' CHANGELOG.md | head -1)
@@ -32,7 +33,7 @@ else
   fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET CHANGELOG=$V_CHANGE"
 fi
 
-echo "[2/11] 서브에이전트 도구명 통일 (Task)"
+echo "[2/12] 서브에이전트 도구명 통일 (Task)"
 if grep -rn 'Agent(subagent_type' .claude/skills >/dev/null 2>&1; then
   fail "Agent(subagent_type 호출 문법 잔존: $(grep -rl 'Agent(subagent_type' .claude/skills | tr '\n' ' ')"
 else
@@ -44,7 +45,7 @@ else
   ok "allowed-tools Agent 선언 없음"
 fi
 
-echo "[3/11] RGR 드리프트 키워드"
+echo "[3/12] RGR 드리프트 키워드"
 REFACTOR_FILES="agents/refactor-coder.md .claude/skills/gx-tdd/phases/phase-implement.md .claude/skills/gx-refactor/SKILL.md"
 for item in "동작 변경" "새 기능 추가" "에러 핸들링" "성능 최적화" "인터페이스 시그니처 변경"; do
   for f in $REFACTOR_FILES; do
@@ -72,7 +73,7 @@ grep -q "security_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "security_verdict 계약(Task B 프롬프트 producer + 파싱 consumer) 누락: phase-review.md"
 [ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달, spec_verdict 쌍"
 
-echo "[4/11] verify 게이트 판별식 키 존재"
+echo "[4/12] verify 게이트 판별식 키 존재"
 for f in .claude/rules/skill-routing.md .claude/rules/git-workflow.md \
          .claude/skills/gx-commit/SKILL.md .claude/skills/gx-pull-request/SKILL.md \
          .claude/skills/gx-tdd/SKILL.md; do
@@ -87,7 +88,7 @@ grep -q "verify-status" .claude/hooks/pre-tool-guard.sh \
   || fail "판별식 키(verify-status) 누락: pre-tool-guard.sh"
 [ "$FAIL" -eq 0 ] && ok "판별식 키 5개 문서 + 훅 통합 정규식 확인"
 
-echo "[5/11] 디스패치 이름 ↔ agents/ 대조"
+echo "[5/12] 디스패치 이름 ↔ agents/ 대조"
 BUILTIN="Explore general-purpose"
 NAMES=$(grep -rhoE 'subagent_type="[^"]+"' .claude/skills 2>/dev/null | sed 's/subagent_type="//; s/"$//' | sort -u)
 for n in $NAMES; do
@@ -98,7 +99,7 @@ for n in $NAMES; do
 done
 ok "디스패치 이름 전수 확인"
 
-echo "[6/11] 셸 스크립트 CRLF 금지"
+echo "[6/12] 셸 스크립트 CRLF 금지"
 # 이식성 주의: grep -P는 macOS(BSD grep)에서 미지원이고, $'\r' 인자는 Git Bash(MSYS2)에서
 # 변환되어 빈 패턴이 되므로 모든 줄에 매칭(오탐)된다. tr|cmp 비교는 세 환경 모두에서 동작한다.
 CRLF=""
@@ -113,14 +114,14 @@ else
   fail "CRLF 포함 스크립트:$CRLF"
 fi
 
-echo "[7/11] 훅 스크립트 문법"
+echo "[7/12] 훅 스크립트 문법"
 if bash -n .claude/hooks/pre-tool-guard.sh 2>/dev/null; then
   ok "bash -n 통과"
 else
   fail "pre-tool-guard.sh 문법 오류"
 fi
 
-echo "[8/11] Skill 체이닝 스킬의 Skill 선언"
+echo "[8/12] Skill 체이닝 스킬의 Skill 선언"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
          .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md \
          .claude/skills/gx-ralph-iterate/SKILL.md; do
@@ -129,14 +130,14 @@ for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
 done
 [ "$FAIL" -eq 0 ] && ok "Skill 체이닝 5스킬 선언 확인"
 
-echo "[9/11] gx-humanizer 에이전트 접두사"
+echo "[9/12] gx-humanizer 에이전트 접두사"
 if grep -qF '`humanizer-' .claude/skills/gx-humanizer/SKILL.md 2>/dev/null; then
   fail "gx-humanizer에 접두사 없는 에이전트 이름 잔존 (→ oh-my-gx:humanizer-*)"
 else
   ok "humanizer 디스패치 접두사 정상"
 fi
 
-echo "[10/11] force-push deny 패턴 (bare 형태 커버)"
+echo "[10/12] force-push deny 패턴 (bare 형태 커버)"
 grep -qF 'Bash(*git push*--force*)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push*--force*)' 패턴 누락"
 grep -qF 'Bash(*git push* -f)' .claude/settings.json \
@@ -145,7 +146,7 @@ grep -qF 'Bash(*git push* -f *)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push* -f *)' (중간 -f) 패턴 누락"
 [ "$FAIL" -eq 0 ] && ok "deny 패턴 bare 형태 커버 확인"
 
-echo "[11/11] gx-ralph 상태 계약 정합"
+echo "[11/12] gx-ralph 상태 계약 정합"
 RALPH_ENTRY=.claude/skills/gx-ralph/SKILL.md
 RALPH_ITER=.claude/skills/gx-ralph-iterate/SKILL.md
 RALPH_RUNNER=scripts/gx-ralph.sh
@@ -181,6 +182,35 @@ grep -q '/gx-tdd --phase review' "$RALPH_ENTRY" \
 grep -q 'origin:' "$RALPH_RUNNER" \
   || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
 [ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿 확인"
+
+echo "[12/12] gx-dev LIGHT 모드 계약 정합"
+GXDEV=.claude/skills/gx-dev/SKILL.md
+LIGHT_PHASE=.claude/skills/gx-dev/phases/phase-light.md
+# LIGHT 경로 등록 + Gate 필수 (light의 게이트 공백 회귀 방지)
+[ -f "$LIGHT_PHASE" ] || fail "phase-light.md 없음"
+grep -q "phase-light.md" "$GXDEV" || fail "SKILL.md에 phase-light 경로 미등록: $GXDEV"
+grep -q "Mechanical Gate" "$LIGHT_PHASE" || fail "Mechanical Gate 지시 누락: $LIGHT_PHASE"
+grep -q "건너뛰기 금지" "$LIGHT_PHASE" || fail "Gate 건너뛰기 금지 문구 누락: $LIGHT_PHASE"
+# 산출물 계약 (ac.md·summary.md — producer와 consumer 양쪽)
+for key in "ac.md" "summary.md"; do
+  grep -q "$key" "$LIGHT_PHASE" || fail "산출물($key) 누락: $LIGHT_PHASE"
+  grep -q "$key" .claude/skills/gx-dev/phases/phase-complete.md || fail "산출물($key) consumer 누락: phase-complete.md"
+done
+# 모드 값 정합 (SKILL.md 기록 규칙 ↔ complete 분기)
+grep -q "mode: normal | light" "$GXDEV" || fail "모드 값(normal | light) 기록 규칙 누락: $GXDEV"
+grep -q "LIGHT 모드" .claude/skills/gx-dev/phases/phase-complete.md || fail "phase-complete LIGHT 분기 누락"
+# 레거시 호환 (--hotfix 매핑 + 구 세션 마이그레이션)
+grep -q "라이트 모드(긴급 프리셋)로 실행됩니다" "$GXDEV" || fail "--hotfix 레거시 매핑 안내 누락: $GXDEV"
+grep -q "레거시 모드 마이그레이션" .claude/skills/gx-dev/phases/phase-setup.md \
+  || fail "레거시 모드 마이그레이션 규칙 누락: phase-setup.md"
+# 폐지 모드 잔존 금지 (레거시 매핑·프리셋 명칭은 예외 — 모드 명칭 자체만 검사)
+grep -q "HOTFIX 모드" "$GXDEV" && fail "폐지된 HOTFIX 모드 잔존: $GXDEV"
+grep -q "경량 구현" "$GXDEV" && fail "폐지된 경량 구현 모드 잔존: $GXDEV"
+grep -q "Hotfix 모드 분기" .claude/skills/gx-dev/phases/phase-requirements.md \
+  && fail "폐지된 Hotfix 분기 잔존: phase-requirements.md"
+grep -q "경량 구현 모드 분기" .claude/skills/gx-dev/phases/phase-implement.md \
+  && fail "폐지된 경량 구현 분기 잔존: phase-implement.md"
+[ "$FAIL" -eq 0 ] && ok "LIGHT 경로·Gate 필수·산출물 계약·레거시 매핑·폐지 모드 부재 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then

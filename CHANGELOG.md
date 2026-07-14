@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.16.0 (2026-07-14) — gx-dev 모드 개편 (normal / light)
+
+### Features
+- **LIGHT 모드 (신규)**: gx-dev의 소형 변경용 경량 경로 `setup → light → complete`. 오케스트레이터가 AC(초경량 PRD: 배경+요구사항 3~5줄)를 직접 작성해 `ac.md`로 기록하고 사용자 1회 확인 → 구현(변경 파일 2개 이하·방향 명확이면 직접, 그 외 coder 1회 디스패치) → **Mechanical Gate(빌드+테스트) 필수** → `summary.md`(변경 요약+Gate 증거) 기록 → complete(AC 자가 검증 + 커밋/PR). 에이전트 디스패치 0~1회로 "그냥 프롬프팅" 수준의 속도에 기록·게이트를 더한다. PR에는 `--background ac.md --extra-section summary.md`로 산출물이 반영된다
+- **긴급 프리셋**: "긴급/핫픽스/빨리 고쳐"는 LIGHT의 프리셋(`preset: hotfix`)으로 라우팅 — AC 확인 질문만 생략(AC는 재현 조건 형식으로 기록)하고 Gate·AC 자가 검증은 유지. 기존 HOTFIX 모드의 product-owner 왕복 2회(경량 PRD+인수)가 사라져 긴급 경로가 실제로 빨라졌다
+
+### Changed
+- **HOTFIX·구현만(implement) 모드 폐지**: 기존 3모드(전체/긴급 수정/구현만)를 2모드(전체/라이트)로 통합. 구현만 모드의 기록 공백(요구사항이 ARGS[0] 한 줄뿐)과 게이트 공백(review 생략으로 테스트 증거 없이 커밋/PR 진입), HOTFIX의 "긴급인데 PO 2회 왕복" 모순을 해소
+- **의도 파싱**: 자연어 "구현만"을 `--phase implement` 매핑에서 LIGHT 모드로 재배정 (같은 단어가 phase 단독 실행과 경량 모드 두 의미로 쓰이던 중의성 해소 — phase 단독 실행은 `--phase implement` 플래그 전용). "라이트/가볍게" 키워드 신설. 모드 선택 AskUserQuestion을 2択으로 축소. `--light` 플래그 신설
+- **하위 호환**: `--hotfix` 플래그는 LIGHT 긴급 프리셋으로 매핑(안내 출력). 진행 중 구 모드 세션(`mode: hotfix|implement`)은 `--resume` 시 LIGHT 경로로 마이그레이션 — requirements 완료된 hotfix 세션은 prd.md를 ac.md 대용으로 사용
+- **gx-tdd 범위 제외**: gx-tdd의 자체 hotfix 모드(RGR·verify 유지)는 무변경. gx-dev 교차 참조 문구만 갱신
+
+### Docs/Infra
+- 설계 문서 `docs/specs/2026-07-14-gx-light-mode-design.md` (sef-plugin 토큰 구조 비교 분석 배경 포함)
+- 정합성 린트 [12/12] 신설: LIGHT 경로 등록·Gate 필수·산출물 계약(ac.md/summary.md producer-consumer)·모드 값 정합·레거시 매핑·폐지 모드 잔존 금지
+- 골든 시나리오 S11(light 라우팅+Gate 필수)·S12(긴급 프리셋 질문 생략)·S13(레거시 재개 마이그레이션) 추가
+- guide·README·index.html·prompt-examples 모드 표/예시 갱신, context/glossary.md에 LIGHT 모드 용어 등록
+
 ## v1.15.0 (2026-07-10) — 루프 엔지니어링 도입 (gx-ralph)
 
 ### Features
