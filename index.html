@@ -754,7 +754,8 @@
       <div class="usage-row"><span class="usage-say">"테스트 통과시켜줘"</span><span class="usage-arrow">→</span><span class="usage-skill">green</span></div>
       <div class="usage-row"><span class="usage-say">"중복 제거 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">refactor</span></div>
       <div class="usage-row"><span class="usage-say">"완료 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">verify</span></div>
-      <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev · hotfix</span></div>
+      <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
+      <div class="usage-row"><span class="usage-say">"구현만 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
       <div class="usage-row"><span class="usage-say">"AI 흔적 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">humanizer</span></div>
       <div class="usage-row"><span class="usage-say">"클라우드 트렌드 조사해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">research</span></div>
       <div class="usage-row"><span class="usage-say">"기술 부채 확인해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">tech-debt</span></div>
@@ -811,7 +812,7 @@
       <strong style="color:var(--accent-amber)">한 줄 기준</strong> — "이 작업의 정답을 자동 테스트로 표현할 수 있고, 그래야 하는가?" 예면 <strong>tdd</strong>, 아니오·애매하면 <strong>dev</strong>.
     </p>
 
-    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">정상 경로 (Normal) · dev·tdd 공통 6단계</p>
+    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">전체 파이프라인 (full) · dev·tdd 공통 6단계 — 소형 변경은 light 모드가 단계를 줄입니다</p>
     <div class="pipeline">
       <div class="pipe-step"><div class="ps-name">Setup</div><div class="ps-sub">환경 준비</div></div>
       <div class="pipe-arrow">→</div>
@@ -868,13 +869,14 @@
     <!-- dev (reverse, dark art) -->
     <div class="feature reverse">
       <div class="feature-text">
-        <span class="badge">전체 파이프라인</span>
+        <span class="badge">전체 개발 사이클</span>
         <h3 class="display-sm">dev</h3>
-        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 normal·hotfix·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다.</p>
+        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 all(전체)·core(핵심)·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다. 핵심 모드는 소형 변경용 경량 경로 — 기록(AC·변경 요약)과 빌드·테스트 게이트는 유지합니다.</p>
         <ul class="feature-list">
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
           <li>설계 확정 후 구현 진입 시 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 기본은 대화형 구현</li>
+          <li><strong>핵심 모드(core)</strong> — AC 확인 → 구현 → 빌드·테스트 게이트 → 기록. 소형 변경을 에이전트 왕복 없이 처리하되 산출물(ac.md·summary.md)은 유지</li>
           <li><strong>"이어서 해줘"</strong>로 중단 지점부터 정확히 재개</li>
         </ul>
       </div>
@@ -883,7 +885,7 @@
           <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">자연어 → 모드 분기</span></div>
           <div class="code-body">
 <span class="ln"><span class="c-cmd">&gt;</span> 집계 스케줄러 오류 긴급 수정해줘</span>
-<span class="ln">  <span class="c-str">→ HOTFIX</span> <span class="c-dim">(설계·리뷰 생략)</span></span>
+<span class="ln">  <span class="c-str">→ CORE</span> <span class="c-dim">(AC 확인 → 구현 → Gate → 기록)</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-cmd">&gt;</span> PRD만 작성해줘</span>
 <span class="ln">  <span class="c-str">→ 단일 Phase</span></span>
@@ -907,6 +909,7 @@
           <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
           <li>기준선 게이트 통과 후 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
+          <li><strong>핵심 모드(core)</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
         </ul>
       </div>
       <div class="feature-art">

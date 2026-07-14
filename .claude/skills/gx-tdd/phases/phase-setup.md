@@ -46,9 +46,10 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 2. **HEAD 정합성**: state.md에 `last-known-head` 필드가 있고 현재 `git rev-parse HEAD`와 다르면, `git log {last-known-head}..HEAD --oneline`으로 외부 커밋 개수를 센다. 1개 이상이면 사용자에게 보고: "외부 커밋 {N}건이 감지되었습니다: {sha1}..{sha2}. 계속하시려면 확인해주세요." 후 AskUserQuestion으로 진행/중단 선택.
 
 **이어서 진행 시:**
-- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback.
+- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags, mode를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback.
+- **레거시 모드 마이그레이션**: state.md의 `mode`가 구 명칭이면 갱신한다 — `normal`/`full`이면 `mode: all`로, `light`이면 `mode: core`로 조용히 갱신하고 그대로 재개한다 (동작 동일, 명칭만 변경). `mode`가 `hotfix`(폐지된 구 모드)이면 `mode: core`로 갱신하고 안내한다: "구 모드(hotfix) 세션을 핵심 모드로 전환하여 재개합니다." core는 구 hotfix와 Phase 구성이 동일하므로([setup, requirements, implement, complete]) 남은 Phase를 그대로 이어간다 — 구 requirements가 completed이고 `${DEV_DIR}/prd.md`가 있으면 이를 ac.md 대용으로 사용한다 (재작성하지 않음).
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
-- `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md가 있으면 Read하여 맥락 복원.
+- `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
 - phases 맵에서 마지막 in_progress Phase를 찾아 재개.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.

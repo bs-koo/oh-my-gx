@@ -2,18 +2,7 @@
 
 **사용자가 "승인"할 때까지 반복한다.** 반복 횟수 제한 없음.
 
-## Hotfix 모드 분기
-
-`--hotfix` 모드이면 경량 PRD를 작성한다:
-- product-owner에게 "경량 PRD 작성"으로 동작할 것을 지시한다.
-- 포함 섹션: 배경 + 요구사항 + 수용 기준만 (3관점 품질 검증, Q&A 생략).
-- 작성 완료 후 사용자에게 전문 표시 + 승인 확인.
-- 승인 → `${DEV_DIR}/prd.md`에 저장 후 다음 Phase로 진행.
-- 수정 요청 → 1회 수정 후 저장.
-
-hotfix가 아닌 경우 아래 정상 플로우를 따른다.
-
----
+> 이 phase는 전체 모드 전용이다. 핵심 모드는 이 phase를 거치지 않고 phase-core Step 0에서 오케스트레이터가 ac.md(초경량 PRD)를 직접 작성한다.
 
 **Step 1**: product-owner agent를 호출한다 (PRD 작성).
 `Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:

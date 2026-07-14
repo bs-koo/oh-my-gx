@@ -49,9 +49,10 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
 **이어서 진행 시:**
-- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. DEV_DIR이 없으면 브랜치명으로 재구성한다(브랜치명의 `/`를 `-`로 치환, Step 5의 DEV_DIR 설정 규칙과 동일).
+- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags, mode를 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. DEV_DIR이 없으면 브랜치명으로 재구성한다(브랜치명의 `/`를 `-`로 치환, Step 5의 DEV_DIR 설정 규칙과 동일).
+- **레거시 모드 마이그레이션**: state.md의 `mode`가 구 명칭이면 갱신한다 — `normal`/`full`이면 `mode: all`로, `light`이면 `mode: core`로 조용히 갱신하고 그대로 재개한다 (동작 동일, 명칭만 변경 — `light`는 `phases`/`steps`의 `light` 키도 `core`로 함께 갱신). `mode`가 `hotfix` 또는 `implement`(폐지된 구 모드)이면 `mode: core`로 갱신하고 안내한다: "구 모드({mode}) 세션을 핵심 모드로 전환하여 재개합니다." 남은 Phase는 핵심 경로(`[core, complete]`)로 매핑한다 — 구 requirements가 completed이고 `${DEV_DIR}/prd.md`가 있으면 이를 ac.md 대용으로 사용하고(재작성하지 않음) phase-core Step 1(구현)부터 재개한다. **ac.md도 prd.md도 없으면**(구 implement 세션 — 요구사항 기록이 없던 모드) phase-core **Step 0(AC 작성)부터** 재개하여 ARGS[0] 기반으로 ac.md를 먼저 생성한다 (맥락 없이 구현에 직행하지 않는다).
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
-- `${DEV_DIR}/prd.md`, `${DEV_DIR}/design.md`, `${DEV_DIR}/trust-ledger.md`, `${DEV_DIR}/codemap.md`, `${DEV_DIR}/self-check.md`가 있으면 Read하여 맥락 복원.
+- `${DEV_DIR}/prd.md`, `${DEV_DIR}/design.md`, `${DEV_DIR}/trust-ledger.md`, `${DEV_DIR}/codemap.md`, `${DEV_DIR}/self-check.md`, `${DEV_DIR}/ac.md`, `${DEV_DIR}/summary.md`가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3의 5번 항목)을 재실행하여 `REFERENCES`를 복원한다.
 - `context/` 디렉토리가 있고 베이스 브랜치가 있으면 Step 3-0 (context 최신화)을 재실행한다.
 - Step 3의 도메인 컨텍스트 탐색(4번 항목)을 재실행하여 `DOMAIN_CONTEXT`를 복원한다. 이 단계는 Step 3-0과 독립적이다 — 베이스 브랜치가 없어 Step 3-0을 건너뛰더라도 `DOMAIN_CONTEXT` 복원은 실행한다.
