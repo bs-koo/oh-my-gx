@@ -420,9 +420,9 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
 ### 문서 보관
-- phase-requirements 완료 시 확정된 PRD를 `${DEV_DIR}/prd.md`에 저장한다.
-- phase-design 완료 시 확정된 설계 문서를 `${DEV_DIR}/design.md`에 저장한다.
-- Trust Ledger를 `${DEV_DIR}/trust-ledger.md`에 저장한다.
+- phase-requirements 완료 시 확정된 PRD를 `${DEV_DIR}/prd.md`에 저장한다. **LIGHT 모드는 prd.md 대신 `${DEV_DIR}/ac.md`**(G-W-T 형식 AC)에 저장한다 (phase-requirements light 분기).
+- phase-design 완료 시 확정된 설계 문서를 `${DEV_DIR}/design.md`에 저장한다 (LIGHT는 design 단계가 없어 미생성).
+- Trust Ledger를 `${DEV_DIR}/trust-ledger.md`에 저장한다 (LIGHT는 H1~H4 긴급 감사 결과가 여기에 기록된다).
 - 코드 맵을 `${DEV_DIR}/codemap.md`에 저장한다 (갱신 시마다).
 - phase-design, phase-implement, phase-review 진입 시 해당 파일들을 Read하여 에이전트 프롬프트에 사용한다.
 - `.gitignore` 보강은 phase-setup의 Step 0.5a에서 프로젝트 타입별로 처리한다 (`.dev/` 패턴 — 브랜치별 하위 폴더 전체 포함).
