@@ -97,16 +97,16 @@ LIGHT 모드가 아닌 경우 아래 FULL 플로우를 따른다.
 
 ## G-W-T 검증 게이트 (Phase 완료 전 필수)
 
-PRD 저장 전에 오케스트레이터가 **AC 형식 검증**을 수행한다.
+산출물 저장 전에 오케스트레이터가 **AC 형식 검증**을 수행한다. FULL·LIGHT 공통 게이트다.
 
 ### 검증 절차
 
-1. PRD의 "수용 기준" 섹션을 파싱하여 각 AC를 추출한다.
+1. AC 문서에서 수용 기준 섹션을 파싱하여 각 AC를 추출한다 — **FULL**은 prd.md의 "수용 기준" 섹션, **LIGHT**는 ac.md의 "요구사항 (AC)" 섹션.
 2. 각 AC에 대해 다음을 확인:
    - `Given:`, `When:`, `Then:` 세 키워드가 모두 존재
    - Then 절에 구체적 검증값(코드, 필드, 숫자 등) 또는 자동 테스트 가능한 동작이 명시
    - 모호 표현(올바르게/적절히/정상적으로) 부재
-3. 위반 AC가 1건이라도 있으면 **GATE FAIL** → product-owner 재호출:
+3. 위반 AC가 1건이라도 있으면 **GATE FAIL** → 재작성 요청. **FULL**은 아래 지시로 product-owner를 재호출하고, **LIGHT**는 오케스트레이터가 아래 지시에 따라 ac.md의 해당 AC를 직접 재작성한다 (light 분기는 product-owner를 디스패치하지 않는다):
    ```
    [G-W-T 게이트 실패]
    다음 AC가 Given-When-Then 형식 또는 검증 가능성 기준을 만족하지 않습니다:
@@ -120,15 +120,15 @@ PRD 저장 전에 오케스트레이터가 **AC 형식 검증**을 수행한다.
 
 ### 위반 시 사용자 안내
 
-게이트 실패가 product-owner 재호출 1회로도 해결 안 되면:
+게이트 실패가 재작성 1회(FULL은 product-owner 재호출, LIGHT는 오케스트레이터 자가 수정)로도 해결 안 되면:
 ```
 AskUserQuestion(
   questions: [{
     question: "G-W-T 게이트 미통과 항목이 있습니다. 어떻게 진행할까요?",
     header: "게이트 처리",
     options: [
-      { label: "직접 수정", description: "PRD를 직접 G-W-T 형식으로 고침" },
-      { label: "위험 수용", description: "해당 AC를 구현 대상에서 제외하고 prd.md의 그 AC에 '(제외 — 위험 수용)' 표시 (테스트 없이 구현하는 것이 아님 — trust-ledger에 기록. 유일한 AC가 제외되면 구현 대상이 없으므로 파이프라인을 중단하고 보고)" },
+      { label: "직접 수정", description: "AC 문서(FULL: prd.md, LIGHT: ac.md)를 직접 G-W-T 형식으로 고침" },
+      { label: "위험 수용", description: "해당 AC를 구현 대상에서 제외하고 AC 문서(FULL: prd.md, LIGHT: ac.md)의 그 AC에 '(제외 — 위험 수용)' 표시 (테스트 없이 구현하는 것이 아님 — trust-ledger에 기록. 유일한 AC가 제외되면 구현 대상이 없으므로 파이프라인을 중단하고 보고)" },
       { label: "중단", description: "요구사항을 재정의" }
     ],
     multiSelect: false

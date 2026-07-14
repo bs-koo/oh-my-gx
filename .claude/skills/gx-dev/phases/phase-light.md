@@ -54,6 +54,7 @@ AskUserQuestion(
 
 - **직접 구현** (다음 두 조건 모두 충족 시): 예상 변경 파일이 **2개 이하**이고, 변경 방향이 AC에서 명확히 도출됨.
   - 오케스트레이터가 대상 파일을 Read한 뒤 Edit/Write로 직접 구현한다. **수정 대상 코드를 읽지 않고 수정하지 않는다.**
+  - **전환 안전장치**: 직접 구현 도중 변경 파일이 2개를 초과하거나 복잡도가 예상보다 높다고 판단되면, 무리하게 계속하지 말고 즉시 중단하고 **coder 1회 디스패치**로 전환한다 (이미 수행한 변경 내용을 프롬프트에 요약 포함).
 - **coder 1회 디스패치** (그 외): `Task(subagent_type="oh-my-gx:coder")` — prompt에 다음을 포함:
   - ac.md 전체 (Context Slicing 규칙: coder 구현, LIGHT 모드. 레거시 세션 재개로 ac.md가 없으면 prd.md를 대용으로 사용)
   - 코드 맵 (누적된 상태)
@@ -83,7 +84,7 @@ AskUserQuestion(
      }]
    )
    ```
-4. **build·test 모두 통과해야 Step 3으로 진행한다.** 긴급 요청도 예외 없다 — 테스트 실행 증거 없이 complete에 진입하지 않는다.
+4. **감지된 build·test가 모두 통과해야 Step 3으로 진행한다.** 긴급 요청도 예외 없다. 단 위임한 phase-review Step 0 로직과 동일하게, 프로젝트에 테스트 명령이 감지되지 않으면(config.json projectTypes에 test 없음) 테스트는 건너뛴다 — 이 경우 build 통과만으로 진행하되 execution-log에 "테스트 명령 미감지"를 명시한다. **테스트 명령이 있는데 그 통과 증거 없이 complete에 진입하지는 않는다.**
 
 Gate 결과(명령·통과 여부)를 `execution-log`에 기록한다.
 
@@ -125,5 +126,5 @@ steps:
 ## --resume 호환
 
 - `"AC 작성"`/`"AC 확인"` → ac.md가 있으면 Step 0.5부터, 없으면 Step 0부터 재실행.
-- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행. **레거시 세션 재개**(phase-setup의 hotfix/implement→light 마이그레이션)로 ac.md가 없으면 prd.md를 대용으로 Read한다 (재작성하지 않음).
+- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행. **레거시 세션 재개**(phase-setup의 hotfix/implement→light 마이그레이션)로 ac.md가 없으면 prd.md를 대용으로 Read한다 (재작성하지 않음). 둘 다 없으면(구 implement 세션) Step 0부터 재실행하여 ac.md를 먼저 생성한다.
 - `"mechanical-gate"` 이후 → Step 2부터 재실행 (Gate는 재실행해도 안전하다).

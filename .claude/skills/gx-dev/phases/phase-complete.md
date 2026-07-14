@@ -18,6 +18,19 @@ phase-review 이후 coder 수정이 있었을 수 있으므로 diff를 갱신한
 1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 AC 목록과 구현 결과(summary.md, DIFF_FILE)·Gate 결과를 대조한다.
 2. AC별 충족 여부 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ / AC-2 ⚠️ 부분 충족 — 사유`).
 3. 모두 충족 → 다음 단계 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
+   ```
+   AskUserQuestion(
+     questions: [{
+       header: "AC 자가 검증",
+       question: "AC 자가 검증에서 미충족 항목이 있습니다. 어떻게 진행할까요?",
+       multiSelect: false,
+       options: [
+         { label: "수정", description: "미충족 항목을 수정하고 Gate·자가 검증을 재실행합니다" },
+         { label: "진행", description: "미충족 항목을 명시한 채 다음 단계로 진행합니다 (status.md 갱신 제외)" }
+       ]
+     }]
+   )
+   ```
    - "수정" → 미충족 항목을 수정(phase-light Step 1의 구현 주체와 동일)하고 Gate 재실행 후 자가 검증 1회 재실행.
    - "진행" → 미충족 항목을 명시한 채 다음 단계 진행 (Step 3 status.md 갱신은 건너뛴다).
 
@@ -50,7 +63,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
   - 수정 선택 → coder로 수정 후 인수 검증 1회 재실행.
   - 건너뛰기 선택 → 다음 단계 진행.
 
-> **참고**: LIGHT 모드의 AC 자가 검증은 에이전트 디스패치 없이 수행된다. Step 3 status.md 갱신에서 LIGHT는 검증 결과와 무관하게 **경로 B (커밋 기반)**를 사용한다 (light AC는 경량이므로 커밋 단위 추적이 적합).
+> **참고**: LIGHT 모드의 AC 자가 검증은 에이전트 디스패치 없이 수행된다. status.md를 갱신하는 경우 LIGHT는 항상 **경로 B (커밋 기반)**를 사용한다 (light AC는 경량이므로 커밋 단위 추적이 적합). 단 **갱신 여부**는 아래 Step 3 분기 규칙을 따른다 — AC 자가 검증에 미충족이 남았으면 갱신 자체를 건너뛴다("무관하게"는 경로 선택에만 적용, 갱신 실행에는 적용하지 않는다).
 
 ## Step 1: Commit
 
