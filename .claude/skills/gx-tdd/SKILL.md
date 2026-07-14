@@ -230,7 +230,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 소형 변경용 경량 경로. 설계/정식 리뷰를 건너뛰고 AC 작성을 오케스트레이터가 직접 수행하지만, **RGR 사이클 + verify 게이트 + G-W-T 게이트 + 긴급 보안 감사 + AC 자가 검증은 실행**한다:
 ```
 light: setup → requirements (light: 오케스트레이터 직접 ac.md + G-W-T 게이트) → implement (RGR + H1~H4 긴급감사) → complete (verify + AC 자가 검증)
-정상:  setup → requirements → design → implement (RGR) → review (spec→quality+security) → complete (verify + 인수 + commit + PR)
+full:  setup → requirements → design → implement (RGR) → review (spec→quality+security) → complete (verify + 인수 + commit + PR)
 ```
 - **requirements (light 분기)**: 오케스트레이터가 `${DEV_DIR}/ac.md`(배경 + 요구사항: G-W-T 형식 AC 3~5개)를 직접 작성한다 — product-owner 디스패치 없음. **G-W-T 검증 게이트는 동일하게 통과 필수** (RGR의 입력 계약이므로), 사용자 확인 1회.
 - **design**: 건너뛴다. RGR 사이클이 ac.md + 코드 맵을 기반으로 진행 (testability 평가 없이).

@@ -27,7 +27,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
   - refactor-coder 입력: 정리 대상.
 - Step H1~H4 (긴급 보안 감사)는 사이클 완료 후 동일하게 실행한다.
 
-LIGHT 모드가 아닌 경우 아래 정상 플로우를 따른다.
+LIGHT 모드가 아닌 경우 아래 FULL 플로우를 따른다.
 
 ---
 

@@ -158,6 +158,8 @@ references/
 - **review**: `spec-reviewer`(AC 충족) → `quality-reviewer`(코드 품질) 순차 게이트 + `security-auditor`
 - **complete**: `verify` 게이트(신선한 테스트 실행 증거)를 통과해야만 commit/PR
 
+tdd에도 **light 모드**가 있습니다: 설계(testability 평가)와 정식 리뷰만 생략하는 경량 경로로, AC(Given-When-Then)를 오케스트레이터가 직접 작성해 확인받고 **RGR 사이클·verify 게이트·긴급 보안 감사는 그대로 유지**합니다. dev light와 달리 테스트 작성이 여전히 강제됩니다 — "TDD로 긴급 수정해줘", "TDD로 구현만 해줘"가 이 경로입니다.
+
 보조 스킬 `red` / `green` / `refactor`는 단계를 **단독으로** 실행하고 싶을 때 쓰는 스킬입니다 — 파이프라인은 이 스킬들을 거치지 않고 해당 에이전트를 직접 지휘하며, `verify`만 완료 단계에서 스킬로 호출됩니다.
 
 ### ralph

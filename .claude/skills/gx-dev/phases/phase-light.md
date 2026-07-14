@@ -55,7 +55,7 @@ AskUserQuestion(
 - **직접 구현** (다음 두 조건 모두 충족 시): 예상 변경 파일이 **2개 이하**이고, 변경 방향이 AC에서 명확히 도출됨.
   - 오케스트레이터가 대상 파일을 Read한 뒤 Edit/Write로 직접 구현한다. **수정 대상 코드를 읽지 않고 수정하지 않는다.**
 - **coder 1회 디스패치** (그 외): `Task(subagent_type="oh-my-gx:coder")` — prompt에 다음을 포함:
-  - ac.md 전체 (Context Slicing 규칙: coder 구현, LIGHT 모드)
+  - ac.md 전체 (Context Slicing 규칙: coder 구현, LIGHT 모드. 레거시 세션 재개로 ac.md가 없으면 prd.md를 대용으로 사용)
   - 코드 맵 (누적된 상태)
   - 프로젝트 루트 경로
   - REFERENCES (있으면): "아래 외부 규격/표준을 구현 시 준수하라. 필요 시 Read하여 상세 내용을 확인하라." + REFERENCES 테이블
@@ -125,5 +125,5 @@ steps:
 ## --resume 호환
 
 - `"AC 작성"`/`"AC 확인"` → ac.md가 있으면 Step 0.5부터, 없으면 Step 0부터 재실행.
-- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행.
+- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행. **레거시 세션 재개**(phase-setup의 hotfix/implement→light 마이그레이션)로 ac.md가 없으면 prd.md를 대용으로 Read한다 (재작성하지 않음).
 - `"mechanical-gate"` 이후 → Step 2부터 재실행 (Gate는 재실행해도 안전하다).

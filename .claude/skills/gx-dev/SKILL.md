@@ -175,7 +175,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | requirements | PRD Q&A | product-owner | Yes (사용자 승인까지) |
 | design | 설계 Q&A | architect + design-critic (선택적) | Yes (사용자 승인까지) |
 | implement | 구현 + 자기점검 | coder + qa-manager | Self-check (1회) |
-| light | AC 확인 + 구현 + Gate + 기록 | (inline, 규모에 따라 coder) | AC 확인 1회 |
+| light | AC 확인 + 구현 + Gate + 기록 | (inline, 규모에 따라 coder) | AC 확인 (승인까지) |
 | review | 검토 + 감사 | qa-manager + security-auditor (병렬) | Yes (max 2) |
 | complete | 완료 | product-owner (인수) + (스킬 참조) | 인수 재시도 (max 1) |
 
@@ -184,7 +184,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 소형 변경용 경량 경로. 에이전트 팀 대신 오케스트레이터가 직접 수행하되, **기록(ac.md·summary.md)과 Mechanical Gate는 유지**한다 — "그냥 프롬프팅"과의 차이가 바로 이 둘이다:
 ```
 light: setup → light (AC 확인 → 구현 → Mechanical Gate → 기록) → complete (AC 자가 검증 + 커밋/PR)
-정상:  setup → requirements → design → implement → review → complete
+full:  setup → requirements → design → implement → review → complete
 ```
 - AC 작성·확인: 오케스트레이터가 `${DEV_DIR}/ac.md`(초경량 PRD: 배경 + 요구사항)를 직접 작성해 사용자 1회 확인. 긴급 버그 수정 요청이면 AC를 재현 조건 관점으로 작성한다.
 - 구현: 예상 변경 파일 2개 이하 + 방향 명확이면 오케스트레이터 직접, 그 외 coder 1회 디스패치.

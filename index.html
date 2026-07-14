@@ -812,7 +812,7 @@
       <strong style="color:var(--accent-amber)">한 줄 기준</strong> — "이 작업의 정답을 자동 테스트로 표현할 수 있고, 그래야 하는가?" 예면 <strong>tdd</strong>, 아니오·애매하면 <strong>dev</strong>.
     </p>
 
-    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">정상 경로 (Normal) · dev·tdd 공통 6단계</p>
+    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">전체 파이프라인 (full) · dev·tdd 공통 6단계 — 소형 변경은 light 모드가 단계를 줄입니다</p>
     <div class="pipeline">
       <div class="pipe-step"><div class="ps-name">Setup</div><div class="ps-sub">환경 준비</div></div>
       <div class="pipe-arrow">→</div>
@@ -876,6 +876,7 @@
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
           <li>설계 확정 후 구현 진입 시 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 기본은 대화형 구현</li>
+          <li><strong>light 모드</strong> — AC 확인 → 구현 → 빌드·테스트 게이트 → 기록. 소형 변경을 에이전트 왕복 없이 처리하되 산출물(ac.md·summary.md)은 유지</li>
           <li><strong>"이어서 해줘"</strong>로 중단 지점부터 정확히 재개</li>
         </ul>
       </div>
@@ -908,6 +909,7 @@
           <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
           <li>기준선 게이트 통과 후 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
+          <li><strong>light 모드</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
         </ul>
       </div>
       <div class="feature-art">
