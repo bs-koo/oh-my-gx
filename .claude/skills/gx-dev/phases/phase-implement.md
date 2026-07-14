@@ -1,6 +1,6 @@
 # phase-implement: 구현 + 자기점검
 
-> 이 phase는 NORMAL 모드(및 `--phase implement` 단독 실행) 전용이다. LIGHT 모드는 이 phase를 거치지 않고 phase-light에서 구현·Gate·기록을 수행한다.
+> 이 phase는 FULL 모드(및 `--phase implement` 단독 실행) 전용이다. LIGHT 모드는 이 phase를 거치지 않고 phase-light에서 구현·Gate·기록을 수행한다.
 
 ## 구현 방식 확인 (ralph 무인 루프 전환)
 

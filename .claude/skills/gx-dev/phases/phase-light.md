@@ -2,7 +2,7 @@
 
 소형 변경용 경량 경로. 에이전트 팀 대신 오케스트레이터가 직접 수행하되, **기록(ac.md·summary.md)과 Mechanical Gate는 생략하지 않는다.** 이 둘이 "그냥 프롬프팅"과 이 파이프라인의 차이다.
 
-- 이 phase는 LIGHT 모드(`mode: light`)에서만 진입한다. NORMAL 모드는 requirements → design → implement → review를 따른다.
+- 이 phase는 LIGHT 모드(`mode: light`)에서만 진입한다. FULL 모드는 requirements → design → implement → review를 따른다.
 - ralph 무인 루프 전환 질문은 두지 않는다 — LIGHT에는 PRD가 없어 gx-ralph 진입 조건(PRD 필수)을 충족하지 않는다.
 
 ## Step 0: AC 작성 (오케스트레이터 직접, 에이전트 디스패치 없음)
@@ -23,15 +23,13 @@ ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면)를 기반으로 `${DEV_DIR}/ac.
 (3~5개 이내. 각 AC는 구현 완료 후 충족 여부를 판정할 수 있는 형태로 쓴다)
 ```
 
-**긴급 프리셋** (`preset: hotfix`): AC를 버그 관점으로 구성한다 — AC-1은 재현 조건(현재 잘못된 동작), AC-2는 수정 후 기대 동작, 필요 시 AC-3에 회귀 방지 항목.
+**긴급 버그 수정 요청**("긴급/핫픽스" 키워드 또는 레거시 `--hotfix`로 진입한 경우): AC를 버그 관점으로 구성한다 — AC-1은 재현 조건(현재 잘못된 동작), AC-2는 수정 후 기대 동작, 필요 시 AC-3에 회귀 방지 항목. 재현 조건을 파악할 정보가 부족하면 추측하지 말고 Step 0.5에서 사용자에게 확인한다.
 
 작성 후 `current-step`을 `"AC 작성"`으로 설정한다.
 
 ## Step 0.5: AC 확인
 
-**긴급 프리셋이면 이 Step을 건너뛴다** — ac.md 기록만으로 즉시 Step 1로 진행한다 (긴급 경로의 속도 우선. 기록은 이미 남았다).
-
-그 외에는 ac.md 내용을 표시하고 AskUserQuestion으로 1회 확인한다:
+ac.md 내용을 표시하고 AskUserQuestion으로 1회 확인한다 (긴급 요청도 예외 없다 — 긴급일수록 원인 오판 위험이 크고, 확인은 몇 초로 끝난다):
 
 ```
 AskUserQuestion(
@@ -85,7 +83,7 @@ AskUserQuestion(
      }]
    )
    ```
-4. **build·test 모두 통과해야 Step 3으로 진행한다.** 긴급 프리셋도 예외 없다 — 테스트 실행 증거 없이 complete에 진입하지 않는다.
+4. **build·test 모두 통과해야 Step 3으로 진행한다.** 긴급 요청도 예외 없다 — 테스트 실행 증거 없이 complete에 진입하지 않는다.
 
 Gate 결과(명령·통과 여부)를 `execution-log`에 기록한다.
 
@@ -116,7 +114,7 @@ Gate 결과(명령·통과 여부)를 `execution-log`에 기록한다.
 steps:
   light:
     - AC 작성: completed
-    - AC 확인: completed        # 긴급 프리셋이면 skipped
+    - AC 확인: completed
     - 구현: completed           # (직접) 또는 (coder)
     - mechanical-gate: completed
     - 기록: in_progress

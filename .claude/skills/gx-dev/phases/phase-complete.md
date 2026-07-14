@@ -21,7 +21,7 @@ phase-review 이후 coder 수정이 있었을 수 있으므로 diff를 갱신한
    - "수정" → 미충족 항목을 수정(phase-light Step 1의 구현 주체와 동일)하고 Gate 재실행 후 자가 검증 1회 재실행.
    - "진행" → 미충족 항목을 명시한 채 다음 단계 진행 (Step 3 status.md 갱신은 건너뛴다).
 
-**NORMAL 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
+**FULL 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
 
 PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
 
@@ -93,14 +93,14 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 ```
 if LIGHT 모드이고 Step 0 AC 자가 검증에 미충족이 있음 → 건너뛴다 (미충족 상태에서 갱신하면 안 됨)
 elif LIGHT 모드 → 경로 B (커밋 기반 — light AC는 경량이므로 커밋 단위 추적이 적합)
-elif NORMAL 모드이고 Step 0 인수 검증이 ACCEPT → 경로 A
-elif NORMAL 모드이고 Step 0 인수 검증이 REJECT → 건너뛴다 (미충족 상태에서 status.md를 ✅로 바꾸면 안 됨)
+elif FULL 모드이고 Step 0 인수 검증이 ACCEPT → 경로 A
+elif FULL 모드이고 Step 0 인수 검증이 REJECT → 건너뛴다 (미충족 상태에서 status.md를 ✅로 바꾸면 안 됨)
 else → 건너뛴다
 ```
 
-### 경로 A: 인수 검증 기반 (NORMAL 모드)
+### 경로 A: 인수 검증 기반 (FULL 모드)
 
-NORMAL 모드이고 Step 0 인수 검증이 ACCEPT이면 이 경로를 사용한다.
+FULL 모드이고 Step 0 인수 검증이 ACCEPT이면 이 경로를 사용한다.
 
 1. Step 0 인수 검증 결과에서 **통과한 AC 목록**을 추출한다 (예: AC-1, AC-4, AC-7).
 2. 매칭된 도메인의 `context/{domain}/status.md`를 Read한다.
@@ -114,7 +114,7 @@ NORMAL 모드이고 Step 0 인수 검증이 ACCEPT이면 이 경로를 사용한
 
 ### 경로 B: 커밋 기반 (LIGHT 모드)
 
-LIGHT 모드이거나, NORMAL인데 인수 검증이 실행되지 않은 경우(PRD 부재 등)에 이 경로를 사용한다.
+LIGHT 모드이거나, FULL인데 인수 검증이 실행되지 않은 경우(PRD 부재 등)에 이 경로를 사용한다.
 
 1. `${GIT_PREFIX} log ${BASE_BRANCH}..HEAD --oneline`로 현재 브랜치의 커밋 목록을 수집한다.
 2. 매칭된 도메인의 `context/{domain}/status.md`를 Read한다.
@@ -167,12 +167,12 @@ LIGHT 모드이거나, NORMAL인데 인수 검증이 실행되지 않은 경우(
 
 | 모드 | 입력 소스 | 추출 가능 후보 |
 |------|----------|---------------|
-| NORMAL | PRD + 설계서 | glossary, 주제 문서, architecture |
+| FULL | PRD + 설계서 | glossary, 주제 문서, architecture |
 | LIGHT | diff + ac.md | glossary, architecture |
 
 ### 후보 추출
 
-**NORMAL 모드** (PRD + 설계서):
+**FULL 모드** (PRD + 설계서):
 1. **glossary 후보**: PRD/설계서에 등장하는 도메인 용어 중, 현재 `glossary.md`에 없는 것을 추출한다.
 2. **주제 문서 후보**: PRD 제목과 배경을 기반으로, 주제 문서 생성을 제안한다.
 3. **architecture.md 갱신 후보**: 설계서에 새로운 구조적 결정(레이어, 의존관계 등)이 있으면 인덱스 갱신을 제안한다.

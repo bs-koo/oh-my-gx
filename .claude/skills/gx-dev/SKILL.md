@@ -61,7 +61,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - `--light`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
-- `--hotfix`(레거시)가 포함되면 **LIGHT 모드 + 긴급 프리셋**으로 실행한다. 안내 1줄을 출력한다: "`--hotfix`는 라이트 모드(긴급 프리셋)로 실행됩니다."
+- `--hotfix`(레거시)가 포함되면 **LIGHT 모드**로 실행한다. 안내 1줄을 출력한다: "`--hotfix`는 라이트 모드로 실행됩니다."
 - 플래그가 없으면 Step 2로 진행.
 
 **Step 2: 자연어 → 모드 판정**
@@ -72,7 +72,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 |-----------|------|------|
 | `상태`, `진행`, `어디까지`, `현황` | STATUS | "지금 어디까지 됐어?" |
 | `이어서`, `계속`, `재개`, `아까 하던` | RESUME | "아까 하던 작업 이어서 해줘" |
-| `긴급`, `핫픽스`, `급한`, `빨리 고쳐`, `버그 수정만` | LIGHT (긴급 프리셋) | "로그인 버그 긴급 수정해줘" |
+| `긴급`, `핫픽스`, `급한`, `빨리 고쳐`, `버그 수정만` | LIGHT | "로그인 버그 긴급 수정해줘" (AC를 재현 조건 관점으로 작성) |
 | `구현만`, `라이트`, `가볍게` | LIGHT | "알림 임계값 변경, 구현만 해줘" |
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
@@ -99,15 +99,14 @@ AskUserQuestion(
 )
 ```
 
-- "전체 파이프라인" 선택 → NORMAL 모드 (전체 Phase 실행)
+- "전체 파이프라인" 선택 → FULL 모드 (전체 Phase 실행)
 - "라이트" 선택 → LIGHT 모드: setup → light → complete (설계/정식 리뷰 생략, 기록·Mechanical Gate·커밋/PR은 유지)
 
 ### 모드 판정 결과 기록
 
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
-mode: normal | light
-preset: hotfix   # LIGHT 긴급 프리셋일 때만 기록
+mode: full | light
 intent-source: flag | natural-language | user-selection
 ```
 
@@ -115,7 +114,7 @@ intent-source: flag | natural-language | user-selection
 
 - `--phase requirements|design|implement|review|complete`: 특정 Phase만 실행
 - `--light`: 라이트 모드 (AC 확인 → 구현 → Gate → 기록 → PR)
-- `--hotfix`: 레거시 — 라이트 모드(긴급 프리셋)로 매핑된다
+- `--hotfix`: 레거시 — 라이트 모드로 매핑된다
 - `--base <branch>`: 베이스 브랜치 지정
 - `--status`: 현재 파이프라인 진행 상태 조회
 - `--resume`: 이전 파이프라인 재개
@@ -176,7 +175,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | requirements | PRD Q&A | product-owner | Yes (사용자 승인까지) |
 | design | 설계 Q&A | architect + design-critic (선택적) | Yes (사용자 승인까지) |
 | implement | 구현 + 자기점검 | coder + qa-manager | Self-check (1회) |
-| light | AC 확인 + 구현 + Gate + 기록 | (inline, 규모에 따라 coder) | AC 확인 1회 (긴급 프리셋은 생략) |
+| light | AC 확인 + 구현 + Gate + 기록 | (inline, 규모에 따라 coder) | AC 확인 1회 |
 | review | 검토 + 감사 | qa-manager + security-auditor (병렬) | Yes (max 2) |
 | complete | 완료 | product-owner (인수) + (스킬 참조) | 인수 재시도 (max 1) |
 
@@ -187,11 +186,11 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 light: setup → light (AC 확인 → 구현 → Mechanical Gate → 기록) → complete (AC 자가 검증 + 커밋/PR)
 정상:  setup → requirements → design → implement → review → complete
 ```
-- AC 작성·확인: 오케스트레이터가 `${DEV_DIR}/ac.md`(초경량 PRD: 배경 + 요구사항)를 직접 작성해 사용자 1회 확인. **긴급 프리셋**(`preset: hotfix`)이면 질문을 생략하고 기록 후 즉시 진행.
+- AC 작성·확인: 오케스트레이터가 `${DEV_DIR}/ac.md`(초경량 PRD: 배경 + 요구사항)를 직접 작성해 사용자 1회 확인. 긴급 버그 수정 요청이면 AC를 재현 조건 관점으로 작성한다.
 - 구현: 예상 변경 파일 2개 이하 + 방향 명확이면 오케스트레이터 직접, 그 외 coder 1회 디스패치.
 - Mechanical Gate: build + test **필수**. 통과 없이 complete에 진입하지 않는다.
 - complete: product-owner 인수 대신 **AC 자가 검증**. PR에는 ac.md(배경/요구사항)와 summary.md(변경 요약)를 전달한다.
-- 레거시 `--hotfix`와 자연어 "긴급/핫픽스"는 이 경로의 긴급 프리셋으로 실행된다.
+- 레거시 `--hotfix`와 자연어 "긴급/핫픽스"도 이 경로로 실행된다.
 
 ## Phase 라우팅 — 필수 실행 프로토콜
 
@@ -210,7 +209,7 @@ if light (LIGHT 모드):
     PHASES = [setup, light, complete]
 elif --phase 지정:
     PHASES = [해당 phase만] (SKILL.md "Phase 선택" 섹션 참조)
-else:  # NORMAL
+else:  # FULL
     PHASES = [setup, requirements, design, implement, review, complete]
 
 # 2. Phase별 순차 실행 (건너뛰기 금지)
@@ -450,7 +449,7 @@ execution-log:
 - **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
 - **coder (수정)**: 수정 항목 목록 + 수정 방안 + 코드 맵 + 프로젝트 루트 경로
 - **qa-manager**: PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 + 코드 맵 + REFERENCES (있으면)
-- **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용). NORMAL 모드 전용 — LIGHT 모드는 자기점검 대신 Mechanical Gate + AC 자가 검증을 사용한다
+- **qa-manager (자기점검)**: PRD의 "요구사항" + "수용 기준" 섹션만 (스펙 충족 확인용). FULL 모드 전용 — LIGHT 모드는 자기점검 대신 Mechanical Gate + AC 자가 검증을 사용한다
 - **security-auditor (통합 감사)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **researcher (독립 조사)**: 조사 요청 + 코드 맵 (있으면) + 프로젝트 루트 경로

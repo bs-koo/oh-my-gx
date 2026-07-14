@@ -1,8 +1,8 @@
-# gx-dev 모드 개편 설계: normal / light 2모드 체계
+# gx-dev·gx-tdd 모드 개편 설계: full / light 2모드 체계
 
-- 작성일: 2026-07-14
-- 상태: 확정 (구현 진행)
-- 범위: gx-dev 전용. gx-tdd의 자체 hotfix 모드(RGR 유지)는 변경하지 않는다.
+- 작성일: 2026-07-14 (v2 — 같은 날 확장: full 개명·프리셋 폐지·gx-tdd 재편)
+- 상태: 확정 (구현 완료)
+- 범위: gx-dev + gx-tdd. §1~§9는 v1(gx-dev light 도입) 설계이고, §10이 v2 확장이다. v1의 "normal"·"긴급 프리셋"·"gx-tdd 제외" 결정은 §10에서 개정되었다.
 
 ## 1. 배경
 
@@ -116,3 +116,39 @@ setup(기존 재사용) → light(신설 phase) → complete(light 분기)
 - 소형 작업 기준 에이전트 디스패치 3회(HOTFIX) 또는 1~2회(구현만) → **0~1회**.
 - product-owner 프롬프트(정의 333줄) 왕복 2회 제거.
 - 기록(ac.md/summary.md)과 게이트는 오케스트레이터 직접 수행이라 추가 디스패치 비용 없음.
+
+## 10. v2 확장 (같은 날 개정)
+
+### 10.1 normal → full 개명
+
+- `mode: full | light`로 명명 대칭화. normal은 "light가 비정상"으로 읽히는 어감 문제.
+- 내부 값 변경이므로 재개 마이그레이션 추가: `mode: normal` 발견 시 `full`로 조용히 갱신 (동작 동일).
+
+### 10.2 긴급 프리셋 폐지
+
+- v1의 프리셋은 실제 차이가 "AC 확인 질문 1회 생략"뿐 — 별도 개념(preset 필드·문서 행·시나리오)을 유지할 가치가 없다.
+- 긴급일수록 원인 오판 위험이 커서 AC 확인 1회는 긴급에서 오히려 가치가 있다 (구 HOTFIX의 진짜 문제는 질문이 아니라 PO 왕복 2회였고, 그것은 이미 제거됨).
+- "긴급/핫픽스" 키워드는 LIGHT로 라우팅하되 AC를 재현 조건 관점으로 작성하는 **작성 가이드**로만 남긴다. `--hotfix` 레거시 플래그는 LIGHT 매핑 유지.
+
+### 10.3 gx-tdd full/light 재편 (v1 §6 개정)
+
+v1은 gx-tdd를 범위에서 제외했으나, "light = 각 파이프라인의 필수 게이트는 유지하는 경량 경로"로 의미를 정의하면 tdd에도 일관 적용 가능하다:
+
+| | gx-dev light | gx-tdd light |
+|---|---|---|
+| AC 작성 | 오케스트레이터 직접 (ac.md) | 동일 — 단 **G-W-T 형식 강제 + G-W-T 검증 게이트 통과 필수** |
+| 구현 | 직접 or coder 1회 | **RGR 사이클 유지** (Iron Law 1 불변) |
+| 게이트 | Mechanical Gate (빌드+테스트) | 기준선 게이트 + verify 게이트 + H1~H4 긴급 보안 감사 |
+| 인수 | AC 자가 검증 | AC 자가 검증 (verify가 테스트 증거를 이미 강제) |
+| Phase 구성 | setup → light → complete | setup → requirements(light 분기) → implement(RGR) → complete |
+
+- 구 HOTFIX 대비 변화: product-owner 왕복 2회(경량 PRD + 인수) 제거. G-W-T 품질은 **G-W-T 검증 게이트를 오케스트레이터 작성물에 동일 적용**하는 것으로 방어 — v1 §6의 "PO 왕복은 정당한 비용" 평가를 개정한 근거.
+- Trust Ledger 섹션명 `### Hotfix 긴급 감사` → `### Light 긴급 감사` (phase-complete가 레거시 산출물의 구 섹션명도 인식).
+- 자연어 "구현만"은 tdd에서도 LIGHT로 라우팅 (gx-dev와 정렬. phase 단독 실행은 --phase implement 플래그 전용).
+- gx-ralph 무영향: light에는 prd.md가 없어 ralph 진입 게이트(PRD 필수)가 자연 차단. origin·러너·훅은 mode 필드를 읽지 않음.
+
+### 10.4 기계 검증 (v2 추가분)
+
+- 린트 [12/13] 갱신: mode 값 `full | light`, --hotfix 매핑 문구 갱신.
+- 린트 [13/13] 신설: tdd light 계약 — RGR 유지 문구·G-W-T 게이트 유지·긴급 감사 섹션·AC 자가 검증 분기·레거시 매핑·폐지 모드 잔존 금지.
+- 골든 시나리오 S12 재정의(긴급도 질문 1회), S13 확장(normal→full, dev·tdd 공통), S14 신설(tdd light: RGR 유지 + PO 미디스패치).

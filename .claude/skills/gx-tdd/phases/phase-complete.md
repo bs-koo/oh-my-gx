@@ -26,7 +26,7 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 파이프라인,
 1. state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
-   - hotfix 모드(`mode: hotfix` 또는 `flags`에 `--hotfix`)가 **아닌데** `phases.review`가 `completed`가 아니다 (hotfix는 review를 설계상 스킵하므로 review 부재가 정상이다)
+   - LIGHT 모드(`mode: light`, 레거시 `mode: hotfix` 또는 `flags`의 `--light`/`--hotfix` 포함)가 **아닌데** `phases.review`가 `completed`가 아니다 (light는 review를 설계상 스킵하므로 review 부재가 정상이다)
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 파이프라인)를 안내한다.
 3. 전체 파이프라인의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
 
@@ -53,14 +53,20 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 ---
 
-## Step 0: 인수 검증 (ProductOwner)
-PRD가 없으면 이 단계를 건너뛴다.
+## Step 0: 인수 검증 (ProductOwner / LIGHT는 AC 자가 검증)
 
-PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
-
-**diff 갱신**: phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
+**diff 갱신** (모드 무관 공통): phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
 - **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
 - **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
+
+**LIGHT 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (verify 게이트가 테스트 실행 증거를 이미 강제하므로 여기서는 AC 충족 대조만 한다):
+1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
+2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
+3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion: "RGR 수정"(phase-implement 복귀 — coder 직접 호출 금지) / "건너뛰기"(위험 수용, trust-ledger 기록).
+
+**FULL 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
+
+PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
 
 `Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
 - PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
@@ -100,7 +106,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 오케스트레이터가 아래 내용을 `${DEV_DIR}/pr-context.md`에 Write한다:
 
-1. **비즈니스 맥락**: PRD의 "배경"과 "요구사항", 설계서의 "배경 및 목적". `--hotfix`이면 ARGS[0]을 사용.
+1. **비즈니스 맥락**: PRD의 "배경"과 "요구사항", 설계서의 "배경 및 목적". LIGHT 모드이면 ac.md의 "배경"과 "요구사항 (AC)"를 사용 (레거시 재개로 ac.md가 없으면 prd.md, 그것도 없으면 ARGS[0]).
 2. **Trust Ledger 요약**: `${DEV_DIR}/trust-ledger.md`가 존재하면 Read하여 아래 형식으로 포함한다:
    ```
    ## Audit Summary
@@ -109,7 +115,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
    ```
    Trust Ledger가 없으면 이 섹션을 생략한다.
 
-   **Hotfix 감사 병기**: Trust Ledger에 `### Hotfix 긴급 감사` 섹션이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- hotfix 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. 정상 플로우와 hotfix 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
+   **Light 긴급 감사 병기**: Trust Ledger에 `### Light 긴급 감사` 섹션(레거시 산출물은 `### Hotfix 긴급 감사`)이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- light 긴급 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. FULL과 LIGHT 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
 
 ### Step 2-2: `Skill("oh-my-gx:gx-pull-request")` 호출
 

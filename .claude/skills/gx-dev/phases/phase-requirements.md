@@ -2,7 +2,7 @@
 
 **사용자가 "승인"할 때까지 반복한다.** 반복 횟수 제한 없음.
 
-> 이 phase는 NORMAL 모드 전용이다. LIGHT 모드는 이 phase를 거치지 않고 phase-light Step 0에서 오케스트레이터가 ac.md(초경량 PRD)를 직접 작성한다.
+> 이 phase는 FULL 모드 전용이다. LIGHT 모드는 이 phase를 거치지 않고 phase-light Step 0에서 오케스트레이터가 ac.md(초경량 PRD)를 직접 작성한다.
 
 **Step 1**: product-owner agent를 호출한다 (PRD 작성).
 `Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:

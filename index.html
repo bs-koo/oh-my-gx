@@ -754,8 +754,8 @@
       <div class="usage-row"><span class="usage-say">"테스트 통과시켜줘"</span><span class="usage-arrow">→</span><span class="usage-skill">green</span></div>
       <div class="usage-row"><span class="usage-say">"중복 제거 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">refactor</span></div>
       <div class="usage-row"><span class="usage-say">"완료 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">verify</span></div>
-      <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev · light 긴급</span></div>
-      <div class="usage-row"><span class="usage-say">"구현만 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev · light</span></div>
+      <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · light</span></div>
+      <div class="usage-row"><span class="usage-say">"구현만 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · light</span></div>
       <div class="usage-row"><span class="usage-say">"AI 흔적 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">humanizer</span></div>
       <div class="usage-row"><span class="usage-say">"클라우드 트렌드 조사해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">research</span></div>
       <div class="usage-row"><span class="usage-say">"기술 부채 확인해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">tech-debt</span></div>
@@ -871,7 +871,7 @@
       <div class="feature-text">
         <span class="badge">전체 파이프라인</span>
         <h3 class="display-sm">dev</h3>
-        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 normal·light·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다. light는 소형 변경용 경량 경로 — 기록(AC·변경 요약)과 빌드·테스트 게이트는 유지합니다.</p>
+        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 full·light·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다. light는 소형 변경용 경량 경로 — 기록(AC·변경 요약)과 빌드·테스트 게이트는 유지합니다.</p>
         <ul class="feature-list">
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
@@ -884,7 +884,7 @@
           <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">자연어 → 모드 분기</span></div>
           <div class="code-body">
 <span class="ln"><span class="c-cmd">&gt;</span> 집계 스케줄러 오류 긴급 수정해줘</span>
-<span class="ln">  <span class="c-str">→ LIGHT 긴급</span> <span class="c-dim">(AC 기록·Gate 유지, 확인 질문 생략)</span></span>
+<span class="ln">  <span class="c-str">→ LIGHT</span> <span class="c-dim">(AC 확인 → 구현 → Gate → 기록)</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-cmd">&gt;</span> PRD만 작성해줘</span>
 <span class="ln">  <span class="c-str">→ 단일 Phase</span></span>
