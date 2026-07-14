@@ -72,7 +72,7 @@ AskUserQuestion(
 ```
 
 - **"대화형 RGR"** → Step 1로 진행한다.
-- **"ralph 무인 루프"** → `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
+- **"ralph 무인 루프"** → `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일을 아직 지원하지 않습니다 — 반복은 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
 
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 

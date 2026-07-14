@@ -63,7 +63,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--hotfix`(레거시)가 포함되면 **핵심 모드**로 실행한다. 안내 1줄을 출력한다: "`--hotfix`는 핵심 모드로 실행됩니다."
 - `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
-- 플래그가 없으면 Step 2로 진행.
+- 모드 관련 플래그가 없으면 Step 2로 진행한다 (`--eco`/`--standard`만 있는 경우에도 Step 2의 자연어 판정을 계속한다).
 
 **Step 2: 자연어 → 모드 판정**
 
@@ -77,13 +77,13 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `구현만`, `핵심만`, `라이트`, `가볍게` | CORE | "알림 임계값 변경, 구현만 해줘" |
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
-| `에코`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 알림 기능 개발해줘" |
+| `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 알림 기능 개발해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — 설계서 기반 구현 단독 실행과 의도가 다르다).
 
 BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다. BASE 추출은 모드 판정과 독립적이다 — BASE가 추출되어도 모드가 결정되지 않으면 Step 3으로 진행한다.
 
-ECO 추출: ARGS[0]에 `에코`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
+ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
 
 **Step 3: 모드·프로파일 확인 (위 패턴에 해당하지 않는 경우)**
 
@@ -105,7 +105,7 @@ AskUserQuestion(
       question: "모델 프로파일을 선택해주세요. 절차·게이트는 동일하고 에이전트 모델 수준만 달라집니다.",
       header: "모델 프로파일",
       options: [
-        { label: "표준", description: "설계·구현·품질 리뷰에 opus — 품질 우선 (Max 요금제 권장)" },
+        { label: "표준", description: "설계·비판 검토·구현에 opus — 품질 우선 (Max 요금제 권장)" },
         { label: "에코", description: "architect 외 opus 에이전트를 sonnet으로 하향 — 토큰 절약 (Pro 요금제 권장, 게이트 동일)" }
       ],
       multiSelect: false
@@ -114,10 +114,10 @@ AskUserQuestion(
 )
 ```
 
-- **프로파일 질문 포함 규칙**: `--eco`/`--standard` 플래그나 자연어(`에코`/`절약 모드`)로 이미 확정됐으면 두 번째 질문을 **생략**한다 (모드 질문만 제시). config.json `modelProfile`이 설정되어 있으면 해당 옵션을 **첫 번째에 배치**하고 label 끝에 `(현재 설정)`을 붙인다 — 이 질문의 답변이 이번 실행의 최종 결정이다.
+- **프로파일 질문 포함 규칙**: `--eco`/`--standard` 플래그나 자연어(`에코 모드`/`에코로`/`절약 모드`)로 이미 확정됐으면 두 번째 질문을 **생략**한다 (모드 질문만 제시). config.json `modelProfile`이 설정되어 있으면 해당 옵션을 **첫 번째에 배치**하고 label 끝에 `(현재 설정)`을 붙인다 — 이 질문의 답변이 이번 실행의 최종 결정이다.
 - "전체 과정 진행" 선택 → 전체 모드(all) (전체 Phase 실행)
 - "핵심 과정만 진행" 선택 → 핵심 모드(core): setup → core → complete (설계/정식 리뷰 생략, 기록·Mechanical Gate·커밋/PR은 유지)
-- "표준"/"에코" 선택 → `MODEL_PROFILE`로 확정 (phase-setup Step 1.5가 state.md `model-profile`에 기록)
+- "표준"/"에코" 선택 → `MODEL_PROFILE`로 확정 (phase-setup Step 1.5가 결정을 확정하고, Step 7이 state.md `model-profile`에 기록)
 
 ### 모드 판정 결과 기록
 
@@ -155,7 +155,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
    - 프로젝트: {project-type} ({project-root})
    - 현재 Phase: {phase} ({status})
    - 플래그: {flags}
-   - 모델 프로파일: {model-profile}
+   - 모델 프로파일: {model-profile} (필드가 없는 레거시 세션은 standard로 표시)
    - 시작: {started}
 
    ### Phase 진행
@@ -346,7 +346,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 
 에이전트 디스패치의 모델 수준. 절차 축(mode)과 **직교**하며 Phase 구성·게이트에 영향을 주지 않는다.
 
-- 결정 우선순위: `--eco`/`--standard` 플래그 > ARGS[0] 자연어(`에코`/`절약 모드` → eco) > **의도 파싱 Step 3 질문 답변**(모드 확인 질문에 프로파일 질문이 함께 제시된 경우) > config.json `modelProfile` > 기본 `standard`. phase-setup Step 1.5가 이 순서로 확정해 state.md에 기록한다.
+- 결정 우선순위: `--eco`/`--standard` 플래그 > ARGS[0] 자연어(`에코 모드`/`에코로`/`절약 모드` → eco) > **의도 파싱 Step 3 질문 답변**(모드 확인 질문에 프로파일 질문이 함께 제시된 경우) > config.json `modelProfile` > 기본 `standard`. phase-setup Step 1.5가 이 순서로 확정해 state.md에 기록한다.
 - **standard (표준)**: Agent 팀 표의 모델 그대로 디스패치한다.
 - **eco (에코 모드)**: **design-critic과 coder**를 Task 호출 시 `model: "sonnet"` 파라미터로 오버라이드하여 디스패치한다 — Task의 model 파라미터는 에이전트 정의(frontmatter)보다 우선한다. **architect는 eco에서도 opus를 유지한다** — 설계 오류는 게이트(빌드·테스트)가 방어하지 못하고 하류 전체로 전파되는 유일한 실패인 반면 호출은 1~2회로 가장 적다 (게이트 4겹이 방어하는 생산자 coder와, 실패 모드가 '놓침'인 검증자 design-critic만 하향). 이미 sonnet인 에이전트는 그대로 유지한다 (haiku 강등 금지). 이 규칙은 **모든 Phase의 모든 Task 디스패치에 적용**된다 — phase 파일에 개별 표기가 없어도 적용한다.
 - 게이트(빌드·테스트·Mechanical Gate)는 모델 무관 기계 검증이므로 eco에서도 동일하게 유지된다.
@@ -611,7 +611,7 @@ AskUserQuestion(
 #### 변환 규칙
 
 - **(권장)** 표시가 있는 선택지는 options 배열의 첫 번째에 배치하고, label 끝에 `(Recommended)`를 추가한다.
-- 질문이 **2개 이상**이면 순서대로 하나씩 AskUserQuestion을 호출한다. 이전 답변이 다음 질문의 맥락에 영향을 주는 경우 반영한다.
+- 질문이 **2개 이상**이면 순서대로 하나씩 AskUserQuestion을 호출한다. 이전 답변이 다음 질문의 맥락에 영향을 주는 경우 반영한다. (이 규칙은 에이전트 질문 변환에 적용된다 — **의도 파싱 Step 3의 모드·프로파일 동시 질문은 명시적 예외**로, 한 호출의 questions 배열에 2개를 담는다.)
 - 에이전트가 기술 용어를 사용한 경우, 사용자에게 표시할 때 **비기술적 표현으로 의역**한다. 예: "JWT vs 세션" → "로그인 유지 방식".
 
 #### 승인/수정 공통 패턴
@@ -652,7 +652,8 @@ AskUserQuestion(
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
 > 1. `git rev-parse --is-inside-work-tree`로 git repo 확인.
-> 2. `PROJECT_ROOT` = 현재 디렉토리. 완료.
+> 2. `PROJECT_ROOT` = 현재 디렉토리.
+> 3. `MODEL_PROFILE` 결정: `.dev/{branch-slug}/state.md`에 `model-profile` 필드가 있으면 그 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다). 완료.
 
 ---
 

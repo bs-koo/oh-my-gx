@@ -25,7 +25,7 @@ AskUserQuestion(
 ```
 
 - **"대화형 구현"** → 아래 "구현" 플로우를 그대로 진행한다.
-- **"ralph 무인 루프"** → 전환 전에 config.json `projectTypes`의 test 명령을 1회 실행해 **기준 GREEN**을 확인한다 (깨진 기준 위 무인 루프는 첫 반복부터 verify가 차단되어 낭비 — gx-tdd Step 0.5와 동일 근거). 깨져 있으면 실패 요약을 보고하고 전환을 계속할지 재확인한다. 이어서 `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다 (PRD는 requirements phase가 이미 저장 — 로직 중복 없이 진입 스킬 재사용). gx-ralph가 AC 원장 변환·러너 안내까지 완료하면 **이 파이프라인은 여기서 종료한다** — implement/review/complete를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로(`/gx-dev --phase review` → `--phase complete`)는 gx-ralph가 안내한다. Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 구현으로 진행할지 확인한다.
+- **"ralph 무인 루프"** → 전환 전에 config.json `projectTypes`의 test 명령을 1회 실행해 **기준 GREEN**을 확인한다 (깨진 기준 위 무인 루프는 첫 반복부터 verify가 차단되어 낭비 — gx-tdd Step 0.5와 동일 근거). 깨져 있으면 실패 요약을 보고하고 전환을 계속할지 재확인한다. 이어서 `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다 (PRD는 requirements phase가 이미 저장 — 로직 중복 없이 진입 스킬 재사용). gx-ralph가 AC 원장 변환·러너 안내까지 완료하면 **이 파이프라인은 여기서 종료한다** — implement/review/complete를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로(`/gx-dev --phase review` → `--phase complete`)는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일을 아직 지원하지 않습니다 — 반복은 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 구현으로 진행할지 확인한다.
 
 ## 구현
 

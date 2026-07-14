@@ -257,7 +257,15 @@ for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phase
   grep -q "모델 프로파일 결정" "$f" || fail "MODEL_PROFILE 결정 로직 누락: $f"
 done
 grep -q "모델 프로파일" .claude/skills/gx-setup/SKILL.md || fail "gx-setup 모델 프로파일 단계 누락"
-[ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·결정 로직·setup 단계 확인"
+# 의미 정합: agents/*.md의 opus 집합 ↔ SKILL eco 하향 목록 (architect는 유지 원칙, humanizer 계열은 파이프라인 외)
+ECO_LINES=$(grep "eco (에코 모드)" "$GXDEV" "$GXTDD")
+for a in agents/*.md; do
+  grep -q "^model: opus" "$a" || continue
+  name=$(basename "$a" .md)
+  case "$name" in architect|humanizer-*) continue ;; esac
+  echo "$ECO_LINES" | grep -q "$name" || fail "opus 에이전트($name)가 eco 하향 목록에 없음 — SKILL.md 모델 프로파일 규칙 갱신 필요"
+done
+[ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then

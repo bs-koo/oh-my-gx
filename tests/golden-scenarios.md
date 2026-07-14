@@ -31,7 +31,7 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S12 | 일반 프로젝트 | `/gx-dev {버그} 긴급 수정해줘` | 핵심 모드 라우팅 — AC를 재현 조건 형식으로 작성 + **확인 질문 1회 실행**(생략 없음), Gate 필수. product-owner 디스패치 0회 | gx-dev 의도 파싱 → phase-core Step 0/0.5 |
 | S13 | 구 모드 state.md(`mode: hotfix`/`normal`/`full`/`light`, in_progress) | `/gx-dev --resume`, `/gx-tdd --resume` | `hotfix`→core 전환 안내 + prd.md를 ac.md 대용으로 사용 (재작성 없음). `normal`/`full`→all, `light`→core는 조용히 갱신 후 그대로 재개 | phase-setup Step 0 레거시 마이그레이션 (dev·tdd 동일) |
 | S14 | 일반 프로젝트 | `/gx-tdd {버그} 긴급 수정해줘` | 핵심 모드 라우팅 — 오케스트레이터가 ac.md(G-W-T)를 직접 작성 + **G-W-T 게이트 통과** + 확인 1회 → **RGR 사이클 유지** → H1~H4 긴급 감사 → verify → AC 자가 검증. product-owner 디스패치 0회, RGR 생략하면 회귀 | gx-tdd phase-requirements core 분기 → phase-implement |
-| S15 | 일반 프로젝트 | `/gx-dev --eco {기능}` (전체 모드 선택) | 에코 프로파일 적용 — state.md `model-profile: eco`, design-critic·coder 디스패치에 `model: "sonnet"` 오버라이드 관찰. **architect는 오버라이드 없이 opus 유지**, sonnet 에이전트 무변경. 게이트·Phase 구성은 표준과 동일 | phase-setup Step 1.5 → SKILL 공유 규칙 "모델 프로파일" |
+| S15 | 일반 프로젝트 | `/gx-dev --eco {기능}` (전체 모드 선택) | 에코 프로파일 적용 — state.md `model-profile: eco`, coder 디스패치에 `model: "sonnet"` 오버라이드 관찰 (design-critic은 선택적 단계 — **디스패치된 경우** 동일 오버라이드). **architect는 오버라이드 없이 opus 유지**, sonnet 에이전트 무변경. 게이트·Phase 구성은 표준과 동일 | phase-setup Step 1.5 → SKILL 공유 규칙 "모델 프로파일" |
 | S16 | config.json `modelProfile: "eco"` | `/gx-tdd {기능}` (질문 경로) / `--standard` 지정 / `--eco --standard` 동시 지정 | 질문 경로 → 모드·프로파일 질문이 **한 AskUserQuestion 호출**에 함께 제시되고 "에코 (현재 설정)"이 첫 옵션 — 답변이 최종 결정. `--standard` → 프로파일 질문 생략·이번 실행만 표준. `--eco --standard` 동시 → 충돌 에러 후 중단 | Step 3 2질문 + MODEL_PROFILE 결정 우선순위 + 플래그 충돌 검증 |
 
 ## 기록

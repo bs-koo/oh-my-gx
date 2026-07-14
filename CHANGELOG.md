@@ -4,7 +4,7 @@
 
 ### Features
 - **에코 모드(eco) (신규)**: 절차 축(전체/핵심 모드)과 **직교하는 모델 프로파일 축** — 절차·게이트는 그대로, 에이전트 디스패치 모델만 opus 중심→sonnet 중심으로 하향한다. Pro 요금제 사용자가 전체 모드를 저비용으로 사용 가능. 하향 대상: gx-dev(design-critic·coder), gx-tdd(design-critic·test-architect·quality-reviewer) — **architect는 eco에서도 opus 유지** (설계 오류는 게이트가 방어하지 못하는 유일한 상류 실패인데 호출은 1~2회로 최소 — "게이트 무방비 산출물의 생산자만 opus 유지" 원칙). Task 호출의 `model` 파라미터 오버라이드로 구현 — `agents/*.md` 무수정(frontmatter가 표준 프로파일의 SSOT). sonnet 에이전트 무변경, haiku 강등 없음
-- **결정 체계**: `--eco`/`--standard` 플래그 > 자연어("에코"/"절약 모드") > **모드 확인 질문의 프로파일 답변** > config.json `modelProfile`(gx-setup 5단계에서 1회 설정) > 기본 standard. 모드 확인 질문이 뜰 때는 프로파일 질문을 **같은 AskUserQuestion 호출에 함께 제시** — 한 번의 submit으로 모드·프로파일 동시 결정 (dev·tdd 동일, config 값은 "(현재 설정)"으로 첫 배치). 모드 자동 판정 경로(긴급·구현만 등)는 질문 없이 config/기본값 — 추가 인터럽트 없음. phase-setup Step 1.5에서 확정, state.md `model-profile` 기록·`--resume` 복원
+- **결정 체계**: `--eco`/`--standard` 플래그 > 자연어("에코 모드"/"에코로"/"절약 모드" — 단독 "에코"는 오탐 방지 제외) > **모드 확인 질문의 프로파일 답변** > config.json `modelProfile`(gx-setup 5단계에서 1회 설정) > 기본 standard. 모드 확인 질문이 뜰 때는 프로파일 질문을 **같은 AskUserQuestion 호출에 함께 제시** — 한 번의 submit으로 모드·프로파일 동시 결정 (dev·tdd 동일, config 값은 "(현재 설정)"으로 첫 배치). 모드 자동 판정 경로(긴급·구현만 등)는 질문 없이 config/기본값 — 추가 인터럽트 없음. phase-setup Step 1.5에서 확정, state.md `model-profile` 기록·`--resume` 복원
 - **품질 방어**: 게이트(빌드·테스트·Mechanical Gate·G-W-T·verify)는 모델 무관 기계 검증이라 eco에서도 품질 바닥이 유지된다. 오케스트레이터 본체(메인 세션 모델)는 플러그인이 제어하지 않음을 문서에 명시
 
 ### Docs/Infra

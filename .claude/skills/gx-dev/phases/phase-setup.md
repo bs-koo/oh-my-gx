@@ -92,10 +92,10 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 `MODEL_PROFILE`을 결정한다 (우선순위 순 — 먼저 매칭된 것 사용):
 1. 플래그: `--eco` → `eco`, `--standard` → `standard`
-2. ARGS[0] 자연어: `에코` 또는 `절약 모드` 포함 → `eco`
+2. ARGS[0] 자연어: `에코 모드`/`에코로`/`절약 모드` 포함 → `eco` (단독 명사 `에코`는 오탐 방지를 위해 제외)
 3. 의도 파싱 Step 3에서 프로파일 질문에 답한 경우 → 그 답변 (표준 → `standard`, 에코 → `eco`)
-4. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`)
-5. 그 외 (미설정·빈 값) → `standard`
+4. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`) — config.json이 없거나 파싱 불가하면 건너뛴다
+5. 그 외 (미설정·빈 값·config 부재) → `standard`
 
 `eco`로 결정되면 1줄 안내한다: "에코 모드로 실행합니다 — 에이전트 디스패치가 sonnet 중심으로 하향됩니다 (절차·게이트는 동일)."
 결정 값은 Step 7에서 state.md `model-profile`에 기록한다. 디스패치 적용 규칙은 SKILL.md 공유 규칙 "모델 프로파일" 참조.
@@ -155,7 +155,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 `PROJECT_ROOT = ./` (현재 디렉토리).
 
 아래 5개 작업은 서로 독립적이므로 **병렬로 실행**한다:
-1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`). 여러 타입이 감지되면 모두 기록한다. 이때 config.json의 `sensitiveFilePatterns`·`buildArtifactPatterns`·`timeouts`·`contextLimits`도 함께 로드하여 이후 단계(에이전트 입력 상한, 커밋 가드, 타임아웃)에서 참조한다.
+1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`). 여러 타입이 감지되면 모두 기록한다. 이때 config.json의 `modelProfile`(Step 1.5가 이미 결정했으면 그 값 유지)·`sensitiveFilePatterns`·`buildArtifactPatterns`·`timeouts`·`contextLimits`도 함께 로드하여 이후 단계(에이전트 입력 상한, 커밋 가드, 타임아웃)에서 참조한다.
 2. **디렉토리 구조 수집**: `PROJECT_ROOT`의 최상위 2레벨 디렉토리 구조를 수집한다.
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
 4. **도메인 컨텍스트 탐색**: 현재 레포와 매칭되는 도메인 컨텍스트를 찾는다.

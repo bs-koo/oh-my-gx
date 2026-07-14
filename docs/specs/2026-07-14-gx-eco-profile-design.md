@@ -28,7 +28,7 @@ phase-setup에서 결정하여 공유 변수 `MODEL_PROFILE`로 이후 모든 Ph
 
 우선순위 (높은 것 우선):
 1. **플래그**: `--eco` → `eco`, `--standard` → `standard` (config가 eco여도 이번 실행만 표준으로)
-2. **자연어**: ARGS[0]에 `에코`, `절약 모드` 포함 → `eco` (모드 판정과 독립 — BASE 추출처럼 직교 처리)
+2. **자연어**: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드` 포함 → `eco` (모드 판정과 독립 — BASE 추출처럼 직교 처리. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립")
 3. **질문 답변**: 의도 파싱 Step 3의 모드 확인 질문에 프로파일 질문이 함께 제시된 경우 그 답변 — config 값이 있으면 해당 옵션을 `(현재 설정)`으로 첫 번째 배치
 4. **config.json**: `"modelProfile"` 값 (`"eco"` / `"standard"`)
 5. **기본값**: `standard` (config 미설정·빈 값 포함)
@@ -48,7 +48,7 @@ phase-setup에서 결정하여 공유 변수 `MODEL_PROFILE`로 이후 모든 Ph
 | 공통 | **architect** | opus | **opus (유지)** |
 | gx-dev | design-critic, coder | opus | **sonnet** |
 | gx-tdd | design-critic, test-architect, quality-reviewer | opus | **sonnet** |
-| 공통 | product-owner, spec-reviewer, security-auditor, red/green/refactor-coder, researcher, hacker, simplifier | sonnet | sonnet (무변경) |
+| 공통 | product-owner, qa-manager(dev), spec-reviewer, security-auditor, red/green/refactor-coder, researcher, hacker, simplifier | sonnet | sonnet (무변경) |
 
 - 이 규칙은 SKILL.md **공유 규칙**에 1곳으로 정의한다 — phase 파일의 개별 `Task(...)` 표기는 수정하지 않는다 (규칙이 모든 디스패치에 적용됨을 명시).
 - **폴백**: 구버전 Claude Code에서 Task의 model 파라미터가 무시되는 경우가 확인되면, opus 에이전트의 `-eco` 복제본(frontmatter `model: sonnet`)을 만들어 디스패치 이름을 스위칭하는 방식으로 전환한다 (v1.17.x 패치 범위).
@@ -69,7 +69,7 @@ phase-setup에서 결정하여 공유 변수 `MODEL_PROFILE`로 이후 모든 Ph
 
 ## 7. 토큰 효과 (추정)
 
-- 전체 모드 기준 opus 디스패치 3~4회(설계·비판·구현·품질 리뷰)가 sonnet으로 하향 — opus 대비 sonnet 단가 차이를 고려하면 에이전트 비용의 지배 항이 크게 감소한다.
+- 전체 모드 기준 architect를 제외한 opus 디스패치가 sonnet으로 하향된다 (dev: 비판·구현 2종, tdd: 비판·testability·품질 리뷰 3종 — 설계 architect는 유지). 특히 dev의 coder는 호출 횟수·컨텍스트 크기 모두 최대인 토큰 지배 항이라, opus 대비 sonnet 단가 차이를 고려하면 에이전트 비용이 크게 감소한다.
 - 핵심 모드×에코: 디스패치 0~1회 × sonnet — 최대 절약 조합.
 
 ## 8. 기계 검증
@@ -81,5 +81,5 @@ phase-setup에서 결정하여 공유 변수 `MODEL_PROFILE`로 이후 모든 Ph
   - 양쪽 phase-setup에 MODEL_PROFILE 결정 로직 존재
   - gx-setup에 모델 프로파일 단계 존재
 - 골든 시나리오:
-  - **S15**: `/gx-dev --eco {기능}` → 전체 모드 진행 시 architect·design-critic·coder 디스패치에 `model: "sonnet"` 오버라이드 관찰 (sonnet 에이전트는 무변경). state.md `model-profile: eco`.
+  - **S15**: `/gx-dev --eco {기능}` → 전체 모드 진행 시 coder 디스패치에 `model: "sonnet"` 오버라이드 관찰 (design-critic은 선택적 단계 — 디스패치된 경우 동일), **architect는 오버라이드 없이 opus 유지** (sonnet 에이전트는 무변경). state.md `model-profile: eco`.
   - **S16**: config `modelProfile: "eco"` + 플래그 없음 → eco 적용. 같은 조건에서 `--standard` 지정 → 이번 실행만 표준. `--eco --standard` 동시 지정 → 충돌 에러.
