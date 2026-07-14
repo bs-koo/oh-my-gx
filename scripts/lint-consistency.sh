@@ -14,8 +14,8 @@
 #  9. gx-humanizer 에이전트 접두사 (bare humanizer-* 금지)
 # 10. force-push deny 패턴 bare 형태 커버 (settings.json)
 # 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿)
-# 12. gx-dev LIGHT 모드 계약 (Gate 필수·산출물 계약·레거시 매핑·폐지 모드 잔존 금지)
-# 13. gx-tdd LIGHT 모드 계약 (RGR·G-W-T 게이트 유지·긴급 감사·레거시 매핑·폐지 모드 잔존 금지)
+# 12. gx-dev CORE 모드 계약 (Gate 필수·산출물 계약·레거시 매핑·폐지 모드 잔존 금지)
+# 13. gx-tdd CORE 모드 계약 (RGR·G-W-T 게이트 유지·긴급 감사·레거시 매핑·폐지 모드 잔존 금지)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -184,62 +184,64 @@ grep -q 'origin:' "$RALPH_RUNNER" \
   || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
 [ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿 확인"
 
-echo "[12/13] gx-dev LIGHT 모드 계약 정합"
+echo "[12/13] gx-dev CORE 모드 계약 정합"
 GXDEV=.claude/skills/gx-dev/SKILL.md
-LIGHT_PHASE=.claude/skills/gx-dev/phases/phase-light.md
-# LIGHT 경로 등록 + Gate 필수 (light의 게이트 공백 회귀 방지)
-[ -f "$LIGHT_PHASE" ] || fail "phase-light.md 없음"
-grep -q "phase-light.md" "$GXDEV" || fail "SKILL.md에 phase-light 경로 미등록: $GXDEV"
-grep -q "Mechanical Gate" "$LIGHT_PHASE" || fail "Mechanical Gate 지시 누락: $LIGHT_PHASE"
-grep -q "건너뛰기 금지" "$LIGHT_PHASE" || fail "Gate 건너뛰기 금지 문구 누락: $LIGHT_PHASE"
+CORE_PHASE=.claude/skills/gx-dev/phases/phase-core.md
+# CORE 경로 등록 + Gate 필수 (core의 게이트 공백 회귀 방지)
+[ -f "$CORE_PHASE" ] || fail "phase-core.md 없음"
+grep -q "phase-core.md" "$GXDEV" || fail "SKILL.md에 phase-core 경로 미등록: $GXDEV"
+grep -q "Mechanical Gate" "$CORE_PHASE" || fail "Mechanical Gate 지시 누락: $CORE_PHASE"
+grep -q "건너뛰기 금지" "$CORE_PHASE" || fail "Gate 건너뛰기 금지 문구 누락: $CORE_PHASE"
 # 산출물 계약 (ac.md·summary.md — producer와 consumer 양쪽)
 for key in "ac.md" "summary.md"; do
-  grep -q "$key" "$LIGHT_PHASE" || fail "산출물($key) 누락: $LIGHT_PHASE"
+  grep -q "$key" "$CORE_PHASE" || fail "산출물($key) 누락: $CORE_PHASE"
   grep -q "$key" .claude/skills/gx-dev/phases/phase-complete.md || fail "산출물($key) consumer 누락: phase-complete.md"
 done
 # 모드 값 정합 (SKILL.md 기록 규칙 ↔ complete 분기)
-grep -q "mode: full | light" "$GXDEV" || fail "모드 값(full | light) 기록 규칙 누락: $GXDEV"
-grep -q "LIGHT 모드" .claude/skills/gx-dev/phases/phase-complete.md || fail "phase-complete LIGHT 분기 누락"
+grep -q "mode: all | core" "$GXDEV" || fail "모드 값(all | core) 기록 규칙 누락: $GXDEV"
+grep -q "핵심 모드" .claude/skills/gx-dev/phases/phase-complete.md || fail "phase-complete 핵심 모드 분기 누락"
 # 레거시 호환 (--hotfix 매핑 + 구 세션 마이그레이션)
-grep -q "라이트 모드로 실행됩니다" "$GXDEV" || fail "--hotfix 레거시 매핑 안내 누락: $GXDEV"
+grep -q "핵심 모드로 실행됩니다" "$GXDEV" || fail "--hotfix 레거시 매핑 안내 누락: $GXDEV"
 grep -q "레거시 모드 마이그레이션" .claude/skills/gx-dev/phases/phase-setup.md \
   || fail "레거시 모드 마이그레이션 규칙 누락: phase-setup.md"
-# 폐지 모드 잔존 금지 (레거시 매핑·프리셋 명칭은 예외 — 모드 명칭 자체만 검사)
+# 폐지 모드·구 명칭 잔존 금지 (레거시 매핑·프리셋 명칭은 예외 — 모드 명칭 자체만 검사)
 grep -q "HOTFIX 모드" "$GXDEV" && fail "폐지된 HOTFIX 모드 잔존: $GXDEV"
 grep -q "경량 구현" "$GXDEV" && fail "폐지된 경량 구현 모드 잔존: $GXDEV"
+grep -q "LIGHT 모드" "$GXDEV" && fail "구 명칭 LIGHT 모드 잔존: $GXDEV"
 grep -q "Hotfix 모드 분기" .claude/skills/gx-dev/phases/phase-requirements.md \
   && fail "폐지된 Hotfix 분기 잔존: phase-requirements.md"
 grep -q "경량 구현 모드 분기" .claude/skills/gx-dev/phases/phase-implement.md \
   && fail "폐지된 경량 구현 분기 잔존: phase-implement.md"
-[ "$FAIL" -eq 0 ] && ok "LIGHT 경로·Gate 필수·산출물 계약·레거시 매핑·폐지 모드 부재 확인"
+[ "$FAIL" -eq 0 ] && ok "CORE 경로·Gate 필수·산출물 계약·레거시 매핑·폐지 모드 부재 확인"
 
-echo "[13/13] gx-tdd LIGHT 모드 계약 정합"
+echo "[13/13] gx-tdd CORE 모드 계약 정합"
 GXTDD=.claude/skills/gx-tdd/SKILL.md
 TDD_REQ=.claude/skills/gx-tdd/phases/phase-requirements.md
 TDD_IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
-# 모드 값 정합 + light 경로에서 Iron Law 유지 (RGR·verify 회귀 방지)
-grep -q "mode: full | light" "$GXTDD" || fail "모드 값(full | light) 기록 규칙 누락: $GXTDD"
-grep -q "Iron Law 유지 (light여도)" "$GXTDD" || fail "light Iron Law 유지 문구 누락: $GXTDD"
-# requirements light 분기: 오케스트레이터 직접 ac.md + G-W-T 게이트 유지
-grep -q "Light 모드 분기" "$TDD_REQ" || fail "requirements light 분기 누락: $TDD_REQ"
-grep -q "ac.md" "$TDD_REQ" || fail "light 산출물(ac.md) 누락: $TDD_REQ"
-grep -qE "G-W-T 검증 게이트.*(동일하게|유지)" "$TDD_REQ" || fail "light G-W-T 게이트 유지 문구 누락: $TDD_REQ"
-# implement light 분기: RGR 유지 + 긴급 감사 존재
-grep -q "Light 모드 분기" "$TDD_IMPL" || fail "implement light 분기 누락: $TDD_IMPL"
-grep -q "RGR 사이클은 유지" "$TDD_IMPL" || fail "light RGR 유지 문구 누락: $TDD_IMPL"
-grep -q "Light 전용 긴급 보안 감사" "$TDD_IMPL" || fail "light 긴급 보안 감사 섹션 누락: $TDD_IMPL"
-# complete: light AC 자가 검증 분기 존재
+# 모드 값 정합 + core 경로에서 Iron Law 유지 (RGR·verify 회귀 방지)
+grep -q "mode: all | core" "$GXTDD" || fail "모드 값(all | core) 기록 규칙 누락: $GXTDD"
+grep -q "Iron Law 유지 (core여도)" "$GXTDD" || fail "core Iron Law 유지 문구 누락: $GXTDD"
+# requirements core 분기: 오케스트레이터 직접 ac.md + G-W-T 게이트 유지
+grep -q "핵심 모드 분기" "$TDD_REQ" || fail "requirements core 분기 누락: $TDD_REQ"
+grep -q "ac.md" "$TDD_REQ" || fail "core 산출물(ac.md) 누락: $TDD_REQ"
+grep -qE "G-W-T 검증 게이트.*(동일하게|유지)" "$TDD_REQ" || fail "core G-W-T 게이트 유지 문구 누락: $TDD_REQ"
+# implement core 분기: RGR 유지 + 긴급 감사 존재
+grep -q "핵심 모드 분기" "$TDD_IMPL" || fail "implement core 분기 누락: $TDD_IMPL"
+grep -q "RGR 사이클은 유지" "$TDD_IMPL" || fail "core RGR 유지 문구 누락: $TDD_IMPL"
+grep -q "핵심 모드 전용 긴급 보안 감사" "$TDD_IMPL" || fail "core 긴급 보안 감사 섹션 누락: $TDD_IMPL"
+# complete: core AC 자가 검증 분기 존재
 grep -q "AC 자가 검증" .claude/skills/gx-tdd/phases/phase-complete.md \
-  || fail "phase-complete light AC 자가 검증 분기 누락"
+  || fail "phase-complete core AC 자가 검증 분기 누락"
 # 레거시 호환 (--hotfix 매핑 + 구 세션 마이그레이션)
-grep -q "라이트 모드로 실행됩니다" "$GXTDD" || fail "--hotfix 레거시 매핑 안내 누락: $GXTDD"
+grep -q "핵심 모드로 실행됩니다" "$GXTDD" || fail "--hotfix 레거시 매핑 안내 누락: $GXTDD"
 grep -q "레거시 모드 마이그레이션" .claude/skills/gx-tdd/phases/phase-setup.md \
   || fail "레거시 모드 마이그레이션 규칙 누락: gx-tdd phase-setup.md"
-# 폐지 모드 잔존 금지 (레거시 매핑 언급은 예외 — 모드 명칭 자체만 검사)
+# 폐지 모드·구 명칭 잔존 금지 (레거시 매핑 언급은 예외 — 모드 명칭 자체만 검사)
 grep -q "HOTFIX 모드" "$GXTDD" && fail "폐지된 HOTFIX 모드 잔존: $GXTDD"
+grep -q "LIGHT 모드" "$GXTDD" && fail "구 명칭 LIGHT 모드 잔존: $GXTDD"
 grep -q "Hotfix 모드 분기" "$TDD_REQ" && fail "폐지된 Hotfix 분기 잔존: $TDD_REQ"
 grep -q "Hotfix 모드 분기" "$TDD_IMPL" && fail "폐지된 Hotfix 분기 잔존: $TDD_IMPL"
-[ "$FAIL" -eq 0 ] && ok "tdd light 경로·RGR/G-W-T 유지·긴급 감사·레거시 매핑·폐지 모드 부재 확인"
+[ "$FAIL" -eq 0 ] && ok "tdd core 경로·RGR/G-W-T 유지·긴급 감사·레거시 매핑·폐지 모드 부재 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then

@@ -1,9 +1,9 @@
-# phase-light: AC 확인 + 구현 + Mechanical Gate + 기록 (LIGHT 모드 전용)
+# phase-core: AC 확인 + 구현 + Mechanical Gate + 기록 (핵심 모드 전용)
 
 소형 변경용 경량 경로. 에이전트 팀 대신 오케스트레이터가 직접 수행하되, **기록(ac.md·summary.md)과 Mechanical Gate는 생략하지 않는다.** 이 둘이 "그냥 프롬프팅"과 이 파이프라인의 차이다.
 
-- 이 phase는 LIGHT 모드(`mode: light`)에서만 진입한다. FULL 모드는 requirements → design → implement → review를 따른다.
-- ralph 무인 루프 전환 질문은 두지 않는다 — LIGHT에는 PRD가 없어 gx-ralph 진입 조건(PRD 필수)을 충족하지 않는다.
+- 이 phase는 핵심 모드(`mode: core`)에서만 진입한다. 전체 모드는 requirements → design → implement → review를 따른다.
+- ralph 무인 루프 전환 질문은 두지 않는다 — 핵심 모드에는 PRD가 없어 gx-ralph 진입 조건(PRD 필수)을 충족하지 않는다.
 
 ## Step 0: AC 작성 (오케스트레이터 직접, 에이전트 디스패치 없음)
 
@@ -56,7 +56,7 @@ AskUserQuestion(
   - 오케스트레이터가 대상 파일을 Read한 뒤 Edit/Write로 직접 구현한다. **수정 대상 코드를 읽지 않고 수정하지 않는다.**
   - **전환 안전장치**: 직접 구현 도중 변경 파일이 2개를 초과하거나 복잡도가 예상보다 높다고 판단되면, 무리하게 계속하지 말고 즉시 중단하고 **coder 1회 디스패치**로 전환한다 (이미 수행한 변경 내용을 프롬프트에 요약 포함).
 - **coder 1회 디스패치** (그 외): `Task(subagent_type="oh-my-gx:coder")` — prompt에 다음을 포함:
-  - ac.md 전체 (Context Slicing 규칙: coder 구현, LIGHT 모드. 레거시 세션 재개로 ac.md가 없으면 prd.md를 대용으로 사용)
+  - ac.md 전체 (Context Slicing 규칙: coder 구현, 핵심 모드. 레거시 세션 재개로 ac.md가 없으면 prd.md를 대용으로 사용)
   - 코드 맵 (누적된 상태)
   - 프로젝트 루트 경로
   - REFERENCES (있으면): "아래 외부 규격/표준을 구현 시 준수하라. 필요 시 Read하여 상세 내용을 확인하라." + REFERENCES 테이블
@@ -113,7 +113,7 @@ Gate 결과(명령·통과 여부)를 `execution-log`에 기록한다.
 
 ```yaml
 steps:
-  light:
+  core:
     - AC 작성: completed
     - AC 확인: completed
     - 구현: completed           # (직접) 또는 (coder)
@@ -126,5 +126,5 @@ steps:
 ## --resume 호환
 
 - `"AC 작성"`/`"AC 확인"` → ac.md가 있으면 Step 0.5부터, 없으면 Step 0부터 재실행.
-- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행. **레거시 세션 재개**(phase-setup의 hotfix/implement→light 마이그레이션)로 ac.md가 없으면 prd.md를 대용으로 Read한다 (재작성하지 않음). 둘 다 없으면(구 implement 세션) Step 0부터 재실행하여 ac.md를 먼저 생성한다.
+- `"구현"` → ac.md를 Read하여 복원 후 Step 1부터 재실행. **레거시 세션 재개**(phase-setup의 hotfix/implement→core 마이그레이션)로 ac.md가 없으면 prd.md를 대용으로 Read한다 (재작성하지 않음). 둘 다 없으면(구 implement 세션) Step 0부터 재실행하여 ac.md를 먼저 생성한다.
 - `"mechanical-gate"` 이후 → Step 2부터 재실행 (Gate는 재실행해도 안전하다).

@@ -1,6 +1,6 @@
 # phase-implement: 구현 + 자기점검
 
-> 이 phase는 FULL 모드(및 `--phase implement` 단독 실행) 전용이다. LIGHT 모드는 이 phase를 거치지 않고 phase-light에서 구현·Gate·기록을 수행한다.
+> 이 phase는 전체 모드(및 `--phase implement` 단독 실행) 전용이다. 핵심 모드는 이 phase를 거치지 않고 phase-core에서 구현·Gate·기록을 수행한다.
 
 ## 구현 방식 확인 (ralph 무인 루프 전환)
 
@@ -279,7 +279,7 @@ steps:
 
 ## --resume 호환
 
-- 레거시 state.md(`mode: hotfix | implement`)의 재개는 phase-setup Step 0의 레거시 모드 마이그레이션 규칙에 따라 LIGHT 경로(phase-light)로 진행한다 — 이 phase로 재진입하지 않는다.
+- 레거시 state.md(`mode: hotfix | implement`)의 재개는 phase-setup Step 0의 레거시 모드 마이그레이션 규칙에 따라 핵심 경로(phase-core)로 진행한다 — 이 phase로 재진입하지 않는다.
 - `"배치 구성"` → Step 1.5부터 재실행
 - `"coder 구현 (B2)"` → B1 결과는 파일에 반영됨. `execution-log`에서 이전 배치 결과 복원 후 B2부터 재개
 - `"자기점검"` → Step 4(변경사항 수집)부터 재실행

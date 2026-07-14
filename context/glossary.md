@@ -14,7 +14,7 @@
 | BaseEntity | 모든 JPA 엔티티의 부모. id, createdAt, updatedAt, deletedAt 자동 관리 |
 | ApiResponse | 통합 API 응답 래퍼. meta(result, errorCode, message) + data |
 | Spotless | Gradle 코드 포맷터 플러그인. 네이버 코딩 컨벤션 적용 |
-| FULL/LIGHT 모드 | gx-dev·gx-tdd 공통 2모드 체계. FULL은 전체 파이프라인, LIGHT는 소형 변경용 경량 경로 — 오케스트레이터가 AC를 직접 작성(ac.md)하고 각 파이프라인의 필수 게이트는 유지한다 (dev: Mechanical Gate, tdd: RGR·verify·G-W-T·긴급 감사). 긴급 버그 수정도 LIGHT로 라우팅 (AC를 재현 조건 관점으로) |
+| 전체/핵심 모드 (all/core) | gx-dev·gx-tdd 공통 2모드 체계. 전체 모드(all)는 전 Phase 진행, 핵심 모드(core)는 소형 변경용 경량 경로 — 오케스트레이터가 AC를 직접 작성(ac.md)하고 각 파이프라인의 필수 게이트는 유지한다 (dev: Mechanical Gate, tdd: RGR·verify·G-W-T·긴급 감사). 긴급 버그 수정도 핵심 모드로 라우팅 (AC를 재현 조건 관점으로) |
 
 ## 네이밍 규칙
 

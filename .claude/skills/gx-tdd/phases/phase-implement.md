@@ -15,10 +15,10 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 ---
 
-## Light 모드 분기
+## 핵심 모드 분기 (core)
 
-오케스트레이터가 LIGHT 모드이면:
-- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements light 분기가 저장). ac.md가 없으면(레거시 hotfix→light 재개) `${DEV_DIR}/prd.md`를 대용으로 Read한다.
+오케스트레이터가 핵심 모드이면:
+- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장). ac.md가 없으면(레거시 hotfix→core 재개) `${DEV_DIR}/prd.md`를 대용으로 Read한다.
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
 - Step 1(태스크 분해)과 Step 1.2(승인 게이트)도 건너뛴다.
 - **RGR 사이클은 유지**한다 (light여도 TDD는 강제. Iron Law 1).
@@ -27,7 +27,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
   - refactor-coder 입력: 정리 대상.
 - Step H1~H4 (긴급 보안 감사)는 사이클 완료 후 동일하게 실행한다.
 
-LIGHT 모드가 아닌 경우 아래 FULL 플로우를 따른다.
+핵심 모드가 아닌 경우 아래 전체 모드 플로우를 따른다.
 
 ---
 
@@ -46,14 +46,14 @@ RGR 사이클 진입 전에 전체 테스트+빌드를 1회 실행한다 (명령
 2. **warnings-baseline 기록**: 테스트+빌드 출력의 경고 수를 세어 state.md **최상위 필드** `warnings-baseline: N`으로 기록한다. phase-complete의 verify 게이트가 이 값과 비교하여 **이번 구현이 유입한 경고부터** 차단한다 (기존 경고는 허용).
 3. 테스트 명령 미감지·추출 불가 시 baseline을 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다 (**조용한 0 기록 금지** — 0과 미측정은 다르다).
 
-LIGHT 모드에서도 실행한다 (RGR이 강제되므로). `current-step`을 `"기준선 게이트"`로 갱신.
+핵심 모드에서도 실행한다 (RGR이 강제되므로). `current-step`을 `"기준선 게이트"`로 갱신.
 
 ## Step 0.7: 구현 방식 확인 (ralph 무인 루프 전환)
 
 기준선 게이트 통과 직후, RGR 사이클 진입 전에 구현 방식을 사용자에게 **1회** 확인한다. 기준선 게이트를 먼저 통과시키는 이유: 깨진 기준 위에서 무인 루프를 돌리면 verify가 매 반복 차단되어 루프가 즉시 BLOCKED로 낭비된다 (warnings-baseline도 이 시점에 기록되어 루프의 verify가 신규 경고를 비교할 수 있다).
 
 **질문 생략 조건** (하나라도 해당하면 질문 없이 Step 1로 직행):
-- LIGHT 모드 (경량 경로 — PRD가 없어 gx-ralph 진입 조건을 충족하지 않음)
+- 핵심 모드 (경량 경로 — PRD가 없어 gx-ralph 진입 조건을 충족하지 않음)
 - `--phase implement` 단독 실행 또는 `--resume` 재진입 (진행 방식 의도가 이미 명시됨)
 - `VCS_TYPE`이 `svn` (gx-ralph 미지원)
 
@@ -123,7 +123,7 @@ AskUserQuestion(
 
 ### 1.3 건너뛰기 조건
 
-- LIGHT 모드: 건너뛴다. AC 1개를 단일 태스크로 간주하여 바로 Step 2 진입.
+- 핵심 모드: 건너뛴다. AC 1개를 단일 태스크로 간주하여 바로 Step 2 진입.
 - 설계서에 "구현 순서" 없음: AC 단위로 자동 분해 후 진입.
 
 ---
@@ -166,7 +166,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
     [테스트 품질 가드 — 상세: {ANTI_PATTERNS_PATH}. 파일 부재 시 아래 요약이 기준의 전부]
     - 모의(mock)의 동작이 아니라 실제 동작을 검증합니다.
-    - 모의 구조는 설계서 testability 섹션의 인터페이스만 근거로 구성합니다 (설계서가 없는 light 모드 등에서는 AC와 기존 테스트 스타일만 근거). 없는 필드를 추측하지 않으며, 부족하면 "설계서 인터페이스 불충분"으로 보고합니다.
+    - 모의 구조는 설계서 testability 섹션의 인터페이스만 근거로 구성합니다 (설계서가 없는 핵심 모드 등에서는 AC와 기존 테스트 스타일만 근거). 없는 필드를 추측하지 않으며, 부족하면 "설계서 인터페이스 불충분"으로 보고합니다.
     - 프로덕션 클래스에 테스트 전용 메서드를 요구하지 않습니다.
 
     [AC (Given-When-Then)]
@@ -203,7 +203,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 2. **실패 확인** (통과 시 잘못된 테스트 → red-writer 재호출).
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
-5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — FULL 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. LIGHT 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
+5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
 6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다).
 7. ✅ 실패 정상 → GREEN으로 진행.
 
@@ -374,23 +374,23 @@ phase-review로 인계하기 위해 diff를 수집한다.
 
 ---
 
-## Light 전용 긴급 보안 감사 (LIGHT 모드만)
+## 핵심 모드 전용 긴급 보안 감사 (core 모드만)
 
-**조건**: LIGHT 모드이고 RGR 사이클이 완료된 직후에만 실행한다.
+**조건**: 핵심 모드이고 RGR 사이클이 완료된 직후에만 실행한다.
 
 `phase-review`를 light에서 건너뛰면서 security-auditor가 호출되지 않던 공백을 보완한다. CRITICAL/HIGH만 보고하도록 범위를 제한하여 light의 경량성을 유지한다.
 
 **Step H1**: `Task(subagent_type="oh-my-gx:security-auditor")` — prompt에 다음을 포함:
-- AC 문서 (`${DEV_DIR}/ac.md` Read — LIGHT의 요구사항 명세. 레거시 hotfix→light 재개로 ac.md가 없으면 `${DEV_DIR}/prd.md`를 대용으로 Read)
+- AC 문서 (`${DEV_DIR}/ac.md` Read — 핵심 모드의 요구사항 명세. 레거시 hotfix→core 재개로 ac.md가 없으면 `${DEV_DIR}/prd.md`를 대용으로 Read)
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - 코드 맵
 - REFERENCES (있으면)
-- "**light 긴급 감사** — CRITICAL/HIGH만 보고할 것. MEDIUM/LOW는 생략. 응답 형식은 `### Light 긴급 감사` 섹션."
+- "**핵심 모드 긴급 감사** — CRITICAL/HIGH만 보고할 것. MEDIUM/LOW는 생략. 응답 형식은 `### 핵심 모드 긴급 감사` 섹션."
 
 **Step H2**: 결과를 `${DEV_DIR}/trust-ledger.md`에 Write/Append.
 
 **Step H3**: 결과 분기:
-- CRITICAL/HIGH 0건 → "light 긴급 감사 통과" 보고 후 phase-complete로 진행.
+- CRITICAL/HIGH 0건 → "핵심 모드 긴급 감사 통과" 보고 후 phase-complete로 진행.
 - CRITICAL/HIGH 1건 이상 → AskUserQuestion:
   - "자동 수정 시도" → **RGR 사이클 재진입**: 보안 항목을 새 AC로 정의하여 red-writer(새 실패 테스트) → green-coder → refactor-coder 순서로 수정한다 (Step 2-R/G/F 재실행). green-coder를 RED 없이 직접 호출하지 않는다.
   - "이대로 진행" → 위험 수용 기록

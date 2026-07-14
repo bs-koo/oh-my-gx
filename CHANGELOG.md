@@ -1,23 +1,23 @@
 # Changelog
 
-## v1.16.0 (2026-07-14) — dev·tdd 모드 개편 (full / light)
+## v1.16.0 (2026-07-14) — dev·tdd 모드 개편 (all / core)
 
 ### Features
-- **gx-dev LIGHT 모드 (신규)**: 소형 변경용 경량 경로 `setup → light → complete`. 오케스트레이터가 AC(초경량 PRD: 배경+요구사항 3~5줄)를 직접 작성해 `ac.md`로 기록하고 사용자 1회 확인 → 구현(변경 파일 2개 이하·방향 명확이면 직접, 그 외 coder 1회 디스패치) → **Mechanical Gate(빌드+테스트) 필수** → `summary.md`(변경 요약+Gate 증거) 기록 → complete(AC 자가 검증 + 커밋/PR). 에이전트 디스패치 0~1회로 "그냥 프롬프팅" 수준의 속도에 기록·게이트를 더한다. PR에는 `--background ac.md --extra-section summary.md`로 산출물이 반영된다
-- **gx-tdd LIGHT 모드 (HOTFIX 재편)**: 구 HOTFIX를 light로 재편 — **RGR 사이클·verify 게이트·G-W-T 게이트·긴급 보안 감사(H1~H4)는 전부 유지**(Iron Law 불변)하되, AC 작성을 product-owner 디스패치 대신 **오케스트레이터 직접 작성(ac.md, G-W-T 형식 강제 + G-W-T 검증 게이트 통과 필수)**으로, 인수 검증을 **AC 자가 검증**(verify가 테스트 증거를 이미 강제)으로 교체. 구 HOTFIX의 PO 왕복 2회가 사라져 긴급 경로가 실제로 빨라졌다. Trust Ledger 섹션명 `### Light 긴급 감사`(레거시 구 섹션명도 인식)
+- **gx-dev 핵심 모드(core) (신규)**: 소형 변경용 경량 경로 `setup → core → complete`. 오케스트레이터가 AC(초경량 PRD: 배경+요구사항 3~5줄)를 직접 작성해 `ac.md`로 기록하고 사용자 1회 확인 → 구현(변경 파일 2개 이하·방향 명확이면 직접, 그 외 coder 1회 디스패치) → **Mechanical Gate(빌드+테스트) 필수** → `summary.md`(변경 요약+Gate 증거) 기록 → complete(AC 자가 검증 + 커밋/PR). 에이전트 디스패치 0~1회로 "그냥 프롬프팅" 수준의 속도에 기록·게이트를 더한다. PR에는 `--background ac.md --extra-section summary.md`로 산출물이 반영된다
+- **gx-tdd 핵심 모드(core) (HOTFIX 재편)**: 구 HOTFIX를 core로 재편 — **RGR 사이클·verify 게이트·G-W-T 게이트·긴급 보안 감사(H1~H4)는 전부 유지**(Iron Law 불변)하되, AC 작성을 product-owner 디스패치 대신 **오케스트레이터 직접 작성(ac.md, G-W-T 형식 강제 + G-W-T 검증 게이트 통과 필수)**으로, 인수 검증을 **AC 자가 검증**(verify가 테스트 증거를 이미 강제)으로 교체. 구 HOTFIX의 PO 왕복 2회가 사라져 긴급 경로가 실제로 빨라졌다. Trust Ledger 섹션명 `### 핵심 모드 긴급 감사`(레거시 구 섹션명도 인식)
 
 ### Changed
-- **모드 체계 통일**: dev·tdd 모두 `mode: full | light` 2모드. dev의 HOTFIX·구현만(implement) 모드 폐지 — 구현만의 기록 공백(요구사항이 ARGS[0] 한 줄뿐)·게이트 공백(테스트 증거 없이 커밋/PR 진입), HOTFIX의 "긴급인데 PO 2회 왕복" 모순 해소. NORMAL은 FULL로 개명 (동작 무변경)
-- **긴급 프리셋 도입 후 같은 릴리스에서 폐지**: 실차이가 "AC 확인 질문 1회 생략"뿐이라 별도 개념을 유지하지 않는다 — 긴급일수록 원인 오판 위험이 커서 확인 1회가 오히려 가치 있음. "긴급/핫픽스" 키워드는 light로 라우팅하되 AC를 재현 조건 관점으로 작성하는 가이드로만 남김
-- **의도 파싱 (dev·tdd 공통)**: 자연어 "구현만"을 `--phase implement` 매핑에서 LIGHT로 재배정 (중의성 해소 — phase 단독 실행은 플래그 전용). "라이트/가볍게" 키워드 신설. 모드 선택 AskUserQuestion을 2択(전체 파이프라인/라이트)으로 축소. `--light` 플래그 신설
-- **하위 호환**: `--hotfix` 플래그는 LIGHT로 매핑(안내 출력). 진행 중 구 모드 세션은 `--resume` 시 마이그레이션 — `normal`→`full`(조용히), `hotfix|implement`→`light`(안내 + prd.md를 ac.md 대용으로 사용)
-- **gx-ralph 무영향**: light에는 prd.md가 없어 ralph 진입 게이트(PRD 필수)가 자연 차단. origin·러너·훅은 mode 필드를 읽지 않음 (러너 테스트 19/19 통과 확인)
+- **모드 체계 통일**: dev·tdd 모두 `mode: all | core` 2모드. dev의 HOTFIX·구현만(implement) 모드 폐지 — 구현만의 기록 공백(요구사항이 ARGS[0] 한 줄뿐)·게이트 공백(테스트 증거 없이 커밋/PR 진입), HOTFIX의 "긴급인데 PO 2회 왕복" 모순 해소. 한국어 정식 명칭은 **전체 모드(all) / 핵심 모드(core)** — 사용자 노출층은 한국어, 기계층(state.md·플래그·린트)은 영어 키의 2층 네이밍
+- **긴급 프리셋 도입 후 같은 릴리스에서 폐지**: 실차이가 "AC 확인 질문 1회 생략"뿐이라 별도 개념을 유지하지 않는다 — 긴급일수록 원인 오판 위험이 커서 확인 1회가 오히려 가치 있음. "긴급/핫픽스" 키워드는 core로 라우팅하되 AC를 재현 조건 관점으로 작성하는 가이드로만 남김
+- **의도 파싱 (dev·tdd 공통)**: 자연어 "구현만"을 `--phase implement` 매핑에서 CORE로 재배정 (중의성 해소 — phase 단독 실행은 플래그 전용). "핵심만/라이트/가볍게" 키워드 신설. 모드 선택 AskUserQuestion을 2択(전체 과정 진행/핵심 과정만 진행)으로 축소. `--core` 플래그 신설
+- **하위 호환**: `--hotfix` 플래그는 CORE로 매핑(안내 출력). 진행 중 구 모드 세션은 `--resume` 시 마이그레이션 — `normal`/`full`→`all`·`light`→`core`(조용히), `hotfix|implement`→`core`(안내 + prd.md를 ac.md 대용으로 사용)
+- **gx-ralph 무영향**: core에는 prd.md가 없어 ralph 진입 게이트(PRD 필수)가 자연 차단. origin·러너·훅은 mode 필드를 읽지 않음 (러너 테스트 19/19 통과 확인)
 
 ### Docs/Infra
-- 설계 문서 `docs/specs/2026-07-14-gx-light-mode-design.md` (sef-plugin 토큰 구조 비교 분석 배경 + v2 확장 §10)
-- 정합성 린트 [12/13]·[13/13] 신설: dev light 계약(Gate 필수·산출물 producer-consumer·레거시 매핑·폐지 모드 잔존 금지) + tdd light 계약(RGR·G-W-T 게이트 유지·긴급 감사·AC 자가 검증 분기)
-- 골든 시나리오 S11~S14 추가: dev light 라우팅+Gate 필수, 긴급 요청도 AC 확인 1회, 레거시 재개 마이그레이션(dev·tdd), tdd light RGR 유지+PO 미디스패치
-- guide·README·index.html·prompt-examples 모드 표/예시 갱신, context/glossary.md에 FULL/LIGHT 모드 용어 등록, tdd-iron-law·testing-anti-patterns·red-writer의 hotfix 참조를 light로 갱신
+- 설계 문서 `docs/specs/2026-07-14-gx-light-mode-design.md` (sef-plugin 토큰 구조 비교 분석 배경 + v2 확장 §10 + v3 개정 §11: all/core 개명·한국어 정식 명칭·모델 프로파일(standard/eco) 축 예약)
+- 정합성 린트 [12/13]·[13/13] 신설: dev core 계약(Gate 필수·산출물 producer-consumer·레거시 매핑·폐지 모드 잔존 금지) + tdd core 계약(RGR·G-W-T 게이트 유지·긴급 감사·AC 자가 검증 분기) + 구 명칭(LIGHT 모드) 잔존 금지
+- 골든 시나리오 S11~S14 추가: dev core 라우팅+Gate 필수, 긴급 요청도 AC 확인 1회, 레거시 재개 마이그레이션(dev·tdd), tdd core RGR 유지+PO 미디스패치
+- guide·README·index.html·prompt-examples 모드 표/예시 갱신, context/glossary.md에 전체/핵심 모드(all/core) 용어 등록, tdd-iron-law·testing-anti-patterns·red-writer의 hotfix 참조를 core로 갱신
 
 ## v1.15.0 (2026-07-10) — 루프 엔지니어링 도입 (gx-ralph)
 
