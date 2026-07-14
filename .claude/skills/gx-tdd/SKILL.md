@@ -67,6 +67,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--hotfix`(레거시)가 포함되면 **핵심 모드**로 실행한다. 안내 1줄을 출력한다: "`--hotfix`는 핵심 모드로 실행됩니다."
+- `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
 - 플래그가 없으면 Step 2로 진행.
 
 **Step 2: 자연어 → 모드 판정**
@@ -81,31 +82,47 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `구현만`, `핵심만`, `라이트`, `가볍게` | CORE | "알림 임계값 검증, TDD로 구현만 해줘" |
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
+| `에코`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 TDD 개발해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — gx-dev와 동일한 정렬).
 
 BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다. BASE 추출은 모드 판정과 독립적이다 — BASE가 추출되어도 모드가 결정되지 않으면 Step 3으로 진행한다.
 
-**Step 3: 모드 확인 (위 패턴에 해당하지 않는 경우)**
+ECO 추출: ARGS[0]에 `에코`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
 
-위 자동 판정 패턴에서 모드(STATUS/RESUME/CORE/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다. 오케스트레이터가 임의로 모드를 판정하지 않는다.
+**Step 3: 모드·프로파일 확인 (위 패턴에 해당하지 않는 경우)**
+
+위 자동 판정 패턴에서 모드(STATUS/RESUME/CORE/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다. 오케스트레이터가 임의로 모드를 판정하지 않는다. 모델 프로파일이 미확정이면(플래그·자연어 없음) **같은 호출의 두 번째 질문**으로 함께 묻는다 — 한 번의 submit으로 두 축이 함께 결정된다.
 
 ```
 AskUserQuestion(
-  questions: [{
-    question: "어떤 방식으로 진행할까요? (요청: {ARGS[0]})",
-    header: "진행 방식",
-    options: [
-      { label: "전체 과정 진행", description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰 → verify → PR" },
-      { label: "핵심 과정만 진행", description: "AC(G-W-T) 확인 → RGR → verify → PR. 소형 변경용 — design/정식 review 생략, RGR·verify·긴급 감사는 유지" }
-    ],
-    multiSelect: false
-  }]
+  questions: [
+    {
+      question: "어떤 방식으로 진행할까요? (요청: {ARGS[0]})",
+      header: "진행 방식",
+      options: [
+        { label: "전체 과정 진행", description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰 → verify → PR" },
+        { label: "핵심 과정만 진행", description: "AC(G-W-T) 확인 → RGR → verify → PR. 소형 변경용 — design/정식 review 생략, RGR·verify·긴급 감사는 유지" }
+      ],
+      multiSelect: false
+    },
+    {
+      question: "모델 프로파일을 선택해주세요. 절차·게이트·Iron Law는 동일하고 에이전트 모델 수준만 달라집니다.",
+      header: "모델 프로파일",
+      options: [
+        { label: "표준", description: "설계·testability·품질 리뷰에 opus — 품질 우선 (Max 요금제 권장)" },
+        { label: "에코", description: "architect 외 opus 에이전트를 sonnet으로 하향 — 토큰 절약 (Pro 요금제 권장, RGR·verify 동일)" }
+      ],
+      multiSelect: false
+    }
+  ]
 )
 ```
 
+- **프로파일 질문 포함 규칙**: `--eco`/`--standard` 플래그나 자연어(`에코`/`절약 모드`)로 이미 확정됐으면 두 번째 질문을 **생략**한다 (모드 질문만 제시). config.json `modelProfile`이 설정되어 있으면 해당 옵션을 **첫 번째에 배치**하고 label 끝에 `(현재 설정)`을 붙인다 — 이 질문의 답변이 이번 실행의 최종 결정이다.
 - "전체 과정 진행" 선택 → 전체 모드(all) (전체 Phase 실행)
 - "핵심 과정만 진행" 선택 → 핵심 모드(core)
+- "표준"/"에코" 선택 → `MODEL_PROFILE`로 확정 (phase-setup Step 1.5가 state.md `model-profile`에 기록)
 
 > **gx-dev의 핵심 모드와 다른 점**: gx-tdd의 핵심 모드는 **RGR 사이클·verify 게이트·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로다 (Iron Law는 모드와 무관하게 불변). 생략되는 것은 design(testability 평가)과 정식 review뿐이며, AC 작성 주체가 product-owner에서 오케스트레이터로 바뀐다. 테스트 작성 강제 없이 즉시 구현하려면 `oh-my-gx:gx-dev`의 핵심 모드를 사용한다.
 
@@ -114,6 +131,7 @@ AskUserQuestion(
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
 mode: all | core
+model-profile: standard | eco
 intent-source: flag | natural-language | user-selection
 ```
 
@@ -122,6 +140,8 @@ intent-source: flag | natural-language | user-selection
 - `--phase requirements|design|implement|review|complete`: 특정 Phase만 실행
 - `--core`: 핵심 모드 (AC(G-W-T) 확인 → RGR → verify → PR)
 - `--hotfix`: 레거시 — 핵심 모드로 매핑된다
+- `--eco`: 에코 모드 — 에이전트 디스패치를 sonnet 중심으로 하향 (공유 규칙 "모델 프로파일" 참조)
+- `--standard`: 표준 프로파일 강제 — config.json이 eco여도 이번 실행만 표준
 - `--base <branch>`: 베이스 브랜치 지정
 - `--status`: 현재 파이프라인 진행 상태 조회
 - `--resume`: 이전 파이프라인 재개
@@ -142,6 +162,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
    - 프로젝트: {project-type} ({project-root})
    - 현재 Phase: {phase} ({status})
    - 플래그: {flags}
+   - 모델 프로파일: {model-profile}
    - 시작: {started}
 
    ### Phase 진행
@@ -201,6 +222,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 - PRD 작성 / spec 리뷰 / RED-GREEN-REFACTOR 구현 / 보안 감사 / 정체 탈출: **sonnet** — 비용 효율 우선
 - verify 게이트: **`oh-my-gx:gx-verify` 스킬**이 담당 (별도 에이전트 아님). 테스트/빌드 직접 실행 + 0 failures 확인
 - Mechanical Gate 결과 판단: 오케스트레이터가 직접 수행 — 에이전트 불필요
+- 위 원칙과 Agent 팀 표의 모델은 **표준 프로파일(standard)** 기준이다. 에코 모드(eco)에서는 architect를 제외한 opus 에이전트가 sonnet으로 하향된다 — 공유 규칙 "모델 프로파일" 참조.
 
 ### Deprecated 에이전트 처리
 
@@ -391,6 +413,18 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `REFERENCES`: phase-setup Step 3.1(병렬 수집)의 외부 규격 참조 항목에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
 - 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행한다. `PROJECT_ROOT`가 기본값 `./`이면 **bare 명령**으로 실행한다 (예: `npm test`, `./gradlew build`) — `allowed-tools`의 prefix 패턴(`Bash(npm *)` 등)과 매칭되어 권한 프롬프트가 뜨지 않는다. `PROJECT_ROOT`가 `./`가 아닌 경우에만 작업 디렉토리 보존을 위해 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다 — 단 이 서브셸 형태는 `(cd`로 시작하여 prefix 패턴과 매칭되지 않으므로 권한 프롬프트가 뜰 수 있다 (gradle 포함 모든 명령에 적용되는 기존 한계).
+- `MODEL_PROFILE`: 모델 프로파일 (`standard`/`eco`). phase-setup Step 1.5에서 결정하며 state.md의 `model-profile`에 기록된다. 디스패치 적용 규칙은 아래 "모델 프로파일" 섹션 참조.
+
+### 모델 프로파일 (MODEL_PROFILE)
+
+에이전트 디스패치의 모델 수준. 절차 축(mode)과 **직교**하며 Phase 구성·게이트·Iron Law에 영향을 주지 않는다.
+
+- 결정 우선순위: `--eco`/`--standard` 플래그 > ARGS[0] 자연어(`에코`/`절약 모드` → eco) > **의도 파싱 Step 3 질문 답변**(모드 확인 질문에 프로파일 질문이 함께 제시된 경우) > config.json `modelProfile` > 기본 `standard`. phase-setup Step 1.5가 이 순서로 확정해 state.md에 기록한다.
+- **standard (표준)**: Agent 팀 표의 모델 그대로 디스패치한다.
+- **eco (에코 모드)**: **design-critic, test-architect, quality-reviewer**를 Task 호출 시 `model: "sonnet"` 파라미터로 오버라이드하여 디스패치한다 — Task의 model 파라미터는 에이전트 정의(frontmatter)보다 우선한다. **architect는 eco에서도 opus를 유지한다** — 설계 오류는 게이트가 방어하지 못하고 하류 전체로 전파되는 유일한 상류 실패인 반면 호출은 1~2회로 가장 적다 (하향되는 3종은 실패 모드가 '놓침'인 검증자이며 spec-reviewer·security-auditor·verify가 별도 축에서 방어). 이미 sonnet인 에이전트(red/green/refactor-coder 포함)는 그대로 유지한다 (haiku 강등 금지). 이 규칙은 **모든 Phase의 모든 Task 디스패치에 적용**된다 — phase 파일에 개별 표기가 없어도 적용한다.
+- 게이트(G-W-T·testability·기준선·Mechanical Gate·verify)는 모델 무관 기계 검증 또는 스킬(gx-verify) 실행이므로 eco에서도 동일하게 유지된다.
+- 오케스트레이터가 직접 수행하는 단계(핵심 모드 ac.md 작성, AC 자가 검증 등)는 메인 세션 모델을 따른다 — 플러그인이 제어하지 않는다.
+- `--resume` 시 state.md의 `model-profile`을 복원한다. 재개 중 프로파일 변경은 지원하지 않는다.
 
 ### 베이스 브랜치 감지
 
@@ -436,6 +470,7 @@ phase: implement
 status: in_progress
 pipeline: gx-tdd           # 파이프라인 식별자 — verify-status와 함께 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)의 판별 키
 verify-status: pending     # pending | passed. phase-complete Step -1 verify 통과 시 passed 전이, 코드 변경 재진입 시 pending 리셋
+model-profile: standard    # standard | eco — 에이전트 디스패치 모델 오버라이드 기준 (phase-setup Step 1.5 결정)
 vcs-type: git
 branch: JIRA-123
 base: main
@@ -676,7 +711,8 @@ AskUserQuestion(
 ## 플래그 충돌 검증
 
 - `--core`(레거시 `--hotfix` 포함)와 `--phase`는 **동시 사용 불가**. 둘 다 있으면: "`--core`/`--hotfix`와 `--phase`는 동시에 사용할 수 없습니다." 에러 후 중단.
-- `--resume`과 `--phase`, `--core`, `--hotfix`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단.
+- `--eco`와 `--standard`는 **동시 사용 불가**. 둘 다 있으면: "`--eco`와 `--standard`는 동시에 사용할 수 없습니다." 에러 후 중단.
+- `--resume`과 `--phase`, `--core`, `--hotfix`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 
 ## Phase 선택 (--phase 플래그)
@@ -693,7 +729,7 @@ AskUserQuestion(
 > 2. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
 > 3. `PROJECT_ROOT` = 현재 디렉토리.
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `DEV_DIR = .dev/trunk/`.
-> 5. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `branch`, `flags: --phase {name}`). `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
+> 5. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile`(플래그 > config.json `modelProfile` > 기본 `standard`), `branch`, `flags: --phase {name}`). `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
 
 ---
 

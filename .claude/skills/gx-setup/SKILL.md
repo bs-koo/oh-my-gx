@@ -290,6 +290,31 @@ AskUserQuestion(
    - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`)
      `Google Chat 연동 : 완료 ✅` 출력
 
+### 5단계: 모델 프로파일 (선택)
+
+gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파일을 설정한다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
+
+1. `.claude/config.json`의 `"modelProfile"` 필드를 확인한다:
+   - 값이 이미 설정되어 있으면 (`"standard"` 또는 `"eco"`) → `모델 프로파일 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 완료 단계로 진행.
+   - 비어있으면 → 2번으로.
+2. 사용자에게 프로파일을 묻는다:
+   ```
+   AskUserQuestion(
+     questions: [{
+       header: "모델 프로파일",
+       question: "에이전트 모델 프로파일을 선택해주세요. 절차·게이트는 동일하고 에이전트가 사용하는 모델 수준만 달라집니다.",
+       multiSelect: false,
+       options: [
+         { label: "표준", description: "설계·구현·품질 리뷰에 opus 사용 — 품질 우선 (Max 요금제 권장)" },
+         { label: "에코", description: "에이전트를 sonnet 중심으로 하향 — 토큰 절약 (Pro 요금제 권장). 빌드·테스트·verify 게이트는 동일하게 유지" }
+       ]
+     }]
+   )
+   ```
+3. 선택 값을 `.claude/config.json`의 `"modelProfile"`에 기록한다 (표준 → `"standard"`, 에코 → `"eco"`).
+4. 에코 선택 시 1줄 안내: "메인 세션 모델은 플러그인이 제어하지 않습니다. 토큰 절약이 목적이면 세션 모델도 Sonnet 사용을 권장합니다."
+5. `모델 프로파일 : 완료 ✅ ({값})` 출력. 실행별 오버라이드는 `/gx-dev --eco` / `--standard` 플래그로 가능하다.
+
 ### 완료: 퀵스타트
 
 **git인 경우:**
