@@ -47,7 +47,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 **이어서 진행 시:**
 - state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags, mode, model-profile을 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다.
-- **레거시 모드 마이그레이션**: state.md의 `mode`가 구 명칭이면 갱신한다 — `normal`/`full`이면 `mode: all`로, `light`이면 `mode: core`로 조용히 갱신하고 그대로 재개한다 (동작 동일, 명칭만 변경). `mode`가 `hotfix`(폐지된 구 모드)이면 `mode: core`로 갱신하고 안내한다: "구 모드(hotfix) 세션을 핵심 모드로 전환하여 재개합니다." core는 구 hotfix와 Phase 구성이 동일하므로([setup, requirements, implement, complete]) 남은 Phase를 그대로 이어간다 — 구 requirements가 completed이고 `${DEV_DIR}/prd.md`가 있으면 이를 ac.md 대용으로 사용한다 (재작성하지 않음).
+- **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-tdd {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격(SKILL.md 환경감지가 mode 없이 생성) 등 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
