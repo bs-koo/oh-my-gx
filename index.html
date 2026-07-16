@@ -754,6 +754,7 @@
       <div class="usage-row"><span class="usage-say">"테스트 통과시켜줘"</span><span class="usage-arrow">→</span><span class="usage-skill">green</span></div>
       <div class="usage-row"><span class="usage-say">"중복 제거 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">refactor</span></div>
       <div class="usage-row"><span class="usage-say">"완료 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">verify</span></div>
+      <div class="usage-row"><span class="usage-say">"랄프 루프 준비해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">ralph</span></div>
       <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
       <div class="usage-row"><span class="usage-say">"구현만 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
       <div class="usage-row"><span class="usage-say">"AI 흔적 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">humanizer</span></div>
@@ -786,6 +787,10 @@
       <div class="rk">요구사항</div>
       <div>자연어 수용 기준</div>
       <div class="hl">Given-When-Then 강제</div>
+
+      <div class="rk">설계</div>
+      <div>비판 검토</div>
+      <div class="hl">+ testability 점수 (7 미만 재설계)</div>
 
       <div class="rk">구현 방식</div>
       <div>coder가 설계대로 한 번에</div>
@@ -892,7 +897,7 @@
 <span class="ln">  <span class="c-str">→ 단일 Phase</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-cmd">&gt;</span> 이어서 해줘</span>
-<span class="ln">  <span class="c-str">→ RESUME</span> <span class="c-dim">(.dev/state.md 기반)</span></span>
+<span class="ln">  <span class="c-str">→ RESUME</span> <span class="c-dim">(.dev/{branch-slug}/state.md)</span></span>
           </div>
         </div>
       </div>
@@ -967,7 +972,9 @@
           <li><strong>루프당 AC 1건</strong> — 매 반복 신선한 컨텍스트로 작게, 확실하게</li>
           <li><strong>verify backpressure</strong> — 매 반복 테스트 통과 없이는 커밋 불가</li>
           <li><strong>4중 안전장치</strong> — 최대 반복·타임아웃·무변화 감지·lock</li>
+          <li><strong>AC별 시도 상한</strong> — 같은 AC 3회 실패 시 건너뛰고, 전부 소진하면 BLOCKED</li>
           <li>svn·보호 브랜치·PRD 부재·verify 명령 미감지 시 진입 차단</li>
+          <li>에코 모드는 아직 미적용 — 루프는 항상 표준 모델로 실행됩니다</li>
         </ul>
       </div>
       <div class="feature-art">
@@ -1086,8 +1093,8 @@
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계 기반 코드 구현 (dev)</div></div>
         <div class="agent"><div class="agent-name">red-writer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">실패 테스트 작성 전담 (tdd)</div></div>
-        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">통과 최소 코드 작성 (tdd, YAGNI)</div></div>
-        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">GREEN 유지하며 정리 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (tdd, YAGNI)</div></div>
+        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (tdd)</div></div>
       </div>
     </div>
 
@@ -1096,7 +1103,7 @@
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">qa-manager <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드 리뷰 + 스펙 충족 검증 (dev)</div></div>
         <div class="agent"><div class="agent-name">spec-reviewer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">AC 충족만 검증 (tdd 1단계)</div></div>
-        <div class="agent"><div class="agent-name">quality-reviewer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드 품질만 검증 (tdd 2단계)</div></div>
+        <div class="agent"><div class="agent-name">quality-reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">코드 품질만 검증 (tdd 2단계)</div></div>
         <div class="agent"><div class="agent-name">security-auditor <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">정책 · 보안 · 허점 교차 검증</div></div>
       </div>
     </div>
@@ -1104,8 +1111,8 @@
     <div class="agent-group">
       <div class="agent-group-head"><h3 class="display-sm">윤문 검증 · 분석 · 복구</h3><span class="count">5</span></div>
       <div class="agent-grid">
-        <div class="agent"><div class="agent-name">humanizer-fidelity <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">의미 보존 감사 (strict)</div></div>
-        <div class="agent"><div class="agent-name">humanizer-naturalness <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">과윤문 · AI티 잔존 검토 (strict)</div></div>
+        <div class="agent"><div class="agent-name">humanizer-fidelity <span class="tag tag-opus">Opus</span></div><div class="agent-role">의미 보존 감사 (strict)</div></div>
+        <div class="agent"><div class="agent-name">humanizer-naturalness <span class="tag tag-opus">Opus</span></div><div class="agent-role">과윤문 · AI티 잔존 검토 (strict)</div></div>
         <div class="agent"><div class="agent-name">researcher <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드베이스 조사 + 기술 비교</div></div>
         <div class="agent"><div class="agent-name">hacker <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">제약 우회, 정체 탈출</div></div>
         <div class="agent"><div class="agent-name">simplifier <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">복잡도 제거, 범위 축소</div></div>
@@ -1120,11 +1127,11 @@
     <div class="callout-coral">
       <p class="eyebrow">안전장치</p>
       <h2 class="display-md">자동화하되, 위험한 일은 사람에게.</h2>
-      <p>자동화는 PR 생성까지입니다. 머지·강제 푸시·민감 파일은 설정 수준에서 막히거나 사람의 확인을 거칩니다.</p>
+      <p>자동화는 PR 생성까지입니다. 강제 푸시·민감 파일은 설정 수준에서 막히고, 머지는 사람이 직접 합니다.</p>
       <div class="safeguard-grid">
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>PR 머지는 사람이</strong> 직접. <code>gh pr merge</code>는 설정 수준에서 차단됩니다.</span>
+          <span class="sg-text"><strong>PR 머지는 사람이</strong> 직접. <code>gh pr merge</code>는 도구 차단이 아니라 운영 원칙 — 사용자가 명시적으로 요청할 때만 수행합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -1132,11 +1139,11 @@
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>보호 브랜치</strong> — main에서 직접 커밋을 막고 작업 브랜치를 먼저 생성합니다.</span>
+          <span class="sg-text"><strong>보호 브랜치</strong> — main/master/develop에서 직접 커밋을 막고 작업 브랜치를 먼저 생성합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>민감 파일 감지</strong> — <code>.env · *.key · *.pem · credentials* · *secret*</code> 커밋 전 경고.</span>
+          <span class="sg-text"><strong>민감 파일 감지</strong> — <code>.env* · *.key · *.pem · credentials* · *secret*</code> 커밋 전 경고.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -1174,7 +1181,7 @@
       </details>
       <details>
         <summary>도중에 멈추면 처음부터 다시 해야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. "이어서 해줘"라고 말하면 <code>.dev/state.md</code>에 저장된 진행 상태를 읽어 멈춘 단계부터 다시 시작합니다.</div>
+        <div class="faq-body">아닙니다. "이어서 해줘"라고 말하면 <code>.dev/{branch-slug}/state.md</code>에 저장된 진행 상태를 읽어 멈춘 단계부터 다시 시작합니다. dev와 tdd는 서로의 진행 상태를 구분하므로 잘못된 파이프라인으로 재개되지 않습니다. 단, v1.18.0 이전 버전에서 생성된 세션은 재개할 수 없고 새로 시작해야 합니다.</div>
       </details>
       <details>
         <summary>humanizer의 strict 모드는 일반 모드와 뭐가 다른가요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
@@ -1182,7 +1189,7 @@
       </details>
       <details>
         <summary>PR이 자동으로 머지되나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. 자동화는 PR 생성까지입니다. <code>gh pr merge</code>는 설정 수준에서 막혀 있습니다.</div>
+        <div class="faq-body">아닙니다. 자동화는 PR 생성까지입니다. 머지는 사용자가 명시적으로 요청할 때만 수행합니다 (설정 차단이 아니라 운영 원칙입니다).</div>
       </details>
       <details>
         <summary>SVN 프로젝트에서도 사용할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
