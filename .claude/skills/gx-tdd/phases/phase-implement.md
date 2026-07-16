@@ -18,10 +18,10 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ## 핵심 모드 분기 (core)
 
 오케스트레이터가 핵심 모드이면:
-- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장). ac.md가 없으면(레거시 hotfix→core 재개) `${DEV_DIR}/prd.md`를 대용으로 Read한다.
+- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장).
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
 - Step 1(태스크 분해)과 Step 1.2(승인 게이트)도 건너뛴다.
-- **RGR 사이클은 유지**한다 (light여도 TDD는 강제. Iron Law 1).
+- **RGR 사이클은 유지**한다 (핵심 모드여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: ac.md의 AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
   - green-coder 입력: 실패 테스트 + 기존 코드 인터페이스 (설계서 없음).
   - refactor-coder 입력: 정리 대상.
@@ -378,10 +378,10 @@ phase-review로 인계하기 위해 diff를 수집한다.
 
 **조건**: 핵심 모드이고 RGR 사이클이 완료된 직후에만 실행한다.
 
-`phase-review`를 light에서 건너뛰면서 security-auditor가 호출되지 않던 공백을 보완한다. CRITICAL/HIGH만 보고하도록 범위를 제한하여 light의 경량성을 유지한다.
+`phase-review`를 핵심 모드에서 건너뛰면서 security-auditor가 호출되지 않던 공백을 보완한다. CRITICAL/HIGH만 보고하도록 범위를 제한하여 핵심 모드의 경량성을 유지한다.
 
 **Step H1**: `Task(subagent_type="oh-my-gx:security-auditor")` — prompt에 다음을 포함:
-- AC 문서 (`${DEV_DIR}/ac.md` Read — 핵심 모드의 요구사항 명세. 레거시 hotfix→core 재개로 ac.md가 없으면 `${DEV_DIR}/prd.md`를 대용으로 Read)
+- AC 문서 (`${DEV_DIR}/ac.md` Read — 핵심 모드의 요구사항 명세)
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - 코드 맵
 - REFERENCES (있으면)

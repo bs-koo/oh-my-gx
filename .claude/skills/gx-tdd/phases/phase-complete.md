@@ -27,7 +27,7 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
-   - 핵심 모드(`mode: core` — 구 명칭 `light`, 레거시 `mode: hotfix`, 또는 `flags`의 `--core`/`--light`/`--hotfix` 포함)가 **아닌데** `phases.review`가 `completed`가 아니다 (core는 review를 설계상 스킵하므로 review 부재가 정상이다)
+   - 핵심 모드(`mode: core` 또는 `flags`의 `--core` 포함)가 **아닌데** `phases.review`가 `completed`가 아니다 (core는 review를 설계상 스킵하므로 review 부재가 정상이다)
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 모드)를 안내한다.
 3. 전체 모드의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
 
@@ -54,7 +54,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 ---
 
-## Step 0: 인수 검증 (ProductOwner / LIGHT는 AC 자가 검증)
+## Step 0: 인수 검증 (ProductOwner / 핵심 모드는 AC 자가 검증)
 
 **diff 갱신** (모드 무관 공통): phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
 - **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
@@ -131,7 +131,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
    ```
    Trust Ledger가 없으면 이 섹션을 생략한다.
 
-   **핵심 모드 긴급 감사 병기**: Trust Ledger에 `### 핵심 모드 긴급 감사` 섹션(레거시 산출물은 `### Light 긴급 감사` 또는 `### Hotfix 긴급 감사`)이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- 핵심 모드 긴급 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. 전체·핵심 모드 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
+   **핵심 모드 긴급 감사 병기**: Trust Ledger에 `### 핵심 모드 긴급 감사` 섹션이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- 핵심 모드 긴급 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. 전체·핵심 모드 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
 
 ### Step 2-2: `Skill("oh-my-gx:gx-pull-request")` 호출
 
