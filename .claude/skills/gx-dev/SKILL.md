@@ -61,7 +61,6 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
-- `--hotfix`(레거시)가 포함되면 **핵심 모드**로 실행한다. 안내 1줄을 출력한다: "`--hotfix`는 핵심 모드로 실행됩니다."
 - `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
 - 모드 관련 플래그가 없으면 Step 2로 진행한다 (`--eco`/`--standard`만 있는 경우에도 Step 2의 자연어 판정을 계속한다).
 
@@ -132,7 +131,6 @@ intent-source: flag | natural-language | user-selection
 
 - `--phase requirements|design|implement|review|complete`: 특정 Phase만 실행
 - `--core`: 핵심 모드 (AC 확인 → 구현 → Gate → 기록 → PR)
-- `--hotfix`: 레거시 — 핵심 모드로 매핑된다
 - `--eco`: 에코 모드 — 에이전트 디스패치를 sonnet 중심으로 하향 (공유 규칙 "모델 프로파일" 참조)
 - `--standard`: 표준 프로파일 강제 — config.json이 eco여도 이번 실행만 표준
 - `--base <branch>`: 베이스 브랜치 지정
@@ -212,7 +210,7 @@ all:  setup → requirements → design → implement → review → complete
 - 구현: 예상 변경 파일 2개 이하 + 방향 명확이면 오케스트레이터 직접, 그 외 coder 1회 디스패치.
 - Mechanical Gate: build + test **필수**. 통과 없이 complete에 진입하지 않는다.
 - complete: product-owner 인수 대신 **AC 자가 검증**. PR에는 ac.md(배경/요구사항)와 summary.md(변경 요약)를 전달한다.
-- 레거시 `--hotfix`와 자연어 "긴급/핫픽스"도 이 경로로 실행된다.
+- 자연어 "긴급/핫픽스"도 이 경로로 실행된다.
 
 ## Phase 라우팅 — 필수 실행 프로토콜
 
@@ -636,9 +634,9 @@ AskUserQuestion(
 
 ## 플래그 충돌 검증
 
-- `--core`(레거시 `--hotfix` 포함)와 `--phase`는 **동시 사용 불가**. 둘 다 있으면: "`--core`/`--hotfix`와 `--phase`는 동시에 사용할 수 없습니다." 에러 후 중단.
+- `--core`와 `--phase`는 **동시 사용 불가**. 둘 다 있으면: "`--core`와 `--phase`는 동시에 사용할 수 없습니다." 에러 후 중단.
 - `--eco`와 `--standard`는 **동시 사용 불가**. 둘 다 있으면: "`--eco`와 `--standard`는 동시에 사용할 수 없습니다." 에러 후 중단.
-- `--resume`과 `--phase`, `--core`, `--hotfix`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
+- `--resume`과 `--phase`, `--core`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 
 ## Phase 선택 (--phase 플래그)

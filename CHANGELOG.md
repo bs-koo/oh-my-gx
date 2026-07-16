@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.18.0 (2026-07-16) — 레거시 모드 호환 제거 (breaking) + 정합성 갭 수정
+
+### ⚠️ Breaking Changes
+- **레거시 `--hotfix` 플래그 지원 중단**: v1.16~v1.17의 `--hotfix`→핵심 모드 매핑을 제거했다. 자연어 "긴급/핫픽스/빨리 고쳐"는 **핵심 모드 라우팅으로 그대로 유지**되므로 대부분의 사용자는 영향받지 않는다. `--hotfix` 플래그를 직접 쓰던 스크립트만 `--core`(또는 자연어)로 교체 필요.
+- **구 세션 재개 마이그레이션 제거**: `normal`/`full`/`light`/`hotfix`/`implement` 구 모드 세션의 `--resume` 마이그레이션을 제거하고 **구 버전 세션 방어**(state.md의 `mode`가 `all`/`core`가 아니면 재개 거부·안내)로 대체했다. `full`/`light`/`normal`은 릴리스된 적 없는 v1.16 개발 중 중간 명칭, `hotfix`/`implement`는 v1.15 이하 레거시다. v1.18.0 이전 진행 중 세션은 새로 시작해야 한다.
+- **구 Trust Ledger 섹션명 인식 제거**: `### Light 긴급 감사`·`### Hotfix 긴급 감사` 구 산출물 인식 제거 (`### 핵심 모드 긴급 감사`만 인식).
+
+### Fixed (정합성 갭 — 전수조사 반영)
+- **구 명칭 `light`/`LIGHT` 잔존 제거**: gx-tdd phase-complete(헤딩)·phase-implement(2곳)·gx-cross-review에 남아 있던 오타성 구 명칭을 "핵심 모드"로 정정. 린트 [13]의 검사 범위(SKILL.md 1파일)·패턴(`LIGHT 모드` 리터럴)이 좁아 놓치던 사각지대를, `hotfix`/`light` 전면 금지(디렉토리 재귀 + `\blight\b`)로 강화.
+- **린트 [14] opus↔eco 대조 정확화**: 부분 문자열 매칭(`grep -q "$name"`)이 `refactor-coder`의 `coder` 포함 때문에 `coder` 누락을 false pass하던 것을 하이픈 경계 정규식(`[^-a-z]$name|^$name`)으로 교정.
+- **gx-tdd eco 디스패치 골든 시나리오 신설(S17)**: S15(gx-dev)·S16(gx-tdd 질문 UX)만 있고 gx-tdd eco 실제 디스패치 관찰이 없던 공백을 보완 (design-critic·test-architect·quality-reviewer sonnet 하향, architect opus 유지). 골든 16→17종.
+- **gx-tdd `--phase` 환경감지 model-profile 로드 대칭화**: state.md에 `model-profile`이 있어도 로드가 암묵적이던 것을 gx-dev와 대칭으로 명시 (eco 오버라이드가 이 값에 의존).
+- **gx-ralph model-profile 오인 방지**: 무인 루프가 `model-profile`을 무시(표준 실행)하고 복귀 후 origin 파이프라인이 재적용함을 상태 계약·`--status`에 명시 (전환 후 잔존 필드의 사용자 오인 해소).
+
+### Docs/Infra
+- 린트 [12]/[13] 레거시 매핑 존재 검사 → 구 버전 방어 + `hotfix`/`light` 잔존 금지로 반전. 골든 S13 반전(마이그레이션 → 구 버전 방어). gx-tdd 드리프트 인벤토리에 ralph 전환 eco 경고 문구 등재. guide·설계 spec §12 갱신.
+
 ## v1.17.0 (2026-07-14) — 모델 프로파일 도입 (standard / eco)
 
 ### Features
