@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.19.0 (2026-07-20) — 전수조사 정합성 갭 수정 + SVN 기능별 격리
+
+### Features / Changed
+- **SVN 기능별 dev 디렉토리 격리 (`.dev/.active` 포인터)**: 기존 SVN은 브랜치가 없어 `.dev/trunk/` 한 폴더를 매 dev 호출마다 덮어써 기능 간 산출물(state·prd·design)이 충돌했다. git의 `.dev/{branch-slug}`와 대칭으로, SVN도 git 브랜치명 생성과 동일 규칙(`--slug` > 이슈 키 > 타입+키워드)으로 작업 slug를 만들어 `.dev/{slug}/`에 격리하고, 활성 slug를 `.dev/.active` 포인터에 기록한다. 훅 G2·skill-routing·git-workflow·gx-verify가 이 포인터로 활성 작업의 state.md를 찾아 verify 게이트를 정확히 적용한다(`.active` 부재·공백·불안전값 시 `.dev/trunk` 폴백 — 레거시 세션·안전 기본값 유지). phase-setup(dev·tdd)이 producer, 훅·룰·verify가 consumer.
+
+### Fixed (전수조사 정합성 갭)
+- **[High] gx-setup config.json 자동 생성 부재**: gx-setup 0단계가 config.json 존재를 전제한 `Edit`만 수행해, config.json이 없는 신규(소비) 프로젝트에서 gx-dev/gx-tdd 부트스트랩(gx-setup이 생성해줄 것을 기대)이 수동 `cp` 안내로만 빠지던 문제. 번들 템플릿(`${CLAUDE_PLUGIN_ROOT:-.}/.claude/config.json`)에서 자동 생성하는 선행 단계를 추가.
+- **[High] 플러그인 설치 환경 경로 불일치**: phase·형제 스킬 Read 경로가 `<프로젝트 루트>/.claude/skills/...`로 하드코딩돼 마켓플레이스 설치 시 소비 프로젝트 루트에 없어 실패하던 문제. `${CLAUDE_PLUGIN_ROOT:-.}` 규약으로 통일(설치=플러그인 캐시 루트, 로컬 dev=프로젝트 루트 폴백). gx-dev·gx-tdd·gx-lens 9곳.
+- **phase-complete 자기모순 + 라우팅 예외**: gx-dev phase-complete 헤더의 "커밋 직접 실행 금지"와 본문 context 자동 커밋/push의 충돌 해소 — context 동기화 커밋을 skill-routing에 명시적 예외로 등재하고 헤더 정정. gx-dev의 레거시 "형제 스킬 Read하여 실행" 지시를 gx-tdd와 동일하게 "Skill 도구 호출"로 통일.
+- **force-push 방어 배포 공백**: settings.json deny에만 있던 강제푸시 차단이 소비 프로젝트에 배포되지 않던 문제. 훅에 force-push 가드(G4) 신설 — `-C`/`-c`/`-f`/`--force[-with-lease]` 커버, 플러그인으로 배포되어 설치만으로 보호.
+- **gx-cross-review fallback 조건 자기모순**: core 산출물(ac.md만) 입력을 판정 규칙은 본 모드로, fallback 섹션은 fallback으로 보내던 상충을 "prd·ac·design 셋 다 부재"로 통일(3곳) + 잘못된 내부 참조 정정.
+- **gx-humanizer 영어 P1 패턴 3종 누락 + 모드 트리거 순서**: 1차 감지 치트시트에서 빠져 있던 E2(주목도/미디어)·E5(Weasel Words)·E6(Challenges/Future Prospects) [P1] 추가. 8,000자 초과 strict 자동승급을 "모드 미명시 시"로 한정해 긴 글에서 audit/rewrite를 못 고르던 순서 모순 해소.
+- **allowed-tools 공백 보강**: gx-dev·gx-tdd(`wc`/`echo`), gx-pull-request(알림 블록 `basename`/`mktemp`/`cat`/`rm`), gx-research(`.gitignore` 편집 `Edit`) 누락 추가. gx-setup 미사용 `curl` 제거.
+
+### Infra
+- **정합성 린트 5종 신설 ([15]~[19])**: 위 수정들의 재발 방지 — 플러그인 번들 경로 규약+config 부트스트랩, phase-complete 예외 대칭+레거시 Read 제거, force-push 훅 가드, SVN `.dev/.active` 계약, cross-review fallback 3원 조건+humanizer P1 커버리지. 각 가드는 수정을 되돌리면 FAIL하도록 판별력 확인. 린트 14→19종.
+- golden-scenarios S8(svn verify 게이트)을 `.dev/.active` 기준으로 갱신.
+
 ## v1.18.0 (2026-07-16) — 레거시 모드 호환 제거 (breaking) + 정합성 갭 수정
 
 ### ⚠️ Breaking Changes

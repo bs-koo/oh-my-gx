@@ -1,9 +1,10 @@
 # phase-complete: 완료
 
-> **CRITICAL: 커밋/PR 직접 실행 절대 금지.**
+> **CRITICAL: 기능 코드의 커밋/PR 직접 실행 절대 금지.**
 > `git commit`, `gh pr create` 등 VCS 명령어를 오케스트레이터가 직접 실행하지 않는다.
 > 반드시 `Skill(skill: "oh-my-gx:gx-commit")`, `Skill(skill: "oh-my-gx:gx-pull-request")`을 호출한다.
 > 스킬 호출이 실패하면 사용자에게 보고하고, 직접 명령어로 우회하지 않는다.
+> **유일한 예외**: 아래 "공통: context 변경사항 자동 커밋"(Step 3~4)의 context 동기화 커밋/push는 전용 메시지 형식(`docs: [context] …`)과 push 정책으로 직접 수행한다 — 기능 코드가 아닌 status.md 문서 동기화 전용이며, skill-routing.md에 예외로 명시돼 있다.
 
 각 단계가 실패하면 사용자에게 보고하고 진행 여부를 확인한다.
 

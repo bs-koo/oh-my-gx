@@ -16,6 +16,10 @@ allowed-tools:
   - Bash(GH_HOST=github.com gh:*)
   - Bash(which:*)
   - Bash(curl:*)
+  - Bash(basename:*)
+  - Bash(mktemp:*)
+  - Bash(cat:*)
+  - Bash(rm:*)
   - AskUserQuestion
 ---
 

@@ -67,7 +67,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 `oh-my-gx:gx-tdd` 파이프라인의 phase-implement(Step 0.5 기준선 게이트)가 기록한 경고 baseline을 로드한다. gx-verify는 무인자 독립 스킬이므로 `DEV_DIR`을 자체 계산한다:
 
 1. `.claude/config.json`의 `vcs` 값을 확인한다 (없으면 `git`).
-2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. 결과가 빈 문자열(detached HEAD 등)이면 baseline 탐색을 건너뛰고 그 사실을 보고한다. **svn**: `DEV_DIR = .dev/trunk/`.
+2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. 결과가 빈 문자열(detached HEAD 등)이면 baseline 탐색을 건너뛰고 그 사실을 보고한다. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/`를 사용한다 (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 3. `${DEV_DIR}/state.md`가 존재하고 **`status: in_progress`**(진행 중 파이프라인)이며 최상위 필드 `warnings-baseline: N`이 있으면 로드한다. **`status: completed`인 옛 파이프라인의 baseline은 로드하지 않는다** (stale 기준에 의한 오차단 방지).
 4. 조건 미충족(파일 없음·완료 상태·필드 없음 — 단독 호출 등)이면 → **baseline 없음**으로 진행한다 (Step 4에서 경고 수 보고만, 비교 차단 없음).
 

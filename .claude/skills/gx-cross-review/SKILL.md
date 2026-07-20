@@ -161,7 +161,7 @@ allowed-tools:
 | codemap | `${DEV_DIR}/codemap.md` | "탐색 부담 절감용 핵심 파일 목록" |
 
 **판정 규칙**:
-- prd, ac, design 셋 다 없으면 → **fallback 모드** (Step 5의 산출물 부재 fallback 진입).
+- prd, ac, design 셋 다 없으면 → **fallback 모드** (아래 "산출물 부재 fallback" 섹션 진입).
 - 셋 중 하나라도 있으면 → cross-review 본 모드 진행. **AC 명세는 prd.md 우선, 없으면 ac.md(core)를 사용한다.**
 - summary/trust-ledger/self-check/codemap은 있으면 활용, 없어도 진행.
 
@@ -183,7 +183,7 @@ allowed-tools:
   - references/ (2개 파일)
 ```
 
-산출물 둘 다 없으면:
+산출물(prd·ac·design)이 셋 다 없으면:
 ```
 ## gx-cross-review 환경
 - 브랜치: feat/login (base: main)
@@ -706,12 +706,12 @@ AskUserQuestion(
 
 ## 산출물 부재 fallback
 
-Step 0-3에서 prd.md/design.md 둘 다 없으면 이 경로를 따른다.
+Step 0-3에서 prd.md·ac.md·design.md 셋 다 없으면 이 경로를 따른다.
 
 ### F-1. fallback 모드 안내
 
 ```
-산출물(prd.md, design.md)이 없습니다.
+산출물(prd.md·ac.md·design.md)이 없습니다.
 gx-cross-review의 차별점인 "약속 대비 충실도 검증"을 수행할 수 없습니다.
 일반 모드로 진행하면 기본 /codex:review 또는 qa-manager 일반 리뷰와 거의 동일합니다.
 ```
