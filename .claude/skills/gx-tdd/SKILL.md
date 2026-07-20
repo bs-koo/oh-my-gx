@@ -3,7 +3,7 @@ name: gx-tdd
 version: 1.0.0
 description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰(spec→quality) → verify → 커밋/PR. TDD 사이클 강제 + verify 게이트. 일반 개발은 oh-my-gx:gx-dev 사용."
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
+allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(wc *)", "Bash(echo *)", "Bash(mktemp *)", "Bash(sort *)", "Bash(rm -f *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
 ---
 
 # gx-tdd
@@ -28,8 +28,9 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 ## 스킬 참조 경로
 
-이 스킬의 파일들은 프로젝트 루트의 `.claude/skills/gx-tdd/` 하위에 위치한다.
-Phase 파일이나 다른 스킬을 Read할 때, 현재 작업 디렉토리(프로젝트 루트)를 기준으로 절대 경로를 구성한다.
+**번들 파일 경로 규약**: 이 스킬의 phase·참조 파일은 플러그인 번들의 `.claude/skills/gx-tdd/` 하위에 있다. Read할 때 경로 앞에 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`를 붙인다 — 설치 환경에서는 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석되어 두 경우 모두 실제 파일 위치와 일치한다.
+- 예: `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-tdd/phases/phase-setup.md")`
+- Read가 경로의 `${CLAUDE_PLUGIN_ROOT}`를 확장하지 못하면, `echo ${CLAUDE_PLUGIN_ROOT:-.}`를 Bash로 1회 실행해 절대 경로를 얻은 뒤 그 값으로 Read한다.
 
 다른 스킬의 프로세스를 실행할 때 **반드시 `Skill` 도구로 호출**한다:
 - 테스트(완료 게이트): `Skill("oh-my-gx:gx-verify")`
@@ -318,7 +319,7 @@ for phase in PHASES:
         → "변경사항이 없습니다" 보고 후 중단
 
     # 2b. Phase 파일 Read (필수)
-    Read("<프로젝트 루트>/.claude/skills/gx-tdd/phases/phase-{phase}.md")
+    Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-tdd/phases/phase-{phase}.md")
 
     # 2c. Phase 파일의 지시에 따라 실행
 
@@ -406,7 +407,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `VCS_TYPE`: `.claude/config.json`의 `"vcs"` 값. `"git"`, `"svn"`, 또는 `""` (미설정, `"git"`으로 취급). phase-setup에서 읽어 이후 모든 Phase에서 사용한다. VCS별 명령어 분기의 기준이 된다.
 - `GIT_PREFIX`: `VCS_TYPE`이 `"git"`이면 `git`, `"svn"`이면 `svn`. 소비 프로젝트 루트에서 직접 실행한다.
 - `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
-- `DEV_DIR`: 브랜치별 dev 산출물 디렉토리. `.dev/{branch-slug}/` 형식. branch-slug는 브랜치명의 `/`를 `-`로 치환한 값이다 (예: `feat/login` → `.dev/feat-login/`). phase-setup Step 6.5에서 브랜치 생성/전환 후 결정된다. **SVN은 브랜치가 없으므로 `.dev/trunk/`를 사용한다.**
+- `DEV_DIR`: 브랜치별 dev 산출물 디렉토리. `.dev/{branch-slug}/` 형식. branch-slug는 브랜치명의 `/`를 `-`로 치환한 값이다 (예: `feat/login` → `.dev/feat-login/`). phase-setup Step 6.5에서 브랜치 생성/전환 후 결정된다. **SVN은 브랜치가 없으므로 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}/`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk/` 폴백).**
 - `BASE_BRANCH`: phase-setup Step 2에서 결정된 베이스 브랜치 (예: `main`, `develop`). SVN인 경우 미사용.
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `${DEV_DIR}/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
 - `DOMAIN_CONTEXT`: phase-setup 0.3에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
@@ -728,7 +729,7 @@ AskUserQuestion(
 > 1. `.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
 > 2. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
 > 3. `PROJECT_ROOT` = 현재 디렉토리.
-> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `DEV_DIR = .dev/trunk/`.
+> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`을 결정한다: `${DEV_DIR}/state.md`가 있으면 그 `model-profile` 필드 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
 

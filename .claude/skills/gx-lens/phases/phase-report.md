@@ -3,7 +3,7 @@
 Explore Phase의 탐색 결과를 종합하여 최종 보고서를 생성한다. 오케스트레이터가 직접 수행한다.
 
 **선행 로드**: Report Phase 진입 시 아래를 Read한다.
-- `Read(<프로젝트 루트>/.claude/skills/gx-lens/references/report-guide.md)`
+- `Read(${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-lens/references/report-guide.md)`
 
 이후 각 절에서 별도 Read 없이 메모리의 내용을 사용한다.
 
@@ -106,7 +106,7 @@ Explore Phase의 발견 사항을 **"대상에게 무슨 일이 일어나는가"
 
 Prepare Phase 0절에서 파싱한 `IDEA_RAW`가 존재하면:
 - `IDEA_CONTEXT = { idea: IDEA_RAW, clarifications: null }`
-- `Read(<프로젝트 루트>/.claude/skills/gx-lens/phases/phase-impact.md)` 후 Impact Phase로 진행한다.
+- `Read(${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-lens/phases/phase-impact.md)` 후 Impact Phase로 진행한다.
 
 ### 아이디어 질문
 
@@ -131,7 +131,7 @@ AskUserQuestion(
 - **아이디어를 입력받으면**:
   - `IDEA_CONTEXT = { idea: <입력된 아이디어>, clarifications: null }`
   - IDEA가 불명확하면 **1회만** 보강 질문 (대상 범위/변경 규모/제약 조건, 최대 3개). 답변을 `clarifications`에 저장.
-  - `Read(<프로젝트 루트>/.claude/skills/gx-lens/phases/phase-impact.md)` 후 Impact Phase로 진행한다.
+  - `Read(${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-lens/phases/phase-impact.md)` 후 Impact Phase로 진행한다.
 
 - **"분석 없이 마치기"를 선택하면**:
   ```

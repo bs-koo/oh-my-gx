@@ -184,4 +184,4 @@ Task(subagent_type="oh-my-gx:security-auditor")
 
 `ARCHITECT_ANALYSIS`와 `ZT_ANALYSIS`를 Impact-Report Phase에 전달한다.
 
-`Read(<프로젝트 루트>/.claude/skills/gx-lens/phases/phase-impact-report.md)` 후 Impact-Report Phase로 진행한다.
+`Read(${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-lens/phases/phase-impact-report.md)` 후 Impact-Report Phase로 진행한다.

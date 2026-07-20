@@ -79,14 +79,45 @@ EOF
     ;;
 esac
 
+# G4: force-push 차단 — 보호 정책(git push --force / -f 금지)을 훅으로도 배포해
+# 소비 프로젝트가 플러그인 설치만으로 보호받게 한다(settings.json deny와 동일 집합).
+# 중첩 case: 바깥이 push 명령(git -C/-c/rtk 래핑 포함)을 잡고, 안쪽이 force 플래그를 판정한다.
+# cd <dir> && git push 형태는 커밋 가드(G1/G3)와 동일한 알려진 한계.
+case "$CMD" in
+  *"git "*"push"*)
+    # push 서브커맨드 이후 인자만 검사한다 (명령 분리자 전까지) — 무관한 -f/--force 오탐 방지.
+    # 마지막 push 이후 인자만 검사 (앞선 "push" 토큰 오탐 방지 — 예: echo push && git push --force)
+    PUSH_ARGS="${CMD##*push}"; PUSH_ARGS="${PUSH_ARGS%%&&*}"; PUSH_ARGS="${PUSH_ARGS%%;*}"; PUSH_ARGS="${PUSH_ARGS%%|*}"
+    case "$PUSH_ARGS" in
+      *"--force"*|*" -f"|*" -f "*)
+        cat <<EOF
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "강제 푸시(git push --force / -f)는 금지됩니다. 저장소 히스토리를 손상시킬 수 있습니다. 꼭 필요하면 사용자가 터미널에서 직접 실행해주세요."
+  }
+}
+EOF
+        exit 0
+        ;;
+    esac
+    ;;
+esac
+
 # G2: SVN 직접 커밋 차단 — Claude 대신 사용자가 터미널에서 실행 (+ verify 미통과 경고)
 # 인접 패턴("svn commit"/"svn ci"): svn과 commit이 명령 인자에 따로 등장하는 경우(문서 본문 등)의 오탐 방지
 case "$CMD" in
   *"svn commit"*|*"svn ci"*)
     SVN_REASON="SVN 프로젝트에서는 Claude가 커밋을 실행하지 않습니다. 터미널에서 svn commit을 직접 실행해주세요."
     WC_ROOT=$(svn info --show-item wc-root 2>/dev/null || pwd)
-    if verify_gate_open "$WC_ROOT/.dev/trunk/state.md"; then
-      SVN_REASON="$SVN_REASON 주의: gx-tdd verify 게이트 미통과 상태입니다 (.dev/trunk/state.md). oh-my-gx:gx-verify 통과 후 커밋하세요."
+    # svn 활성 작업 slug: .dev/.active 포인터로 기능별 state.md를 찾는다.
+    # 부재·공백·안전하지 않은 값(/ 또는 ..)이면 .dev/trunk로 폴백(레거시 세션·verify 방어 유지).
+    ACTIVE_SLUG=""
+    [ -f "$WC_ROOT/.dev/.active" ] && ACTIVE_SLUG=$(tr -d ' \t\r\n' < "$WC_ROOT/.dev/.active" 2>/dev/null)
+    case "$ACTIVE_SLUG" in ""|"."|*/*|*\\*|*..*) ACTIVE_SLUG="trunk" ;; esac
+    if verify_gate_open "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"; then
+      SVN_REASON="$SVN_REASON 주의: gx-tdd verify 게이트 미통과 상태입니다 (.dev/$ACTIVE_SLUG/state.md). oh-my-gx:gx-verify 통과 후 커밋하세요."
     fi
     cat <<EOF
 {

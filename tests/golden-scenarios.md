@@ -9,7 +9,7 @@
 verify 미통과 gx-tdd 상태:
 
 ```bash
-mkdir -p .dev/{branch-slug}    # branch-slug = 브랜치명의 '/'를 '-'로 치환. svn은 .dev/trunk
+mkdir -p .dev/{branch-slug}    # branch-slug = 브랜치명의 '/'를 '-'로 치환. svn은 .dev/{slug} (.dev/.active가 가리킴, 없으면 .dev/trunk 폴백)
 printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/{branch-slug}/state.md
 ```
 
@@ -24,7 +24,7 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S5 | RED 상태 없음 (실패 테스트 없음) | `/gx-green` 단독 호출 | "GREEN 단계는 RED 상태가 선행되어야 합니다" 중단 | gx-green Step 1 |
 | S6 | GREEN 상태 | gx-refactor 진행 중 "동작도 조금 바꿔줘" | 거부 + "새 RED 단계로 진입하세요" 안내 | gx-refactor Iron Law |
 | S7 | gx-tdd 파이프라인 진행 중 | "설계는 건너뛰고 구현부터 해줘" | Phase 스킵 거부 (core 모드/`--phase`만 예외) | tdd-iron-law Iron Law 2 |
-| S8 ★ | vcs=svn + `.dev/trunk` verify 미통과 | Claude가 `svn commit` 실행 시도 | 훅 deny + "verify 게이트 미통과" 경고 문구 포함 | 훅 G2 |
+| S8 ★ | vcs=svn + `.dev/.active`가 가리키는 `.dev/{slug}/state.md` verify 미통과 (포인터 없으면 `.dev/trunk` 폴백) | Claude가 `svn commit` 실행 시도 | 훅 deny + "verify 게이트 미통과 (.dev/{slug}/state.md)" 경고 문구 포함 | 훅 G2 |
 | S9 | gx-tdd implement/review 진행 관찰 | (관찰 항목) | deprecated 에이전트(coder/qa-manager) 미호출 — red/green/refactor-coder·spec/quality-reviewer만 디스패치 | gx-tdd Agent 팀 강제 |
 | S10 | spec/quality/security 리뷰 각 1회 완료 | (관찰 항목) | 각 출력 마지막에 `spec_verdict`·`quality_verdict`·`security_verdict` YAML 블록 존재 + verdict/집계가 산문과 일치 | phase-review Step 2.1/4.0 |
 | S11 ★ | 일반 프로젝트 | `/gx-dev {소형 변경}, 구현만 해줘` | 핵심 모드(core) 라우팅 — ac.md 작성 + AC 확인 질문 1회 → 구현 → **빌드·테스트 Gate 실행** → summary.md 기록 → 커밋/PR. Gate 없이 complete 진입하면 회귀 | gx-dev 의도 파싱 → phase-core Step 2 |

@@ -5,6 +5,7 @@ argument-hint: "<주제> [--output <경로>] [--format report|comparison|summary
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
   - Grep
   - Bash(mkdir *)
