@@ -29,6 +29,9 @@ allowed-tools:
   - Bash(which *)
   - Bash(wc *)
   - Bash(echo *)
+  - Bash(mktemp *)
+  - Bash(sort *)
+  - Bash(rm -f *)
   # 도구
   - Read
   - Edit

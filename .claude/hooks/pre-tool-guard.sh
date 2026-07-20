@@ -86,7 +86,8 @@ esac
 case "$CMD" in
   *"git "*"push"*)
     # push 서브커맨드 이후 인자만 검사한다 (명령 분리자 전까지) — 무관한 -f/--force 오탐 방지.
-    PUSH_ARGS="${CMD#*push}"; PUSH_ARGS="${PUSH_ARGS%%&&*}"; PUSH_ARGS="${PUSH_ARGS%%;*}"; PUSH_ARGS="${PUSH_ARGS%%|*}"
+    # 마지막 push 이후 인자만 검사 (앞선 "push" 토큰 오탐 방지 — 예: echo push && git push --force)
+    PUSH_ARGS="${CMD##*push}"; PUSH_ARGS="${PUSH_ARGS%%&&*}"; PUSH_ARGS="${PUSH_ARGS%%;*}"; PUSH_ARGS="${PUSH_ARGS%%|*}"
     case "$PUSH_ARGS" in
       *"--force"*|*" -f"|*" -f "*)
         cat <<EOF
@@ -114,7 +115,7 @@ case "$CMD" in
     # 부재·공백·안전하지 않은 값(/ 또는 ..)이면 .dev/trunk로 폴백(레거시 세션·verify 방어 유지).
     ACTIVE_SLUG=""
     [ -f "$WC_ROOT/.dev/.active" ] && ACTIVE_SLUG=$(tr -d ' \t\r\n' < "$WC_ROOT/.dev/.active" 2>/dev/null)
-    case "$ACTIVE_SLUG" in ""|"."|*/*|*..*) ACTIVE_SLUG="trunk" ;; esac
+    case "$ACTIVE_SLUG" in ""|"."|*/*|*\\*|*..*) ACTIVE_SLUG="trunk" ;; esac
     if verify_gate_open "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"; then
       SVN_REASON="$SVN_REASON 주의: gx-tdd verify 게이트 미통과 상태입니다 (.dev/$ACTIVE_SLUG/state.md). oh-my-gx:gx-verify 통과 후 커밋하세요."
     fi
