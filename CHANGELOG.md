@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.19.1 (2026-07-20) — 표준 프로파일 안내 보강
+
+### Docs/UX
+- **표준 프로파일 선택 시 안내 추가**: 표준은 각 에이전트를 frontmatter 모델대로 디스패치하므로 architect·coder·design-critic 등 opus 에이전트가 **세션 모델과 무관하게 opus로 실행**됨을 안내한다. 세션 모델을 sonnet으로 낮춰 절감하려는 경우 표준이 아니라 eco를 쓰도록 유도 — "sonnet 세션 + 표준"의 비효율 조합(오케스트레이터는 sonnet인데 무거운 에이전트는 opus로 잔존)을 예방한다. gx-dev·gx-tdd phase-setup Step 1.5. (v1.19.0의 eco 세션 모델 안내와 대칭)
+
 ## v1.19.0 (2026-07-20) — 전수조사 정합성 갭 수정 + SVN 기능별 격리
 
 ### Features / Changed
