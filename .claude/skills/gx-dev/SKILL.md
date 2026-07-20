@@ -48,6 +48,7 @@ allowed-tools:
 
 **번들 파일 경로 규약**: 이 스킬의 phase·참조 파일은 플러그인 번들의 `.claude/skills/gx-dev/` 하위에 있다. Read할 때 경로 앞에 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`를 붙인다 — 설치 환경에서는 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석되어 두 경우 모두 실제 파일 위치와 일치한다.
 - 예: `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-dev/phases/phase-setup.md")`
+- Read가 경로의 `${CLAUDE_PLUGIN_ROOT}`를 확장하지 못하면, `echo ${CLAUDE_PLUGIN_ROOT:-.}`를 Bash로 1회 실행해 절대 경로를 얻은 뒤 그 값으로 Read한다.
 
 다른 스킬의 프로세스를 실행할 때 **반드시 `Skill` 도구로 호출**한다:
 - 커밋: `Skill("oh-my-gx:gx-commit")`

@@ -19,7 +19,7 @@ allowed-tools:
   - Bash(basename:*)
   - Bash(mktemp:*)
   - Bash(cat:*)
-  - Bash(rm:*)
+  - Bash(rm -f:*)
   - AskUserQuestion
 ---
 

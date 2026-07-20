@@ -4,6 +4,7 @@ argument-hint: "없음"
 description: VCS 감지, 도구 확인, 인증을 단계별로 수행한다.
 disable-model-invocation: true
 allowed-tools:
+  - "Bash(echo *)"
   - "Bash(gh *)"
   - "Bash(git *)"
   - "Bash(svn *)"
@@ -36,7 +37,7 @@ allowed-tools:
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
 0. **config.json 부재 시 번들 템플릿에서 생성** (다른 단계보다 먼저): `test -f .claude/config.json`로 존재를 확인한다.
-   - **없으면**: 플러그인 번들 템플릿을 `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/config.json")`로 읽어 프로젝트 `.claude/config.json`에 그대로 `Write`한다 (Write가 `.claude/` 디렉토리를 없으면 생성한다). 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`는 설치 환경에서 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석된다. `config.json 생성 : 완료 ✅ (번들 템플릿 복사)` 출력 후 아래 1로 진행한다.
+   - **없으면**: 플러그인 번들 템플릿을 `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/config.json")`로 읽어 프로젝트 `.claude/config.json`에 그대로 `Write`한다 (Write가 `.claude/` 디렉토리를 없으면 생성한다). 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`는 설치 환경에서 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석된다. Read가 이 변수를 확장하지 못하면 `echo ${CLAUDE_PLUGIN_ROOT:-.}`를 Bash로 1회 실행해 절대 경로를 먼저 얻는다. `config.json 생성 : 완료 ✅ (번들 템플릿 복사)` 출력 후 아래 1로 진행한다.
    - **있으면**: 건너뛰고 아래 1로 진행한다.
 1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
 2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
