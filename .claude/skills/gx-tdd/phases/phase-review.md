@@ -28,12 +28,12 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **빌드 명령 결정**:
 
 1. `${PROJECT_ROOT}/CLAUDE.md`를 Read하여 빌드/컴파일 명령을 탐색한다. `build`, `compile`, `빌드` 키워드가 포함된 명령을 찾는다. CLAUDE.md가 없으면 다음 단계로.
-2. CLAUDE.md에 빌드 명령이 없으면 → 프로젝트 타입에서 기본값을 사용한다:
-   | 프로젝트 타입 | 기본 빌드 명령 |
+2. CLAUDE.md에 빌드 명령이 없으면 → config `projectTypes`의 `build` 필드를 사용한다. **SSOT는 config다** — 아래는 기본 템플릿 기준 예시(파생 사본):
+   | 프로젝트 타입 | 빌드 명령 (예시) |
    |---------------|---------------|
-   | java-spring (gradle) | `./gradlew build -x test` |
+   | java-spring (gradle) | `./gradlew build -x test` (`build` 필드의 테스트 제외 변형) |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
-   | python | 건너뛰기 (인터프리터 언어 — 기본 config 미정의 타입, `projectTypes` 확장 시에만 도달) |
+   `build` 필드가 없거나 빈 값인 타입(인터프리터 언어 등)은 빌드 검증을 건너뛰고, 건너뛰었음을 보고에 명시한다.
 3. 프로젝트 타입으로도 결정 불가 → AskUserQuestion: "빌드 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기.
 
 **실행 흐름**:

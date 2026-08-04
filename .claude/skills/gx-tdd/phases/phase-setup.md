@@ -152,7 +152,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 ### 3.1 병렬 수집
 
 아래 5개 작업은 서로 독립적이므로 **병렬로 실행**한다:
-1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`). 여러 타입이 감지되면 모두 기록한다.
+1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`, `Makefile` → `c-make`). 여러 타입이 감지되면 모두 기록한다. **매칭 실패 시**: gx-setup의 "프로젝트 타입 등록" 절차(빌드 파일 스캔 → 힌트 카탈로그 `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-setup/references/project-type-hints.md")` 제안 → 사용자 확인 → config 기록 → 권한 등록)를 인라인으로 1회 실행한다. 사용자가 등록을 건너뛰면 타입 미상으로 진행한다 (이후 게이트는 fail-closed 동작 — 조용한 통과 없음).
 2. **디렉토리 구조 수집**: `PROJECT_ROOT`의 최상위 2레벨 디렉토리 구조를 수집한다.
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
 4. **도메인 컨텍스트 탐색**: 현재 레포와 매칭되는 도메인 컨텍스트를 찾는다.
@@ -208,12 +208,7 @@ TMP=$(mktemp); (svn propget svn:ignore . 2>/dev/null; echo .dev) | sort -u > "$T
 처리 후 Step 7로 진행한다.
 
 **git인 경우:**
-프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. 이미 존재하는 패턴은 건너뛴다.
-
-| 프로젝트 타입 | 추가 패턴 |
-|---------------|-----------|
-| java-spring | `.gradle/`, `build/` |
-| node | `node_modules/`, `dist/` |
+프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
 
 `.dev/` 패턴도 이 단계에서 함께 추가한다 (dev 스킬의 문서 보관 규칙과 통합. 브랜치별 하위 폴더 전체가 무시됨).
 
