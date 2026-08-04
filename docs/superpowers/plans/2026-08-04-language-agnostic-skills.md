@@ -1,4 +1,6 @@
-# oh-my-gx 언어 중립화 (v1.20.0) Implementation Plan
+# oh-my-gx 언어 중립화 (v1.21.0) Implementation Plan
+
+> **재조준 (2026-08-04)**: PR #68(verify 지문 경화)이 v1.20.0을 선점하여 릴리스 목표를 v1.21.0으로 변경했다. #68의 변경(gx-verify Step 5-A 지문, 훅 경화, lint [4] 확장)과 본 계획의 편집 앵커는 충돌하지 않음을 검증했다 (lint는 여전히 [19/19]까지 — [20/20] 번호 유효).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -16,7 +18,7 @@
 - 커밋 메시지: `{type}: 한국어 메시지` 형식, 본문은 `-` bullet. **Co-Authored-By 라인 금지.**
 - **`git add -A` 금지** — 워킹 트리에 무관한 untracked 파일(PDF, pptx, stackdump 등)이 있다. 반드시 명시 파일만 스테이징한다.
 - 각 태스크 완료 조건: `bash scripts/lint-consistency.sh` 통과 (exit 0, "정합성 린트 통과" 출력).
-- 버전 범프(v1.20.0)와 CHANGELOG는 **PR 3에서만** 수행 (릴리스 1회 발동).
+- 버전 범프(v1.21.0)와 CHANGELOG는 **PR 3에서만** 수행 (릴리스 1회 발동).
 - PR 순서: 이 계획의 전제는 `docs/language-agnostic-design` 브랜치(스펙+계획)가 먼저 머지되는 것이다. PR 1~3은 각각 **직전 PR 머지 후 main에서 분기**한다 (스택 PR 금지).
 - PR 생성은 `Skill("oh-my-gx:gx-pull-request")`로 수행한다 (오케스트레이터가 실행 — 서브에이전트가 하지 않는다).
 - 드리프트 주의: SSOT-파생 사본을 수정하면 gx-tdd SKILL.md의 "드리프트 주의" 목록도 함께 갱신한다.
@@ -78,7 +80,7 @@ grep -q 'java 계열' .claude/skills/gx-setup/SKILL.md || fail "gx-setup JDK 조
 sed -i 's|/19\]|/20]|g' scripts/lint-consistency.sh
 ```
 
-파일 상단 주석(검사 항목 목록)에도 한 줄 추가: ` # 20. 언어 중립화 projectTypes SSOT 계약 (v1.20.0)`
+파일 상단 주석(검사 항목 목록)에도 한 줄 추가: ` # 20. 언어 중립화 projectTypes SSOT 계약 (v1.21.0)`
 
 - [ ] **Step 5: lint 실행 — 실패 확인 (RED)**
 
@@ -955,7 +957,7 @@ EOF
 )"
 ```
 
-### Task 16: README 반영 + v1.20.0 릴리스
+### Task 16: README 반영 + v1.21.0 릴리스
 
 **Files:**
 - Modify: `README.md` (언어 지원 안내 — 기존 구성에 맞는 위치에 삽입)
@@ -978,7 +980,7 @@ README.md를 Read하여 기존 목차/구성에 맞는 위치(설치/시작하�
 CHANGELOG.md 최상단(기존 최신 섹션 위)에 추가:
 
 ```markdown
-## v1.20.0 (2026-08-04)
+## v1.21.0 (2026-08-04)
 
 언어 중립화 — 모든 언어/프레임워크에서 파이프라인 사용 가능.
 
@@ -995,23 +997,23 @@ CHANGELOG.md 최상단(기존 최신 섹션 위)에 추가:
 
 - [ ] **Step 3: 버전 범프**
 
-- `.claude-plugin/plugin.json`: `"version": "1.19.1"` → `"version": "1.20.0"`
+- `.claude-plugin/plugin.json`: `"version": "1.20.0"` → `"version": "1.21.0"`
 - `.claude-plugin/marketplace.json`: `plugins[0].version` 동일 변경
 (정확한 현재 버전 문자열은 파일에서 확인 후 교체 — main 최신 기준)
 
 - [ ] **Step 4: lint 전체 통과 확인**
 
 Run: `bash scripts/lint-consistency.sh; echo "exit=$?"`
-Expected: `[1/20] 버전 3중 일치 ... ok ... = 1.20.0`, `정합성 린트 통과`, exit=0
+Expected: `[1/20] 버전 3중 일치 ... ok ... = 1.21.0`, `정합성 린트 통과`, exit=0
 
 - [ ] **Step 5: 커밋 + PR 생성**
 
 ```bash
 git add README.md CHANGELOG.md .claude-plugin/plugin.json .claude-plugin/marketplace.json
 git commit -m "$(cat <<'EOF'
-chore: v1.20.0 릴리스 — 언어 중립화
+chore: v1.21.0 릴리스 — 언어 중립화
 
-- CHANGELOG v1.20.0 섹션, plugin.json·marketplace.json 버전 동기
+- CHANGELOG v1.21.0 섹션, plugin.json·marketplace.json 버전 동기
 - README 언어/프레임워크 지원 절 추가
 EOF
 )"

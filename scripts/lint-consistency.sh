@@ -22,6 +22,7 @@
 # 17. force-push 훅 가드 G4 (v1.19.0)
 # 18. SVN .dev/.active 포인터 계약 (producer·consumer·폴백) (v1.19.0)
 # 19. cross-review fallback 3원 조건 단일화 + humanizer 영어 P1 치트시트(E2/E5/E6) (v1.19.0)
+# 20. 언어 중립화 projectTypes SSOT 계약 (v1.21.0)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -30,7 +31,7 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-echo "[1/19] 버전 3중 일치"
+echo "[1/20] 버전 3중 일치"
 V_PLUGIN=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 V_MARKET=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/marketplace.json | head -1)
 V_CHANGE=$(sed -n 's/^## v\([0-9.]*\).*/\1/p' CHANGELOG.md | head -1)
@@ -40,7 +41,7 @@ else
   fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET CHANGELOG=$V_CHANGE"
 fi
 
-echo "[2/19] 서브에이전트 도구명 통일 (Task)"
+echo "[2/20] 서브에이전트 도구명 통일 (Task)"
 if grep -rn 'Agent(subagent_type' .claude/skills >/dev/null 2>&1; then
   fail "Agent(subagent_type 호출 문법 잔존: $(grep -rl 'Agent(subagent_type' .claude/skills | tr '\n' ' ')"
 else
@@ -52,7 +53,7 @@ else
   ok "allowed-tools Agent 선언 없음"
 fi
 
-echo "[3/19] RGR 드리프트 키워드"
+echo "[3/20] RGR 드리프트 키워드"
 REFACTOR_FILES="agents/refactor-coder.md .claude/skills/gx-tdd/phases/phase-implement.md .claude/skills/gx-refactor/SKILL.md"
 for item in "동작 변경" "새 기능 추가" "에러 핸들링" "성능 최적화" "인터페이스 시그니처 변경"; do
   for f in $REFACTOR_FILES; do
@@ -80,7 +81,7 @@ grep -q "security_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "security_verdict 계약(Task B 프롬프트 producer + 파싱 consumer) 누락: phase-review.md"
 [ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달, spec_verdict 쌍"
 
-echo "[4/19] verify 게이트 판별식 키 존재"
+echo "[4/20] verify 게이트 판별식 키 존재"
 for f in .claude/rules/skill-routing.md .claude/rules/git-workflow.md \
          .claude/skills/gx-commit/SKILL.md .claude/skills/gx-pull-request/SKILL.md \
          .claude/skills/gx-tdd/SKILL.md; do
@@ -110,7 +111,7 @@ for f in .claude/hooks/pre-tool-guard.sh .claude/skills/gx-verify/SKILL.md scrip
 done
 [ "$FAIL" -eq 0 ] && ok "판별식 키 5개 문서 + 훅 통합 정규식 + 지문 계약 6곳·계산 규약 3곳 확인"
 
-echo "[5/19] 디스패치 이름 ↔ agents/ 대조"
+echo "[5/20] 디스패치 이름 ↔ agents/ 대조"
 BUILTIN="Explore general-purpose"
 NAMES=$(grep -rhoE 'subagent_type="[^"]+"' .claude/skills 2>/dev/null | sed 's/subagent_type="//; s/"$//' | sort -u)
 for n in $NAMES; do
@@ -121,7 +122,7 @@ for n in $NAMES; do
 done
 ok "디스패치 이름 전수 확인"
 
-echo "[6/19] 셸 스크립트 CRLF 금지"
+echo "[6/20] 셸 스크립트 CRLF 금지"
 # 이식성 주의: grep -P는 macOS(BSD grep)에서 미지원이고, $'\r' 인자는 Git Bash(MSYS2)에서
 # 변환되어 빈 패턴이 되므로 모든 줄에 매칭(오탐)된다. tr|cmp 비교는 세 환경 모두에서 동작한다.
 CRLF=""
@@ -136,14 +137,14 @@ else
   fail "CRLF 포함 스크립트:$CRLF"
 fi
 
-echo "[7/19] 훅 스크립트 문법"
+echo "[7/20] 훅 스크립트 문법"
 if bash -n .claude/hooks/pre-tool-guard.sh 2>/dev/null; then
   ok "bash -n 통과"
 else
   fail "pre-tool-guard.sh 문법 오류"
 fi
 
-echo "[8/19] Skill 체이닝 스킬의 Skill 선언"
+echo "[8/20] Skill 체이닝 스킬의 Skill 선언"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
          .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md \
          .claude/skills/gx-ralph-iterate/SKILL.md; do
@@ -152,14 +153,14 @@ for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
 done
 [ "$FAIL" -eq 0 ] && ok "Skill 체이닝 5스킬 선언 확인"
 
-echo "[9/19] gx-humanizer 에이전트 접두사"
+echo "[9/20] gx-humanizer 에이전트 접두사"
 if grep -qF '`humanizer-' .claude/skills/gx-humanizer/SKILL.md 2>/dev/null; then
   fail "gx-humanizer에 접두사 없는 에이전트 이름 잔존 (→ oh-my-gx:humanizer-*)"
 else
   ok "humanizer 디스패치 접두사 정상"
 fi
 
-echo "[10/19] force-push deny 패턴 (bare 형태 커버)"
+echo "[10/20] force-push deny 패턴 (bare 형태 커버)"
 grep -qF 'Bash(*git push*--force*)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push*--force*)' 패턴 누락"
 grep -qF 'Bash(*git push* -f)' .claude/settings.json \
@@ -168,7 +169,7 @@ grep -qF 'Bash(*git push* -f *)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push* -f *)' (중간 -f) 패턴 누락"
 [ "$FAIL" -eq 0 ] && ok "deny 패턴 bare 형태 커버 확인"
 
-echo "[11/19] gx-ralph 상태 계약 정합"
+echo "[11/20] gx-ralph 상태 계약 정합"
 RALPH_ENTRY=.claude/skills/gx-ralph/SKILL.md
 RALPH_ITER=.claude/skills/gx-ralph-iterate/SKILL.md
 RALPH_RUNNER=scripts/gx-ralph.sh
@@ -205,7 +206,7 @@ grep -q 'origin:' "$RALPH_RUNNER" \
   || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
 [ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿 확인"
 
-echo "[12/19] gx-dev CORE 모드 계약 정합"
+echo "[12/20] gx-dev CORE 모드 계약 정합"
 GXDEV=.claude/skills/gx-dev/SKILL.md
 CORE_PHASE=.claude/skills/gx-dev/phases/phase-core.md
 # CORE 경로 등록 + Gate 필수 (core의 게이트 공백 회귀 방지)
@@ -231,7 +232,7 @@ grep -q "HOTFIX 모드" "$GXDEV" && fail "폐지된 HOTFIX 모드 잔존: $GXDEV
 grep -q "경량 구현" "$GXDEV" && fail "폐지된 경량 구현 모드 잔존: $GXDEV"
 [ "$FAIL" -eq 0 ] && ok "CORE 경로·Gate 필수·산출물 계약·구 버전 방어·폐지 모드 부재 확인"
 
-echo "[13/19] gx-tdd CORE 모드 계약 정합"
+echo "[13/20] gx-tdd CORE 모드 계약 정합"
 GXTDD=.claude/skills/gx-tdd/SKILL.md
 TDD_REQ=.claude/skills/gx-tdd/phases/phase-requirements.md
 TDD_IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
@@ -258,7 +259,7 @@ grep -rqiE "\blight\b" .claude/skills/gx-tdd && fail "구 명칭 light 잔존: g
 grep -q "HOTFIX 모드" "$GXTDD" && fail "폐지된 HOTFIX 모드 잔존: $GXTDD"
 [ "$FAIL" -eq 0 ] && ok "tdd core 경로·RGR/G-W-T 유지·긴급 감사·구 버전 방어·폐지 모드 부재 확인"
 
-echo "[14/19] 모델 프로파일(standard/eco) 계약 정합"
+echo "[14/20] 모델 프로파일(standard/eco) 계약 정합"
 grep -q '"modelProfile"' .claude/config.json || fail "config.json modelProfile 키 누락"
 for f in "$GXDEV" "$GXTDD"; do
   grep -q "model-profile: standard | eco" "$f" || fail "model-profile 기록 규칙 누락: $f"
@@ -281,7 +282,7 @@ for a in agents/*.md; do
 done
 [ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
-echo "[15/19] 플러그인 번들 경로 규약 + config 부트스트랩"
+echo "[15/20] 플러그인 번들 경로 규약 + config 부트스트랩"
 if grep -rn '프로젝트 루트>/\.claude/skills' .claude/skills >/dev/null 2>&1; then
   fail "레거시 경로 표기('<프로젝트 루트>/.claude/skills') 잔존: $(grep -rl '프로젝트 루트>/\.claude/skills' .claude/skills | tr '\n' ' ')"
 fi
@@ -292,7 +293,7 @@ grep -q 'CLAUDE_PLUGIN_ROOT:-\.}/\.claude/config.json' .claude/skills/gx-setup/S
   || fail "gx-setup config.json 번들 템플릿 생성 단계 누락"
 [ "$FAIL" -eq 0 ] && ok "경로 규약·config 부트스트랩 확인"
 
-echo "[16/19] phase-complete context 커밋 예외 대칭 + 레거시 Read 제거"
+echo "[16/20] phase-complete context 커밋 예외 대칭 + 레거시 Read 제거"
 grep -q "유일한 예외" .claude/skills/gx-dev/phases/phase-complete.md \
   || fail "phase-complete 헤더 context 커밋 예외 누락"
 grep -q "context 변경사항 자동 커밋" .claude/rules/skill-routing.md \
@@ -301,12 +302,12 @@ grep -q "다른 스킬의 프로세스를 실행할 때 아래 경로에서 Read
   && fail "gx-dev 레거시 'Read한다' 형제 스킬 지시 잔존"
 [ "$FAIL" -eq 0 ] && ok "context 커밋 예외 헤더·라우팅 + 레거시 Read 제거 확인"
 
-echo "[17/19] force-push 훅 가드 G4"
+echo "[17/20] force-push 훅 가드 G4"
 grep -q "force-push 차단" .claude/hooks/pre-tool-guard.sh || fail "훅 force-push 가드(G4) 주석 누락"
 grep -qF '*"--force"*' .claude/hooks/pre-tool-guard.sh || fail "훅 force-push 패턴(--force) 누락"
 [ "$FAIL" -eq 0 ] && ok "force-push 훅 가드 확인"
 
-echo "[18/19] SVN .dev/.active 포인터 계약"
+echo "[18/20] SVN .dev/.active 포인터 계약"
 for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phases/phase-setup.md; do
   grep -qF '.dev/.active' "$f" || fail "svn .dev/.active producer 누락: $f"
 done
@@ -316,7 +317,7 @@ done
 grep -q 'ACTIVE_SLUG' .claude/hooks/pre-tool-guard.sh || fail "훅 ACTIVE_SLUG 해석 누락"
 [ "$FAIL" -eq 0 ] && ok "SVN .dev/.active producer·consumer·폴백 확인"
 
-echo "[19/19] cross-review fallback 3원 조건 + humanizer P1 커버리지"
+echo "[19/20] cross-review fallback 3원 조건 + humanizer P1 커버리지"
 if grep -qF 'prd.md/design.md 둘 다 없으면' .claude/skills/gx-cross-review/SKILL.md; then
   fail "cross-review fallback 구 조건(prd/design 둘 다) 잔존"
 fi
@@ -327,6 +328,20 @@ for code in E2 E5 E6; do
     | grep -q "^| $code " || fail "humanizer 영어 P1 치트시트에 $code 누락"
 done
 [ "$FAIL" -eq 0 ] && ok "cross-review fallback 3원 + humanizer P1(E2/E5/E6) 확인"
+
+echo "[20/20] 언어 중립화(projectTypes SSOT) 계약 정합"
+# --- PR1: config 신규 필드 + gx-verify 일반화 + 카탈로그 + gx-setup 등록 단계 ---
+grep -q '"warningPattern"' .claude/config.json || fail "config 템플릿에 warningPattern 필드 누락"
+grep -q '"artifacts"' .claude/config.json || fail "config 템플릿에 artifacts 필드 누락"
+grep -q 'warningPattern' .claude/skills/gx-verify/SKILL.md || fail "gx-verify 경고 규약이 warningPattern 미참조"
+grep -q 'SSOT는 config' .claude/skills/gx-verify/SKILL.md || fail "gx-verify 명령 표 SSOT 문구 누락"
+CATALOG=.claude/skills/gx-setup/references/project-type-hints.md
+[ -f "$CATALOG" ] || fail "힌트 카탈로그 없음: $CATALOG"
+grep -q 'java-spring' "$CATALOG" || fail "카탈로그-템플릿 정합: 기본 타입(java-spring) 행 부재"
+grep -q 'SSOT가 아니다' "$CATALOG" || fail "카탈로그 SSOT 아님 명시 문구 부재"
+grep -q '프로젝트 타입 등록' .claude/skills/gx-setup/SKILL.md || fail "gx-setup 프로젝트 타입 등록 단계 누락"
+grep -q 'java 계열' .claude/skills/gx-setup/SKILL.md || fail "gx-setup JDK 조건화 누락"
+[ "$FAIL" -eq 0 ] && ok "projectTypes SSOT(코어)·카탈로그·등록 단계·JDK 조건화 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then

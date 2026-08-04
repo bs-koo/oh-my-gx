@@ -82,12 +82,12 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 | python | `pytest` | (없음) |
 | go | `go test ./...` | `go build ./...` |
 
-`.claude/config.json`의 `projectTypes` 설정에서 감지. 기본 config는 `java-spring`·`node`만 정의하므로, `python`·`go` 행은 소비 프로젝트가 `projectTypes`에 해당 타입을 추가했을 때만 도달한다.
+**SSOT는 config `projectTypes`다** — 위 표는 예시(파생 사본)이며, config에 등록된 타입·명령이 항상 우선한다. 기본 템플릿은 `java-spring`·`node`만 정의하므로 그 외 행은 소비 프로젝트가 등록했을 때만 도달한다. 어떤 언어든 `/gx-setup`의 "프로젝트 타입 등록" 단계로 등록하면 이후 자동 감지된다.
 
 **감지 실패 시 (config.json 부재·projectTypes 미매칭·명령 결정 불가)**:
 - 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.
 - **비대화 모드**: 질문 없이 즉시 게이트 차단으로 종료한다 — 보고: "검증 명령 미감지 (비대화 모드 fail-closed)".
-- (대화형) AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다."
+- (대화형) AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다. (영구 등록은 /gx-setup의 프로젝트 타입 등록을 사용하세요)"
   - "직접 입력" → 입력받은 명령으로 Step 2 진행
   - "건너뛰기 (위험 수용)" → 테스트 검증 없이 진행하되, 보고에 "위험 수용: 검증 명령 미감지"를 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
   - "중단" → 게이트 차단 유지. commit/PR 진입 불가를 보고
@@ -110,7 +110,7 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 **경고 측정 규약 (SSOT — phase-implement Step 0.5의 baseline 기록도 이 규약을 따른다)**:
 1. `mkdir -p ${DEV_DIR}`로 디렉토리 존재를 보장한 뒤, 명령 출력을 파일로 캡처한다: `<명령> > ${DEV_DIR}/verify-{test|build}.log 2>&1` (파이프가 아닌 **리다이렉트** — exit code가 원 명령의 것으로 유지된다). exit code를 먼저 확인한 뒤 로그를 분석한다.
-2. 카운트: java-spring은 `grep -ci "warning" <로그>`, node는 `grep -ci "warn" <로그>`, 그 외 타입은 미지원 (카운트 생략·보고만).
+2. 카운트: config `projectTypes`의 **`warningPattern` 필드**를 사용해 `grep -ci "<warningPattern>" <로그>`로 센다. 필드가 없으면 폴백 — java-spring은 `grep -ci "warning"`, node는 `grep -ci "warn"`, 그 외 타입은 미지원 (카운트 생략·보고만).
 3. 이 카운트는 요약 라인("N warnings")·로그 노이즈를 포함하는 **근사치**다. baseline보다 증가했을 때는 차단 전에 **로그 원문에서 실제 경고 라인을 대조**하여 신규 경고인지 확인한다. 노이즈·빌드 캐시 재출력으로 판정되면 차단하지 않고 "측정 노이즈"로 보고한다.
 4. baseline과 현재 측정은 **동일한 명령(config.json projectTypes의 test·build)·동일한 규약**을 사용해야 유효하다.
 

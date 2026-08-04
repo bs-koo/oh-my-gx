@@ -43,12 +43,16 @@
     "java-spring": {
       "detect": ["build.gradle.kts", "build.gradle"],
       "build": "./gradlew build",
-      "test": "./gradlew test"
+      "test": "./gradlew test",
+      "warningPattern": "warning",
+      "artifacts": [".gradle/", "build/"]
     },
     "node": {
       "detect": ["package.json"],
       "build": "npm run build",
-      "test": "npm test"
+      "test": "npm test",
+      "warningPattern": "warn",
+      "artifacts": ["node_modules/", "dist/"]
     }
   },
   "notifications": {
