@@ -39,7 +39,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 **verify 결과 처리**:
 
-- **✅ verify 통과** → state.md 최상위 `verify-status: passed` 갱신(커밋/PR 게이트 해제 키) 후 Step 0 (인수 검증)으로 진행. 이후 코드 변경이 발생해 재진입하면 `pending`으로 리셋하고 Step -1부터 재실행한다
+- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
   1. verify가 실패 테스트/빌드 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:

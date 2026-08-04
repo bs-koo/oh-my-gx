@@ -88,7 +88,7 @@ Arguments:
 - 현재 브랜치가 베이스 브랜치가 아닌지 확인 — 같으면: "베이스 브랜치에서는 PR을 생성할 수 없습니다."
 - 베이스 브랜치 대비 커밋이 있는지 확인 — 없으면: "PR을 생성할 커밋이 없습니다."
 - 미커밋 변경사항이 있으면 경고하고, 커밋 먼저 할지 진행할지 확인
-- **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 `verify-status`가 `passed`가 아니면 — verify 게이트 미통과 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 PR을 우선 안내한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
+- **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 다르면**(=verify 통과 후 코드가 바뀜) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 PR을 우선 안내한다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
 
 ## GH_HOST 감지
 

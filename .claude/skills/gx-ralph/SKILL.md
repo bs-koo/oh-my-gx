@@ -75,13 +75,14 @@ pipeline: gx-ralph        # 훅 G3·스킬 라우팅의 판별 키
 status: in_progress
 origin: gx-dev | gx-tdd   # 반복 세션의 구현 디스패치 방식 (gx-tdd면 RGR 트리오)
 verify-status: pending    # pending|passed — 전이 규칙은 아래
+verify-fingerprint: ""    # verify 통과 시점의 코드 지문 (gx-tdd SKILL.md "verify 지문" 규약과 동일)
 last-known-head: {sha}    # 러너가 반복 전후 기록 (NO_DRIFT 감지용)
 max-iterations: 10        # 러너 최대 반복 수 (Step 2에서 사용자 확정)
 branch: {작업 브랜치명}
 args: "{원 요청}"
 ```
 
-**verify-status 전이 규칙 (주체: 반복 세션)**: 코드 변경 직후 `pending`으로 리셋 → gx-verify 통과 시 `passed`로 전이 → **커밋은 `passed` 상태에서만 실행** (훅 G3가 커밋 시점에 이를 검사하는 최종 방어선이므로 순서를 지켜야 헤드리스에서 자기 차단되지 않는다).
+**verify-status 전이 규칙 (주체: 반복 세션)**: 코드 변경 직후 `pending`으로 리셋(`verify-fingerprint`도 빈 값으로) → gx-verify 통과 시 `passed`로 전이하며 **verify가 보고한 지문을 `verify-fingerprint`에 함께 기록** → **커밋은 `passed` + 지문 일치 상태에서만 실행** (훅 G3가 커밋 시점에 둘 다 검사하는 최종 방어선이므로 순서를 지켜야 헤드리스에서 자기 차단되지 않는다 — 지문 기록 후 코드를 더 고치면 게이트가 다시 열린다). 지문 계산 규약은 gx-tdd SKILL.md의 "verify 지문" 섹션이 SSOT이며, 지문 필드가 없는 구 세션은 `verify-status`만으로 판정된다.
 
 **model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시하고 표준(에이전트 기본) 모델로 반복한다 — eco 프로파일은 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
 
@@ -176,7 +177,7 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
 ### Step 3: state.md 기록 + 러너 안내
 
 1. `${DEV_DIR}/state.md`를 갱신한다 (없으면 골격 생성):
-   - `pipeline: gx-ralph`, `status: in_progress`, `verify-status: pending`
+   - `pipeline: gx-ralph`, `status: in_progress`, `verify-status: pending`, `verify-fingerprint: ""` (기존 state.md가 `status: completed`였어도 `in_progress`로 되돌리고 두 verify 필드를 리셋한다 — 완료 표식이 남으면 게이트 4곳이 전부 꺼진다)
    - `origin`: 기존 state.md에 `origin` 필드가 이미 있으면 **그 값을 유지**한다 (재실행 시 뒤집힘 방지). 없으면 gx-tdd 이력(`pipeline: gx-tdd`)이 있으면 `gx-tdd`, 그 외 `gx-dev`
    - `max-iterations`: Step 2에서 확정한 값
    - `last-known-head`: `git rev-parse HEAD` 결과
