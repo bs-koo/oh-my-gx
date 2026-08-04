@@ -2,7 +2,7 @@
 
 - 날짜: 2026-08-04
 - 상태: 승인됨 (브레인스토밍 완료)
-- 대상 릴리스: v1.20.0 (minor)
+- 대상 릴리스: v1.21.0 (minor — 원래 v1.20.0 목표였으나 PR #68이 선점하여 재조준)
 - 배경 요청: GX 사업본부 하드웨어 파트(C 언어)가 gx-lens/gx-dev/gx-tdd/gx-context 사용을 원함. 전수조사 결과 파이프라인 구조는 언어 중립적이나 기본 설정·편의 장치가 Java/Node 중심.
 
 ## 1. 문제 정의
@@ -118,7 +118,7 @@ C(Make/CMake+CTest/Ceedling), C++(CMake+CTest/Make), Python(pytest), Go, Rust(ca
 
 ## 9. 릴리스 계획
 
-- 버전: v1.20.0. `.claude-plugin/plugin.json`·`marketplace.json`·`CHANGELOG.md` 3곳 동기.
+- 버전: v1.21.0. `.claude-plugin/plugin.json`·`marketplace.json`·`CHANGELOG.md` 3곳 동기.
 - README·GitHub Pages·온보딩 가이드에 언어 중립화 반영.
 - 구현 PR 3분할:
   1. **코어 메커니즘**: config 스키마 확장 + gx-setup 등록 단계·권한 등록·JDK 조건화 + 힌트 카탈로그 + gx-verify 일반화
