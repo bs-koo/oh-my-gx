@@ -21,6 +21,8 @@
    (의존성을 이해하지 못한 채 모킹하지 마라)
 ```
 
+> C 프로젝트에서 "모의"는 CMock/FFF 스텁·링커 치환 스텁을 포함한다. 원칙은 동일하다 — 스텁의 반환값을 검증하는 테스트, 프로덕션 모듈의 테스트 전용 reset 함수, 이해 없는 전면 스텁화 모두 위반이다.
+
 ---
 
 ## §0. gx-tdd 특화 주의 — red-writer 격리와 모의
@@ -66,6 +68,22 @@ void 알림_전송_실패_시_재시도_큐에_적재된다() {
 }
 ```
 
+**C 병기 예시 (Unity/CMock):**
+```c
+// ❌ 스텁이 존재하는지를 검증
+void test_알림을_전송한다(void) {
+    sender_send_ExpectAndReturn(&notice, true);
+    TEST_ASSERT_TRUE(sender_send(&notice));  // 스텁만 검증됨
+}
+
+// ✅ 실제 대상의 동작을 검증 (스텁은 격리에만 사용)
+void test_전송_실패_시_재시도_큐에_적재된다(void) {
+    sender_send_ExpectAndReturn(&notice, false);
+    notice_service_notify(&notice);
+    TEST_ASSERT_EQUAL(1, retry_queue_size());  // 검증 대상은 service의 동작
+}
+```
+
 **게이트 함수:**
 ```
 모의 요소에 assertion을 걸기 전에:
@@ -103,6 +121,8 @@ public class SessionCleanup {
     }
 }
 ```
+
+**C 병기**: 프로덕션 모듈(`session.c`)에 테스트에서만 호출하는 `session_destroy_all()`을 추가하지 않는다. 테스트 정리는 테스트 지원 파일(`test_support/session_cleanup.c`)이 공개 API 조합으로 수행한다.
 
 **게이트 함수:**
 ```

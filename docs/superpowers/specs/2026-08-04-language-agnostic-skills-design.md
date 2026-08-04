@@ -55,7 +55,7 @@
 ```
 
 - `warningPattern` (선택): gx-verify 경고 측정 규약이 `grep -ci "<패턴>"`으로 카운트할 패턴. 미설정 시 현행 "그 외 타입"과 동일하게 카운트 생략·보고만. **하위 호환**: java-spring/node는 필드 부재 시 기존 하드코딩 grep(`warning`/`warn`)을 폴백으로 유지한다.
-- `artifacts` (선택): phase-setup Step 6의 VCS ignore 보강 표(현재 java/node 하드코딩)를 대체. 미설정 시 ignore 보강 생략(`.dev/` 패턴 추가는 타입 무관 유지).
+- `artifacts` (선택): phase-setup Step 6의 VCS ignore 보강 표(현재 java/node 하드코딩)를 대체. 미설정 시 ignore 보강 생략. (`.dev/` 패턴은 당초 타입 무관 유지였으나, 사용자 결정(2026-08-04)으로 v1.21.0에서 협업 공유 대상으로 전환되어 ignore하지 않는다.)
 
 기본 번들 템플릿(`.claude/config.json`)에는 java-spring/node에 신규 필드를 채워 배포한다.
 

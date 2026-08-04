@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.21.0 (2026-08-04)
+
+언어 중립화 — 모든 언어/프레임워크에서 파이프라인 사용 가능. `.dev` 산출물 협업 공유 전환.
+
+- projectTypes를 SSOT로 승격: 선택 필드 `warningPattern`(경고 카운트)·`artifacts`(ignore 보강) 추가
+- gx-setup "프로젝트 타입 등록" 단계 신설: 빌드 파일 감지 → 힌트 카탈로그 제안 → config 기록 → settings.local.json 권한 등록. JDK 확인은 java 계열 조건부로 변경
+- gx-dev/gx-tdd phase-setup: 타입 미감지 시 인라인 등록 (질문 1회 → 영구 자동)
+- gx-verify·phase-review: 하드코딩 명령 표를 config 참조 예시로 격하, 경고 규약 warningPattern 일반화
+- gx-tdd 기준선 게이트: 테스트 하네스 부재 감지 + 구축 가이드(docs/test-harness-guide.md) 안내
+- allowed-tools에 make/cmake/ctest/ceedling/cargo/mvn/dotnet 추가 (gx-tdd·gx-dev·gx-ralph-iterate)
+- architect·coder·test-architect·testing-anti-patterns에 C/비-OO 관점 병기
+- gx-context 자동 스캔 언어 중립 휴리스틱화, gx-tech-debt 의존성 분석 projectTypes 분기 (rust 추가, 미지원 명시 보고)
+- `.dev/` 파이프라인 산출물을 협업 공유 대상으로 전환 — VCS ignore 자동 추가 제거, 기존 등록분 제거 제안 (verify 지문은 .dev 제외라 게이트 불변)
+- lint [20/21]·[21/21] 언어 중립화·.dev 공유 계약 불변식 추가
+- PR 1·2 리뷰 파킹 minor 9건 정정 (JDK 조건 명확화, 카탈로그 표기, GFM 렌더링 등)
+
 ## v1.20.0 (2026-08-04) — verify 게이트 경화: 지문 도입 + 훅 상속 결함 5건 수정
 
 sef-2026 플러그인(gx 이식본)의 정밀 감사에서 드러난 결함 중 **oh-my-gx 원본에도 동일하게 존재하던 것**들을 원본에서 수정한다. 설계는 sef에서 실측 검증된 것을 역이식했다.

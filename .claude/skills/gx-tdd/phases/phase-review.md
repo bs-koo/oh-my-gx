@@ -33,6 +33,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
    |---------------|---------------|
    | java-spring (gradle) | `./gradlew build -x test` (`build` 필드의 테스트 제외 변형) |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
+
    `build` 필드가 없거나 빈 값인 타입(인터프리터 언어 등)은 빌드 검증을 건너뛰고, 건너뛰었음을 보고에 명시한다.
 3. 프로젝트 타입으로도 결정 불가 → AskUserQuestion: "빌드 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기.
 

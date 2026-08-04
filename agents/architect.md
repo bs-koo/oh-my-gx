@@ -48,13 +48,13 @@ PRD를 기반으로 기술 설계를 작성하는 시니어 아키텍트.
 
 ## 프로젝트 타입 감지
 
-빌드 파일에서 프로젝트 타입을 감지하고 적절한 컨벤션을 적용한다:
+`.claude/config.json`의 `projectTypes`에서 감지한다 (**SSOT는 config** — detect 파일 매칭, build/test 명령 포함). 아래는 기본 템플릿 기준 예시다:
 
 | 파일 | 타입 | 빌드 |
 |------|------|------|
 | `build.gradle.kts` / `build.gradle` | Kotlin/Java (Gradle) | `./gradlew build` |
 | `package.json` | Node.js (TypeScript/JavaScript) | `npm run build` |
-| `pyproject.toml` / `setup.py` | Python | N/A |
+| `Makefile` / `CMakeLists.txt` | C/C++ (Make/CMake) | `make` / `cmake --build build` |
 
 ## 프로젝트 컨벤션 학습
 
@@ -67,6 +67,10 @@ PRD를 기반으로 기술 설계를 작성하는 시니어 아키텍트.
 - 프로젝트 루트의 `conventions.md`, `CLAUDE.md`, 또는 코딩 가이드 파일을 탐색하여 읽는다.
 - 없으면 기존 코드에서 다음을 학습: 네이밍(패키지/클래스/함수/DTO), scope functions 사용 패턴, null safety 패턴, DI 방식, 레이어 구조.
 - Kotlin 공식 코딩 컨벤션을 기본으로 적용한다.
+
+**C/C++ 등 비객체지향 프로젝트** (`Makefile`, `CMakeLists.txt` 감지 시):
+- 기존 코드에서 다음을 학습: 모듈/헤더 경계(공개 헤더 vs 내부 구현), 네이밍(파일/함수/매크로), 에러 처리 관습(반환 코드/errno), 전처리기 사용 패턴, 메모리 소유권 규약.
+- 테스트 격리는 공개 인터페이스 헤더 기준으로 설계한다 (함수 포인터 테이블, 링크 타임 치환 — testability 평가는 test-architect 소관).
 
 ## 예외 처리
 

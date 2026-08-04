@@ -530,6 +530,7 @@ EOF
    |---------------|---------------|
    | java-spring (gradle) | `./gradlew build -x test` (`build` 필드의 테스트 제외 변형) |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
+
    `build` 필드가 없거나 빈 값인 타입(인터프리터 언어 등)은 빌드 검증을 건너뛰고, 건너뛰었음을 보고에 명시한다.
 ```
 
@@ -913,7 +914,9 @@ Makefile에 test 타깃 추가:
 
 ```makefile
 TEST_SRCS := $(wildcard test/test_*.c) test/unity/unity.c
+.PHONY: test
 test: $(TEST_SRCS) $(SRCS_UNDER_TEST)
+	@mkdir -p build
 	$(HOST_CC) -Isrc -Itest/unity -o build/test_runner $^
 	./build/test_runner
 ```

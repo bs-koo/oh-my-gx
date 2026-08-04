@@ -52,18 +52,18 @@ tools:
 
 ## 프로젝트 타입 감지
 
-프로젝트 타입을 감지하고 적절한 컨벤션을 적용한다:
+`.claude/config.json`의 `projectTypes`에서 감지한다 (**SSOT는 config** — detect 파일 매칭, build/test 명령 포함). 아래는 기본 템플릿 기준 예시다:
 
 | 파일 | 타입 | 빌드 |
 |------|------|------|
 | `build.gradle.kts` / `build.gradle` | Kotlin/Java (Gradle) | `./gradlew build` |
-| `package.json` | Node.js | `npm run build` |
-| `pyproject.toml` / `setup.py` | Python | N/A |
+| `package.json` | Node.js (TypeScript/JavaScript) | `npm run build` |
+| `Makefile` / `CMakeLists.txt` | C/C++ (Make/CMake) | `make` / `cmake --build build` |
 
 ## Bash 사용 제한
 
 - Bash는 빌드/린트 실행에만 사용한다.
-- 허용 명령: 프로젝트 타입 감지 테이블의 빌드 명령, 린터 실행
+- 허용 명령: config projectTypes의 빌드 명령, 린터 실행
 - 금지: 파일 삭제(rm), 패키지 설치(install), 네트워크 요청(curl/wget), 환경 변경
 
 ## 구현 원칙

@@ -23,13 +23,13 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-dev/gx-tdd phase-setup의 인
 | `go.mod` | `go` | `go build ./...` | `go test ./...` | `warning` | (없음) | `Bash(go *)` |
 | `Cargo.toml` | `rust` | `cargo build` | `cargo test` | `warning:` | `target/` | `Bash(cargo *)` |
 | `*.csproj` / `*.sln` | `dotnet` | `dotnet build` | `dotnet test` | `warning` | `bin/`, `obj/` | `Bash(dotnet *)` |
-| `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | `WARNING` | `target/` | `Bash(mvn *)` |
+| `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | `warning` | `target/` | `Bash(mvn *)` |
 | `composer.json` | `php` | (없음) | `./vendor/bin/phpunit` | `warning` | `vendor/` | `Bash(./vendor/bin/phpunit *)` |
 | `build.gradle(.kts)` | `java-spring` | (기본 템플릿 참조) | (기본 템플릿 참조) | `warning` | `.gradle/`, `build/` | `Bash(./gradlew *)` |
 | `package.json` | `node` | (기본 템플릿 참조) | (기본 템플릿 참조) | `warn` | `node_modules/`, `dist/` | `Bash(npm *)` |
 
 ## 주의
 
-- Node 변형은 lock 파일로 구분해 명령을 제안한다: `pnpm-lock.yaml` → `pnpm test`, `yarn.lock` → `yarn test`, `bun.lockb` → `bun test` (타입 키는 동일하게 `node`, 명령만 변형).
+- Node 변형은 lock 파일로 구분해 명령을 제안한다: `pnpm-lock.yaml` → `pnpm test`, `yarn.lock` → `yarn test`, `bun.lockb`/`bun.lock` → `bun test` (타입 키는 동일하게 `node`, 명령만 변형).
 - C 계열은 test 명령이 프로젝트마다 크게 다르다 (make의 test 타깃 유무, CTest 구성 여부). 제안 후 반드시 실제 실행 가능한지 사용자에게 확인받는다.
 - 임베디드 C에서 test는 **호스트에서 실행 가능**해야 gx-tdd RGR·verify가 성립한다. 타깃 전용 빌드만 있으면 하네스 구축 가이드(oh-my-gx 저장소 `docs/test-harness-guide.md`)를 안내한다.
