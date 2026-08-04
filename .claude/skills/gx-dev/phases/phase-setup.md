@@ -209,13 +209,13 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 6: VCS ignore 자동 보강
 
-**svn인 경우** → 건너뛴다. SVN은 `svn:ignore` 속성을 사용하며, 자동 보강하지 않는다.
+**svn인 경우** → 건너뛴다. 단, 이전 버전이 `svn:ignore`에 등록한 `.dev`가 남아 있으면 제거를 제안한다 (`.dev` 산출물은 협업 공유 대상 — `svn propget svn:ignore .` 확인 후 사용자 확인을 받아 재적용).
 
 **git인 경우:**
 
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
 
-`.dev/` 패턴도 이 단계에서 함께 추가한다 (dev 스킬의 문서 보관 규칙과 통합).
+`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 기존 `.gitignore`에 이전 버전이 추가한 `.dev/` 패턴이 남아 있으면 제거를 제안한다 (사용자 확인 후 해당 줄 삭제). 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
 
 ## Step 7: 진행 상태 초기화
 Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline` 필드가 있으면(다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태(verify 게이트 포함)가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.

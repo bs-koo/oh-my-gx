@@ -423,7 +423,7 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 - 자기점검 결과를 `${DEV_DIR}/self-check.md`에 저장한다 (phase-implement 자기점검 완료 시).
 - 핵심 모드: AC를 `${DEV_DIR}/ac.md`에, 변경 요약을 `${DEV_DIR}/summary.md`에 저장한다 (phase-core Step 0 / Step 3).
 - phase-design, phase-implement, phase-review 진입 시 해당 파일들을 Read하여 에이전트 프롬프트에 사용한다.
-- `.gitignore` 보강은 phase-setup의 Step 6에서 프로젝트 타입별로 처리한다 (`.dev/` 포함).
+- `.dev/` 산출물은 **협업 공유 대상**으로 커밋에 포함한다 (`.gitignore`에 추가하지 않음). `.gitignore` 보강은 phase-setup Step 6에서 config `projectTypes.artifacts` 기준으로 빌드 아티팩트만 처리한다.
 
 ### 진행 상태 추적 (state.md)
 파이프라인 진행 상태를 `${DEV_DIR}/state.md`에 기록하여 세션 재개를 지원한다.
