@@ -88,12 +88,13 @@ AskUserQuestion(
 
 아래 항목을 병렬로 탐색한다:
 
-1. **패키지/디렉토리 구조**: `src/` 하위 최상위 2레벨을 스캔하여 도메인 분류를 추론한다.
-   - Java: `src/main/java/{base-package}/` 하위 패키지를 도메인 후보로 식별
-   - Node: `src/` 하위 디렉토리 구조를 분석 (modules/, features/, domains/ 등)
-2. **엔티티/모델**: `*Entity.java`, `*.entity.ts`, `*Model.*` 등 도메인 모델 파일을 탐색한다.
-3. **API 엔드포인트**: `*Controller.java`, `*Router.*`, `routes/` 등을 스캔한다.
-4. **설정 파일**: `application.yml`, `application.properties`, `.env`, `package.json` 등을 읽는다.
+1. **디렉토리 구조**: 소스 루트 하위 최상위 2레벨을 스캔하여 도메인 후보를 추론한다. 언어 무관 휴리스틱:
+   - 파일 확장자 클러스터로 소스 루트를 판별한다 (`.java`/`.kt`/`.ts`/`.py`/`.c`/`.h`/`.go`/`.rs` 등)
+   - 업무 명사 디렉토리명 군집을 도메인 후보로 본다 (payment/, order/, sensor/, protocol/ 등)
+   - 언어별 예시: Java `src/main/java/{base-package}/` 하위 패키지, Node `src/` 하위 modules/·features/·domains/, C `src/`·`include/` 하위 모듈 디렉토리
+2. **도메인 모델**: 네이밍 패턴 군집으로 탐색한다 — 접미사형(`*Entity.java`, `*.entity.ts`, `*Model.*`) 또는 C 계열 모듈 쌍(`{이름}.h`/`{이름}.c`)의 구조체(typedef struct) 정의.
+3. **진입점/인터페이스**: API 라우팅(`*Controller.java`, `*Router.*`, `routes/`) 또는 C 계열 공개 헤더(include/ 디렉토리, extern 함수 선언이 밀집한 헤더).
+4. **설정 파일**: `application.yml`, `application.properties`, `.env`, `package.json`, `Makefile`/`CMakeLists.txt`, `Kconfig` 등을 읽는다.
 5. **README/문서**: 프로젝트 루트의 `README.md`, `docs/` 디렉토리를 확인한다.
 
 ### A-2. 도메인 분류
@@ -102,6 +103,7 @@ AskUserQuestion(
 - 패키지 구조 기반: `com.example.payment` → 결제 도메인
 - 엔티티 클러스터 기반: 관련 엔티티를 그룹핑
 - API 엔드포인트 기반: `/api/orders/**` → 주문 도메인
+- 모듈 접두사 기반 (C 계열): `uart_*.h`/`sensor_*.c` 군집 → 통신/센서 도메인
 
 ### A-3. 초안 생성
 
