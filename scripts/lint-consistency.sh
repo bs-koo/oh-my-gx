@@ -341,6 +341,20 @@ grep -q 'java-spring' "$CATALOG" || fail "카탈로그-템플릿 정합: 기본 
 grep -q 'SSOT가 아니다' "$CATALOG" || fail "카탈로그 SSOT 아님 명시 문구 부재"
 grep -q '프로젝트 타입 등록' .claude/skills/gx-setup/SKILL.md || fail "gx-setup 프로젝트 타입 등록 단계 누락"
 grep -q 'java 계열' .claude/skills/gx-setup/SKILL.md || fail "gx-setup JDK 조건화 누락"
+# --- PR2: 파이프라인 소비 지점 (phase-setup·phase-review·하네스 감지·allowed-tools) ---
+for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phases/phase-setup.md; do
+  grep -q '프로젝트 타입 등록' "$f" || fail "phase-setup 인라인 등록 연동 누락: $f"
+  grep -q 'artifacts' "$f" || fail "phase-setup ignore 보강이 artifacts 미참조: $f"
+done
+for f in .claude/skills/gx-dev/phases/phase-review.md .claude/skills/gx-tdd/phases/phase-review.md; do
+  grep -q 'SSOT는 config' "$f" || fail "phase-review 빌드 표 SSOT 문구 누락: $f"
+done
+grep -q '테스트 하네스 부재' .claude/skills/gx-tdd/phases/phase-implement.md \
+  || fail "phase-implement 하네스 부재 감지 누락"
+for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md .claude/skills/gx-ralph-iterate/SKILL.md; do
+  grep -qF 'Bash(make *)' "$f" || fail "allowed-tools 대표 도구(make) 누락: $f"
+  grep -qF 'Bash(ceedling *)' "$f" || fail "allowed-tools 대표 도구(ceedling) 누락: $f"
+done
 [ "$FAIL" -eq 0 ] && ok "projectTypes SSOT(코어)·카탈로그·등록 단계·JDK 조건화 확인"
 
 echo
