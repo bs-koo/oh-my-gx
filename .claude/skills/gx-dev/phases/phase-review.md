@@ -21,6 +21,7 @@ QA/ZT 에이전트 호출 전에 기계적 검증을 통과시킨다. 실패하�
    |---------------|---------------|
    | java-spring (gradle) | `./gradlew build -x test` (`build` 필드의 테스트 제외 변형) |
    | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
+
    `build` 필드가 없거나 빈 값인 타입(인터프리터 언어 등)은 빌드 검증을 건너뛰고, 건너뛰었음을 보고에 명시한다.
 3. 프로젝트 타입으로도 결정 불가:
    ```

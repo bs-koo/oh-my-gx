@@ -355,7 +355,7 @@ for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md .claude/s
   grep -qF 'Bash(make *)' "$f" || fail "allowed-tools 대표 도구(make) 누락: $f"
   grep -qF 'Bash(ceedling *)' "$f" || fail "allowed-tools 대표 도구(ceedling) 누락: $f"
 done
-[ "$FAIL" -eq 0 ] && ok "projectTypes SSOT(코어)·카탈로그·등록 단계·JDK 조건화 확인"
+[ "$FAIL" -eq 0 ] && ok "projectTypes SSOT(코어+파이프라인)·카탈로그·등록 단계·JDK 조건화·하네스 감지·allowed-tools 확인"
 
 echo
 if [ "$FAIL" -ne 0 ]; then
