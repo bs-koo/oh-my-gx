@@ -1013,7 +1013,7 @@ git add README.md CHANGELOG.md .claude-plugin/plugin.json .claude-plugin/marketp
 git commit -m "$(cat <<'EOF'
 chore: v1.21.0 릴리스 — 언어 중립화
 
-- CHANGELOG v1.20.0 섹션, plugin.json·marketplace.json 버전 동기
+- CHANGELOG v1.21.0 섹션, plugin.json·marketplace.json 버전 동기
 - README 언어/프레임워크 지원 절 추가
 EOF
 )"
