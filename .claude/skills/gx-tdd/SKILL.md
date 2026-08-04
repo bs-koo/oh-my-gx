@@ -3,7 +3,7 @@ name: gx-tdd
 version: 1.0.0
 description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰(spec→quality) → verify → 커밋/PR. TDD 사이클 강제 + verify 게이트. 일반 개발은 oh-my-gx:gx-dev 사용."
 argument-hint: "<자연어 요청>"
-allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(wc *)", "Bash(echo *)", "Bash(mktemp *)", "Bash(sort *)", "Bash(rm -f *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
+allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(wc *)", "Bash(echo *)", "Bash(mktemp *)", "Bash(sort *)", "Bash(rm -f *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(make *)", "Bash(cmake *)", "Bash(ctest *)", "Bash(ceedling *)", "Bash(cargo *)", "Bash(mvn *)", "Bash(dotnet *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
 ---
 
 # gx-tdd
@@ -52,7 +52,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **경고 측정 규약**: `gx-verify` SKILL.md Step 2가 SSOT. phase-implement Step 0.5(baseline 기록)는 포인터 참조만 하므로 gx-verify만 고치면 따라온다.
 > - **verify 경고 게이트 조건**(`pipeline`/`verify-status`/`verify-fingerprint` 판별): `.claude/hooks/pre-tool-guard.sh`(G3) ↔ `.claude/rules/skill-routing.md` ↔ gx-commit SKILL.md ↔ gx-pull-request SKILL.md에 중복. 판별 키의 SSOT는 이 파일의 state.md 스키마이며, 지문 계산 규약의 SSOT는 이 파일의 "verify 지문" 섹션.
 > - **review 진입 '변경 없음' 판정**: 이 파일(실행 루프 2a) ↔ gx-dev SKILL.md에 쌍둥이 — 한쪽 보수 시 함께 갱신.
-> - **프로젝트 타입 폴백 표**: SSOT는 `.claude/config.json`의 projectTypes. gx-verify Step 1과 gx-tdd/gx-dev phase-review의 표는 파생 사본.
+> - **프로젝트 타입 폴백 표**: SSOT는 `.claude/config.json`의 projectTypes. gx-verify Step 1·gx-tdd/gx-dev phase-review의 표는 파생 사본(예시)이다. 힌트 카탈로그(`gx-setup/references/project-type-hints.md`)는 제안용으로 config에 종속되며, 경고 카운트(`warningPattern` — gx-verify Step 2 폴백 포함)와 ignore 보강(`artifacts` — phase-setup Step 6)도 이 SSOT를 따른다.
 > - **state.md 초기화 필드**: phase-setup Step 7이 정본이며, `--phase` 부트스트랩 골격(환경 감지 5항)은 그 부분집합 사본.
 > - **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/green/refactor) ↔ 이 파일(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
 > - **"수동 수정 재주입" 기록 문구**: phase-review(2곳)·phase-complete(Step -1)에 산재 — 문구 변경 시 함께 동기화.

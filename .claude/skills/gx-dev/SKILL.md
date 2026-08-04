@@ -17,6 +17,13 @@ allowed-tools:
   - Bash(yarn *)
   - Bash(pytest *)
   - Bash(go *)
+  - Bash(make *)
+  - Bash(cmake *)
+  - Bash(ctest *)
+  - Bash(ceedling *)
+  - Bash(cargo *)
+  - Bash(mvn *)
+  - Bash(dotnet *)
   # 파일 시스템
   - Bash(test *)
   - Bash(mkdir *)
