@@ -914,7 +914,9 @@ Makefile에 test 타깃 추가:
 
 ```makefile
 TEST_SRCS := $(wildcard test/test_*.c) test/unity/unity.c
+.PHONY: test
 test: $(TEST_SRCS) $(SRCS_UNDER_TEST)
+	@mkdir -p build
 	$(HOST_CC) -Isrc -Itest/unity -o build/test_runner $^
 	./build/test_runner
 ```
