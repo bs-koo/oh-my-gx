@@ -42,7 +42,7 @@ allowed-tools:
 1. **루프당 AC 1건만.** 여러 AC를 한 번에 처리하지 않는다. "간단하니까 두 개"도 금지.
 2. **질문 금지.** 이 세션은 헤드리스다 — AskUserQuestion 도구가 존재하지 않으며, 사용자도 없다. 판단 불가 상황은 질문이 아니라 `<ralph>BLOCKED: 사유</ralph>`로 종료한다.
 3. **브랜치 조작 금지.** `git checkout`, `git pull`, `git rebase`, `git merge`, setup 절차를 실행하지 않는다. 러너가 준비한 브랜치 그대로 작업한다. `.claude/rules/git-workflow.md`의 "매 요청 시작 전" 브랜치 복귀·pull 규칙은 이 세션에 적용하지 않는다.
-4. **verify 없이 커밋 금지.** 커밋은 `verify-status: passed` 기록 후에만.
+4. **verify 없이 커밋 금지.** 커밋은 `verify-status: passed`와 `verify-fingerprint`(verify가 보고한 코드 지문) 기록 후에만. 지문 기록 후에는 커밋 전까지 코드를 더 고치지 않는다 — 고치면 지문이 어긋나 훅 G3가 커밋을 차단한다.
 5. **종료 계약을 응답의 마지막 줄에 정확히 한 번** 출력한다. 지시 인용 등으로 계약 문자열을 본문 중간에 쓰지 않는다.
 
 ## 실행 절차
@@ -81,7 +81,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
   ```
 - **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/G/F 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다.
 
-디스패치가 코드 변경을 보고하면 즉시 state.md에 `verify-status: pending`을 기록한다.
+디스패치가 코드 변경을 보고하면 즉시 state.md에 `verify-status: pending`을 기록한다 (`verify-fingerprint`도 빈 값으로 리셋 — 직전 반복의 지문이 남아 있으면 판정이 흐려진다).
 
 에이전트가 구현 불가/전제 결함을 보고하면 → Step 4-실패 경로로 간다 (attempts 증가 + CONTINUE).
 
@@ -90,14 +90,14 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 `Skill("oh-my-gx:gx-verify", args: "--non-interactive")`를 호출한다.
 
 - **차단 시 (실패 경로)**:
-  1. 커밋하지 않는다. `verify-status`는 `pending` 유지.
+  1. 커밋하지 않는다. `verify-status`는 `pending` 유지(`verify-fingerprint`도 빈 값 유지).
   2. ac-status.json: 해당 AC `attempts += 1`, `last_error`에 실패 사유 1줄(실패 테스트명 포함), `updated` 갱신.
   3. progress.txt에 1줄 append: `[iter] {id} 실패: {사유 1줄}` (id는 원장 표기 그대로 — 예: `AC-1`)
   4. `<ralph>CONTINUE</ralph>` 출력 후 종료 — 다음 반복이 신선한 컨텍스트로 재시도한다. 워킹트리의 미커밋 변경은 되돌리지 않고 남긴다 (다음 반복의 재료).
 
-### Step 4: verify-status 선기록 → 커밋 (통과 시)
+### Step 4: verify-status + 지문 선기록 → 커밋 (통과 시)
 
-1. **커밋보다 먼저** state.md에 `verify-status: passed`를 기록한다 (훅 G3가 커밋 시점에 passed를 요구한다 — 순서 위반 시 헤드리스에서 자기 차단).
+1. **커밋보다 먼저** state.md에 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값**을 함께 기록한다 (훅 G3가 커밋 시점에 passed와 지문 일치를 함께 요구한다 — 순서 위반 시 헤드리스에서 자기 차단). verify가 지문을 보고하지 않았으면(svn 등) `passed`만 기록한다 — 훅은 지문 없는 세션을 구 세션과 동일하게 판정한다. 이후 커밋까지 코드를 수정하지 않는다 (state.md 갱신은 `.dev/` 제외 규약, `git add -A` 스테이징은 트리 해시 규약 덕분에 지문에 영향이 없다).
 2. 스테이징: `git add -A` 후 `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
 3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않는 gx-ralph 전용 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
 4. 커밋이 훅에 의해 거부되면 → `<ralph>BLOCKED: 커밋 차단 — {훅 사유}</ralph>` 출력 후 종료.

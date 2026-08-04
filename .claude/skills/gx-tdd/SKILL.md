@@ -50,7 +50,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **테스트 품질 가드**(anti-pattern 요약 + Good Tests 3기준): `agents/red-writer.md` ↔ phase-implement.md(Step 2-R) ↔ gx-red SKILL.md(Step 2)에 중복. 상세 기준의 SSOT는 `references/testing-anti-patterns.md`.
 > - **참조 파일 자기신고 + 격리 오염 검증**: `agents/red-writer.md`(출력 형식) ↔ phase-implement.md(Step 2-R 출력·verify_red) ↔ gx-red SKILL.md(Step 2 출력·Step 3)에 중복.
 > - **경고 측정 규약**: `gx-verify` SKILL.md Step 2가 SSOT. phase-implement Step 0.5(baseline 기록)는 포인터 참조만 하므로 gx-verify만 고치면 따라온다.
-> - **verify 경고 게이트 조건**(`pipeline`/`verify-status` 판별): `.claude/rules/skill-routing.md` ↔ gx-commit SKILL.md ↔ gx-pull-request SKILL.md에 중복. 판별 키의 SSOT는 이 파일의 state.md 스키마.
+> - **verify 경고 게이트 조건**(`pipeline`/`verify-status`/`verify-fingerprint` 판별): `.claude/hooks/pre-tool-guard.sh`(G3) ↔ `.claude/rules/skill-routing.md` ↔ gx-commit SKILL.md ↔ gx-pull-request SKILL.md에 중복. 판별 키의 SSOT는 이 파일의 state.md 스키마이며, 지문 계산 규약의 SSOT는 이 파일의 "verify 지문" 섹션.
 > - **review 진입 '변경 없음' 판정**: 이 파일(실행 루프 2a) ↔ gx-dev SKILL.md에 쌍둥이 — 한쪽 보수 시 함께 갱신.
 > - **프로젝트 타입 폴백 표**: SSOT는 `.claude/config.json`의 projectTypes. gx-verify Step 1과 gx-tdd/gx-dev phase-review의 표는 파생 사본.
 > - **state.md 초기화 필드**: phase-setup Step 7이 정본이며, `--phase` 부트스트랩 골격(환경 감지 5항)은 그 부분집합 사본.
@@ -471,6 +471,7 @@ phase: implement
 status: in_progress
 pipeline: gx-tdd           # 파이프라인 식별자 — verify-status와 함께 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)의 판별 키
 verify-status: pending     # pending | passed. phase-complete Step -1 verify 통과 시 passed 전이, 코드 변경 재진입 시 pending 리셋
+verify-fingerprint: ""     # verify 통과 시점의 코드 지문. 게이트 4곳이 현재 지문과 대조해 "스테일 passed"를 감지한다 (아래 "verify 지문" 참조)
 model-profile: standard    # standard | eco — 에이전트 디스패치 모델 오버라이드 기준 (phase-setup Step 1.5 결정)
 vcs-type: git
 branch: JIRA-123
@@ -529,7 +530,9 @@ execution-log:
 - **RGR 사이클**: 각 태스크의 red/green/refactor 단계를 `"RGR T{N} (AC-N)"` 형식의 중첩 객체로 추적한다. (옛 "coder 구현/자기점검" 형식 사용 금지)
 - **G-W-T / testability 게이트 결과**: `execution-log`에 `gate: G-W-T` 또는 `agent: test-architect` 엔트리로 기록.
 - **verify 게이트 결과**: complete Step -1의 verify 게이트 결과를 `execution-log`에 기록 (gx-commit은 gx-dev와 공유하는 스킬이라 verify 실행을 포함하지 않는다 — 조건부 경고 게이트만 있음). verify가 "위험 수용"으로 통과를 보고하면 오케스트레이터가 trust-ledger에도 기록한다.
-- **verify-status 전이**: phase-complete Step -1 verify 통과 시 최상위 `verify-status: passed`로 갱신한다. 이후 코드 변경으로 phase-complete를 재진입하면 `pending`으로 리셋 후 Step -1을 재실행한다. 새 파이프라인 시작·부트스트랩 시 초기값은 `pending`.
+- **verify-status 전이**: phase-complete Step -1 verify 통과 시 최상위 `verify-status: passed`로 갱신하고, **같은 시점의 코드 지문을 `verify-fingerprint`에 함께 기록한다**. 이후 코드 변경으로 phase-complete를 재진입하면 `pending`으로 리셋(지문은 빈 값으로) 후 Step -1을 재실행한다. 새 파이프라인 시작·부트스트랩 시 초기값은 `pending`.
+- **status 수명주기**: `status: completed`인 state.md에 **어떤 Phase든 재진입하면 `status: in_progress`로 되돌리고 `verify-status: pending`·`verify-fingerprint: ""`로 리셋한다**. 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 판별 조건으로 쓰므로, 완료 표식이 남은 채 재작업하면 게이트가 전부 꺼진다.
+- **execution-log 기록 규약**: `result:` 등 자유 텍스트에 판별 키 문자열(`verify-status: passed`, `pipeline: gx-tdd`)을 **그대로 쓰지 않는다** — 훅이 부분 문자열로 매칭하면 게이트가 조용히 꺼질 수 있다. 필요하면 "verify 통과 표식 미전이"처럼 키를 인용하지 않고 서술한다 (훅은 `verify-status`에 줄 시작 앵커를 쓰지만, 다른 키까지 앵커를 쓰지는 않는다).
 - **기준선 게이트 결과**: phase-implement Step 0.5에서 최상위 필드 `warnings-baseline: N`을 기록한다. 추출 불가 시 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다.
 - `--resume` 시 `current-step`에서 재개한다 (Phase 처음부터가 아닌 중단 Step부터). 재개 전에 phase-setup Step 0.1 정합성 체크(브랜치/HEAD)를 수행한다. RGR 사이클 재개 시 `red/green/refactor` 단계별로 매칭 (태스크의 `test-file-hash`·`test-count`와 `${DEV_DIR}/rgr-t{N}-porcelain.txt` 스냅샷 파일을 함께 사용하여 verify_green/verify_refactor 기준선을 유지).
 - 에이전트 호출 완료 시: `execution-log`에 엔트리 추가 (agent명, result 요약). deprecated 에이전트(coder/qa-manager)는 절대 기록되지 않는다.
@@ -537,6 +540,17 @@ execution-log:
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
 - phase-complete 완료 시: `status: completed`로 갱신.
 - 새 파이프라인 시작 시 기존 state.md를 덮어쓴다. `config-setup-attempts`도 0으로 초기화.
+
+### verify 지문 (verify-fingerprint)
+
+verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 고정하기 위한 값이다. `passed` 표식만으로는 통과 후 코드를 고치고 커밋해도 게이트가 열리지 않는다(스테일 passed).
+
+- **계산 규약** (훅·gx-commit·gx-pull-request·라우팅이 동일하게 사용): 임시 인덱스에 워킹트리 전체를 `add -A`한 뒤 `.dev`를 인덱스에서 제거하고 `write-tree`한 **트리 해시**(앞 12자)를 `git rev-parse --short HEAD`와 `:`로 이은 값 (예: `7c9e814:59ca4aacfeab`). **`git diff HEAD`가 아니라 트리 해시**를 쓰는 이유는 신규 파일이 스테이징되면 diff 기반 값이 바뀌어, verify(스테이징 전) → `git add -A` → commit 순서에서 게이트가 오발동하기 때문이다 (RGR은 새 파일 생성이 기본).
+- **`.dev/` 제외 이유**: state.md·diff.txt 등 파이프라인 산출물은 코드가 아니며, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다 (ignore 누락 저장소에서도 안정).
+- **기록 주체**: `oh-my-gx:gx-verify`는 Write 권한이 없으므로 **통과 보고에 지문 값을 실어 보내고, 오케스트레이터가 state.md에 기록한다**. gx-ralph 루프에서는 반복 세션(`oh-my-gx:gx-ralph-iterate`)이 기록 주체다.
+- **적용 파이프라인**: `pipeline: gx-tdd`와 `pipeline: gx-ralph` 모두 동일한 규약을 쓴다.
+- **하위 호환**: 필드가 없는 구 세션은 기존 판정(`verify-status`만)으로 동작한다.
+- **svn**: git 지문을 계산할 수 없어 대조가 성립하지 않는다. 훅은 이 경우 보수적으로 "재검증 권고"를 안내한다.
 
 ### Context Slicing 규칙
 설계서와 PRD를 Agent에게 전달할 때, 역할에 따라 필요한 섹션만 전달하여 컨텍스트 효율을 높인다.
@@ -731,7 +745,7 @@ AskUserQuestion(
 > 3. `PROJECT_ROOT` = 현재 디렉토리.
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`을 결정한다: `${DEV_DIR}/state.md`가 있으면 그 `model-profile` 필드 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
-> 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
+> 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌린다** (`verify-fingerprint`도 빈 값으로 리셋) — 완료된 세션에 재진입하면 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구해 전부 꺼지기 때문이다. `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
 
 ---
 

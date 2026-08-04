@@ -143,6 +143,20 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 
 ### Step 5-A: 게이트 통과
 
+통과 시 **코드 지문을 함께 계산해 보고에 싣는다**. 이 스킬은 Write 권한이 없으므로 state.md 기록은 호출한 오케스트레이터가 수행한다.
+
+지문 계산 (git 저장소인 경우만 — svn은 "해당 없음"으로 보고):
+```bash
+# 임시 인덱스를 써서 실제 인덱스는 건드리지 않는다 (mktemp 빈 파일은 git이 거부하므로 경로만 사용)
+IDX="${TMPDIR:-/tmp}/.gxfp.$$"; rm -f "$IDX"
+GIT_INDEX_FILE="$IDX" git add -A
+GIT_INDEX_FILE="$IDX" git rm -r --cached -q --ignore-unmatch .dev
+GIT_INDEX_FILE="$IDX" git write-tree   # 앞 12자만 사용
+rm -f "$IDX"
+git rev-parse --short HEAD
+```
+`{HEAD 단축}:{트리해시 앞12자}` 형태로 이어 `verify-fingerprint` 값으로 보고한다 (예: `7c9e814:3ca970cc12ab`). `.dev/` 제외는 파이프라인 산출물이 코드가 아니기 때문이며, 훅·gx-commit·gx-pull-request·라우팅이 같은 규약으로 대조한다.
+
 ```
 ✅ verify 게이트 통과
 
@@ -150,11 +164,13 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 - 테스트: 47 pass, 0 fail
 - 빌드: success
 - 실행 시각: 2026-05-16T15:00:00
+- 코드 지문: 7c9e814:3ca970cc12ab
 
+오케스트레이터 조치: state.md에 `verify-status: passed`와 위 `verify-fingerprint`를 기록하세요.
 다음 단계 진행 가능 (commit, PR 등).
 ```
 
-오케스트레이터(`oh-my-gx:gx-tdd`)가 호출했으면 다음 Phase 진입 신호.
+오케스트레이터(`oh-my-gx:gx-tdd`·`oh-my-gx:gx-ralph-iterate`)가 호출했으면 다음 Phase 진입 신호.
 
 ### Step 5-B: 게이트 차단
 

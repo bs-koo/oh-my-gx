@@ -93,7 +93,22 @@ grep -qE 'pipeline: \(gx-tdd\|gx-ralph\)' .claude/hooks/pre-tool-guard.sh \
   || fail "훅 판별식이 통합 정규식(pipeline: (gx-tdd|gx-ralph))이 아님: pre-tool-guard.sh"
 grep -q "verify-status" .claude/hooks/pre-tool-guard.sh \
   || fail "판별식 키(verify-status) 누락: pre-tool-guard.sh"
-[ "$FAIL" -eq 0 ] && ok "판별식 키 5개 문서 + 훅 통합 정규식 확인"
+# verify 지문 계약: 게이트 4층(훅·라우팅·commit·PR) + 생산자(gx-verify)·기록자(phase-complete)가 모두 인지해야 한다
+for f in .claude/rules/skill-routing.md .claude/skills/gx-commit/SKILL.md \
+         .claude/skills/gx-pull-request/SKILL.md .claude/skills/gx-tdd/SKILL.md \
+         .claude/skills/gx-verify/SKILL.md .claude/skills/gx-tdd/phases/phase-complete.md; do
+  grep -q "verify-fingerprint" "$f" || fail "verify 지문 계약 누락: $f"
+done
+grep -q "compute_fingerprint" .claude/hooks/pre-tool-guard.sh \
+  || fail "훅 지문 계산 함수(compute_fingerprint) 누락: pre-tool-guard.sh"
+# 지문 계산 규약이 훅·gx-verify·회귀 테스트에서 동일해야 한다
+# (임시 인덱스 트리 해시 + .dev 인덱스 제거 — git diff HEAD 방식은 신규 파일 스테이징 시 값이 바뀐다)
+for f in .claude/hooks/pre-tool-guard.sh .claude/skills/gx-verify/SKILL.md scripts/hook-tests.sh; do
+  grep -qF 'GIT_INDEX_FILE' "$f" || fail "지문 계산의 임시 인덱스 규약 누락: $f"
+  grep -qF 'rm -r --cached -q --ignore-unmatch .dev' "$f" || fail "지문 계산의 .dev 제외 규약 누락: $f"
+  grep -qF 'write-tree' "$f" || fail "지문 계산의 트리 해시 규약 누락: $f"
+done
+[ "$FAIL" -eq 0 ] && ok "판별식 키 5개 문서 + 훅 통합 정규식 + 지문 계약 6곳·계산 규약 3곳 확인"
 
 echo "[5/19] 디스패치 이름 ↔ agents/ 대조"
 BUILTIN="Explore general-purpose"

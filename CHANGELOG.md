@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.20.0 (2026-08-04) — verify 게이트 경화: 지문 도입 + 훅 상속 결함 5건 수정
+
+sef-2026 플러그인(gx 이식본)의 정밀 감사에서 드러난 결함 중 **oh-my-gx 원본에도 동일하게 존재하던 것**들을 원본에서 수정한다. 설계는 sef에서 실측 검증된 것을 역이식했다.
+
+### Added
+- **verify 지문 (`verify-fingerprint`)**: verify 통과를 상태 문자열이 아니라 **그 시점의 코드**로 고정한다. 계산 규약은 `git rev-parse --short HEAD` + **임시 인덱스 트리 해시**(워킹트리 전체를 임시 인덱스에 `add -A` → `.dev`를 인덱스에서 제거 → `write-tree`)를 `:`로 이은 값이다. 게이트 4층(훅 G3·skill-routing·gx-commit·gx-pull-request)이 현재 지문과 대조해 **통과 후 코드가 바뀌면 게이트를 다시 연다**. 기존에는 `verify-status: passed` 문자열만 보았기 때문에, 통과 직후 코드를 고치고 커밋해도 어느 층도 막지 못했다(스테일 passed).
+  - **`git diff HEAD`가 아니라 트리 해시인 이유**: diff 기반 값은 **신규 파일이 스테이징되면 바뀐다**(untracked는 diff에 안 잡히지만 `git add -A` 후에는 잡힌다). RGR은 테스트·구현 파일을 새로 만드는 것이 기본이라, verify(스테이징 전) → `git add -A` → commit 순서에서 지문이 어긋나 게이트가 오발동한다 — 헤드리스 루프(gx-ralph)에서는 자기 차단이 된다. 트리 해시는 스테이징 여부와 무관하다. 실제 인덱스는 건드리지 않는다.
+  - **`.dev/` 제외**: 파이프라인 산출물이 코드가 아니고, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다. gitignore에 의존하지 않고 인덱스에서 명시 제거하므로 ignore 누락 저장소에서도 동일하게 동작한다. 두 결함 모두 회귀 테스트가 실측으로 검출했다.
+  - **비용**: 지문 계산은 `git commit` 시점에만, 그것도 활성 세션이 `passed`+지문을 기록한 경우에만 실행된다(약 0.8초/회, Windows 기준). 일반 Bash 명령·세션 없는 커밋에는 부과되지 않는다.
+  - 지문 필드가 없는 구 세션은 기존 판정을 유지한다(하위 호환). gx-tdd·gx-ralph 양 파이프라인에 적용
+- **훅 회귀 테스트** (`scripts/hook-tests.sh`): 22케이스(명령 가드 7 · 추출 견고성 3 · G3 게이트 5 · 지문 5 · detached HEAD 2)를 실제 실행으로 검증하고 CI에 연결. 판정 로직은 문서 검사로 대체할 수 없어 실행 검증으로 고정한다
+- **status 수명주기 규칙**: `status: completed`인 state.md에 재진입하면 `in_progress`·`verify-status: pending`·지문 초기화. 완료 표식이 남으면 게이트 4곳이 `status: in_progress`를 요구해 전부 꺼진다
+- lint [4]에 지문 계약 검사 추가 (게이트 4층 + 생산자·기록자 6문서, 계산 규약 3곳)
+
+### Fixed
+- **훅 CMD 추출 재작성** (오탐 2건): 정규식 근사를 **jq 우선 + awk 문자 단위 스캐너** 폴백으로 교체했다. ① `command` 값이 백슬래시로 끝나면(예: `echo C:\\`) 종료 따옴표를 구분하지 못해 뒤 필드(description)를 삼키고 deny 오탐했다 — Windows 경로를 다루면 현실적으로 발생한다. ② pretty-print(여러 줄) JSON에서는 행 단위 sed가 무력화되어 전체 입력 매칭으로 되돌아가, 2026-07-13에 고쳤던 오탐이 그대로 재현됐다. awk 스캐너는 백슬래시를 만나면 다음 문자를 통째로 소비해 경계를 정확히 찾고, 전 행을 이어붙여 처리한다
+- **detached HEAD에서 verify 게이트 미평가**: 리베이스·bisect 중에는 브랜치 슬러그를 만들 수 없어 G3가 통째로 건너뛰어졌다 → 브랜치 미확정 시 `.dev/*/state.md`를 스캔해 열린 게이트가 하나라도 있으면 확인(ask)을 요구한다
+- **`+refspec` 강제 푸시 미탐지**: `git push origin +feat:main` 형태가 G4와 settings.json deny 양쪽을 통과했다 → push 인자에서 `+ref:ref` 패턴도 차단
+- **`.active` 내부 공백 처리**: `tr -d ' \t\r\n'`이 내부 공백까지 지워 `a b`가 존재하지 않는 `ab`로 둔갑, trunk 폴백에도 걸리지 않아 svn verify 경고가 사라졌다 → 첫 줄만 읽고 CR/LF만 제거, 공백 포함 값은 불안전으로 판정해 폴백. 가리키는 state.md가 없는 **스테일 포인터**도 폴백 조건에 추가
+- **훅 오매칭 방어**: `verify-status`만 줄 시작 앵커로 판정 — execution-log의 자유 텍스트(`result: "… verify-status: passed …"`)가 부분 문자열로 매칭되어 최종 방어선을 끄던 경로를 차단. state.md 기록 규약에 "판별 키를 자유 텍스트에 그대로 쓰지 않는다" 명문화
+- **G4 평가 순서**: force-push 가드를 커밋 가드(G1/G3)보다 먼저 평가 — `git commit && git push --force` 체이닝에서 deny가 verify ask로 강등되던 문제
+
 ## v1.19.1 (2026-07-20) — 표준 프로파일 안내 보강
 
 ### Docs/UX
