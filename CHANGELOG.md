@@ -5,8 +5,12 @@
 sef-2026 플러그인(gx 이식본)의 정밀 감사에서 드러난 결함 중 **oh-my-gx 원본에도 동일하게 존재하던 것**들을 원본에서 수정한다. 설계는 sef에서 실측 검증된 것을 역이식했다.
 
 ### Added
-- **verify 지문 (`verify-fingerprint`)**: verify 통과를 상태 문자열이 아니라 **그 시점의 코드**로 고정한다. 계산 규약은 `git rev-parse --short HEAD` + `git diff HEAD -- . ':(exclude).dev' | git hash-object --stdin`(앞 12자)이며, 게이트 4층(훅 G3·skill-routing·gx-commit·gx-pull-request)이 현재 지문과 대조해 **통과 후 코드가 바뀌면 게이트를 다시 연다**. 기존에는 `verify-status: passed` 문자열만 보았기 때문에, 통과 직후 코드를 고치고 커밋해도 어느 층도 막지 못했다(스테일 passed). `.dev/`를 지문에서 제외하는 이유는 파이프라인 산출물이 코드가 아니고, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화되기 때문이다 — 회귀 테스트가 이 결함을 실측으로 검출했다. 지문 필드가 없는 구 세션은 기존 판정을 유지한다(하위 호환). gx-tdd·gx-ralph 양 파이프라인에 적용
-- **훅 회귀 테스트** (`scripts/hook-tests.sh`): 20케이스(명령 가드 7 · 추출 견고성 3 · G3 게이트 5 · 지문 4 · detached HEAD 2)를 실제 실행으로 검증하고 CI에 연결. 판정 로직은 문서 검사로 대체할 수 없어 실행 검증으로 고정한다
+- **verify 지문 (`verify-fingerprint`)**: verify 통과를 상태 문자열이 아니라 **그 시점의 코드**로 고정한다. 계산 규약은 `git rev-parse --short HEAD` + **임시 인덱스 트리 해시**(워킹트리 전체를 임시 인덱스에 `add -A` → `.dev`를 인덱스에서 제거 → `write-tree`)를 `:`로 이은 값이다. 게이트 4층(훅 G3·skill-routing·gx-commit·gx-pull-request)이 현재 지문과 대조해 **통과 후 코드가 바뀌면 게이트를 다시 연다**. 기존에는 `verify-status: passed` 문자열만 보았기 때문에, 통과 직후 코드를 고치고 커밋해도 어느 층도 막지 못했다(스테일 passed).
+  - **`git diff HEAD`가 아니라 트리 해시인 이유**: diff 기반 값은 **신규 파일이 스테이징되면 바뀐다**(untracked는 diff에 안 잡히지만 `git add -A` 후에는 잡힌다). RGR은 테스트·구현 파일을 새로 만드는 것이 기본이라, verify(스테이징 전) → `git add -A` → commit 순서에서 지문이 어긋나 게이트가 오발동한다 — 헤드리스 루프(gx-ralph)에서는 자기 차단이 된다. 트리 해시는 스테이징 여부와 무관하다. 실제 인덱스는 건드리지 않는다.
+  - **`.dev/` 제외**: 파이프라인 산출물이 코드가 아니고, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다. gitignore에 의존하지 않고 인덱스에서 명시 제거하므로 ignore 누락 저장소에서도 동일하게 동작한다. 두 결함 모두 회귀 테스트가 실측으로 검출했다.
+  - **비용**: 지문 계산은 `git commit` 시점에만, 그것도 활성 세션이 `passed`+지문을 기록한 경우에만 실행된다(약 0.8초/회, Windows 기준). 일반 Bash 명령·세션 없는 커밋에는 부과되지 않는다.
+  - 지문 필드가 없는 구 세션은 기존 판정을 유지한다(하위 호환). gx-tdd·gx-ralph 양 파이프라인에 적용
+- **훅 회귀 테스트** (`scripts/hook-tests.sh`): 22케이스(명령 가드 7 · 추출 견고성 3 · G3 게이트 5 · 지문 5 · detached HEAD 2)를 실제 실행으로 검증하고 CI에 연결. 판정 로직은 문서 검사로 대체할 수 없어 실행 검증으로 고정한다
 - **status 수명주기 규칙**: `status: completed`인 state.md에 재진입하면 `in_progress`·`verify-status: pending`·지문 초기화. 완료 표식이 남으면 게이트 4곳이 `status: in_progress`를 요구해 전부 꺼진다
 - lint [4]에 지문 계약 검사 추가 (게이트 4층 + 생산자·기록자 6문서, 계산 규약 3곳)
 

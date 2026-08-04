@@ -545,7 +545,7 @@ execution-log:
 
 verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 고정하기 위한 값이다. `passed` 표식만으로는 통과 후 코드를 고치고 커밋해도 게이트가 열리지 않는다(스테일 passed).
 
-- **계산 규약** (훅·gx-commit·gx-pull-request·라우팅이 동일하게 사용): `git rev-parse --short HEAD` + `git diff HEAD -- . ':(exclude).dev' | git hash-object --stdin`의 앞 12자를 `:`로 이은 값 (예: `7c9e814:3ca970cc12ab`).
+- **계산 규약** (훅·gx-commit·gx-pull-request·라우팅이 동일하게 사용): 임시 인덱스에 워킹트리 전체를 `add -A`한 뒤 `.dev`를 인덱스에서 제거하고 `write-tree`한 **트리 해시**(앞 12자)를 `git rev-parse --short HEAD`와 `:`로 이은 값 (예: `7c9e814:59ca4aacfeab`). **`git diff HEAD`가 아니라 트리 해시**를 쓰는 이유는 신규 파일이 스테이징되면 diff 기반 값이 바뀌어, verify(스테이징 전) → `git add -A` → commit 순서에서 게이트가 오발동하기 때문이다 (RGR은 새 파일 생성이 기본).
 - **`.dev/` 제외 이유**: state.md·diff.txt 등 파이프라인 산출물은 코드가 아니며, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다 (ignore 누락 저장소에서도 안정).
 - **기록 주체**: `oh-my-gx:gx-verify`는 Write 권한이 없으므로 **통과 보고에 지문 값을 실어 보내고, 오케스트레이터가 state.md에 기록한다**. gx-ralph 루프에서는 반복 세션(`oh-my-gx:gx-ralph-iterate`)이 기록 주체다.
 - **적용 파이프라인**: `pipeline: gx-tdd`와 `pipeline: gx-ralph` 모두 동일한 규약을 쓴다.

@@ -62,9 +62,14 @@ printf 'pipeline: gx-dev\nstatus: in_progress\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "타 파이프라인 무개입" commit1 PASS
 
 echo "[4/5] verify 지문 (스테일 passed 감지)"
-fp_of() { local h w; h=$(git -C "$SB" rev-parse --short HEAD 2>/dev/null || echo nohead)
-  w=$(git -C "$SB" diff HEAD -- . ':(exclude).dev' 2>/dev/null | git hash-object --stdin 2>/dev/null || echo nodiff)
-  printf '%s:%s' "$h" "$(printf '%s' "$w" | cut -c1-12)"; }
+fp_of() { local h idx tree; h=$(git -C "$SB" rev-parse --short HEAD 2>/dev/null || echo nohead)
+  idx="${TMPDIR:-/tmp}/.gxfptest.$$"; rm -f "$idx"; tree=""
+  if GIT_INDEX_FILE="$idx" git -C "$SB" add -A >/dev/null 2>&1; then
+    GIT_INDEX_FILE="$idx" git -C "$SB" rm -r --cached -q --ignore-unmatch .dev >/dev/null 2>&1
+    tree=$(GIT_INDEX_FILE="$idx" git -C "$SB" write-tree 2>/dev/null || echo "")
+  fi
+  rm -f "$idx"; [ -n "$tree" ] || tree="notree"
+  printf '%s:%s' "$h" "$(printf '%s' "$tree" | cut -c1-12)"; }
 
 (cd "$SB" && echo "v1" > app.txt && git add -A && git -c user.email=t@t -c user.name=t commit -qm init)
 FP=$(fp_of)
@@ -76,6 +81,18 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: passed\n' > "$SB/.
 assert_repo "지문 없는 구 세션 → 무개입" commit1 PASS
 printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\nexecution-log:\n  - result: "verify 차단 — verify-status: passed 미전이"\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "execution-log 오매칭 방어" commit1 ask
+
+# RGR 기본 경로: verify(스테이징 전) → git add -A → commit 에서 지문이 어긋나면 안 된다
+(cd "$SB" && git checkout -q feat/x 2>/dev/null || git checkout -q -b feat/x)
+(cd "$SB" && echo "impl" > NewImpl.java)
+FP2=$(fp_of)
+printf 'pipeline: gx-tdd
+status: in_progress
+verify-status: passed
+verify-fingerprint: %s
+' "$FP2" > "$SB/.dev/feat-x/state.md"
+(cd "$SB" && git add -A)
+assert_repo "신규 파일 스테이징 후에도 지문 유지" commit1 PASS
 
 echo "[5/5] detached HEAD"
 # 리베이스·bisect 중에는 브랜치 슬러그를 만들 수 없다 — 게이트를 통째로 건너뛰면 무검증 커밋이 통과한다

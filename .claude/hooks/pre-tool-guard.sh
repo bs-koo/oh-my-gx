@@ -45,15 +45,31 @@ fi
 [ -n "$CMD" ] || CMD="$INPUT"
 
 # 코드 지문 계산 — verify 통과 시점의 코드와 지금 커밋하려는 코드가 같은지 대조하는 값.
-# HEAD 커밋 + 워킹트리 diff 해시를 이어붙여 미커밋 수정까지 포착한다.
-# (verify 통과 후 코드를 고치고 커밋하면 지문이 달라져 게이트가 다시 열린다)
-# `.dev/`는 제외한다: state.md·diff.txt 등 파이프라인 산출물은 코드가 아니며,
-# 이를 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다 (ignore 누락 저장소 대비).
+# HEAD 커밋 + 워킹트리 전체의 트리 해시를 이어붙여 미커밋 수정·신규 파일까지 포착한다.
+#
+# 임시 인덱스(GIT_INDEX_FILE)에 전체를 add한 뒤 write-tree 하는 이유:
+#   `git diff HEAD` 방식은 **신규 파일이 스테이징되면 값이 바뀐다**(untracked는 diff에
+#   안 잡히지만 add 후에는 잡힌다). RGR은 테스트·구현 파일을 새로 만드는 것이 기본이라,
+#   verify(스테이징 전) → git add -A → commit 순서에서 지문이 어긋나 게이트가 오발동한다
+#   (헤드리스 루프에서는 자기 차단). 트리 해시는 스테이징 여부와 무관해 이 문제가 없다.
+#   실제 인덱스는 건드리지 않는다.
+# `.dev/`는 인덱스에서 제거해 제외한다: state.md·diff.txt 등 파이프라인 산출물은 코드가
+#   아니며, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다. gitignore에 의존하지
+#   않고 명시 제거하므로 ignore 누락 저장소에서도 동일하게 동작한다.
 compute_fingerprint() {
   FP_REPO="${1:-.}"
   FP_HEAD=$(git -C "$FP_REPO" rev-parse --short HEAD 2>/dev/null || echo "nohead")
-  FP_WORK=$(git -C "$FP_REPO" diff HEAD -- . ':(exclude).dev' 2>/dev/null | git hash-object --stdin 2>/dev/null || echo "nodiff")
-  printf '%s:%s' "$FP_HEAD" "$(printf '%s' "$FP_WORK" | cut -c1-12)"
+  # mktemp가 만든 빈 파일은 git이 "index file smaller than expected"로 거부한다 — 경로만 쓴다
+  FP_IDX="${TMPDIR:-/tmp}/.gxfp.$$"
+  rm -f "$FP_IDX"
+  FP_TREE=""
+  if GIT_INDEX_FILE="$FP_IDX" git -C "$FP_REPO" add -A >/dev/null 2>&1; then
+    GIT_INDEX_FILE="$FP_IDX" git -C "$FP_REPO" rm -r --cached -q --ignore-unmatch .dev >/dev/null 2>&1
+    FP_TREE=$(GIT_INDEX_FILE="$FP_IDX" git -C "$FP_REPO" write-tree 2>/dev/null || echo "")
+  fi
+  rm -f "$FP_IDX"
+  [ -n "$FP_TREE" ] || FP_TREE="notree"
+  printf '%s:%s' "$FP_HEAD" "$(printf '%s' "$FP_TREE" | cut -c1-12)"
 }
 
 # 공통 판별: state.md가 "verify 게이트 파이프라인(gx-tdd/gx-ralph) 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
