@@ -23,6 +23,8 @@ allowed-tools:
   - Bash(npm audit *)
   - Bash(pip list *)
   - Bash(pip-audit *)
+  - Bash(cargo tree *)
+  - Bash(cargo audit *)
   # 읽기 도구
   - Read
   - Glob
@@ -170,7 +172,7 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 ### 1-3: 의존성 부채 (`deps`)
 
-프로젝트 타입별로 의존성 상태를 확인한다:
+config `projectTypes`에서 감지된 타입 기준으로 의존성 상태를 확인한다 (**SSOT는 config**). 아래에 분석 절차가 정의된 생태계만 실행한다.
 
 **java/kotlin:**
 1. `build.gradle.kts` 또는 `build.gradle`을 Read하여 의존성 목록을 파악한다.
@@ -188,8 +190,13 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 3. `pip list --outdated --format=json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. non-zero 종료코드 시에도 stdout JSON을 우선 파싱한다.
 4. `pip-audit --format=json` (`timeout: 30000`)이 실행 가능하면 알려진 취약점을 확인한다. 동일하게 stdout 기준으로 파싱한다.
 
-**범용 (감지 불가):**
-- 이 유형을 건너뛴다.
+**rust:**
+1. `Cargo.toml`을 Read하여 의존성 목록을 파악한다.
+2. `cargo tree --depth 1` (`timeout: 60000`)로 직접 의존성을 확인한다.
+3. `cargo audit --json` (`timeout: 60000`)이 실행 가능하면 알려진 취약점을 확인한다. 미설치면 건너뛰고 보고에 명시한다.
+
+**그 외 (분석 절차 미정의 타입·감지 불가):**
+- 건너뛰지 않고 보고서에 명시 기재한다: "의존성 분석 미지원 — 수동 확인 필요 (vendored 라이브러리, git 서브모듈, 시스템 패키지 여부를 직접 점검하세요)". C/Make처럼 패키지 매니저가 없는 생태계가 여기 해당한다. 조용한 생략 금지.
 
 ### 1-4: 테스트 부채 (`test`)
 
