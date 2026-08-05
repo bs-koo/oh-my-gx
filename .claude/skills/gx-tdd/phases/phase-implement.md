@@ -255,7 +255,7 @@ Task(subagent_type="oh-my-gx:green-coder"):
 
 **verify_green**: 오케스트레이터가 직접 검증. **저비용 검사(1~2번)를 테스트 실행보다 먼저 수행한다.**
 1. **테스트 결함 의심 확인**: green-coder가 "테스트 결함 의심"을 보고했으면 (해시 일치 여부와 무관) → 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (green-coder가 테스트를 고치지 않는다).
-2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다. **이전 태스크들의 `test-file-hash`도 재검증**한다 (이미 dirty/untracked 상태라 porcelain 델타에 잡히지 않는 이전 테스트 파일의 내용 수정 감지).
+2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다. (`.dev/` 경로 라인은 대조에서 제외한다 — 산출물 공유 전환으로 델타에 나타날 수 있으나 테스트 무결성과 무관하다) **이전 태스크들의 `test-file-hash`도 재검증**한다 (이미 dirty/untracked 상태라 porcelain 델타에 잡히지 않는 이전 테스트 파일의 내용 수정 감지).
    - 무단 수정 감지 (해시 불일치 또는 타 테스트 파일 변경) → 해당 테스트를 RED 산출물(red 결과의 테스트 코드)로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조). **재차 위반 시** 사이클을 중단하고 사용자에게 보고한다.
 3. 대상 테스트 통과 확인.
 4. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인. **전체 테스트 수를 state.md 해당 태스크의 `test-count: N` 필드로 기록**한다 (verify_refactor의 테스트 삭제 감지 기준선 — --resume 시에도 복원된다).

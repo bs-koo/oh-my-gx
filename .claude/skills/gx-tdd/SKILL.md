@@ -637,12 +637,12 @@ Agent에게 변경사항 diff를 전달할 때, 메인 컨텍스트 절약을 �
 1. `DIFF_FILE = ${DEV_DIR}/diff.txt`. **매 수집 시** `mkdir -p ${DEV_DIR}`를 실행하여 디렉토리 존재를 보장한다.
 2. diff를 파일에 직접 리다이렉트한다 (Bash 결과에 diff가 나타나지 않음):
    ```bash
-   git diff --cached > ${DEV_DIR}/diff.txt
+   git diff --cached -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
    ```
 3. `wc -l < ${DEV_DIR}/diff.txt`로 줄 수를 확인한다.
 4. 총 변경이 **500줄 이상**이면: `--stat` 요약을 파일 앞에 추가하고, 파일 끝에 "변경된 파일을 Read 도구로 직접 확인하라"는 안내를 추가한다:
    ```bash
-   git diff --cached --stat > ${DEV_DIR}/diff.txt
+   git diff --cached --stat -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
    echo "---" >> ${DEV_DIR}/diff.txt
    echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> ${DEV_DIR}/diff.txt
    ```
@@ -652,7 +652,7 @@ Agent에게 변경사항 diff를 전달할 때, 메인 컨텍스트 절약을 �
    이 파일을 Read하여 변경사항을 확인하라.
    ```
 
-이 규칙은 모든 diff 패턴에 적용한다: `git diff --cached` (스테이징), `git diff <base>...HEAD` (브랜치 비교) 등. 브랜치 비교 시에는 해당 diff 명령으로 리다이렉트한다.
+이 규칙은 모든 diff 패턴에 적용한다: `git diff --cached` (스테이징), `git diff <base>...HEAD` (브랜치 비교) 등 — **모든 git diff 명령에 `-- . ':(exclude).dev'` pathspec을 붙여 `.dev` 산출물을 리뷰 diff에서 제외한다** (산출물은 공유 대상이지만 코드 리뷰 대상이 아니며, PRD·AC 전문이 diff로 유입되면 quality-reviewer의 격리 계약이 우회 붕괴하고 500줄 초과 강등이 빈발한다). svn은 pathspec 제외가 없으므로 diff 수집 후 리뷰 에이전트 프롬프트에 "`.dev` 경로의 변경은 리뷰 대상에서 제외하라"를 명시한다.
 
 ### 에이전트 질문 → AskUserQuestion 변환 규칙
 
