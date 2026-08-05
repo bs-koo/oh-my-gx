@@ -102,13 +102,13 @@ feat: 로그인 기능 추가
 ## 커밋 실행
 
 0. `git diff --cached --name-only`로 기존 staged 파일 목록을 캡처한다. (커밋 실패 시 원래 staged 상태를 복원하기 위함)
-1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다.
-2. 빌드 아티팩트 패턴(`.claude/config.json` → `buildArtifactPatterns` 참조)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
+1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다. 목록에 **현재 브랜치 슬러그가 아닌 `.dev/{다른-slug}/`** 경로가 있으면 다른 작업의 잔재일 수 있으므로 포함 여부를 사용자에게 확인한다.
+2. 빌드 아티팩트 패턴(`.claude/config.json`의 모든 `projectTypes.*.artifacts`와 레거시 `buildArtifactPatterns`의 **합집합** — 타입별 artifacts가 SSOT)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
 3. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조)이 목록에 있으면 사용자에게 경고하고 스테이징에서 제외할지 확인한다.
 4. 변경 파일이 20개를 초과하면 사용자에게 전체 스테이징 여부를 확인한다.
 5. 스테이징:
-   - 제외 파일 없음: `git add -A`
-   - 제외 파일 있음: `git add <나머지 파일 각각 지정>`
+   - 제외 파일 없음: `git add -A` 후 런타임 파일을 unstage한다: `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' 2>/dev/null` (루프 락·반복 로그는 커밋 대상이 아니다 — 커밋되면 다른 사용자의 라우팅·게이트 판별이 오작동한다)
+   - 제외 파일 있음: `git add <나머지 파일 각각 지정>` (위 런타임 파일은 지정하지 않는다)
 6. HEREDOC 포맷으로 커밋:
    ```bash
    git commit -m "$(cat <<'EOF'
