@@ -35,7 +35,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 | 항목 | 지원 |
 |------|------|
 | VCS | Git, SVN |
-| 언어/프레임워크 | Java (Spring Boot, Gradle), Node.js |
+| 언어/프레임워크 | 언어 중립 — config `projectTypes` 등록 기반 (Java·Node 기본 내장, C/C++·Python·Go·Rust·.NET·Maven 등은 `/gx-setup` 자동 등록) |
 | OS | Windows, macOS, Linux |
 
 ---
@@ -739,11 +739,15 @@ PRD 확정 후 구현 구간을 무인 루프로 돌립니다. `/gx-ralph`가 PR
 ```json
 "projectTypes": {
   "python": {
-    "detect": ["requirements.txt", "pyproject.toml"],
-    "build": "python -m pytest --co -q"
+    "detect": ["pyproject.toml", "setup.py", "requirements.txt"],
+    "test": "pytest",
+    "warningPattern": "warning",
+    "artifacts": [".venv/", "__pycache__/"]
   }
 }
 ```
+
+python은 별도 빌드가 없어 `build` 필드를 생략한다. 값 제안은 `/gx-setup`의 "프로젝트 타입 등록"(힌트 카탈로그)이 자동으로 해준다.
 
 ### Google Chat 알림 연동
 
