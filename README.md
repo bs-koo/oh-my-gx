@@ -5,7 +5,7 @@
 **GX 사업본부 개발자를 위한 개발 자동화 플러그인 — PRD·설계·구현·리뷰·PR까지 에이전트 팀이 처리합니다**
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-2ea44f?style=for-the-badge)](https://bs-koo.github.io/oh-my-gx/)
-[![PDF 가이드](https://img.shields.io/badge/PDF_Guide-v1.21.1-EC1C24?style=for-the-badge)](docs/oh-my-gx-guide.pdf)
+[![PDF 가이드](https://img.shields.io/badge/PDF_%EA%B0%80%EC%9D%B4%EB%93%9C-v1.21.1-ED2224?style=for-the-badge)](docs/oh-my-gx-guide.pdf)
 
 </div>
 
