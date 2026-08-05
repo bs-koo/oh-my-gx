@@ -91,7 +91,13 @@ verify_gate_open() {
     RECORDED=$(sed -n 's/^[[:space:]]*verify-fingerprint:[[:space:]]*//p' "$STATE_FILE" 2>/dev/null | head -1 | tr -d ' \t\r')
     # 지문이 없는 구 세션은 기존 판정을 유지한다 (하위 호환 — passed면 게이트 닫힘)
     [ -n "$RECORDED" ] || return 1
-    [ "$RECORDED" = "$(compute_fingerprint "$GATE_REPO")" ] && return 1
+    # 대조는 트리 성분(콜론 뒤)만 — HEAD 성분은 기록·추적용이다. verify 통과 후
+    # phase-complete가 커밋하면 HEAD는 전진하지만 트리가 같으면 검증된 코드가 그대로
+    # 커밋된 것이므로 일치로 판정한다 (커밋 → PR 정상 경로의 상시 오경고 방지).
+    CURRENT_FP=$(compute_fingerprint "$GATE_REPO")
+    # write-tree 실패값(notree)끼리는 "같다"고 볼 수 없다 — 양쪽 계산이 모두 실패한 경우
+    # 코드 동일성이 입증되지 않으므로 보수적으로 게이트를 연다.
+    [ "${CURRENT_FP##*:}" != "notree" ] && [ "${RECORDED##*:}" = "${CURRENT_FP##*:}" ] && return 1
     STALE_FP=1   # passed 표식은 있으나 코드가 그 이후 변경됨 (스테일 passed)
     return 0
   fi
@@ -223,7 +229,7 @@ case "$CMD" in
     # 스테일 포인터 방어: 값이 있어도 가리키는 state.md가 없으면 trunk로 폴백한다.
     [ -f "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md" ] || ACTIVE_SLUG="trunk"
     # svn은 git 지문을 계산할 수 없어 대조가 성립하지 않는다 — GATE_REPO를 넘기지 않으면
-    # compute_fingerprint가 nohead:nodiff를 내 불일치(재검증 권고)로 판정되며 보수적이라 안전하다.
+    # compute_fingerprint가 nohead:notree를 내 불일치(재검증 권고)로 판정되며 보수적이라 안전하다.
     if verify_gate_open "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"; then
       if [ "$STALE_FP" -eq 1 ]; then
         SVN_REASON="$SVN_REASON 주의: verify 통과 후 코드가 변경되었을 수 있습니다 (.dev/$ACTIVE_SLUG/state.md 지문 불일치). oh-my-gx:gx-verify를 다시 통과시킨 뒤 커밋하세요."

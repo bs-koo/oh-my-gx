@@ -69,10 +69,10 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 **git인 경우** (작업 경로 기준에 따라 GIT_PREFIX를 붙여 실행):
 - **전체 플로우** (phase-setup부터 진행): `git add -A`로 스테이징한 후, **Diff 수집 규칙**에 따라 `--cached` diff를 `DIFF_FILE`에 리다이렉트한다.
-- **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. `git diff $(git merge-base HEAD <base-branch>)...HEAD`를 `DIFF_FILE`에 리다이렉트한다.
+- **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. `git diff $(git merge-base HEAD <base-branch>)...HEAD -- . ':(exclude).dev'`를 `DIFF_FILE`에 리다이렉트한다.
 
 **svn인 경우**:
-- `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다. staging 없이 한 단계로 끝난다.
+- `svn add --force . 2>/dev/null`로 신규 파일을 등록한 뒤 `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다.
 
 ### Step 1.1: diff 공백 안전장치
 
@@ -84,7 +84,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 1. 베이스 브랜치가 결정되어 있으면 `${GIT_PREFIX} log {base}..HEAD --oneline`으로 브랜치 커밋 존재 여부 확인.
 2. 커밋이 1건 이상이면 "수동 커밋 감지" 경로:
    - AskUserQuestion: "브랜치 diff로 리뷰" / "현재 상태로 진행" / "중단"
-   - **브랜치 diff 선택** → `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD {base})...HEAD`를 `DIFF_FILE`에 리다이렉트.
+   - **브랜치 diff 선택** → `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD {base})...HEAD -- . ':(exclude).dev'`를 `DIFF_FILE`에 리다이렉트.
 3. 커밋도 없고 diff도 없으면 "변경사항이 없습니다" 보고 후 중단.
 
 ---

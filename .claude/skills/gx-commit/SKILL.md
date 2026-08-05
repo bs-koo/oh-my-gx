@@ -46,8 +46,8 @@ Arguments:
 - Git 저장소인지 확인
 - **작업 디렉토리 보정**: `git rev-parse --show-toplevel`로 Git 루트를 확인한다. 현재 디렉토리와 다르면 (워크스페이스 root에서 호출된 경우 등), 이후 모든 git/빌드 명령을 Git 루트 기준 서브셸 `(cd <git-root> && <명령>)`로 실행한다.
 - 커밋할 변경사항이 있는지 확인 (없으면: "커밋할 변경사항이 없습니다.")
-- **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = `git branch --show-current` 결과의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 다르면**(=verify 통과 후 코드가 바뀜) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 커밋이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 선택 시 커밋 결과 보고에 "verify 미통과 커밋" 또는 "verify 통과 후 변경 커밋"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 커밋을 우선 안내한다.
-  - **지문 계산 규약** (훅·gx-verify와 동일): 임시 인덱스에 워킹트리 전체를 `add -A`한 뒤 `.dev`를 인덱스에서 제거하고 `write-tree`한 **트리 해시**(앞 12자)를 `git rev-parse --short HEAD`와 `:`로 이은 값 (스테이징 여부와 무관하도록 트리 해시를 쓴다 — `git diff HEAD`는 신규 파일이 스테이징되면 값이 바뀐다). `.dev/`를 제외하는 이유는 파이프라인 산출물이 코드가 아니며, 포함하면 상태 기록 때마다 지문이 스스로 무효화되기 때문이다.
+- **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = `git branch --show-current` 결과의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 커밋이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 선택 시 커밋 결과 보고에 "verify 미통과 커밋" 또는 "verify 통과 후 변경 커밋"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 커밋을 우선 안내한다.
+  - **지문 계산 규약** (훅·gx-verify와 동일): 임시 인덱스에 워킹트리 전체를 `add -A`한 뒤 `.dev`를 인덱스에서 제거하고 `write-tree`한 **트리 해시**(앞 12자)를 `git rev-parse --short HEAD`와 `:`로 이은 값 (스테이징 여부와 무관하도록 트리 해시를 쓴다 — `git diff HEAD`는 신규 파일이 스테이징되면 값이 바뀐다). `.dev/`를 제외하는 이유는 파이프라인 산출물이 코드가 아니며, 포함하면 상태 기록 때마다 지문이 스스로 무효화되기 때문이다. **대조는 트리 성분(콜론 뒤 12자)만 수행한다** — HEAD 성분은 기록·추적용이며, 커밋으로 HEAD가 전진해도 트리가 같으면 일치다.
   - `verify-fingerprint` 필드가 없는 구 세션은 (a)만 판정한다 (하위 호환). `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
 - 커밋 전에 빌드를 실행한다:
   - `.claude/config.json`의 `projectTypes`에서 프로젝트 타입을 감지한다 (빌드/설정 파일 기준).
@@ -102,13 +102,13 @@ feat: 로그인 기능 추가
 ## 커밋 실행
 
 0. `git diff --cached --name-only`로 기존 staged 파일 목록을 캡처한다. (커밋 실패 시 원래 staged 상태를 복원하기 위함)
-1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다.
-2. 빌드 아티팩트 패턴(`.claude/config.json` → `buildArtifactPatterns` 참조)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
+1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다. 목록에 **현재 브랜치 슬러그가 아닌 `.dev/{다른-slug}/`** 경로가 있으면 다른 작업의 잔재일 수 있으므로 포함 여부를 사용자에게 확인한다.
+2. 빌드 아티팩트 패턴(`.claude/config.json`의 모든 `projectTypes.*.artifacts`와 레거시 `buildArtifactPatterns`의 **합집합** — 타입별 artifacts가 SSOT)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
 3. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조)이 목록에 있으면 사용자에게 경고하고 스테이징에서 제외할지 확인한다.
 4. 변경 파일이 20개를 초과하면 사용자에게 전체 스테이징 여부를 확인한다.
 5. 스테이징:
-   - 제외 파일 없음: `git add -A`
-   - 제외 파일 있음: `git add <나머지 파일 각각 지정>`
+   - 제외 파일 없음: `git add -A` 후 런타임 파일을 unstage한다: `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' 2>/dev/null` (루프 락·반복 로그는 커밋 대상이 아니다 — 커밋되면 다른 사용자의 라우팅·게이트 판별이 오작동한다)
+   - 제외 파일 있음: `git add <나머지 파일 각각 지정>` (위 런타임 파일은 지정하지 않는다)
 6. HEREDOC 포맷으로 커밋:
    ```bash
    git commit -m "$(cat <<'EOF'

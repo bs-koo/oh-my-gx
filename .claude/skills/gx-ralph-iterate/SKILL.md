@@ -105,7 +105,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 ### Step 4: verify-status + 지문 선기록 → 커밋 (통과 시)
 
 1. **커밋보다 먼저** state.md에 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값**을 함께 기록한다 (훅 G3가 커밋 시점에 passed와 지문 일치를 함께 요구한다 — 순서 위반 시 헤드리스에서 자기 차단). verify가 지문을 보고하지 않았으면(svn 등) `passed`만 기록한다 — 훅은 지문 없는 세션을 구 세션과 동일하게 판정한다. 이후 커밋까지 코드를 수정하지 않는다 (state.md 갱신은 `.dev/` 제외 규약, `git add -A` 스테이징은 트리 해시 규약 덕분에 지문에 영향이 없다).
-2. 스테이징: `git add -A` 후 `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
+2. 스테이징: `git add -A` 후 런타임 파일을 unstage하고(`git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' 2>/dev/null` — 락·반복 로그는 커밋 금지) `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
 3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않는 gx-ralph 전용 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
 4. 커밋이 훅에 의해 거부되면 → `<ralph>BLOCKED: 커밋 차단 — {훅 사유}</ralph>` 출력 후 종료.
 

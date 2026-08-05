@@ -50,7 +50,8 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 - **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-tdd {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격(SKILL.md 환경감지가 mode 없이 생성) 등 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.
-- `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.5)을 재실행하여 `REFERENCES`를 복원한다.
+- `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.1 병렬 수집의 5번 항목)을 재실행하여 `REFERENCES`를 복원한다.
+- Step 3.1의 도메인 컨텍스트 탐색(4번 항목)을 재실행하여 `DOMAIN_CONTEXT`를 복원한다.
 - phases 맵에서 마지막 in_progress Phase를 찾아 재개.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.
 
@@ -117,7 +118,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 1. `AUTO_STASHED=true`이면 **Step 5 종료 시점**에 `git stash pop` 실행.
 2. pop 충돌 발생 시 사용자에게 보고하고 AskUserQuestion:
-   - "stash를 유지하고 수동 해결" → conflict 상태를 유지한 채 파이프라인 일시 중단. 사용자가 해결 후 재개 지시.
+   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 먼저 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>` — `DEV_DIR`이 아직 미정이면(2.3은 Step 6.5보다 먼저 실행된다) Step 6.5의 규칙대로 `.dev/{branch-slug}`를 먼저 확정하고 `mkdir -p`한 뒤 Write한다 — 골격이 없으면 `--resume`이 재개할 작업을 찾지 못한다). 이후 conflict 상태를 유지한 채 파이프라인을 일시 중단하고, 사용자에게 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개 지시.
    - "stash를 drop하고 계속" → `git stash drop`으로 버리고 다음 단계 진행. 위험 수용을 state.md에 기록.
 3. 복원 성공 시 `AUTO_STASHED=false`로 초기화하고 execution-log에 `auto-stash-restored` 기록.
 
@@ -201,7 +202,11 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 6: VCS ignore 자동 보강
 
-**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 이전 버전이 등록한 `.dev`가 남아 있으면 제거를 제안한다: `svn propget svn:ignore .`로 확인 후, 사용자 확인을 받아 `.dev` 줄만 제외한 목록으로 `svn propset svn:ignore`를 재적용한다. 처리 후 Step 7로 진행한다.
+**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 이전 버전이 등록한 `.dev`가 남아 있으면 제거를 제안한다: `svn propget svn:ignore .`로 확인 후, 사용자 확인을 받아 `.dev` 줄만 제외한 목록으로 `svn propset svn:ignore`를 재적용한다.
+
+단 **`.dev/.active`는 공유 예외**다 — 이 머신의 활성 작업을 가리키는 런타임 포인터라 공유되면 다른 사용자의 `--resume`·verify baseline이 타인 세션 기준으로 오염된다. `.dev`가 아직 unversioned면 `svn add --depth=empty .dev`로 디렉토리만 등록한 뒤 `svn propset svn:ignore '.active' .dev`를 적용해 `.active`를 공유에서 제외한다. 이미 `.active`가 versioned로 커밋되어 있으면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내한다. 제거 후에는 위 `svn propset svn:ignore '.active' .dev`를 반드시 재적용한다 (ignore 속성이 없으면 다음 `svn add --force .`가 `.active`를 다시 등록한다).
+
+처리 후 Step 7로 진행한다.
 
 **git인 경우:**
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.

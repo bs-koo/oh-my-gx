@@ -230,7 +230,7 @@ Agent가 설계에서 벗어난 판단을 했다면 해당 내용을 특이사�
 2. **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트한다 (`git diff --cached`를 Bash 단독 실행하지 않는다).
 
 **svn인 경우:**
-1. 스테이징 불필요 (SVN은 staging 개념 없음).
+1. **신규 파일 등록**: `svn add --force . 2>/dev/null`로 unversioned 신규 파일을 일괄 등록한다 (`--force`는 versioned 디렉토리 하위 추가를 허용하며 svn:ignore 패턴은 존중된다. RGR이 만든 신규 테스트·구현 파일은 add 없이는 `svn diff`에 실리지 않아 리뷰가 오판한다).
 2. `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다.
 
 **Step 5**: qa-manager agent로 자동 리뷰.

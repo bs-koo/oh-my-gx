@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.21.1 (2026-08-05)
+
+v1.21.0 전체 코드리뷰(동작 시뮬레이션·계약 정합) 후속 결함 수정.
+
+- verify 지문 대조를 트리 성분 기준으로 교정 — 정상 완주(커밋 → PR) 경로의 상시 오경고 제거 (훅·라우팅·gx-commit·gx-pull-request 동기, 훅 회귀 테스트 추가)
+- guide.md 등록 예시 교정(test 필드 누락·collect-only 플래그 — 복사 시 verify 차단 결함) 및 지원 환경 표·GitHub Pages 설명 언어 중립화
+- SVN: 신규 파일 `svn add --force` 지시 추가 (diff 누락·리뷰 오판 방지), `.dev/.active` 공유 제외 (다중 사용자 세션 오염 방지)
+- gx-commit: 아티팩트 가드를 projectTypes.artifacts 합집합으로 통합, 런타임 파일(ralph.lock·iter 로그) 스테이징 제외, 타 슬러그 .dev 잔재 확인
+- 리뷰 diff에서 .dev 제외 pathspec (quality-reviewer 격리 유지), porcelain 무결성 대조의 .dev 제외 명시
+- 저장소 자체 .gitignore의 .dev/ 제거 — 자기 계약 준수, 기존 산출물 공유 개시
+- gx-tdd 재개 시 DOMAIN_CONTEXT 복원(gx-dev와 대칭), auto-stash pop 충돌 시 state.md 골격 선기록, 낡은 Step 3.5 포인터 정정
+- 훅 지문 계산 실패값(notree) 가드와 SSOT 문서 명문화, hook-tests 커밋 전진 단언 추가
+- lint [22/22] 리뷰 후속 계약 불변식 추가 (사용자 문서·경계 밖 소비 지점)
+
 ## v1.21.0 (2026-08-04)
 
 언어 중립화 — 모든 언어/프레임워크에서 파이프라인 사용 가능. `.dev` 산출물 협업 공유 전환.

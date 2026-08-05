@@ -68,7 +68,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 ## Step 1: Commit
 
-**svn인 경우** → 건너뛴다. "SVN 프로젝트입니다. 리뷰 완료 후 `svn commit`을 직접 실행해주세요." 출력 후 Step 3으로 진행.
+**svn인 경우** → 건너뛴다. "SVN 프로젝트입니다. 리뷰 완료를 확인하고, `svn add --force .`로 신규 파일(.dev 산출물 포함)이 등록되었는지 확인한 뒤 `svn commit`을 직접 실행해주세요." 출력 후 Step 3으로 진행.
 
 **git인 경우:**
 

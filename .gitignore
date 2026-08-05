@@ -13,7 +13,6 @@ graphify-out/
 .agents/
 .kiro/
 .sisyphus/
-.dev/
 .humanize/
 # skill-creator: oh-my-gx 자체 스킬이 아닌 외부 스킬 생성기 디렉토리
 .claude/skills/skill-creator/
