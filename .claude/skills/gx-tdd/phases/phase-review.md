@@ -72,7 +72,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 - **`--phase review` 단독 실행**: 베이스 브랜치 감지 규칙에 따라 베이스를 결정한다. `git diff $(git merge-base HEAD <base-branch>)...HEAD`를 `DIFF_FILE`에 리다이렉트한다.
 
 **svn인 경우**:
-- `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다. staging 없이 한 단계로 끝난다.
+- `svn add --force . 2>/dev/null`로 신규 파일을 등록한 뒤 `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다.
 
 ### Step 1.1: diff 공백 안전장치
 

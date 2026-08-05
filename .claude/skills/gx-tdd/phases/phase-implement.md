@@ -372,7 +372,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 이 스테이징은 phase-review의 diff 수집과 phase-complete의 commit까지 유지된다.
 
 **svn인 경우:**
-1. 스테이징 불필요 (SVN은 staging 개념 없음).
+1. **신규 파일 등록**: `svn add --force . 2>/dev/null`로 unversioned 신규 파일을 일괄 등록한다 (`--force`는 versioned 디렉토리 하위 추가를 허용하며 svn:ignore 패턴은 존중된다. RGR이 만든 신규 테스트·구현 파일은 add 없이는 `svn diff`에 실리지 않아 리뷰가 오판한다).
 2. `svn diff > ${DIFF_FILE}`로 로컬 변경사항 전체를 수집한다.
 
 ---

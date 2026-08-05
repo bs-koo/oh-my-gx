@@ -201,7 +201,11 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 6: VCS ignore 자동 보강
 
-**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 이전 버전이 등록한 `.dev`가 남아 있으면 제거를 제안한다: `svn propget svn:ignore .`로 확인 후, 사용자 확인을 받아 `.dev` 줄만 제외한 목록으로 `svn propset svn:ignore`를 재적용한다. 처리 후 Step 7로 진행한다.
+**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 이전 버전이 등록한 `.dev`가 남아 있으면 제거를 제안한다: `svn propget svn:ignore .`로 확인 후, 사용자 확인을 받아 `.dev` 줄만 제외한 목록으로 `svn propset svn:ignore`를 재적용한다.
+
+단 **`.dev/.active`는 공유 예외**다 — 이 머신의 활성 작업을 가리키는 런타임 포인터라 공유되면 다른 사용자의 `--resume`·verify baseline이 타인 세션 기준으로 오염된다. `.dev`가 아직 unversioned면 `svn add --depth=empty .dev`로 디렉토리만 등록한 뒤 `svn propset svn:ignore '.active' .dev`를 적용해 `.active`를 공유에서 제외한다. 이미 `.active`가 versioned로 커밋되어 있으면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내한다.
+
+처리 후 Step 7로 진행한다.
 
 **git인 경우:**
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
