@@ -211,7 +211,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 **svn인 경우** → 건너뛴다. 단, 이전 버전이 `svn:ignore`에 등록한 `.dev`가 남아 있으면 제거를 제안한다 (`.dev` 산출물은 협업 공유 대상 — `svn propget svn:ignore .` 확인 후 사용자 확인을 받아 재적용).
 
-단 **`.dev/.active`는 공유 예외**다 — 이 머신의 활성 작업을 가리키는 런타임 포인터라 공유되면 다른 사용자의 `--resume`·verify baseline이 타인 세션 기준으로 오염된다. `.dev`가 아직 unversioned면 `svn add --depth=empty .dev`로 디렉토리만 등록한 뒤 `svn propset svn:ignore '.active' .dev`를 적용해 `.active`를 공유에서 제외한다. 이미 `.active`가 versioned로 커밋되어 있으면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내한다.
+단 **`.dev/.active`는 공유 예외**다 — 이 머신의 활성 작업을 가리키는 런타임 포인터라 공유되면 다른 사용자의 `--resume`·verify baseline이 타인 세션 기준으로 오염된다. `.dev`가 아직 unversioned면 `svn add --depth=empty .dev`로 디렉토리만 등록한 뒤 `svn propset svn:ignore '.active' .dev`를 적용해 `.active`를 공유에서 제외한다. 이미 `.active`가 versioned로 커밋되어 있으면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내한다. 제거 후에는 위 `svn propset svn:ignore '.active' .dev`를 반드시 재적용한다 (ignore 속성이 없으면 다음 `svn add --force .`가 `.active`를 다시 등록한다).
 
 **git인 경우:**
 

@@ -95,7 +95,9 @@ verify_gate_open() {
     # phase-complete가 커밋하면 HEAD는 전진하지만 트리가 같으면 검증된 코드가 그대로
     # 커밋된 것이므로 일치로 판정한다 (커밋 → PR 정상 경로의 상시 오경고 방지).
     CURRENT_FP=$(compute_fingerprint "$GATE_REPO")
-    [ "${RECORDED##*:}" = "${CURRENT_FP##*:}" ] && return 1
+    # write-tree 실패값(notree)끼리는 "같다"고 볼 수 없다 — 양쪽 계산이 모두 실패한 경우
+    # 코드 동일성이 입증되지 않으므로 보수적으로 게이트를 연다.
+    [ "${CURRENT_FP##*:}" != "notree" ] && [ "${RECORDED##*:}" = "${CURRENT_FP##*:}" ] && return 1
     STALE_FP=1   # passed 표식은 있으나 코드가 그 이후 변경됨 (스테일 passed)
     return 0
   fi

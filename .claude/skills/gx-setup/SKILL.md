@@ -70,7 +70,7 @@ allowed-tools:
 
 `.claude/config.json`의 `projectTypes`를 프로젝트에 맞게 등록한다. **SSOT는 config에 등록된 값**이며, 힌트 카탈로그는 제안용이다.
 
-1. **기존 등록 확인**: config `projectTypes` 중 `detect` 파일이 프로젝트 루트에 존재하는 타입이 있으면 → `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 설정 유지)` 출력 후 1단계로 진행한다 (갱신하지 않음).
+1. **기존 등록 확인**: config `projectTypes` 중 `detect` 파일이 프로젝트 루트에 존재하는 타입이 있으면 → `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 설정 유지)` 출력 후 1단계로 진행한다 (갱신하지 않음). **여러 타입의 detect 파일이 동시에 존재하면**(예: C 프로젝트에 도구용 package.json) 첫 매칭으로 단락하지 않고 AskUserQuestion으로 주 타입을 확인한다.
 2. **빌드 파일 스캔**: Glob으로 `Makefile`, `CMakeLists.txt`, `project.yml`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, `setup.py`, `requirements.txt`, `go.mod`, `*.csproj`, `*.sln`, `composer.json`, `build.gradle`, `build.gradle.kts`, `package.json`을 탐색한다.
 3. **제안 생성**: `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-setup/references/project-type-hints.md")`로 힌트 카탈로그를 읽어 감지 파일과 매칭한다.
    - 매칭되면 해당 행의 타입 키·build/test·warningPattern·artifacts를 제안 값으로 사용한다. 여러 행이 매칭되면 사용자에게 선택지를 제시한다.
@@ -190,7 +190,7 @@ allowed-tools:
 
 #### JDK (java 계열 타입만)
 
-0.5단계에서 **이번 실행의 detect 파일 매칭으로 감지·등록된 타입** 중 java 계열(gradle/maven 기반 — `java-spring`, `java-maven` 등 build/test 명령에 `gradlew` 또는 `mvn`이 포함된 타입)이 있을 때만 실행한다. config에 java 계열 항목이 존재해도 이번 프로젝트에서 detect 파일이 매칭되지 않으면 건너뛴다. 없으면 `JDK : 건너뜀 (java 계열 타입 없음)` 출력 후 2단계로 진행한다.
+0.5단계에서 **이번 실행의 detect 파일 매칭으로 감지된 타입(0.5단계에서 신규 등록됐든 기존 유지든)** 중 java 계열(gradle/maven 기반 — `java-spring`, `java-maven` 등 build/test 명령에 `gradlew` 또는 `mvn`이 포함된 타입)이 있을 때만 실행한다. config에 java 계열 항목이 존재해도 이번 프로젝트에서 detect 파일이 매칭되지 않으면 건너뛴다. 없으면 `JDK : 건너뜀 (java 계열 타입 없음)` 출력 후 2단계로 진행한다.
 
 1. `uname -s`로 OS를 감지한다.
 2. `java -version`으로 JDK 설치 여부와 버전을 확인한다.

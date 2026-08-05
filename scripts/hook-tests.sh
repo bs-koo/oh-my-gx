@@ -95,8 +95,11 @@ verify-fingerprint: %s
 assert_repo "신규 파일 스테이징 후에도 지문 유지" commit1 PASS
 
 # C1 회귀: verify 통과 후 커밋 → HEAD 전진·트리 동일 → 게이트는 열리지 않아야 한다
+BEFORE=$(git -C "$SB" rev-parse HEAD)
 git -C "$SB" add -A >/dev/null 2>&1
 git -C "$SB" -c user.email=t@t -c user.name=t commit -qm "advance head" >/dev/null 2>&1
+AFTER=$(git -C "$SB" rev-parse HEAD)
+[ "$BEFORE" != "$AFTER" ] || { echo "  FAIL: 커밋이 HEAD를 전진시키지 못함"; FAIL=1; }
 assert_repo "커밋 후 HEAD 전진·트리 동일 → 무개입" commit1 PASS
 
 echo "[5/5] detached HEAD"
