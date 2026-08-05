@@ -18,7 +18,8 @@ graphify-out/
 .claude/skills/skill-creator/
 skills-lock.json
 
-# 발표/배포 산출물 (루트 한정 — references/ 하위 규격문서는 추적 유지)
-export.pdf
+# 발표/배포 산출물 (루트 한정 — references/·docs/ 하위 문서는 추적 유지)
+# 가이드 배포본은 docs/oh-my-gx-guide.pdf 하나만 추적한다 (README 배지가 가리키는 파일).
+/*.pdf
 /*.pptx
 docs/presentation-*.md
