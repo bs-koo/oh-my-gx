@@ -155,7 +155,7 @@ GIT_INDEX_FILE="$IDX" git write-tree   # 앞 12자만 사용
 rm -f "$IDX"
 git rev-parse --short HEAD
 ```
-`{HEAD 단축}:{트리해시 앞12자}` 형태로 이어 `verify-fingerprint` 값으로 보고한다 (예: `7c9e814:3ca970cc12ab`). `.dev/` 제외는 파이프라인 산출물이 코드가 아니기 때문이며, 훅·gx-commit·gx-pull-request·라우팅이 같은 규약으로 대조한다.
+`{HEAD 단축}:{트리해시 앞12자}` 형태로 이어 `verify-fingerprint` 값으로 보고한다 (예: `7c9e814:3ca970cc12ab`). `.dev/` 제외는 파이프라인 산출물이 코드가 아니기 때문이며, 훅·gx-commit·gx-pull-request·라우팅이 같은 규약으로 **트리 성분을** 대조한다 (HEAD 성분은 기록·추적용).
 
 ```
 ✅ verify 게이트 통과
