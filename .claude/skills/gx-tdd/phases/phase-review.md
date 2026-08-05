@@ -84,7 +84,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 1. 베이스 브랜치가 결정되어 있으면 `${GIT_PREFIX} log {base}..HEAD --oneline`으로 브랜치 커밋 존재 여부 확인.
 2. 커밋이 1건 이상이면 "수동 커밋 감지" 경로:
    - AskUserQuestion: "브랜치 diff로 리뷰" / "현재 상태로 진행" / "중단"
-   - **브랜치 diff 선택** → `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD {base})...HEAD`를 `DIFF_FILE`에 리다이렉트.
+   - **브랜치 diff 선택** → `${GIT_PREFIX} diff $(${GIT_PREFIX} merge-base HEAD {base})...HEAD -- . ':(exclude).dev'`를 `DIFF_FILE`에 리다이렉트.
 3. 커밋도 없고 diff도 없으면 "변경사항이 없습니다" 보고 후 중단.
 
 ---
