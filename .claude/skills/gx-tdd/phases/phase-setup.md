@@ -118,7 +118,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 1. `AUTO_STASHED=true`이면 **Step 5 종료 시점**에 `git stash pop` 실행.
 2. pop 충돌 발생 시 사용자에게 보고하고 AskUserQuestion:
-   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 먼저 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>` — Step 7 이전 시점이라 골격 없이는 `--resume`이 재개할 작업을 찾지 못한다). 이후 conflict 상태를 유지한 채 파이프라인을 일시 중단하고, 사용자에게 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개 지시.
+   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 먼저 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>` — `DEV_DIR`이 아직 미정이면(2.3은 Step 6.5보다 먼저 실행된다) Step 6.5의 규칙대로 `.dev/{branch-slug}`를 먼저 확정하고 `mkdir -p`한 뒤 Write한다 — 골격이 없으면 `--resume`이 재개할 작업을 찾지 못한다). 이후 conflict 상태를 유지한 채 파이프라인을 일시 중단하고, 사용자에게 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개 지시.
    - "stash를 drop하고 계속" → `git stash drop`으로 버리고 다음 단계 진행. 위험 수용을 state.md에 기록.
 3. 복원 성공 시 `AUTO_STASHED=false`로 초기화하고 execution-log에 `auto-stash-restored` 기록.
 

@@ -229,7 +229,7 @@ case "$CMD" in
     # 스테일 포인터 방어: 값이 있어도 가리키는 state.md가 없으면 trunk로 폴백한다.
     [ -f "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md" ] || ACTIVE_SLUG="trunk"
     # svn은 git 지문을 계산할 수 없어 대조가 성립하지 않는다 — GATE_REPO를 넘기지 않으면
-    # compute_fingerprint가 nohead:nodiff를 내 불일치(재검증 권고)로 판정되며 보수적이라 안전하다.
+    # compute_fingerprint가 nohead:notree를 내 불일치(재검증 권고)로 판정되며 보수적이라 안전하다.
     if verify_gate_open "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"; then
       if [ "$STALE_FP" -eq 1 ]; then
         SVN_REASON="$SVN_REASON 주의: verify 통과 후 코드가 변경되었을 수 있습니다 (.dev/$ACTIVE_SLUG/state.md 지문 불일치). oh-my-gx:gx-verify를 다시 통과시킨 뒤 커밋하세요."
