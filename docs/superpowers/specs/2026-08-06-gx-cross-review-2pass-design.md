@@ -26,6 +26,7 @@ OCR의 delegate 모드가 1·2·4를, 프롬프트 설계 이식이 5를 해결�
 - 리뷰 대상 파일이 결정론적으로 확정되고, 제외된 파일은 사유와 함께 보고된다.
 - 대형 변경에서도 파일 단위 분해로 커버리지가 유지된다 (`--scope stat` 포기 경로 제거).
 - 산출물이 없는 저장소에서도 규칙 기반 결함 리뷰가 온전히 동작한다.
+- 프로젝트 고유 규약(레이어·네이밍) 위반이 파일 단계에서 탐지된다. OCR 규칙은 언어 일반의 결함만 다루므로 프로젝트 컨벤션을 함께 주입한다.
 - `gx-cross-review`의 기존 정체성(산출물 대비 충실도 검증, 자동 수정 금지, 한국어 강제, 단발 호출)은 그대로 유지한다.
 
 **비목표:**
@@ -158,6 +159,11 @@ AskUserQuestion(
   - untracked: 파일 전체를 Read하여 전부 신규 코드로 간주한다
 - `rules.md`에서 해당 파일이 속한 규칙 그룹의 체크리스트
 - 요구사항 배경 (산출물이 있으면 PRD 수용 기준 요약, 없으면 생략)
+- **프로젝트 컨벤션** — 프로젝트 루트 `CLAUDE.md`의 아키텍처·패턴·컨벤션 섹션. 없으면 생략한다.
+
+> **컨벤션을 주입하는 이유**: OCR 규칙은 언어 일반의 결함(NPE, 스레드 안전성, SQL 인젝션)을 다루지 어떤 프로젝트의 레이어 규약이나 네이밍 규칙도 알지 못한다. 컨벤션 없이는 사내 규약 위반이 파일 단계에서 전부 누락되어 Pass 2나 사후 리뷰로 밀린다. 기존 `quality-reviewer`가 `config.json`에서 `"diff + 코드 맵 + 컨벤션"`을 입력으로 정의한 것과 같은 수준을 맞춘다.
+>
+> **주입 범위는 컨벤션까지다.** `references/`(사내 표준 문서)는 Pass 2에서만 사용한다 (4.1 규칙 체계 분리 원칙). 규격 준수 검증은 문서 전문 대조가 필요해 파일 단위 리뷰에 넣으면 파일마다 표준 문서를 반복 로드하게 된다.
 
 **3A-3. `defect-reviewer` 출력.**
 
@@ -195,13 +201,21 @@ defect_verdict:
 2. **precision > recall.** 오탐은 리뷰어 신뢰를 깎는다. 확신이 서지 않으면 보고하지 않는다. 컴파일러·린터·포매터가 이미 잡는 것은 중복 보고하지 않는다.
 3. **보고하지 말아야 할 케이스를 명시한다.** 삭제된 코드, 변경되지 않은 코드, 스타일 취향 문제.
 
+컨벤션 위반은 **근거를 인용해야 한다.** 프로젝트 `CLAUDE.md`의 해당 규약을 인용하지 못하면 스타일 취향으로 간주하고 보고하지 않는다 (규율 2의 연장).
+
+`config.json`의 `contextLimits`에 `defect-reviewer` 항목을 추가한다.
+
+```json
+"defect-reviewer": { "maxInputLines": 800, "note": "파일 1개 diff + 규칙 그룹 + 컨벤션 (파일당 호출이므로 작게 유지)" }
+```
+
 기존 리뷰 에이전트와의 경계:
 
 | 에이전트 | 범위 | 호출 주체 |
 |---|---|---|
 | `spec-reviewer` | AC 충족 여부 | gx-tdd phase-review |
 | `quality-reviewer` | 코드 품질 (변경 전체) | gx-tdd phase-review |
-| `defect-reviewer` | **파일 1개의 결함 (규칙 기반)** | **gx-cross-review Pass 1** |
+| `defect-reviewer` | **파일 1개의 결함 (OCR 규칙 + 프로젝트 컨벤션)** | **gx-cross-review Pass 1** |
 
 `defect-reviewer`는 파이프라인 내부에서 호출하지 않는다. `gx-cross-review` 전용이다.
 
@@ -314,6 +328,7 @@ oh-my-gx의 기존 2층 검증 방식을 따른다.
 | S20 | `git add` 전 미커밋 변경 + untracked 신규 파일 | `/gx-cross-review` | 두 파일 모두 리뷰 대상에 포함 (preview 2회 병합 확인) |
 | S21 | 변경 20개 파일 | `/gx-cross-review` | 15개 초과 확인 질문 1회. 전체 선택 시 동시 5개씩 배분 디스패치 |
 | S22 | 산출물 있는 저장소 | `/gx-cross-review` | 커버리지 섹션 출력 + Pass 1 결과가 Pass 2 advisor 프롬프트에 중복 금지 항목으로 전달됨 |
+| S23 | 프로젝트 `CLAUDE.md`에 레이어·네이밍 규약이 있고 이를 위반한 변경 | `/gx-cross-review` | 컨벤션 위반이 Pass 1에서 보고되고 **근거로 `CLAUDE.md` 규약이 인용됨**. 인용 없는 스타일 지적은 보고되지 않음 |
 
 **정적 불변식** (`scripts/lint-consistency.sh`):
 
@@ -335,6 +350,7 @@ oh-my-gx의 기존 2층 검증 방식을 따른다.
 |---|---|
 | `.claude/skills/gx-cross-review/SKILL.md` | Step 0/2/3/4 개편, fallback 섹션 삭제, `--scope` 폐기, 심각도 4단계 통일(advisor 계약·Step 5 문구 포함), `allowed-tools`에 `Bash(ocr *)` 추가 |
 | `agents/defect-reviewer.md` | 신규 |
+| `.claude/config.json` | `contextLimits`에 `defect-reviewer` 항목 추가 |
 | `tests/golden-scenarios.md` | S18~S22 추가 |
 | `scripts/lint-consistency.sh` | 불변식 3종 추가 |
 | `.claude-plugin/plugin.json` · `marketplace.json` | version → 1.22.0 |
