@@ -120,7 +120,13 @@ ocr delegate preview                                    > "${DEV_DIR}/preview-wo
 ocr delegate rule <병합된 경로들...> > "${DEV_DIR}/rules.md"
 ```
 
-출력은 규칙 내용 기준 그룹이므로 그대로 저장한다. 파일이 많아 명령줄 길이가 문제되면 50개 단위로 나눠 호출하고 결과를 이어붙인다.
+출력은 규칙 내용 기준 그룹이므로 그대로 저장한다.
+
+파일이 많아 명령줄 길이가 문제되면 50개 단위로 나눠 호출한다. 이때 **단순히 이어붙이면 안 된다** — 각 호출이 `### Rule Group 1`부터 독립적으로 번호를 매기므로 번호가 중복되고, 여러 배치에 걸친 같은 규칙 그룹이 중복 출력된다. 병합 규칙:
+
+1. 배치별 출력에서 그룹을 파싱한다 (그룹 헤더의 출처·패턴, 규칙 본문, 적용 파일 목록).
+2. **출처·패턴·본문 3개가 모두 같은 그룹을 하나로 합치고 적용 파일 목록을 합집합한다.** (OCR이 그룹을 나누는 기준과 동일하다.)
+3. 합친 결과에 `1`부터 다시 번호를 매겨 `rules.md`에 기록한다.
 
 **2-3. 조기 종료.**
 
@@ -154,9 +160,25 @@ AskUserQuestion(
 각 디스패치에 다음을 전달한다.
 
 - 대상 파일 경로 1개
-- 해당 파일의 diff 획득 명령. **파일이 range·workspace 어느 쪽에서 왔든 동일한 명령을 쓴다.**
-  - tracked: `git diff $(git merge-base HEAD ${BASE_BRANCH}) -- <path>` — 커밋 + staged + unstaged를 한 번에 포함한다
-  - untracked: 파일 전체를 Read하여 전부 신규 코드로 간주한다
+- **해당 파일의 diff 파일 경로** (`${DEV_DIR}/diffs/<슬러그>.diff`)
+
+> **diff는 오케스트레이터가 미리 파일로 만들어 경로만 넘긴다.** `defect-reviewer`의 도구는 `Read, Glob, Grep`이라 Bash가 없어 스스로 git을 실행할 수 없다. 또한 `phase-review`가 에이전트에 `diff 파일 경로: {DIFF_FILE}`를 전달하는 oh-my-gx의 확립된 패턴과도 일치시킨다.
+
+Step 3A 진입 전에 오케스트레이터가 대상 파일마다 diff를 생성한다. **파일이 range·workspace 어느 쪽에서 왔든 동일한 명령을 쓴다** — 커밋분과 미커밋분이 쪼개지면 리뷰어가 변경 전체를 보지 못하기 때문이다.
+
+```bash
+mkdir -p "${DEV_DIR}/diffs"
+MB=$(git merge-base HEAD "${BASE_BRANCH}")
+# tracked: 커밋 + staged + unstaged를 한 번에 포함
+git diff "${MB}" -- "<path>" > "${DEV_DIR}/diffs/<슬러그>.diff"
+# untracked: 전체를 신규 코드로 간주
+git diff --no-index /dev/null "<path>" > "${DEV_DIR}/diffs/<슬러그>.diff" 2>/dev/null
+```
+
+**슬러그 규칙**: 경로의 `/`를 `-`로 치환한다 (`src/main/App.java` → `src-main-App.java.diff`). `DEV_DIR`/`BRANCH_SLUG`와 동일한 치환 규칙이다.
+
+생성 결과가 0줄인 파일은 리뷰 대상에서 제외하고 커버리지 `excluded`에 `diff 없음` 사유로 기록한다 (커밋 후 워킹 트리에서 되돌린 파일 등).
+
 - `rules.md`에서 해당 파일이 속한 규칙 그룹의 체크리스트
 - 요구사항 배경 (산출물이 있으면 PRD 수용 기준 요약, 없으면 생략)
 - **프로젝트 컨벤션** — 프로젝트 루트 `CLAUDE.md`의 아키텍처·패턴·컨벤션 섹션. 없으면 생략한다.
@@ -189,7 +211,9 @@ defect_verdict:
 - 통과: 확인 불가한 코멘트. 리뷰어는 Read/Grep으로 필터가 못 보는 컨텍스트를 확인했을 수 있다
 - 통과: 의심스럽지만 반증하지 못하는 코멘트
 
-필터는 오케스트레이터가 직접 수행한다 (에이전트 추가 없음). 제거된 항목은 `${DEV_DIR}/cross-review.raw.md`에 사유와 함께 보존한다.
+필터는 오케스트레이터가 직접 수행한다 (에이전트 추가 없음). 제거된 항목은 **`${DEV_DIR}/filtered-out.md`**에 사유와 함께 보존한다.
+
+> **`RAW_FILE`을 재사용하지 않는 이유**: 기존 `SKILL.md`의 `${RAW_FILE}`(`cross-review.raw.md`)은 "advisor 원시 응답" 전용이고, Step 3a-2의 codex 호출이 `> "${RAW_FILE}"`로 **덮어쓴다.** Pass 1의 필터 기록을 같은 파일에 쓰면 Pass 2 실행 시 소실된다.
 
 ### 4.5 신규 에이전트 `defect-reviewer`
 
@@ -227,6 +251,14 @@ advisor 호출 구조(codex 경로 / claude 경로)는 유지하고 **입력만 
 - **500줄 `--scope stat` 전환 규칙을 삭제한다.** 파일 분해가 Pass 1에서 끝났으므로 존재 이유가 없다. advisor가 세부 확인이 필요하면 Read로 본다.
 - `--scope` 플래그도 함께 폐기한다 (인식하지 못한 옵션 경고로 처리).
 - Pass 1이 확정한 신규 위험 목록을 함께 전달하고, **중복 보고를 금지**한다 (기존 trust-ledger·self-check 중복 차단과 동일한 규율).
+- **`${DIFF_FILE}` 변수를 폐기한다.** Step 2-2(diff 통째 수집)가 사라지므로 이 변수를 생성하는 곳이 없어진다. 기존 `SKILL.md`에서 이 변수를 참조하는 네 곳을 함께 정리한다.
+
+| 기존 위치 | 처리 |
+|---|---|
+| 공유 변수 정의 (`DIFF_FILE`) | 삭제. 대신 `DIFFS_DIR`(`${DEV_DIR}/diffs/`), `TARGETS_FILE`, `RULES_FILE`, `FILTERED_FILE`을 추가 |
+| Step 2-1 우선순위 표의 `diff` 행 | `리뷰 대상 파일 목록 + 파일별 변경 요약`으로 교체 |
+| codex prompt `diff 파일: ${DIFF_FILE}` | `대상 파일 목록: ${TARGETS_FILE}` + "세부 확인이 필요하면 해당 파일을 Read하라"로 교체 |
+| claude prompt `diff 파일 경로: ${DIFF_FILE}` | 위와 동일하게 교체 |
 - **산출물(prd/ac/design)이 셋 다 없으면 Pass 2를 통째로 생략한다.** Step 4에서 AC 매트릭스·설계 범위 이탈·references 위반 섹션을 생략하고 Pass 1 결과만으로 보고한다.
 
 ### 4.7 Step 4 — 통합 정규화
@@ -246,6 +278,14 @@ advisor 호출 구조(codex 경로 / claude 경로)는 유지하고 **입력만 
 - 제외: 5개 (테스트 3, 생성 코드 1, binary 1)
 - 실패: 0개
 - 오탐 필터: 15건 중 3건 제거
+
+제외 사유 범주는 다음 다섯 가지다. 앞의 셋은 OCR preview가 판정하고, 뒤의 둘은 이 스킬이 판정한다.
+
+| 사유 | 판정 주체 |
+|---|---|
+| 테스트 / 생성 코드 / binary / 대형 diff 등 | `ocr delegate preview` |
+| `사용자 선택 제외` | 3A-1의 "변경량 상위 15개" 선택 |
+| `diff 없음` | 3A-2의 diff 생성 결과가 0줄 |
 
 ## AC 충족 매트릭스
 (산출물 없으면 섹션 생략)
@@ -325,16 +365,18 @@ oh-my-gx의 기존 2층 검증 방식을 따른다.
 |---|---|---|---|
 | S18 | `ocr` 미설치 | `/gx-cross-review` | 설치 안내 후 종료. 자동 설치 시도 0회 |
 | S19 | 산출물 없는 저장소 + 변경 3파일 | `/gx-cross-review` | Pass 1만 동작. AC 매트릭스·설계 범위 이탈 섹션 미출력. 진행 여부 질문 없음 |
-| S20 | `git add` 전 미커밋 변경 + untracked 신규 파일 | `/gx-cross-review` | 두 파일 모두 리뷰 대상에 포함 (preview 2회 병합 확인) |
+| S20 | **커밋된 변경 1파일** + `git add` 전 미커밋 변경 1파일 + untracked 신규 1파일 | `/gx-cross-review` | 세 파일 모두 리뷰 대상에 포함. 커밋 파일은 range preview에서만, 나머지는 workspace preview에서만 나오므로 **2회 병합이 동작해야 통과**한다 |
 | S21 | 변경 20개 파일 | `/gx-cross-review` | 15개 초과 확인 질문 1회. 전체 선택 시 동시 5개씩 배분 디스패치 |
 | S22 | 산출물 있는 저장소 | `/gx-cross-review` | 커버리지 섹션 출력 + Pass 1 결과가 Pass 2 advisor 프롬프트에 중복 금지 항목으로 전달됨 |
 | S23 | 프로젝트 `CLAUDE.md`에 레이어·네이밍 규약이 있고 이를 위반한 변경 | `/gx-cross-review` | 컨벤션 위반이 Pass 1에서 보고되고 **근거로 `CLAUDE.md` 규약이 인용됨**. 인용 없는 스타일 지적은 보고되지 않음 |
 
 **정적 불변식** (`scripts/lint-consistency.sh`):
 
-- `defect-reviewer`가 `agents/`에 존재하고 `.claude-plugin` 등재 규칙을 만족하는지
+기존 스크립트의 검사 [5/22]("디스패치 이름 ↔ `agents/` 대조", `lint-consistency.sh:116-123`)는 디스패치 이름에서 `agents/<name>.md` 존재를 확인하므로 `defect-reviewer` 추가만으로 자동 적용된다. 아래 3종을 새로 추가한다.
+
+- `defect_verdict` 블록 producer 정의가 `agents/defect-reviewer.md`에 존재하는지 (기존 `spec_verdict`·`quality_verdict` 검사 `:74-79`와 동일 방식)
 - `gx-cross-review` SKILL.md의 `allowed-tools`에 `Bash(ocr *)`가 포함되는지
-- SKILL.md에서 `--scope` 관련 잔존 기술이 제거됐는지
+- SKILL.md에 `--scope`·`DIFF_FILE` 잔존 기술이 없는지
 
 ## 7. 유지되는 것 (회귀 금지)
 
@@ -348,10 +390,10 @@ oh-my-gx의 기존 2층 검증 방식을 따른다.
 
 | 파일 | 변경 |
 |---|---|
-| `.claude/skills/gx-cross-review/SKILL.md` | Step 0/2/3/4 개편, fallback 섹션 삭제, `--scope` 폐기, 심각도 4단계 통일(advisor 계약·Step 5 문구 포함), `allowed-tools`에 `Bash(ocr *)` 추가 |
+| `.claude/skills/gx-cross-review/SKILL.md` | Step 0/2/3/4 개편, fallback 섹션 삭제, `--scope`·`DIFF_FILE` 폐기 및 공유 변수 섹션 갱신, 심각도 4단계 통일(advisor 계약·Step 5 문구 포함), `allowed-tools`에 `Bash(ocr *)` 추가 |
 | `agents/defect-reviewer.md` | 신규 |
 | `.claude/config.json` | `contextLimits`에 `defect-reviewer` 항목 추가 |
-| `tests/golden-scenarios.md` | S18~S22 추가 |
+| `tests/golden-scenarios.md` | S18~S23 추가 (기록 문구의 총 개수도 17 → 23으로 갱신) |
 | `scripts/lint-consistency.sh` | 불변식 3종 추가 |
 | `.claude-plugin/plugin.json` · `marketplace.json` | version → 1.22.0 |
 | `CHANGELOG.md` | v1.22.0 섹션 |
