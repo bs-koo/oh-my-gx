@@ -747,7 +747,25 @@ PRD 확정 후 구현 구간을 무인 루프로 돌립니다. `/gx-ralph`가 PR
 }
 ```
 
-python은 별도 빌드가 없어 `build` 필드를 생략한다. 값 제안은 `/gx-setup`의 "프로젝트 타입 등록"(힌트 카탈로그)이 자동으로 해준다.
+python은 별도 빌드가 없어 `build` 필드를 생략한다. 값 제안은 `/gx-setup`의 "프로젝트 타입 등록"(힌트 카탈로그)이 자동으로 해준다. 등록 직후 `/gx-setup`이 test 명령을 1회 실행해 하네스 상태(테스트 몇 건이 도는지, 러너가 설치돼 있는지)를 보고하므로, 명령만 그럴듯하고 실제로는 안 도는 상태를 온보딩에서 바로 알 수 있다.
+
+### 프론트엔드와 풀스택
+
+프론트엔드도 `/gx-tdd`의 대상이다. 다만 TDD가 붙는 곳은 화면의 생김새가 아니라 **동작**이다 — 컴포저블·스토어·유틸·라우팅 가드, 그리고 폼 검증이나 조건부 렌더 같은 컴포넌트 동작이다. 색·여백·애니메이션은 검증 대상이 아니라 디자인 스펙으로 분리한다. 테스트가 CSS 클래스나 DOM 구조에 묶이지 않도록 셀렉터 규약(`role` > 텍스트 > 라벨 > `data-testid`)이 강제되며, 그래야 "동작 먼저 만들고 디자인은 나중에 얹는" 방식이 성립한다. 상세 규약은 `gx-tdd/references/frontend-testing.md`에 있다.
+
+프론트와 백엔드가 한 저장소에 있으면 `projectTypes`에 **양쪽을 모두 도는 복합 명령**을 등록한다. 하나만 등록하면 나머지 레이어는 verify 게이트가 실행조차 하지 않아 미검증으로 통과한다.
+
+```json
+"fullstack": {
+  "detect": ["build.gradle.kts", "frontend/package.json"],
+  "build": "./gradlew clean build -x test && pnpm --dir frontend build",
+  "test":  "./gradlew test && pnpm --dir frontend test",
+  "warningPattern": "warn",
+  "artifacts": [".gradle/", "build/", "frontend/node_modules/", "frontend/dist/"]
+}
+```
+
+한쪽 레이어에 테스트 러너가 없으면 `/gx-tdd`는 구현 진입 전에 멈추고 선택지를 제시한다 (하네스 구축 / 해당 AC 제외 후 진행 / 중단). 러너 없이는 실패 테스트를 쓸 수 없어 gx-tdd로 하네스를 만들 수는 없으므로, 구축 자체는 `/gx-dev`로 별도 수행한다 — 절차는 `docs/test-harness-guide.md`의 JS/TS 절에 있다.
 
 ### Google Chat 알림 연동
 

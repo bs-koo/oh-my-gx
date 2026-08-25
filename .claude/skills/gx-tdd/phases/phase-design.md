@@ -20,6 +20,8 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 
 **Step 0**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 확정된 PRD를 로드한다.
 
+`FRONTEND_TESTING_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/frontend-testing.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). PRD·설계서에 UI 컴포넌트가 포함될 때 test-architect 프롬프트에 이 경로를 전달한다.
+
 **Task**: architect agent를 호출한다 (설계).
 `Task(subagent_type="oh-my-gx:architect")` — prompt에 다음을 포함:
 - 확정된 PRD (Step 0에서 로드)
@@ -69,24 +71,37 @@ Task(subagent_type="oh-my-gx:test-architect"):
     - PRD의 수용 기준: {Step 0 PRD의 "수용 기준" 섹션}
     - 코드 맵: {누적 코드 맵}
     - 프로젝트 루트: {PROJECT_ROOT}
+    - 프론트 테스트 규약 (UI 컴포넌트가 있을 때만): {FRONTEND_TESTING_PATH} — Read하여 레이어 분류(§2)와 셀렉터 규약(§4)의 근거로 사용
 
     [절대 규칙]
     1. 각 컴포넌트별 테스트 전략 명시 (단위/통합 + 모의 전략)
-    2. testability score 1-10 산정
-    3. score < 7이면 재설계 권고 (사유와 권고 명시)
+    2. **레이어 분류**: 각 컴포넌트를 `동작`(검증 대상) 또는 `표현`(검증 대상 아님)으로 분류한다.
+       - 동작: 로직·상태·분기·계약이 있는 것 (서비스, 컴포저블/훅, 스토어, 가드, 폼 검증, 조건부 렌더)
+       - 표현: 스타일 래퍼·아이콘·배지처럼 assert할 동작이 없는 것
+       - 표현 레이어는 **감점 사유가 아니라 범위 밖**이다. 억지로 테스트 전략을 배정하면 스타일에 결합된
+         깨지기 쉬운 테스트가 나오고, 그게 팀이 테스트를 지우게 되는 경로다.
+    3. **테스트 러너 확인**: 각 동작 컴포넌트에 대해 프로젝트에 실행 가능한 러너가 있는지 확인한다
+       (백엔드: JUnit/pytest 등, 프론트: vitest/jest 등). 러너가 없는 레이어는 전략에
+       `러너: 없음 — 하네스 필요`로 명시한다. phase-implement의 레이어별 하네스 게이트가 이 값을 읽는다.
+    4. testability score 1-10 산정 — **동작 컴포넌트만 대상**으로 한다
+    5. score < 7이면 재설계 권고 (사유와 권고 명시)
 
     [출력 형식]
     ## Testability 평가
 
     ### 컴포넌트별 테스트 전략
     #### {컴포넌트 X}
+    - 레이어: 동작 | 표현
+    - 러너: {테스트 명령 또는 "없음 — 하네스 필요"}
     - 단위 테스트: {방법}
     - 통합 테스트: {방법}
     - 모의 대상: {외부 의존성}
     - 격리 전략: {DI/Mock/Stub/InMemory 등}
     - AC 매핑: AC-N, AC-M
 
-    ### Testability Score: {N}/10
+    (표현 레이어는 위 항목 대신 한 줄로: `- 레이어: 표현 — 검증 대상 아님 (사유: {스타일 래퍼 등})`)
+
+    ### Testability Score: {N}/10  (동작 컴포넌트 기준)
 
     ### 판정
     - ≥ 7 → ✅ TESTABILITY PASS

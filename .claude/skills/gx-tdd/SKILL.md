@@ -48,6 +48,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 각 에이전트 정의(`agents/spec-reviewer.md`·`agents/quality-reviewer.md`)가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 2.1/4.0 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사.
 > - **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md` ↔ phase-implement.md(Step 2-G, verify_red/verify_green) ↔ gx-green SKILL.md(Step 1~3)에 중복.
 > - **테스트 품질 가드**(anti-pattern 요약 + Good Tests 3기준): `agents/red-writer.md` ↔ phase-implement.md(Step 2-R) ↔ gx-red SKILL.md(Step 2)에 중복. 상세 기준의 SSOT는 `references/testing-anti-patterns.md`.
+> - **UI 가드**(셀렉터 우선순위 + 스타일 assert 금지 + 스냅샷 금지): 위와 같은 3파일에 중복. 상세 기준의 SSOT는 `references/frontend-testing.md`이며, 레이어 분류(동작/표현)는 phase-design의 test-architect 프롬프트가, 하네스 게이트는 phase-implement Step 0.5가 소비한다. 린트 [23/23]이 3중 동기와 소비 지점을 검사한다.
 > - **참조 파일 자기신고 + 격리 오염 검증**: `agents/red-writer.md`(출력 형식) ↔ phase-implement.md(Step 2-R 출력·verify_red) ↔ gx-red SKILL.md(Step 2 출력·Step 3)에 중복.
 > - **경고 측정 규약**: `gx-verify` SKILL.md Step 2가 SSOT. phase-implement Step 0.5(baseline 기록)는 포인터 참조만 하므로 gx-verify만 고치면 따라온다.
 > - **verify 경고 게이트 조건**(`pipeline`/`verify-status`/`verify-fingerprint` 판별): `.claude/hooks/pre-tool-guard.sh`(G3) ↔ `.claude/rules/skill-routing.md` ↔ gx-commit SKILL.md ↔ gx-pull-request SKILL.md에 중복. 판별 키의 SSOT는 이 파일의 state.md 스키마이며, 지문 계산 규약의 SSOT는 이 파일의 "verify 지문" 섹션.
@@ -566,7 +567,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **test-architect (testability 평가)** ← 신규: 설계서 + PRD의 "수용 기준" + 코드 맵 + 프로젝트 루트 경로 + **"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** 지시
 
 #### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
-- **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오 — 핵심 모드이면 ac.md의 AC) + 설계서의 testability 섹션 (핵심 모드는 없음 — 기존 테스트 스타일만 근거) + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리 — 위반 여부는 verify_red가 "참조한 파일" 자기신고로 검증). "테스트만 작성. 프로덕션 코드 작성 금지" 지시.
+- **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오 — 핵심 모드이면 ac.md의 AC) + 설계서의 testability 섹션 (핵심 모드는 없음 — 기존 테스트 스타일만 근거) + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리 — 위반 여부는 verify_red가 "참조한 파일" 자기신고로 검증). "테스트만 작성. 프로덕션 코드 작성 금지" 지시. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`)를 추가 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.
 - **green-coder (GREEN)** ← 신규: 실패 테스트 (파일/코드/에러 메시지) + 설계서 인터페이스 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. green-coder는 구현을 위해 기존 코드를 Read할 수 있으며, 다만 전체 문서 대신 대상 시그니처만 전달받는다). "테스트만 통과시키는 최소 코드. 과잉 구현 금지" 지시.
 - **refactor-coder (REFACTOR)** ← 신규: 정리 대상 파일 목록 + 정리 항목 (중복/네이밍/구조) + 프로젝트 루트 경로. "GREEN 유지하며 정리만. 동작 변경 금지" 지시.
 

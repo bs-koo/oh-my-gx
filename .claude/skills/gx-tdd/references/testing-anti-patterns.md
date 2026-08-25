@@ -1,6 +1,6 @@
 # Testing Anti-Patterns 카탈로그
 
-**참조 시점**: 테스트를 작성/변경할 때, 모의(mock)를 추가할 때, 프로덕션 클래스에 테스트 전용 메서드를 추가하고 싶을 때.
+**참조 시점**: 테스트를 작성/변경할 때, 모의(mock)를 추가할 때, 프로덕션 클래스에 테스트 전용 메서드를 추가하고 싶을 때, UI 컴포넌트의 테스트를 쓸 때(§6~7).
 
 테스트는 모의가 아니라 **실제 동작**을 검증해야 한다. 모의는 격리 수단이지 검증 대상이 아니다.
 
@@ -227,6 +227,78 @@ Map<String, Object> mockResponse = Map.of(
 
 ---
 
+## Anti-Pattern 6: 표현에 결합된 UI 테스트
+
+**위반:**
+```ts
+// ❌ 스타일과 마크업 구조에 assert를 건다
+it('에러를 표시한다', async () => {
+  const wrapper = mount(ChargeForm)
+  await wrapper.find('form').trigger('submit')
+
+  expect(wrapper.find('.text-red-500').exists()).toBe(true)   // 클래스명 = 스타일
+  expect(wrapper.find('div > div:nth-child(2)').text()).toBe('오류')  // 구조
+})
+```
+
+**왜 잘못인가:**
+- 클래스를 `.text-destructive`로 바꾸면 동작이 그대로인데 테스트가 깨진다.
+- 마크업을 카드로 한 겹 감싸면 구조 셀렉터가 어긋난다.
+- 이런 실패가 몇 번 반복되면 팀은 테스트를 고치는 대신 지운다. **테스트가 삭제되는 가장 흔한 경로다.**
+- "디자인은 나중에 적용한다"는 전략 자체가 불가능해진다.
+
+**수정:**
+```ts
+// ✅ 사용자가 인지하는 것과 동작만 검증 (스타일과 무관)
+it('한도_초과시_에러메시지가_노출되고_제출이_차단된다', async () => {
+  const wrapper = mount(ChargeForm)
+  await wrapper.find('[data-testid="charge-amount"]').setValue(150000)
+  await wrapper.find('form').trigger('submit')
+
+  expect(wrapper.text()).toContain('1회 충전 한도는 100,000원입니다')
+  expect(wrapper.find('[data-testid="charge-submit"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.emitted('submit')).toBeUndefined()
+})
+```
+
+**게이트 함수:**
+```
+테스트에서 요소를 찾거나 assert를 걸기 전에:
+  자문 1: "디자이너가 이 컴포넌트를 다시 그려도 이 셀렉터가 살아있는가?"
+          아니라면 → STOP. role·텍스트·data-testid로 바꾼다.
+  자문 2: "이 assert가 실패하면 '동작이 틀렸다'인가 '보기가 달라졌다'인가?"
+          후자라면 → STOP. 비주얼 회귀의 영역이지 단위 테스트가 아니다.
+```
+
+셀렉터 우선순위와 프레임워크별 작성법은 [frontend-testing.md](frontend-testing.md) §4를 따른다.
+
+---
+
+## Anti-Pattern 7: 전체 스냅샷 테스트
+
+**위반:**
+```ts
+// ❌ 렌더 결과 전체를 저장하고 통째로 비교
+expect(wrapper.html()).toMatchSnapshot()
+```
+
+**왜 잘못인가:**
+- 무엇을 검증하는지 이름과 코드 어디에도 없다. 실패해도 "뭔가 달라졌다"만 알 수 있다.
+- 스타일·마크업의 모든 변경이 실패로 잡히므로, 팀이 `-u`로 스냅샷을 갱신하는 습관을 들인다. 그 순간 이 테스트는 아무것도 지키지 않는다.
+- **의도한 변경과 회귀를 구분하지 못한다.** 테스트의 존재 이유가 그 구분인데 말이다.
+
+**수정**: 검증하려는 동작을 이름과 assert로 명시한다. 세 개의 구체적 assert가 스냅샷 하나보다 강하다.
+
+```ts
+expect(screen.getByRole('alert')).toHaveTextContent('한도를 초과했습니다')
+expect(screen.getByRole('button', { name: '충전' })).toBeDisabled()
+expect(onSubmit).not.toHaveBeenCalled()
+```
+
+**허용되는 예외**: 직렬화 결과가 곧 계약인 경우(API 응답 스키마, 코드 생성기 산출물). 이때도 대상은 렌더된 DOM이 아니라 데이터 구조다.
+
+---
+
 ## 모의가 과도해지는 경고 신호
 
 - 모의 셋업이 테스트 로직보다 길다
@@ -246,6 +318,10 @@ Map<String, Object> mockResponse = Map.of(
 - 모의를 제거하면 테스트가 깨진다
 - 왜 모의가 필요한지 설명할 수 없다
 - "안전하게 모킹해두자"
+- (UI) 셀렉터가 CSS 클래스나 `nth-child` 구조에 의존한다
+- (UI) assert에 색상값·픽셀값이 등장한다
+- (UI) 디자인을 손볼 때마다 테스트를 함께 고치고 있다
+- (UI) 스냅샷을 `-u`로 갱신하는 것이 습관이 되었다
 
 ---
 
