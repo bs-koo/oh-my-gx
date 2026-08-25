@@ -15,7 +15,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 
 **최대 2회 반복.**
 
-**문서 로드**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`와 `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다. `ANTI_PATTERNS_PATH`(gx-tdd 스킬 디렉토리의 `references/testing-anti-patterns.md` 절대 경로 — 플러그인 설치 환경에서는 플러그인 베이스 경로 하위)를 확정한다.
+**문서 로드**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`와 `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read한다. 파일이 없으면 (`--phase review` 단독 실행 등) 건너뛴다. `ANTI_PATTERNS_PATH`(gx-tdd 스킬 디렉토리의 `references/testing-anti-patterns.md` 절대 경로 — 플러그인 설치 환경에서는 플러그인 베이스 경로 하위)와 `FRONTEND_TESTING_PATH`(같은 규칙의 `references/frontend-testing.md`)를 확정한다.
 
 ## Step 0: Mechanical Gate (build + test)
 
@@ -58,6 +58,8 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
 
 ### Gate 통과 기준
+
+**복수 타입이 감지되면 전부 실행한다** — `detect` 매칭이 2개 이상이면 각 타입의 build·test를 모두 돌리고 하나라도 실패하면 차단한다 (gx-verify Step 1과 동일 규약). 한쪽만 실행하면 나머지 레이어가 리뷰 대상 코드인데도 기계 검증 없이 통과한다.
 
 build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요). 경고는 이 Gate에서 차단하지 않는다 — 경고 baseline은 phase-implement Step 0.5(기준선 게이트)가 기록하고, 차단은 verify 게이트(`oh-my-gx:gx-verify`)가 수행한다.
 
@@ -203,6 +205,8 @@ Task(subagent_type="oh-my-gx:quality-reviewer"):
 
     [테스트 품질 기준 파일]
     {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read하여 기준으로 사용 (부재 시 평가 영역의 항목 정의로 판정)
+    {FRONTEND_TESTING_PATH} — diff에 UI 테스트(.spec/.test + 컴포넌트·컴포저블·스토어)가 포함된 경우에만 Read.
+      스타일 결합 셀렉터·스타일 값 assert·전체 스냅샷·내부 상태 접근을 [동작불변] Important로 지적한다.
 
     [평가 영역]
     - Critical: 보안 취약점, 데이터 손실, race condition, null pointer, 무한 루프

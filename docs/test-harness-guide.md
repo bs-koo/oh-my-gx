@@ -54,6 +54,54 @@ test: $(TEST_SRCS) $(SRCS_UNDER_TEST)
 
 test-architect가 testability를 평가할 때 이 구조(HAL 추출·듀얼 타깃)를 기준으로 재설계를 권고할 수 있다.
 
+## JS/TS 프론트엔드
+
+가장 흔한 하네스 부재 케이스다. Nuxt·Next·Vite 스캐폴드는 `dev`/`build`/`lint`만 만들고 테스트 러너를 넣지 않는다. `package.json`에 `scripts.test`가 없고 devDependencies에 `vitest`/`jest`가 없으면 하네스가 없는 것이다.
+
+### 최소 구성 (Vitest)
+
+```bash
+pnpm add -D vitest            # npm이면 npm i -D vitest
+```
+
+`package.json`에 스크립트를 추가한다. gx-setup이 등록할 test 명령이 이것이다.
+
+```json
+"scripts": { "test": "vitest run" }
+```
+
+`vitest run`은 watch 없이 1회 실행하고 종료한다 — CI와 verify 게이트가 요구하는 형태다. `vitest`(watch 모드)를 등록하면 게이트가 영원히 끝나지 않는다.
+
+### 컴포넌트까지 테스트하려면
+
+```bash
+pnpm add -D @vue/test-utils happy-dom          # Vue/Nuxt
+pnpm add -D @testing-library/react jsdom        # React
+```
+
+DOM 환경을 `vitest.config.ts`에 지정한다 (`environment: 'happy-dom'` 또는 `'jsdom'`). Nuxt는 앱 컨텍스트(auto-import·composable)가 필요한 컴포넌트가 많아 `@nuxt/test-utils`의 설정 헬퍼를 쓰는 편이 확실하다.
+
+### 첫 테스트는 순수 로직부터
+
+프레임워크 렌더링 없이 도는 곳에서 시작하면 러너·설정·CI 연결이 한 번에 검증된다. 유틸(`lib/`, `utils/`), 컴포저블·훅, 라우팅 가드가 그 자리다. 컴포넌트 마운트 테스트는 그다음에 붙인다.
+
+```ts
+// lib/formatCurrency.spec.ts
+import { formatCurrency } from './formatCurrency'
+
+it('천단위_구분기호를_넣는다', () => {
+  expect(formatCurrency(1234567)).toBe('1,234,567')
+})
+```
+
+### 모노레포라면
+
+프론트가 하위 디렉토리에 있으면 저장소 루트에서 도는 명령으로 등록한다 (`pnpm --dir frontend test`). `cd frontend && ...` 형태는 권한 prefix와 매칭되지 않아 실행마다 프롬프트가 뜬다. 백엔드와 함께 등록하는 복합 타입 구성은 `gx-setup/references/project-type-hints.md`의 "복합 타입" 절을 따른다.
+
+### UI 테스트를 쓸 때
+
+셀렉터를 CSS 클래스나 DOM 구조에 묶으면 디자인을 바꿀 때마다 테스트가 깨지고, 결국 팀이 테스트를 지우게 된다. 규약은 `gx-tdd/references/frontend-testing.md`에 있다 — 하네스를 구축하기 전에 §3~4만 읽어두면 첫 테스트부터 방향이 잡힌다.
+
 ## 기타 언어
 
 - Python: `pip install pytest` → `pytest`. 테스트 파일 `test_*.py`.
