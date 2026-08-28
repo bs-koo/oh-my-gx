@@ -201,13 +201,31 @@ if grep -rn 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" >/dev/null 2>&1; then
 fi
 # dev/tdd phase-implement에 gx-ralph 전환 절(--ralph opt-in)이 두 파이프라인 모두에 존재 (드리프트 방지)
 # + 폐지된 진입 질문이 되살아나지 않도록 "구현 방식 확인" 문구 잔존 금지 (v1.23.0 격하)
+grep -q '^## Step 0.7: gx-ralph 전환 (--ralph 전용)' .claude/skills/gx-tdd/phases/phase-implement.md \
+  || fail "gx-tdd phase-implement Step 0.7 전환 절 헤더 누락"
+grep -q '^## gx-ralph 전환 (--ralph 전용)' .claude/skills/gx-dev/phases/phase-implement.md \
+  || fail "gx-dev phase-implement 전환 절 헤더 누락"
 for f in .claude/skills/gx-dev/phases/phase-implement.md .claude/skills/gx-tdd/phases/phase-implement.md; do
-  grep -q -- "--ralph" "$f" || fail "gx-ralph 전환 절(--ralph) 누락: $f"
-  grep -q "구현 방식 확인" "$f" && fail "폐지된 ralph 진입 질문(구현 방식 확인) 잔존: $f"
+  grep -q '`--resume` 재진입은 방어 조건이 \*\*아니다\*\*' "$f" || fail "전환 절 --resume 비방어 규칙 누락: $f"
 done
+# dev/tdd 쌍둥이 opt-in 규칙 문구 대조 (의도 파싱) + phase-setup flags 기록 기준
+for key in 'RALPH 추출:' 'RALPH 우선순위 규칙' 'svn 우선 배제' '모드 질문 생략 규칙' '`--ralph`와 `--core`'; do
+  for f in .claude/skills/gx-dev/SKILL.md .claude/skills/gx-tdd/SKILL.md; do
+    grep -qF "$key" "$f" || fail "RALPH 쌍둥이 규칙($key) 누락: $f"
+  done
+done
+for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phases/phase-setup.md; do
+  grep -q '무시된 RALPH는 기록하지 않는다' "$f" || fail "phase-setup Step 7 --ralph 기록 기준(무시된 RALPH 미기록) 누락: $f"
+done
+# 폐지된 진입 질문 문구 잔존 금지 — 스킬 디렉토리 전체 ([12]/[13]과 같은 관례)
+if grep -rl "구현 방식 확인" .claude/skills >/dev/null 2>&1; then
+  fail "폐지된 ralph 진입 질문(구현 방식 확인) 잔존: $(grep -rl '구현 방식 확인' .claude/skills | tr '\n' ' ')"
+fi
+# skill-routing이 '랄프로 …' 발화를 --ralph 전환으로 라우팅 (gx-ralph 직접 호출로 새지 않도록)
+grep -q -- '--ralph' .claude/rules/skill-routing.md || fail "skill-routing에 --ralph 전환 라우팅 행 누락"
 # 러너 --allowedTools ↔ gx-ralph-iterate allowed-tools 집합 동기 — 러너만 누락되면 헤드리스 세션이
 # 해당 test 명령을 실행하지 못해 매 반복 verify 차단 → attempts 소진 → BLOCKED로 낭비된다 (v1.21.0 회귀)
-TOOLS_DIFF=$(diff <(sed -n '/^allowed-tools:/,/^---/p' "$RALPH_ITER" | grep '^  - ' | sed 's/^  - //' | sort) \
+TOOLS_DIFF=$(diff <(sed -n '/^allowed-tools:/,/^---/p' "$RALPH_ITER" | tr -d '\r' | grep '^  - ' | sed 's/^  - //' | sort) \
                   <(grep '^ALLOWED_TOOLS=' "$RALPH_RUNNER" | sed 's/^ALLOWED_TOOLS="//; s/"$//' | tr ',' '\n' | sort) \
              | grep '^[<>]' | tr '\n' ' ')
 [ -z "$TOOLS_DIFF" ] || fail "러너 ALLOWED_TOOLS가 gx-ralph-iterate allowed-tools와 불일치 (<: iterate에만, >: 러너에만): $TOOLS_DIFF"

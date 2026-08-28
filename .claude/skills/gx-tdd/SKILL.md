@@ -58,7 +58,8 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/green/refactor) ↔ 이 파일(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
 > - **"수동 수정 재주입" 기록 문구**: phase-review(2곳)·phase-complete(Step -1)에 산재 — 문구 변경 시 함께 동기화.
 > - **모델 프로파일 규칙**(결정 우선순위 5단계·eco 하향 대상·프로파일 질문 포함 규칙): gx-dev SKILL.md ↔ 이 파일의 "모델 프로파일" 공유 규칙이 쌍둥이 (하향 대상만 파이프라인별로 다름 — dev: design-critic·coder / tdd: design-critic·test-architect·quality-reviewer. architect 유지는 공통 불변) ↔ 각 phase-setup Step 1.5. 파생 사본은 spec·guide·glossary·CHANGELOG. 린트 [14/14]가 키 문구와 opus 집합↔하향 목록 대조를 검사한다.
-> - **ralph 전환 eco 미지원 경고**(`"ralph 루프는 모델 프로파일을 아직 지원하지 않습니다 — 반복은 에이전트 기본 모델(표준)로 실행됩니다."`): gx-dev·gx-tdd phase-implement.md의 gx-ralph 전환 절(--ralph)에 동일 문구 중복 — 한쪽 수정 시 함께 갱신 (린트 미검사, 수동 동기화).
+> - **ralph 전환 eco 미지원 경고**(`"ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다."`): gx-dev·gx-tdd phase-implement.md의 gx-ralph 전환 절(--ralph)에 동일 문구 중복 — 한쪽 수정 시 함께 갱신 (린트 미검사, 수동 동기화).
+> - **gx-ralph opt-in 규칙**(RALPH 추출 트리거·RALPH 우선순위 규칙(svn 우선 배제/자연어 RALPH+선판정 모드/플래그 `--ralph`+자연어 트리거)·Step 3 모드 질문 생략 규칙·`--ralph` 플래그 충돌 검증): gx-dev SKILL.md ↔ 이 파일 쌍둥이. phase-setup Step 7의 `flags` 기록 기준(무시된 RALPH 미기록)과 phase-implement 전환 절(방어 조건 — `--resume`은 비방어)도 dev/tdd 쌍둥이. 린트 [11/24]가 전환 절 헤더·핵심 규칙 문구 존재를 두 파이프라인에서 대조한다.
 
 ## 인자
 
@@ -87,7 +88,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
 | `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 TDD 개발해줘" |
-| `랄프로`, `ralph로`, `무인 루프로`, `무인으로` | RALPH 추출 (gx-ralph 전환 플래그 — 프로파일과 독립) | "랄프로 알림 임계값 검증 TDD 개발해줘" |
+| `랄프로`, `ralph로`, `무인 루프로` | RALPH 추출 (gx-ralph 전환 플래그 — 프로파일과 독립) | "랄프로 알림 임계값 검증 TDD 개발해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — gx-dev와 동일한 정렬).
 
@@ -95,9 +96,13 @@ BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 bra
 
 ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
 
-RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`/`무인으로`가 포함되면 gx-ralph 전환 플래그를 기록한다 (`--ralph`와 동일. 단독 명사 `랄프`/`ralph`/`루프 돌려`는 gx-ralph 스킬 직접 호출 트리거와 충돌하므로 매칭하지 않는다).
+RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`가 포함되면 gx-ralph 전환 플래그를 기록한다 (`--ralph`와 동일. 단독 명사 `랄프`/`ralph`/`루프 돌려`는 gx-ralph 스킬 직접 호출 트리거와 충돌하므로, 일반 부사 `무인으로`는 도메인 문장 오탐 방지를 위해 — 예: "무인으로 운영되는 매장 재고 기능" — 매칭하지 않는다).
 
-**RALPH 우선순위 규칙**: Step 1·Step 2에서 STATUS/RESUME/CORE/PHASE 중 하나가 **이미 판정되었으면 RALPH를 무시**하고 1줄 안내한다 — "`--ralph`/`랄프로`는 전체 모드 신규 실행에서만 유효합니다 — {판정된 모드}로 진행합니다." (예: "랄프로 이어서 해줘" → RESUME, "랄프로 긴급 수정해줘" → CORE). 플래그 조합은 "플래그 충돌 검증"이 막지만 자연어 동시 매칭은 이 규칙만이 막는다. 모드가 미결정이면 Step 3으로 진행한다 — 거기서 RALPH가 모드를 확정한다.
+**RALPH 우선순위 규칙** (출처에 따라 다르다 — 명시 플래그는 조용히 버리지 않는다):
+- **svn 우선 배제**: `.claude/config.json`의 `vcs`가 `svn`이면 출처와 무관하게 RALPH를 무시하고 1줄 안내한다 — "gx-ralph는 SVN 미지원입니다 — 진행 방식을 확인합니다." 이후 Step 3의 모드 질문을 정상 제시한다 (phase-setup Step 7의 svn 처리는 이 규칙의 2차 방어. config.json은 정적 파일이라 이 시점에 읽을 수 있다).
+- **자연어 RALPH + 선판정 모드**: Step 1·Step 2에서 STATUS/RESUME/CORE/PHASE 중 하나가 **이미 판정되었으면 RALPH를 무시**하고 1줄 안내한다 — "`랄프로`는 전체 모드 신규 실행에서만 유효합니다 — {판정된 모드}로 진행합니다." (예: "랄프로 이어서 해줘" → RESUME, "랄프로 긴급 수정해줘" → CORE).
+- **플래그 `--ralph` + 자연어 모드 트리거**: Step 2 자연어가 STATUS/RESUME/CORE/PHASE를 판정하면 **플래그 충돌과 동일하게 에러 후 중단**한다 — "`--ralph`는 전체 모드 전용입니다 — 요청의 '{매칭 키워드}'가 {판정된 모드}를 요구합니다. 플래그를 빼거나 문구를 바꿔주세요." (`--ralph --core`가 에러인데 `--ralph 빨리 고쳐`만 조용히 core로 가면 심각도가 어긋난다.)
+- 위에 걸리지 않고 모드가 미결정이면 Step 3으로 진행한다 — 거기서 RALPH가 모드를 확정한다.
 
 **Step 3: 모드·프로파일 확인 (위 패턴에 해당하지 않는 경우)**
 
@@ -154,7 +159,7 @@ intent-source: flag | natural-language | user-selection
 - `--base <branch>`: 베이스 브랜치 지정
 - `--status`: 현재 파이프라인 진행 상태 조회
 - `--resume`: 이전 파이프라인 재개
-- `--ralph`: 전체 모드 implement 진입 시 gx-ralph(무인 루프)로 전환 — 자연어 `랄프로`와 동일. `--core`·`--phase`·`--resume`·`--status`·svn과 동시 사용 불가
+- `--ralph`: 전체 모드 implement 진입 시 gx-ralph(무인 루프)로 전환 — 자연어 `랄프로`와 동일. `--core`·`--phase`·`--resume`·`--status`와 동시 사용 불가(에러), 자연어 모드 트리거(`긴급`·`구현만` 등)와 충돌해도 에러. svn 프로젝트에서는 무시하고 안내 (RALPH 우선순위 규칙)
 
 ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 "구현할 기능이나 수정할 버그를 설명해주세요. 예: `/gx-tdd 로그인 기능 추가해줘`"

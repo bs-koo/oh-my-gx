@@ -180,6 +180,31 @@ assert "3회 후 COMPLETE exit=0" 0 "$(run_runner "$SB" "CONTINUE_ATTEMPT CONTIN
 assert "반복 4회 (NO_PROGRESS 미발화)" 4 "$(iter_logs "$SB")"
 rm -rf "$SB"
 
+echo "[T13] allowedTools 파생: config.json projectTypes test/build 첫 토큰 → Bash(<토큰> *), 복합 명령 조각별, 중복 제외"
+SB=$(make_sandbox)
+mkdir -p "$SB/.claude"
+printf '{"projectTypes":{"php":{"detect":["composer.json"],"test":"./vendor/bin/phpunit && vitest run","build":"npm run build"}}}\n' > "$SB/.claude/config.json"
+: > "$SB/mock-args.txt"
+assert "exit=0" 0 "$(run_runner "$SB" "COMPLETE")"
+assert "Bash(./vendor/bin/phpunit *) 파생" 1 "$(grep -c 'Bash(\./vendor/bin/phpunit \*)' "$SB/mock-args.txt")"
+assert "Bash(vitest *) 파생 (&& 조각)" 1 "$(grep -c 'Bash(vitest \*)' "$SB/mock-args.txt")"
+assert "Bash(npm *) 중복 없음 (정적 목록에 이미 존재)" 1 "$(grep -o 'Bash(npm \*)' "$SB/mock-args.txt" | grep -c .)"
+rm -rf "$SB"
+
+echo "[T14] 한 줄 원장에서도 passes:true 건수를 매치 단위로 센다 (grep -c 포화 회귀)"
+SB=$(make_sandbox)
+printf '{"version":1,"branch":"feat/t","created":"t","updated":"t","acs":[{"id":"AC-1","title":"t","passes":true,"attempts":0,"last_error":""},{"id":"AC-2","title":"t","passes":true,"attempts":0,"last_error":""},{"id":"AC-3","title":"t","passes":true,"attempts":1,"last_error":""}]}\n' > "$SB/.dev/feat-t/ac-status.json"
+printf '%s\n' COMPLETE > "$SB/scenario.txt"
+OUT=$( cd "$SB" \
+  && GX_RALPH_CLAUDE_CMD="bash $SB/mock-claude.sh" \
+     GX_RALPH_MOCK_SCENARIO="$SB/scenario.txt" \
+     bash "$RUNNER" 2>&1 )
+case "$OUT" in
+  *"passes=true: 3건"*) assert "COMPLETE 메시지 passes=true: 3건" 1 1 ;;
+  *)                    assert "COMPLETE 메시지 passes=true: 3건" 1 0 ;;
+esac
+rm -rf "$SB"
+
 echo
 echo "결과: $PASS pass, $FAIL fail"
 [ "$FAIL" -eq 0 ] || exit 1

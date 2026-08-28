@@ -707,7 +707,7 @@ PRD 확정 후 구현 구간을 무인 루프로 돌립니다. `/gx-ralph`가 PR
 |------|------|
 | 트리거 | "랄프", "ralph", "루프 돌려"(직접 호출) · `/gx-dev --ralph`·`/gx-tdd --ralph` 또는 "랄프로 …" 발화(파이프라인에서 전환 — 기본 경로에서는 묻지 않음) |
 | 선행 조건 | 승인된 PRD (`/gx-dev`·`/gx-tdd`로 확정), git 작업 브랜치, `projectTypes` verify 명령 감지 가능 (svn·보호 브랜치·verify 명령 미감지·lock 존재 시 진입 차단) |
-| 안전장치 | 최대 반복(기본 10) · 반복당 타임아웃(기본 30분) · 무변화 2회 감지(exit 4) · 무진전 4회 감지(exit 7 — 커밋도 AC 완료도 없는 반복. attempts 상한 3보다 늦게 발화해 BLOCKED 진단을 가로채지 않음) · lock · AC별 3회 시도 상한 · 매 반복 verify backpressure |
+| 안전장치 | 최대 반복(기본 10) · 반복당 타임아웃(기본 30분) · 무변화 2회 감지(exit 4) · 무진전 4회 감지(exit 7 — 커밋도 AC 완료도 없는 반복. 단일 AC의 3회 실패 BLOCKED는 그대로 나오고, 미완료 AC가 여럿이면 전부 소진되기 전에 먼저 중단하며 원장 요약(id·attempts)을 출력) · lock · AC별 3회 시도 상한 · 매 반복 verify backpressure |
 | 내부 스킬 | `/gx-ralph-iterate` — 러너가 헤드리스로 호출하는 반복 1회 실행 스킬 (사용자 직접 호출 비대상) |
 | 상태 확인 | `/gx-ralph --status`, `.dev/{branch-slug}/progress.txt` · `iter-{N}.log` |
 | 복귀 경로 | 루프 종료 후 origin 파이프라인으로 복귀 — gx-tdd 출발이면 `/gx-tdd --phase review`, 그 외 `/gx-dev --phase review` → `--phase complete` |
@@ -814,3 +814,5 @@ SVN 환경에서는 일부 기능이 제한됩니다.
 | 빌드 타임아웃 (5분) | 빌드가 너무 오래 걸림 | 빌드 단계 건너뜀 (자동) |
 | `--core와 --phase는 동시에 사용할 수 없습니다` | 플래그 충돌 | 하나만 사용 |
 | `--eco와 --standard는 동시에 사용할 수 없습니다` | 프로파일 플래그 충돌 | 하나만 사용 |
+| `--ralph는 전체 모드 전용입니다` | `--ralph`가 `--core`/`--phase`/`--resume`/`--status` 또는 자연어 모드 트리거(`긴급`·`구현만` 등)와 충돌 | 플래그를 빼거나 문구를 바꿔 전체 모드 신규 실행으로 |
+| `gx-ralph는 SVN 미지원입니다` | svn 프로젝트에서 `--ralph`/`랄프로` 사용 | 무시되고 모드 질문이 정상 제시됨 — 대화형으로 진행 |

@@ -222,8 +222,9 @@ GX 사업본부 개발자를 위한 배포용 가이드. 설치부터 첫 PR까�
 | `--eco` / `--standard` | 모델 프로파일 지정 |
 | `--base <branch>` | 베이스 브랜치 지정 |
 | `--status` / `--resume` | 현황 조회 / 재개 |
+| `--ralph` | 설계 확정 후 구현을 gx-ralph 무인 루프로 전환 (전체 모드 전용 — `--core`·`--phase`·`--resume`과 충돌 시 에러, svn은 무시) |
 
-- **자연어로도 같은 효과**: "설계만 해줘"(`--phase design`), "리뷰만"(`--phase review`), "가볍게"·"긴급"(`--core`), "develop 브랜치 기반으로"(`--base develop`), "이어서 해줘"(`--resume`)
+- **자연어로도 같은 효과**: "설계만 해줘"(`--phase design`), "리뷰만"(`--phase review`), "가볍게"·"긴급"(`--core`), "develop 브랜치 기반으로"(`--base develop`), "이어서 해줘"(`--resume`), "랄프로 … 개발해줘"(`--ralph`)
 - **산출물**: `.dev/{브랜치명}/` 아래 `prd.md`·`design.md`·`state.md`·`summary.md`·`diff.txt` 등 (자동으로 `.gitignore`에 추가됨)
 
 #### `/gx-tdd` — TDD 개발 사이클
@@ -244,7 +245,7 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 | quality-reviewer | 코드 품질만 검증 (AC는 보지 않음) |
 
 - **verify 게이트**: 테스트 명령을 실제로 실행해 실패 0건을 확인해야 커밋·PR로 넘어갑니다. "아마 동작할 겁니다" 같은 추측성 완료 보고가 차단됩니다.
-- **인자**: `/gx-dev`와 동일한 플래그 체계(`--phase`, `--core`, `--eco`, `--base`, `--status`, `--resume`)를 지원합니다.
+- **인자**: `/gx-dev`와 동일한 플래그 체계(`--phase`, `--core`, `--eco`, `--base`, `--status`, `--resume`, `--ralph`)를 지원합니다.
 
 > **`/gx-dev`와 `/gx-tdd`의 차이는 세 곳뿐입니다.**
 > 1. **구현 방식** — dev는 coder가 한 번에 구현, tdd는 실패 테스트 → 최소 구현 → 정리를 사이클로 반복

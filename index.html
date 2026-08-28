@@ -971,10 +971,10 @@
         <ul class="feature-list">
           <li><strong>루프당 AC 1건</strong> — 매 반복 신선한 컨텍스트로 작게, 확실하게</li>
           <li><strong>verify backpressure</strong> — 매 반복 테스트 통과 없이는 커밋 불가</li>
-          <li><strong>4중 안전장치</strong> — 최대 반복·타임아웃·무변화 감지·lock</li>
+          <li><strong>5중 안전장치</strong> — 최대 반복·타임아웃·무변화 감지(NO_DRIFT)·무진전 감지(NO_PROGRESS, 커밋도 AC 완료도 없는 반복 4회)·lock</li>
           <li><strong>AC별 시도 상한</strong> — 같은 AC 3회 실패 시 건너뛰고, 전부 소진하면 BLOCKED</li>
           <li>svn·보호 브랜치·PRD 부재·verify 명령 미감지 시 진입 차단</li>
-          <li>에코 모드는 아직 미적용 — 루프는 항상 표준 모델로 실행됩니다</li>
+          <li>에코 모드는 아직 미적용 — 오케스트레이터 모델만 GX_RALPH_MODEL로 지정 가능(미지정 시 표준)</li>
         </ul>
       </div>
       <div class="feature-art">

@@ -18,9 +18,10 @@ CLAUDE_CMD="${GX_RALPH_CLAUDE_CMD:-claude}"
 SKILL_NAME="${GX_RALPH_SKILL_NAME:-/oh-my-gx:gx-ralph-iterate}"
 ITER_TIMEOUT="${GX_RALPH_ITER_TIMEOUT:-1800}"
 # --model 은 지정됐을 때만 전달한다 (기본 비움 = CLI 기본 모델. 반복 세션의 오케스트레이터 역할은
-# 선택→디스패치→verify→커밋으로 단순해 하향 여지가 크지만, 기본값 변경은 실측 후에 한다)
-MODEL_OPT=""
-[ -n "${GX_RALPH_MODEL:-}" ] && MODEL_OPT="--model $GX_RALPH_MODEL"
+# 선택→디스패치→verify→커밋으로 단순해 하향 여지가 크지만, 기본값 변경은 실측 후에 한다).
+# 배열로 두는 이유: 문자열 확장은 값에 글롭 문자(sonnet[1m])나 공백이 있으면 치환·분리된다.
+MODEL_ARGS=()
+[ -n "${GX_RALPH_MODEL:-}" ] && MODEL_ARGS=(--model "$GX_RALPH_MODEL")
 
 # allowedTools — gx-ralph-iterate/SKILL.md의 allowed-tools와 동기 (드리프트 주의)
 ALLOWED_TOOLS="Read,Write,Edit,Glob,Grep,Task,Skill,Bash(git *),Bash(./gradlew *),Bash(npm *),Bash(npx *),Bash(pnpm *),Bash(yarn *),Bash(bun *),Bash(pytest *),Bash(go *),Bash(make *),Bash(cmake *),Bash(ctest *),Bash(ceedling *),Bash(cargo *),Bash(mvn *),Bash(dotnet *),Bash(test *),Bash(ls *),Bash(mkdir *),Bash(pwd *),Bash(wc *),Bash(grep *)"
@@ -55,6 +56,22 @@ STATE_BRANCH=$(sed -n 's/^branch:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r
 [ "$STATE_BRANCH" = "$BRANCH" ] || fail "브랜치 불일치 (state: $STATE_BRANCH, 현재: $BRANCH)"
 [ -f "$AC_FILE" ] || fail "$AC_FILE 이 없습니다. /oh-my-gx:gx-ralph 로 먼저 준비하세요"
 
+# ── allowedTools 파생: config.json projectTypes의 test/build 명령 첫 토큰 → Bash(<토큰> *) ──
+# 정적 목록은 힌트 카탈로그의 bare 러너(./vendor/bin/phpunit, vitest, jest …)를 다 알 수 없다.
+# projectTypes가 SSOT이므로 등록된 명령에서 prefix를 파생해 덧붙인다 (복합 명령 a && b; c 는 조각별, 중복은 제외).
+if [ -f ".claude/config.json" ]; then
+  while IFS= read -r cmd; do
+    [ -n "$cmd" ] || continue
+    tok=${cmd%% *}
+    case ",$ALLOWED_TOOLS," in
+      *",Bash($tok *),"*) ;;
+      *) ALLOWED_TOOLS="$ALLOWED_TOOLS,Bash($tok *)" ;;
+    esac
+  done < <(grep -o '"\(test\|build\)"[[:space:]]*:[[:space:]]*"[^"]*"' .claude/config.json 2>/dev/null \
+           | sed 's/^"[a-z]*"[[:space:]]*:[[:space:]]*"//; s/"$//' | tr '&;' '\n\n' \
+           | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | tr -d '\r' | grep -v '^$' | sort -u)
+fi
+
 # ── 최대 반복 수: 인자 > state.md > 기본 10 ──
 MAX_ITER="${1:-}"
 if [ -z "$MAX_ITER" ]; then
@@ -85,8 +102,11 @@ command -v timeout >/dev/null 2>&1 && TIMEOUT_CMD="timeout $ITER_TIMEOUT"
 echo "[gx-ralph] 루프 시작 — 브랜치: $BRANCH, 최대 반복: $MAX_ITER"
 
 ac_hash() { cksum "$AC_FILE" 2>/dev/null | awk '{print $1}'; }
-# passes:true 건수 — grep -c는 0건이어도 "0"을 출력하고 exit 1이므로 || true로 삼키고, 파일 부재(공백)는 0으로 정규화
-ac_passes() { local n; n=$(grep -c '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null || true); echo "${n:-0}"; }
+# passes:true 건수 — grep -c는 "줄 수"라 한 줄로 저장된 원장에서 1로 포화한다. grep -o로 매치 단위로 세고,
+# 0건(grep -c . 가 "0" 출력·exit 1)·파일 부재(공백)는 0으로 정규화한다
+ac_passes() { local n; n=$(grep -o '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null | grep -c .); echo "${n:-0}"; }
+# 원장 요약 (id·attempts) — NO_PROGRESS 중단 시 사람이 --status 없이도 어느 AC가 몇 번 막혔는지 보도록
+ac_summary() { grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"\|"attempts"[[:space:]]*:[[:space:]]*[0-9]*' "$AC_FILE" 2>/dev/null | tr -d '" ' | tr '\n' ' '; }
 
 NO_DRIFT=0
 NO_PROGRESS=0
@@ -100,8 +120,8 @@ while [ "$i" -le "$MAX_ITER" ]; do
   echo "[gx-ralph] 반복 $i/$MAX_ITER 시작 → $LOG"
   # MSYS_NO_PATHCONV=1: Git Bash(Windows)가 "/gx-..." 인자를 Windows 경로로 자동 변환해
   # 프롬프트가 깨지는 것을 방지한다 (통합 스모크 실측 2026-07-10). 타 환경에서는 무해.
-  # shellcheck disable=SC2086 — CLAUDE_CMD/TIMEOUT_CMD/MODEL_OPT의 의도적 단어 분리
-  MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" $MODEL_OPT --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
+  # shellcheck disable=SC2086 — CLAUDE_CMD/TIMEOUT_CMD의 의도적 단어 분리. MODEL_ARGS는 배열(빈 배열 안전 확장 — bash 3.2의 set -u 호환)
+  MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
   EXIT_CODE=$?
 
   # [^<]* 대신 .* — BLOCKED 사유에 '<'가 포함돼도 계약이 파싱되도록 (계약은 한 줄에 하나)
@@ -109,7 +129,7 @@ while [ "$i" -le "$MAX_ITER" ]; do
 
   case "$CONTRACT" in
     "<ralph>COMPLETE</ralph>")
-      DONE=$(grep -c '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null || echo "?")
+      DONE=$(ac_passes)
       # 복귀 파이프라인은 origin 분기 — gx-tdd 출발 루프는 spec→quality 리뷰(/gx-tdd)가 정본
       ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
       REVIEW_CMD="/gx-dev"; [ "$ORIGIN" = "gx-tdd" ] && REVIEW_CMD="/gx-tdd"
@@ -138,7 +158,8 @@ while [ "$i" -le "$MAX_ITER" ]; do
   if [ "$PRE_HEAD" = "$POST_HEAD" ] && [ "$PRE_AC" = "$POST_AC" ]; then
     NO_DRIFT=$((NO_DRIFT+1))
     echo "[gx-ralph] 경고: 반복 $i 무변화 (연속 $NO_DRIFT회)"
-    # cksum 가드는 크래시성 무변화(임계 2)를 잡는다. verify 실패 반복은 attempts++로 원장이 변해 여기에 걸리지 않으며,
+    # cksum 가드는 "CONTINUE를 냈는데 원장도 HEAD도 그대로"인 반복(계약은 출력했지만 아무 것도 하지 않은 경우, 임계 2)을 잡는다.
+    # 크래시·타임아웃은 계약 미출력이라 위 exit 3에서 먼저 끝난다. verify 실패 반복은 attempts++로 원장이 변해 여기에 걸리지 않으며,
     # 그 경우는 아래 NO_PROGRESS 가드(임계 4)가 잡는다.
     if [ "$NO_DRIFT" -ge 2 ]; then
       echo "[gx-ralph] ⛔ NO_DRIFT — 2회 연속 아무 변화 없음. 루프를 중단합니다" >&2
@@ -151,10 +172,13 @@ while [ "$i" -le "$MAX_ITER" ]; do
   # 무진전 가드 — 커밋(HEAD)도 AC 완료(passes:true 건수)도 없는 반복이 4회 연속이면 중단한다.
   # 임계 4는 AC별 attempts 상한(3)보다 커야 한다: 3 이하면 같은 AC 3회 실패 시 반복 세션의 BLOCKED(사유 포함) 경로를
   # 이 가드가 가로채 진단 정보가 사라진다. 4는 "AC-1 3회 실패 후 AC-2도 1회 실패"처럼 AC를 바꿔도 진전이 없는 상태를 잡는다.
+  # 미완료 AC가 2건 이상이면 "전 AC 소진 → BLOCKED"보다 이 가드가 먼저 발화한다(의도 — 남은 AC를 전부 3회씩 태우지 않는다).
+  # 그래서 중단 메시지에 원장 요약(id·attempts)을 실어 BLOCKED 사유에 준하는 진단 정보를 남긴다.
   if [ "$PRE_HEAD" = "$POST_HEAD" ] && [ "$PRE_PASSES" = "$POST_PASSES" ]; then
     NO_PROGRESS=$((NO_PROGRESS+1))
     if [ "$NO_PROGRESS" -ge 4 ]; then
-      echo "[gx-ralph] ⛔ NO_PROGRESS — 4회 연속 커밋·AC 완료 없음 (attempts 상한과 무관한 루프 단위 방어). /oh-my-gx:gx-ralph --status 로 원장을 확인하세요" >&2
+      echo "[gx-ralph] ⛔ NO_PROGRESS — 4회 연속 커밋·AC 완료 없음 (attempts 상한과 무관한 루프 단위 방어). 원장: $(ac_summary)" >&2
+      echo "[gx-ralph] $DEV_DIR/progress.txt 의 실패 사유를 확인한 뒤 조치 후 러너를 재실행하세요 (/oh-my-gx:gx-ralph --status)" >&2
       exit 7
     fi
   else
