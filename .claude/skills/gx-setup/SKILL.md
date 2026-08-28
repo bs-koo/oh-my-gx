@@ -37,7 +37,7 @@ allowed-tools:
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
 0. **config.json 부재 시 번들 템플릿에서 생성** (다른 단계보다 먼저): `test -f .claude/config.json`로 존재를 확인한다.
-   - **없으면**: 플러그인 번들 템플릿을 `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/config.json")`로 읽어 프로젝트 `.claude/config.json`에 그대로 `Write`한다 (Write가 `.claude/` 디렉토리를 없으면 생성한다). 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`는 설치 환경에서 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석된다. Read가 이 변수를 확장하지 못하면 `echo ${CLAUDE_PLUGIN_ROOT:-.}`를 Bash로 1회 실행해 절대 경로를 먼저 얻는다. `config.json 생성 : 완료 ✅ (번들 템플릿 복사)` 출력 후 아래 1로 진행한다.
+   - **없으면**: 플러그인 번들 템플릿을 `Read("../../config.json")`(이 SKILL.md 위치 기준 상대경로)로 읽어 프로젝트 `.claude/config.json`에 그대로 `Write`한다 (Write가 `.claude/` 디렉토리를 없으면 생성한다). 이 템플릿만은 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포하는 하네스에서는 읽지 못할 수 있다 — Read가 실패하면 저장소의 `.claude/config.json`을 프로젝트에 직접 복사하도록 사용자에게 안내하고 다음 단계로 넘어간다. `config.json 생성 : 완료 ✅ (번들 템플릿 복사)` 출력 후 아래 1로 진행한다.
    - **있으면**: 건너뛰고 아래 1로 진행한다.
 1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
 2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
@@ -73,7 +73,7 @@ allowed-tools:
 1. **기존 등록 확인**: config `projectTypes` 중 `detect` 파일이 프로젝트 루트에 존재하는 타입이 있으면 → `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 등록 유지)` 출력 후 **7(하네스 확인)으로 진행**한다 (config는 갱신하지 않는다). 등록 내용을 그대로 두더라도 하네스 확인은 수행한다 — 명령이 config에 적혀 있다는 것과 그 명령이 실제로 도는 것은 다른 문제이고, 이 간극이 파이프라인 후반(구현 직전)에야 드러나면 PRD·설계를 다 만든 뒤 되돌아가야 한다.
    **여러 타입의 detect 파일이 동시에 존재하면** 첫 매칭으로 단락하지 않고 아래 3의 다중 감지 분기로 처리한다.
 2. **빌드 파일 스캔**: Glob으로 `Makefile`, `CMakeLists.txt`, `project.yml`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, `setup.py`, `requirements.txt`, `go.mod`, `*.csproj`, `*.sln`, `composer.json`, `build.gradle`, `build.gradle.kts`, `package.json`을 탐색한다.
-3. **제안 생성**: `Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-setup/references/project-type-hints.md")`로 힌트 카탈로그를 읽어 감지 파일과 매칭한다.
+3. **제안 생성**: `Read("references/project-type-hints.md")`로 힌트 카탈로그를 읽어 감지 파일과 매칭한다.
    - 매칭되면 해당 행의 타입 키·build/test·warningPattern·artifacts를 제안 값으로 사용한다.
    - **여러 행이 매칭되면** 두 가지 상황을 구분한다. 잘못 고르면 한쪽 레이어가 영구히 검증되지 않으므로 사용자에게 물어본다.
      - **부수 감지**: 한쪽이 도구용일 뿐 별도 테스트 대상이 아닌 경우 (예: C 프로젝트의 도구용 `package.json`, 문서 사이트용 `package.json`). → 주 타입 하나를 고른다.

@@ -147,4 +147,4 @@ Agent 완료 시:
 보고서를 작성합니다.
 ```
 
-Report Phase로 진행한다. `Read(phase-report.md)` + `Read(report-guide.md)`를 **같은 메시지에서 병렬 발행**한다.
+Report Phase로 진행한다. `Read(phase-report.md)` + `Read(../references/report-guide.md)`를 **같은 메시지에서 병렬 발행**한다.

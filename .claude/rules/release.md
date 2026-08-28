@@ -8,14 +8,15 @@
 |------|------|
 | `.claude-plugin/plugin.json` | `version` |
 | `.claude-plugin/marketplace.json` | `plugins[0].version` |
+| `.codex-plugin/plugin.json` | `version` (Codex 매니페스트) |
 | `CHANGELOG.md` | 새 버전 섹션 추가 |
 
-세 곳의 버전이 일치하지 않으면 플러그인 UI에 이전 버전이 표시된다.
+네 곳의 버전이 일치하지 않으면 플러그인 UI에 이전 버전이 표시된다. 정합성 린트 `[1/24]`가 네 값을 대조한다.
 
 ## 릴리스 순서
 
 1. `CHANGELOG.md`에 새 버전 섹션 작성
-2. `.claude-plugin/plugin.json`과 `marketplace.json`의 version 갱신
+2. `.claude-plugin/plugin.json`·`marketplace.json`·`.codex-plugin/plugin.json`의 version 갱신
 3. 커밋 → PR → 머지
 4. GitHub Release는 **자동 생성**됨 (`.github/workflows/release.yml`)
    - PR이 main에 머지되면 `plugin.json`에서 버전을 추출

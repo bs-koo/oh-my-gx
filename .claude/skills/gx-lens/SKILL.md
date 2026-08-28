@@ -61,7 +61,9 @@ lens 오케스트레이터. PO/PD가 자연어로 질의하면, **현재 프로�
 
 ## 스킬 참조 경로
 
-**번들 파일 경로 규약**: 이 스킬의 phase·참조 파일은 플러그인 번들의 `.claude/skills/gx-lens/` 하위에 있다. Read할 때 경로 앞에 베이스 `${CLAUDE_PLUGIN_ROOT:-.}`를 붙인다 — 설치 환경에서는 `${CLAUDE_PLUGIN_ROOT}`(플러그인 캐시 루트)로, 로컬 개발에서는 변수 미설정이라 `.`(프로젝트 루트)로 해석되어 두 경우 모두 실제 파일 위치와 일치한다.
+**번들 파일 경로 규약**: 이 스킬의 phase·참조 파일은 이 SKILL.md와 같은 디렉토리 아래에 있다. **그 지시가 적힌 파일의 위치를 기준으로 한 상대경로**로 Read한다 — 하네스가 플러그인을 어디에 설치하든(Claude Code의 플러그인 캐시, Codex의 스킬 루트) 파일 사이의 상대 위치는 같으므로 경로가 어긋나지 않는다.
+- 예: `Read("phases/phase-prepare.md")`
+- 상대경로 Read가 실패하면, 하네스가 알려준 이 SKILL.md의 절대경로에서 디렉토리 부분을 떼어 앞에 붙인 뒤 다시 시도한다.
 
 ## 인자
 
@@ -89,7 +91,7 @@ ARGS[0]이 `--`로 시작하면 다음을 응답:
 
 Phase에 진입할 때 **반드시** 해당 Phase 파일을 Read한 후 실행한다:
 ```
-Read(`${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-lens/phases/phase-<name>.md`)
+Read(`phases/phase-<name>.md`)
 ```
 Phase 파일의 지시에 따라 실행하고, 완료 후 다음 Phase로 진행한다.
 

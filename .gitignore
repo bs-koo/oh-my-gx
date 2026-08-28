@@ -10,7 +10,9 @@ graphify-out/
 
 # 도구/세션 산출물 (작업 무관)
 .agent/
-.agents/
+.agents/*
+# Codex 플러그인 마켓플레이스 매니페스트는 추적한다 (skill-creator 산출물만 무시)
+!.agents/plugins/
 .kiro/
 .sisyphus/
 .humanize/

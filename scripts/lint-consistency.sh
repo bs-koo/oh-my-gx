@@ -3,7 +3,7 @@
 # 사용: bash scripts/lint-consistency.sh (어디서 실행하든 저장소 루트 기준으로 동작)
 #
 # 검사 항목:
-#  1. 버전 3중 일치 (plugin.json / marketplace.json / CHANGELOG 최신 섹션)
+#  1. 버전 4중 일치 (.claude-plugin/plugin.json / marketplace.json / .codex-plugin/plugin.json / CHANGELOG)
 #  2. 서브에이전트 도구명 Task 통일 (Agent( 호출 문법·allowed-tools Agent 선언 금지)
 #  3. RGR 드리프트 키워드 (refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달)
 #  4. verify 게이트 판별식 키 존재 (rules 2 + 스킬 3 + 훅 1)
@@ -17,7 +17,7 @@
 # 12. gx-dev CORE 모드 계약 (Gate 필수·산출물 계약·구 버전 방어·폐지 모드 잔존 금지)
 # 13. gx-tdd CORE 모드 계약 (RGR·G-W-T 게이트 유지·긴급 감사·구 버전 방어·폐지 모드 잔존 금지)
 # 14. 모델 프로파일(standard/eco) 계약 (config 키·기록 규칙·eco 오버라이드·결정 로직·setup 단계)
-# 15. 플러그인 번들 경로 규약(${CLAUDE_PLUGIN_ROOT:-.}) + config.json 부트스트랩 (v1.19.0)
+# 15. 번들 경로 규약(하네스 중립 상대경로) + config.json 부트스트랩 (v1.19.0, 상대경로 전환)
 # 16. phase-complete context 커밋 예외 대칭 (헤더·skill-routing) + gx-dev 레거시 Read 제거 (v1.19.0)
 # 17. force-push 훅 가드 G4 (v1.19.0)
 # 18. SVN .dev/.active 포인터 계약 (producer·consumer·폴백) (v1.19.0)
@@ -35,14 +35,16 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-echo "[1/24] 버전 3중 일치"
+echo "[1/24] 버전 4중 일치"
+# Codex 매니페스트(.codex-plugin/plugin.json)도 같은 버전을 싣는다 — 어긋나면 Codex UI에 옛 버전이 뜬다
 V_PLUGIN=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 V_MARKET=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/marketplace.json | head -1)
+V_CODEX=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .codex-plugin/plugin.json | head -1)
 V_CHANGE=$(sed -n 's/^## v\([0-9.]*\).*/\1/p' CHANGELOG.md | head -1)
-if [ -n "$V_PLUGIN" ] && [ "$V_PLUGIN" = "$V_MARKET" ] && [ "$V_PLUGIN" = "$V_CHANGE" ]; then
-  ok "plugin.json = marketplace.json = CHANGELOG = $V_PLUGIN"
+if [ -n "$V_PLUGIN" ] && [ "$V_PLUGIN" = "$V_MARKET" ] && [ "$V_PLUGIN" = "$V_CODEX" ] && [ "$V_PLUGIN" = "$V_CHANGE" ]; then
+  ok "plugin.json = marketplace.json = codex-plugin = CHANGELOG = $V_PLUGIN"
 else
-  fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET CHANGELOG=$V_CHANGE"
+  fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET codex-plugin=$V_CODEX CHANGELOG=$V_CHANGE"
 fi
 
 echo "[2/24] 서브에이전트 도구명 통일 (Task)"
@@ -312,16 +314,32 @@ for a in agents/*.md; do
 done
 [ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
-echo "[15/24] 플러그인 번들 경로 규약 + config 부트스트랩"
+echo "[15/24] 번들 경로 규약(상대경로) + config 부트스트랩"
+# 하네스 중립 규약: 번들 파일은 그 지시가 적힌 파일 기준 상대경로로 읽는다.
+# ${CLAUDE_PLUGIN_ROOT} 기반 절대경로 조립은 Codex 설치 구조에서 깨진다 —
+# Codex 스킬 루트에는 .claude/skills/ 중간 경로가 없고 변수 설정도 보장되지 않는다.
+# (.claude/rules/harness-codex.md "동작하지 않는 것" 참조)
+if grep -rn 'CLAUDE_PLUGIN_ROOT' .claude/skills >/dev/null 2>&1; then
+  fail "설치 위치 의존 경로 잔존 — 상대경로로 전환할 것: $(grep -rl 'CLAUDE_PLUGIN_ROOT' .claude/skills | tr '\n' ' ')"
+fi
 if grep -rn '프로젝트 루트>/\.claude/skills' .claude/skills >/dev/null 2>&1; then
   fail "레거시 경로 표기('<프로젝트 루트>/.claude/skills') 잔존: $(grep -rl '프로젝트 루트>/\.claude/skills' .claude/skills | tr '\n' ' ')"
 fi
 for f in .claude/skills/gx-dev/SKILL.md .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-lens/SKILL.md; do
-  grep -q 'CLAUDE_PLUGIN_ROOT:-\.' "$f" || fail "번들 경로 규약(\${CLAUDE_PLUGIN_ROOT:-.}) 누락: $f"
+  grep -q '상대경로' "$f" || fail "번들 경로 규약(상대경로) 설명 누락: $f"
 done
-grep -q 'CLAUDE_PLUGIN_ROOT:-\.}/\.claude/config.json' .claude/skills/gx-setup/SKILL.md \
+grep -q 'Read("\.\./\.\./config\.json")' .claude/skills/gx-setup/SKILL.md \
   || fail "gx-setup config.json 번들 템플릿 생성 단계 누락"
-[ "$FAIL" -eq 0 ] && ok "경로 규약·config 부트스트랩 확인"
+# 상대경로가 실제 파일을 가리키는지 (오타·파일 이동 방어 — 절대경로 조립을 버린 대가로 필수)
+while IFS=: read -r f ref; do
+  [ -z "$ref" ] && continue
+  case "$ref" in *[\{\<\$\*]*|.claude/*|/*) continue ;; esac
+  d=$(dirname "$f")
+  [ -f "$d/$ref" ] || fail "번들 참조 대상 없음: ${f#.claude/skills/} → Read($ref)"
+done < <(grep -rHoE 'Read\(["`]?[A-Za-z0-9_./-]+\.(md|json)["`]?\)' .claude/skills --include='*.md' 2>/dev/null \
+         | grep -v 'skill-creator' \
+         | sed -E 's/:Read\(["`]?/:/; s/["`]?\)$//')
+[ "$FAIL" -eq 0 ] && ok "상대경로 규약·참조 실존·config 부트스트랩 확인"
 
 echo "[16/24] phase-complete context 커밋 예외 대칭 + 레거시 Read 제거"
 grep -q "유일한 예외" .claude/skills/gx-dev/phases/phase-complete.md \

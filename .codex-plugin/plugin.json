@@ -1,0 +1,43 @@
+{
+  "name": "oh-my-gx",
+  "version": "1.23.0",
+  "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 구현, 리뷰, PR까지 에이전트 팀이 처리합니다.",
+  "author": {
+    "name": "bs-koo",
+    "url": "https://github.com/bs-koo"
+  },
+  "homepage": "https://github.com/bs-koo/oh-my-gx",
+  "repository": "https://github.com/bs-koo/oh-my-gx",
+  "license": "MIT",
+  "keywords": [
+    "java",
+    "spring-boot",
+    "vue",
+    "fullstack",
+    "korean",
+    "dev-workflow",
+    "prd",
+    "code-review"
+  ],
+  "skills": "./.claude/skills/",
+  "hooks": "./hooks.json",
+  "interface": {
+    "displayName": "oh-my-gx",
+    "shortDescription": "PRD부터 PR까지 에이전트 팀이 처리하는 개발 자동화",
+    "longDescription": "GX 사업본부 개발 워크플로우 플러그인. PRD 작성, 기술 설계, TDD 구현(RED-GREEN-REFACTOR), 코드 리뷰, verify 게이트, 커밋/PR까지 전 과정을 에이전트 팀으로 수행한다.",
+    "developerName": "bs-koo",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "TDD로 기능을 구현해줘",
+      "변경사항을 커밋해줘",
+      "이 코드의 기술 부채를 분석해줘"
+    ],
+    "websiteURL": "https://github.com/bs-koo/oh-my-gx",
+    "brandColor": "#2563EB"
+  }
+}
