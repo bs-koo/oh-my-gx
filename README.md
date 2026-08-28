@@ -6,12 +6,14 @@
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-2ea44f?style=for-the-badge)](https://bs-koo.github.io/oh-my-gx/)
 [![PDF 가이드](https://img.shields.io/badge/PDF_%EA%B0%80%EC%9D%B4%EB%93%9C-v1.21.1-ED2224?style=for-the-badge)](docs/oh-my-gx-guide.pdf)
+[![Claude Code + Codex](https://img.shields.io/badge/Claude_Code_+_Codex-2563EB?style=for-the-badge)](#하네스-지원)
 
 </div>
 
 ---
 
 - [설치와 시작](#설치와-시작)
+- [하네스 지원](#하네스-지원)
 - [언어/프레임워크 지원](#언어프레임워크-지원)
 - [사용법](#사용법)
 - [개발 흐름](#개발-흐름)
@@ -25,6 +27,8 @@
 
 ## 설치와 시작
 
+### Claude Code
+
 ```bash
 # Claude Code CLI에서 실행
 /plugin marketplace add bs-koo/oh-my-gx
@@ -33,6 +37,28 @@
 # 최초 1회 환경 설정 (VCS 감지, gh CLI, 인증, 알림 연동)
 /oh-my-gx:gx-setup
 ```
+
+### Codex
+
+```bash
+# Codex CLI에서 실행 — 저장소 루트가 마켓플레이스 루트가 된다
+codex plugin marketplace add bs-koo/oh-my-gx
+```
+
+`codex plugin`에는 설치 서브커맨드가 없다. 마켓플레이스 등록까지만 CLI로 하고, 플러그인 활성화는 Codex TUI에서 한다. 훅 게이트를 쓰려면 `hooks.json`을 직접 배치해야 한다 (아래 참조).
+
+## 하네스 지원
+
+Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skills/`)만 유지하며 하네스별로 복제하지 않는다. Codex는 Claude Code의 스킬·훅 규격을 상당 부분 그대로 채택했기 때문에, 매니페스트 파일만 분리하면 같은 소스가 양쪽에서 읽힌다.
+
+| 기능 | Claude Code | Codex |
+|------|-------------|-------|
+| 스킬 인식·로드 | 지원 | 지원 (17개 로드 확인) |
+| 단독 스킬 (commit·humanizer·lens·research·tech-debt) | 지원 | 지원 |
+| 파이프라인 (dev·tdd·ralph) | 지원 | 미검증 — 서브에이전트 디스패치와 확인 게이트가 하네스 API로 옮겨져야 한다 |
+| 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 필요 — Codex의 `plugin_hooks`가 개발 중이라 플러그인이 훅을 번들로 배포하지 못한다 |
+
+도구 매핑(`Task` → `spawn_agent`, `AskUserQuestion` → `request_user_input` 등)과 제약은 `.claude/rules/harness-codex.md`에 정리되어 있다. 측정 환경은 Codex CLI 0.130.0이며, 하네스가 갱신되면 그 문서보다 실제 도구 목록을 우선한다.
 
 ## 언어/프레임워크 지원
 
@@ -383,6 +409,14 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 <summary><b>SVN 프로젝트에서도 사용할 수 있나요?</b></summary>
 
 네. `/gx-setup`을 실행하면 VCS를 자동으로 감지합니다. SVN 프로젝트에서도 `dev`·`tdd` 파이프라인의 PRD·설계·구현·리뷰가 똑같이 동작하고, 커밋만 `svn commit`으로 직접 하면 됩니다. `context`·`lens`·`research`·`humanizer` 같은 다른 스킬도 모두 그대로 쓸 수 있습니다.
+</details>
+
+<details>
+<summary><b>Codex에서도 쓸 수 있나요?</b></summary>
+
+**스킬은 그대로 동작합니다.** 스킬 파일을 하나도 고치지 않은 상태에서 Codex가 17개를 모두 인식하는 것을 확인했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`이며, `codex plugin`에 설치 서브커맨드가 없어 활성화는 Codex TUI에서 합니다.
+
+다만 `dev`·`tdd` 파이프라인은 서브에이전트 디스패치와 확인 게이트를 Codex API로 옮겨야 해서 아직 검증되지 않았고, verify·강제푸시 차단 같은 훅 게이트는 Codex의 `plugin_hooks`가 개발 중이라 `hooks.json`을 직접 배치해야 합니다. 범위는 [하네스 지원](#하네스-지원)을 참고하세요.
 </details>
 
 <details>
