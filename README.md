@@ -56,7 +56,7 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 | 스킬 인식·로드 | 지원 | 지원 — 17개 전부 로드 확인 |
 | 단일 파일 스킬 13개 | 지원 | 지원 — commit·pull-request·humanizer·research·tech-debt·context·cross-review·verify·red·green·refactor·ralph |
 | 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | 경로 해결됨 — 서브에이전트·스킬 호출 표기는 남아 있다 |
-| 서브에이전트 17개 (`agents/`) | 자동 로드 | 수동 배치 — Codex 매니페스트에 `agents` 필드가 없다 |
+| 서브에이전트 17개 (`agents/`) | 자동 로드 | 미지원 — 역할 파일 로드 기능이 개발 중이라 수동 배치도 통하지 않는다 |
 | 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 — Codex의 `plugin_hooks`가 개발 중 |
 
 ### 알려진 제약
@@ -65,7 +65,7 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 
 다만 `setup`의 config.json 템플릿 하나는 예외다. 이 파일만 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포되는 Codex에서는 읽지 못한다. Read가 실패하면 사용자에게 저장소의 `.claude/config.json`을 수동 복사하도록 안내하게 해두었다.
 
-**서브에이전트를 플러그인으로 배포할 수 없다.** Codex `plugin.json`이 지원하는 필드는 `skills`·`hooks`·`mcpServers`·`apps`뿐이라 `agents/`를 실을 자리가 없다. 사용자가 `~/.codex/agents/`에 직접 배치해야 한다.
+**서브에이전트를 배포할 수 없다.** Codex `plugin.json`이 지원하는 필드는 `skills`·`hooks`·`mcpServers`·`apps`뿐이라 `agents/`를 실을 자리가 없고, `~/.codex/agents/`에 수동으로 넣어도 로드되지 않는다(0.130 실측). 역할 파일에 대응하는 `child_agents_md`가 아직 개발 중이다. 그동안은 `dev`·`tdd`가 서브에이전트를 부를 때 딸려 보내는 `prompt` 블록이 역할 정의를 대신한다.
 
 **스킬 상호 호출 방식이 다르다.** Claude Code는 `Skill()` 도구로 다른 스킬을 부르지만, Codex는 스킬 파일을 읽어 그 지시를 따르는 방식이다. `dev`·`tdd`가 `commit`·`pull-request`를 부르는 44곳이 여기 해당한다.
 

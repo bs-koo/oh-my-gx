@@ -73,7 +73,17 @@ Read("../../gx-setup/references/project-type-hints.md")  # 형제 스킬
 
 ### 서브에이전트 배포
 
-Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`mcpServers`·`apps`다. `agents`가 없어 17개 에이전트 정의를 플러그인으로 실을 수 없다. 사용자가 `~/.codex/agents/`에 직접 배치해야 하며, 역할 파일 형식이 Claude Code의 `agents/*.md`와 같은지는 확인하지 않았다.
+Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`mcpServers`·`apps`다. `agents`가 없어 17개 에이전트 정의를 플러그인으로 실을 수 없다.
+
+수동 배치도 통하지 않는다. `~/.codex/agents/`를 만들어 `agents/*.md`를 넣고 프롬프트를 렌더링해봤지만 로드되지 않았다(0.130 실측, 노출 0건). 역할 파일에 대응하는 `child_agents_md`가 아직 개발 중이고, codex-tools.md도 이 기능에 0.145+를 요구한다.
+
+그래서 Codex에서는 **디스패치 프롬프트가 역할 정의를 통째로 짊어진다.** 스킬 본문의 `Task(...)` 호출에는 이미 상세한 `prompt` 블록이 붙어 있으므로 그것을 그대로 `spawn_agent`에 전달하고, 줄이거나 생략하지 않는다. 다만 `agents/*.md`에만 적힌 제약(도구 제한, 금지 사항)은 전달되지 않으니 그만큼 통제가 느슨해진다는 점을 감안한다.
+
+### AGENTS.md 로드 범위
+
+Codex는 작업 디렉토리의 `AGENTS.md`를 세션 프롬프트에 자동으로 싣는다(실측 확인 — `AGENTS.md instructions for <경로>` 형태로 주입된다). 다만 기준이 **작업 디렉토리**라, 이 저장소에서 작업할 때는 우리 `AGENTS.md`가 실리지만 플러그인을 설치해 다른 프로젝트에서 쓸 때는 그 프로젝트의 `AGENTS.md`가 실린다.
+
+따라서 하네스 매핑을 이 문서에만 두면 설치 사용자에게 닿지 않는다. `gx-dev`·`gx-tdd`의 SKILL.md에 "하네스 적응" 표를 직접 넣어둔 것은 그 때문이다. 스킬 파일은 어느 경로로 설치되든 항상 함께 배포된다.
 
 ### 스킬 상호 호출
 
