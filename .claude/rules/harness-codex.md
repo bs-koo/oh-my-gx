@@ -51,6 +51,38 @@ codex plugin marketplace add <저장소 경로>
 
 **`request_user_input`이 EXPERIMENTAL이다.** `default_mode_request_user_input`이 아직 개발 중이라 기본 모드에서는 구조화된 선택지 질문이 뜨지 않을 수 있다. 이 경우 스킬의 확인 게이트는 자연어 질문으로 낮춰 진행하되, 승인 없이 다음 단계로 넘어가지 않는다는 계약은 그대로 지킨다.
 
+## 동작하지 않는 것
+
+아래는 실측으로 확인한 비호환이다. 스킬 본문을 고쳐야 해결된다.
+
+### 번들 파일 경로 — dev·tdd·lens·setup
+
+이 네 스킬은 자기 `phases/`·`references/` 파일을 이렇게 읽는다.
+
+```
+Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-tdd/phases/phase-setup.md")
+```
+
+Codex 설치 구조에는 `.claude/skills/` 중간 경로가 없다. 스킬 루트 바로 아래가 `gx-tdd/`이고, 프롬프트도 `.../skills/gx-tdd/SKILL.md` 형태의 절대경로를 알려준다. `CLAUDE_PLUGIN_ROOT`가 설정된다는 보장도 없어 변수가 비면 `.`로 폴백하는데, 그러면 작업 중인 프로젝트 루트를 뒤지므로 oh-my-gx 저장소 자신이 아닌 곳에서는 파일을 찾지 못한다. 파이프라인은 첫 phase 로드에서 멈춘다.
+
+참조 지점은 gx-tdd 8곳, gx-dev 7곳, gx-lens 7곳, gx-setup 5곳으로 모두 27곳이다.
+
+해법은 스킬 기준 상대경로다. `gx-humanizer`가 이미 `references/patterns-ko.md` 형태로 쓰고 있어 하네스와 무관하게 동작하고, superpowers도 `CLAUDE_PLUGIN_ROOT`를 한 번도 쓰지 않고 상대경로만 쓴다.
+
+### 서브에이전트 배포
+
+Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`mcpServers`·`apps`다. `agents`가 없어 17개 에이전트 정의를 플러그인으로 실을 수 없다. 사용자가 `~/.codex/agents/`에 직접 배치해야 하며, 역할 파일 형식이 Claude Code의 `agents/*.md`와 같은지는 확인하지 않았다.
+
+### 스킬 상호 호출
+
+Codex에는 `Skill()`에 해당하는 도구가 없다. 스킬은 프롬프트가 알려준 경로의 파일을 읽어 지시를 따르는 방식으로 쓴다. `Skill(skill: "oh-my-gx:gx-commit")` 44곳은 "해당 SKILL.md를 읽고 절차를 따른다"로 옮겨야 한다.
+
+### allowed-tools 미전달
+
+Codex는 이 필드를 모델 프롬프트에 넣지 않는다(측정에서 `allowed-tools`·`argument-hint` 모두 0건). `Task`·`AskUserQuestion`·`Skill`처럼 Codex에 없는 도구명이 오류를 내지 않는 이유이기도 하지만, Claude Code에서 얻던 권한 사전 승인 효과가 사라져 승인 프롬프트가 잦아질 수 있다.
+
 ## 미검증 항목
 
 `exec_command` 호출 시 훅 입력의 `tool_input`이 Claude Code와 동일하게 `command` 필드를 갖는지는 실행으로 확인하지 못했다(측정 당시 계정이 `deactivated_workspace` 상태였다). `pre-tool-guard.sh`는 `tool_input.command` 추출에 실패하면 입력 전체를 검사 대상으로 폴백하므로, 필드 구조가 다르면 오탐이 발생할 수 있다. Codex에서 처음 사용하기 전에 `scripts/hook-tests.sh`의 페이로드를 Codex 실제 입력으로 교체해 한 번 확인한다.
+
+`hooks.json`이 지정하는 `bash ...` 실행이 Windows Codex에서 동작하는지도 확인하지 않았다. superpowers는 Windows용으로 `hooks/run-hook.cmd` 래퍼를 따로 두고 있으므로, 문제가 생기면 같은 방식을 참고한다.

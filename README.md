@@ -53,12 +53,23 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 
 | 기능 | Claude Code | Codex |
 |------|-------------|-------|
-| 스킬 인식·로드 | 지원 | 지원 (17개 로드 확인) |
-| 단독 스킬 (commit·humanizer·lens·research·tech-debt) | 지원 | 지원 |
-| 파이프라인 (dev·tdd·ralph) | 지원 | 미검증 — 서브에이전트 디스패치와 확인 게이트가 하네스 API로 옮겨져야 한다 |
-| 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 필요 — Codex의 `plugin_hooks`가 개발 중이라 플러그인이 훅을 번들로 배포하지 못한다 |
+| 스킬 인식·로드 | 지원 | 지원 — 17개 전부 로드 확인 |
+| 단일 파일 스킬 13개 | 지원 | 지원 — commit·pull-request·humanizer·research·tech-debt·context·cross-review·verify·red·green·refactor·ralph |
+| 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | **미동작** — phase·reference 파일 경로가 어긋난다 |
+| 서브에이전트 17개 (`agents/`) | 자동 로드 | 수동 배치 — Codex 매니페스트에 `agents` 필드가 없다 |
+| 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 — Codex의 `plugin_hooks`가 개발 중 |
 
-도구 매핑(`Task` → `spawn_agent`, `AskUserQuestion` → `request_user_input` 등)과 제약은 `.claude/rules/harness-codex.md`에 정리되어 있다. 측정 환경은 Codex CLI 0.130.0이며, 하네스가 갱신되면 그 문서보다 실제 도구 목록을 우선한다.
+### 알려진 제약
+
+**번들 파일 경로가 어긋난다.** `dev`·`tdd`·`lens`·`setup`은 자기 `phases/`·`references/` 파일을 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...`로 조립해 읽는다(27곳). Codex 설치 구조에는 `.claude/skills/` 중간 경로가 없고 이 변수가 설정된다는 보장도 없어, 변수 미설정 시 프로젝트 루트 기준으로 폴백해 파일을 찾지 못한다. 그러면 파이프라인이 첫 단계에서 멈춘다. `humanizer`처럼 스킬 기준 상대경로(`references/patterns-ko.md`)를 쓰면 하네스와 무관하게 동작하므로, 나머지도 그 방식으로 옮기는 것이 해법이다.
+
+**서브에이전트를 플러그인으로 배포할 수 없다.** Codex `plugin.json`이 지원하는 필드는 `skills`·`hooks`·`mcpServers`·`apps`뿐이라 `agents/`를 실을 자리가 없다. 사용자가 `~/.codex/agents/`에 직접 배치해야 한다.
+
+**스킬 상호 호출 방식이 다르다.** Claude Code는 `Skill()` 도구로 다른 스킬을 부르지만, Codex는 스킬 파일을 읽어 그 지시를 따르는 방식이다. `dev`·`tdd`가 `commit`·`pull-request`를 부르는 44곳이 여기 해당한다.
+
+**`allowed-tools`가 모델에 전달되지 않는다.** Codex는 이 필드를 프롬프트에 넣지 않는다. `Task`·`AskUserQuestion` 같은 없는 도구명이 오류를 내지 않는다는 뜻이지만, Claude Code에서 얻던 권한 사전 승인 효과도 없어 승인 프롬프트가 잦아질 수 있다.
+
+도구 매핑(`Task` → `spawn_agent`, `AskUserQuestion` → `request_user_input` 등)과 나머지 제약은 `.claude/rules/harness-codex.md`에 정리되어 있다. 측정 환경은 Codex CLI 0.130.0이며, 하네스가 갱신되면 그 문서보다 실제 도구 목록을 우선한다.
 
 ## 언어/프레임워크 지원
 
@@ -416,7 +427,7 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 
 **스킬은 그대로 동작합니다.** 스킬 파일을 하나도 고치지 않은 상태에서 Codex가 17개를 모두 인식하는 것을 확인했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`이며, `codex plugin`에 설치 서브커맨드가 없어 활성화는 Codex TUI에서 합니다.
 
-다만 `dev`·`tdd` 파이프라인은 서브에이전트 디스패치와 확인 게이트를 Codex API로 옮겨야 해서 아직 검증되지 않았고, verify·강제푸시 차단 같은 훅 게이트는 Codex의 `plugin_hooks`가 개발 중이라 `hooks.json`을 직접 배치해야 합니다. 범위는 [하네스 지원](#하네스-지원)을 참고하세요.
+다만 **`dev`·`tdd`·`lens`·`setup`은 아직 동작하지 않습니다.** 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 조립해 읽는데, Codex 설치 구조에서는 그 경로가 어긋나기 때문입니다. 서브에이전트(`agents/`)도 Codex 매니페스트에 실을 자리가 없어 수동 배치가 필요합니다. 나머지 13개 스킬은 번들 파일에 의존하지 않아 그대로 동작합니다. 자세한 내용은 [하네스 지원](#하네스-지원)의 '알려진 제약'을 참고하세요.
 </details>
 
 <details>
