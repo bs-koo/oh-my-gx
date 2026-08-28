@@ -880,7 +880,7 @@
         <ul class="feature-list">
           <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
           <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
-          <li>설계 확정 후 구현 진입 시 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 기본은 대화형 구현</li>
+          <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 설계 확정 후 gx-ralph 무인 루프로 전환 — 기본 경로는 묻지 않고 대화형 구현</li>
           <li><strong>핵심 모드(core)</strong> — AC 확인 → 구현 → 빌드·테스트 게이트 → 기록. 소형 변경을 에이전트 왕복 없이 처리하되 산출물(ac.md·summary.md)은 유지</li>
           <li><strong>에코 모드(eco)</strong> — 절차·게이트는 그대로, 에이전트 디스패치만 sonnet 중심으로 하향해 토큰 절약. 설계(architect)는 opus 유지 (Pro 요금제 권장. 모드 질문에서 함께 선택하거나 --eco·/gx-setup 설정)</li>
           <li><strong>"이어서 해줘"</strong>로 중단 지점부터 정확히 재개</li>
@@ -913,7 +913,7 @@
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
           <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
-          <li>기준선 게이트 통과 후 <strong>ralph 무인 루프 전환</strong>을 선택 가능 — 루프 안에서도 RGR 유지</li>
+          <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 기준선 게이트 통과 후 gx-ralph 무인 루프로 전환 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
           <li><strong>핵심 모드(core)</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
           <li><strong>에코 모드(eco)</strong> — architect를 제외한 opus 에이전트를 sonnet으로 하향 디스패치. RGR·verify 게이트는 무변경</li>
@@ -967,7 +967,7 @@
       <div class="feature-text">
         <span class="badge badge-coral">무인 반복</span>
         <h3 class="display-sm">ralph</h3>
-        <p>루프 엔지니어링(Ralph 루프) 스킬입니다. PRD를 승인하고 나면 외부 러너가 반복마다 <strong>새 claude 세션</strong>을 기동해 수용 기준(AC)을 1건씩 구현·verify·커밋합니다. 진행 상태는 대화가 아니라 파일과 git 히스토리에 남고, 사람은 루프가 끝난 뒤 리뷰·인수·PR만 진행합니다. 진입은 <code>/gx-ralph</code> 직접 호출 또는 dev·tdd의 구현 진입 질문에서 "ralph 무인 루프"를 선택 — 두 경로의 동작은 같습니다.</p>
+        <p>루프 엔지니어링(Ralph 루프) 스킬입니다. PRD를 승인하고 나면 외부 러너가 반복마다 <strong>새 claude 세션</strong>을 기동해 수용 기준(AC)을 1건씩 구현·verify·커밋합니다. 진행 상태는 대화가 아니라 파일과 git 히스토리에 남고, 사람은 루프가 끝난 뒤 리뷰·인수·PR만 진행합니다. 진입은 <code>/gx-ralph</code> 직접 호출 또는 <code>/gx-dev --ralph</code>·<code>/gx-tdd --ralph</code>(또는 "랄프로 …" 발화) — 두 경로의 동작은 같고, 기본 경로에서는 묻지 않습니다.</p>
         <ul class="feature-list">
           <li><strong>루프당 AC 1건</strong> — 매 반복 신선한 컨텍스트로 작게, 확실하게</li>
           <li><strong>verify backpressure</strong> — 매 반복 테스트 통과 없이는 커밋 불가</li>

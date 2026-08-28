@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.23.0 (2026-08-28)
+
+gx-ralph 격하(opt-in 전환)와 러너 결함 수정. 무인 루프는 쓸 사람에게는 가치 있지만 모든 사용자가 매번 마주칠 기능은 아니다 — 전체 모드마다 뜨던 "대화형 vs ralph 무인 루프" 질문을 제거하고 명시적 opt-in으로 내린다. 훅 G3·verify·skill-routing·gx-commit·gx-pull-request의 ralph 인식(루프 실행 중 안전 계약)은 그대로 유지한다. 재평가: 2026-11-28까지 소비 프로젝트 사용 보고가 없으면 제거를 별도 검토한다.
+
+- **동작 변경 — ralph 진입 질문 제거**: gx-dev·gx-tdd phase-implement의 "구현 방식 확인" AskUserQuestion을 삭제. 전환은 `--ralph` 플래그 또는 자연어(`랄프로`, `ralph로`, `무인 루프로`, `무인으로`)로만 — 의도 파싱이 RALPH를 추출하면 모드를 all로 확정해 모드 질문을 생략하고(무인 루프는 PRD 필수라 core와 양립 불가), STATUS/RESUME/CORE/PHASE가 이미 판정된 요청("랄프로 이어서 해줘")에서는 RALPH를 무시하고 안내한다. phase-setup Step 7이 `flags`에 `--ralph`를 정규화 기록하고 phase-implement가 그 값으로 판정한다. 기준선 게이트(tdd Step 0.5)·기준 GREEN 확인(dev) 후 전환하는 순서와 방어 조건(핵심 모드·`--phase`·`--resume`·svn 무시)은 유지. 린트 [11/24]가 전환 절 존재와 폐지 질문 문구 잔존 금지를 함께 검사
+- **수정 — 러너 allowedTools 7개 누락**: `scripts/gx-ralph.sh`의 `--allowedTools`에 v1.21.0 언어 중립화 때 gx-ralph-iterate에만 추가된 `make`·`cmake`·`ctest`·`ceedling`·`cargo`·`mvn`·`dotnet`을 동기. 누락 상태에서는 C/Rust/Maven/.NET 프로젝트의 헤드리스 세션이 test 명령을 실행하지 못해 매 반복 verify 차단 → attempts 소진 → BLOCKED로 낭비됐다. 린트 [11/24]에 러너↔iterate allowed-tools 집합 대조 검사 추가
+- **추가 — 러너 NO_PROGRESS 가드(exit 7)**: 커밋(HEAD)도 AC 완료(passes:true 건수)도 없는 반복이 4회 연속이면 중단. 기존 NO_DRIFT(cksum, 임계 2)는 크래시성 무변화 전용으로 유지. 임계 4는 AC별 attempts 상한(3)보다 커서 같은 AC 3회 실패 시 반복 세션의 BLOCKED(사유 포함) 경로를 가로채지 않는다
+- **추가 — `GX_RALPH_MODEL`**: 러너가 `claude -p`에 `--model`을 조건부 전달. 반복 세션 오케스트레이터(선택→디스패치→verify→커밋)를 하향할 수 있다. 기본은 미지정(CLI 기본). 에이전트는 자기 frontmatter 모델 유지
+- 러너 테스트 T11(allowedTools·`--model` 전달)·T12(attempts++만 있는 반복의 NO_PROGRESS 4회/3회 경계) 추가, mock 인자 기록(`GX_RALPH_MOCK_ARGS`). CI(`lint.yml`)에 `test-gx-ralph.sh` 스텝 추가 — 그동안 러너 테스트는 CI 밖에 있었다
+- 골든 시나리오 S18(`랄프로` opt-in 경로·RESUME 우선)·S19(전체 모드에서 질문 미노출) 추가
+- 문서: README·index.html·guide §4.13·onboarding의 질문 서술을 opt-in 발화로 갱신, gx-ralph/SKILL.md 진입 경로 (2)·러너 가드 안내 갱신
+
 ## v1.22.0 (2026-08-25)
 
 gx-tdd 프론트엔드 지원 — UI 컴포넌트도 RGR 사이클로 구현할 수 있도록 테스트 규약과 게이트를 추가한다. "동작은 테스트하고 표현은 나중에 얹는다"가 성립하려면 테스트가 스타일에 결합되지 않아야 하며, 이 릴리스는 그 조건을 규약·게이트·린트로 강제한다.

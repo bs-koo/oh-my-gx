@@ -36,7 +36,7 @@ Ralph Wiggum 루프 패턴의 진입 스킬. PRD의 수용 기준(AC)을 기계 
                                         (origin이 gx-tdd면 /gx-tdd, 그 외 /gx-dev)
 ```
 
-진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) gx-dev/gx-tdd의 phase-implement "구현 방식 확인" 질문에서 "ralph 무인 루프"를 선택하면 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출.
+진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) `/gx-dev` 또는 `/gx-tdd`에 `--ralph` 플래그(또는 "랄프로 …" 발화)를 주면 phase-implement 진입 시 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출 (기본 경로에서는 묻지 않는다 — 무인 루프는 명시적 opt-in).
 
 핵심 원리 (Ralph 루프): 진행 상태는 대화 이력이 아닌 **파일과 git 히스토리에 영속**하고, 매 반복은 **신선한 컨텍스트**로 시작하며, **verify가 backpressure**, **종료 계약**으로 루프를 탈출한다. 루프당 AC 1건만 처리한다.
 
@@ -190,6 +190,7 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
      bash {러너 절대 경로}
 
    - 러너는 반복마다 새 claude 세션을 기동해 AC 1건씩 처리합니다 (최대 {max-iterations}회)
+   - 러너 가드: 무변화 2회(exit 4) · 무진전 4회(exit 7 — 커밋도 AC 완료도 없는 반복, attempts 상한 3보다 늦게 발화) · BLOCKED(exit 2) · 반복 상한(exit 5). 반복 세션 오케스트레이터 모델은 GX_RALPH_MODEL 환경변수로 지정할 수 있습니다 (기본 CLI 기본 모델)
    - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세)
    - 중간 상태 확인: /oh-my-gx:gx-ralph --status
    - 루프 종료 후: {origin이 gx-tdd면 /gx-tdd --phase review, 그 외 /gx-dev --phase review} 로 리뷰 → --phase complete 로 인수·PR

@@ -9,16 +9,21 @@
 #   GX_RALPH_CLAUDE_CMD    claude CLI 명령 (기본: claude / 테스트에서 mock 주입)
 #   GX_RALPH_SKILL_NAME    반복 스킬 호출명 (기본: /oh-my-gx:gx-ralph-iterate / 개발 저장소: /gx-ralph-iterate)
 #   GX_RALPH_ITER_TIMEOUT  반복당 타임아웃 초 (기본: 1800)
+#   GX_RALPH_MODEL         반복 세션 오케스트레이터 모델 (기본: 미지정 = CLI 기본. 에이전트는 자기 frontmatter 모델 유지)
 #
-# 종료 코드: 0 COMPLETE | 2 BLOCKED | 3 종료 계약 미출력 | 4 NO_DRIFT | 5 MAX_ITER 소진 | 6 사전 조건 실패
+# 종료 코드: 0 COMPLETE | 2 BLOCKED | 3 종료 계약 미출력 | 4 NO_DRIFT | 5 MAX_ITER 소진 | 6 사전 조건 실패 | 7 NO_PROGRESS
 set -uo pipefail
 
 CLAUDE_CMD="${GX_RALPH_CLAUDE_CMD:-claude}"
 SKILL_NAME="${GX_RALPH_SKILL_NAME:-/oh-my-gx:gx-ralph-iterate}"
 ITER_TIMEOUT="${GX_RALPH_ITER_TIMEOUT:-1800}"
+# --model 은 지정됐을 때만 전달한다 (기본 비움 = CLI 기본 모델. 반복 세션의 오케스트레이터 역할은
+# 선택→디스패치→verify→커밋으로 단순해 하향 여지가 크지만, 기본값 변경은 실측 후에 한다)
+MODEL_OPT=""
+[ -n "${GX_RALPH_MODEL:-}" ] && MODEL_OPT="--model $GX_RALPH_MODEL"
 
 # allowedTools — gx-ralph-iterate/SKILL.md의 allowed-tools와 동기 (드리프트 주의)
-ALLOWED_TOOLS="Read,Write,Edit,Glob,Grep,Task,Skill,Bash(git *),Bash(./gradlew *),Bash(npm *),Bash(npx *),Bash(pnpm *),Bash(yarn *),Bash(bun *),Bash(pytest *),Bash(go *),Bash(test *),Bash(ls *),Bash(mkdir *),Bash(pwd *),Bash(wc *),Bash(grep *)"
+ALLOWED_TOOLS="Read,Write,Edit,Glob,Grep,Task,Skill,Bash(git *),Bash(./gradlew *),Bash(npm *),Bash(npx *),Bash(pnpm *),Bash(yarn *),Bash(bun *),Bash(pytest *),Bash(go *),Bash(make *),Bash(cmake *),Bash(ctest *),Bash(ceedling *),Bash(cargo *),Bash(mvn *),Bash(dotnet *),Bash(test *),Bash(ls *),Bash(mkdir *),Bash(pwd *),Bash(wc *),Bash(grep *)"
 
 fail() { echo "[gx-ralph] 사전 조건 실패: $1" >&2; exit 6; }
 
@@ -80,19 +85,23 @@ command -v timeout >/dev/null 2>&1 && TIMEOUT_CMD="timeout $ITER_TIMEOUT"
 echo "[gx-ralph] 루프 시작 — 브랜치: $BRANCH, 최대 반복: $MAX_ITER"
 
 ac_hash() { cksum "$AC_FILE" 2>/dev/null | awk '{print $1}'; }
+# passes:true 건수 — grep -c는 0건이어도 "0"을 출력하고 exit 1이므로 || true로 삼키고, 파일 부재(공백)는 0으로 정규화
+ac_passes() { local n; n=$(grep -c '"passes"[[:space:]]*:[[:space:]]*true' "$AC_FILE" 2>/dev/null || true); echo "${n:-0}"; }
 
 NO_DRIFT=0
+NO_PROGRESS=0
 i=1
 while [ "$i" -le "$MAX_ITER" ]; do
   PRE_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "none")
   PRE_AC=$(ac_hash)
+  PRE_PASSES=$(ac_passes)
   LOG="$DEV_DIR/iter-$i.log"
 
   echo "[gx-ralph] 반복 $i/$MAX_ITER 시작 → $LOG"
   # MSYS_NO_PATHCONV=1: Git Bash(Windows)가 "/gx-..." 인자를 Windows 경로로 자동 변환해
   # 프롬프트가 깨지는 것을 방지한다 (통합 스모크 실측 2026-07-10). 타 환경에서는 무해.
-  # shellcheck disable=SC2086 — CLAUDE_CMD/TIMEOUT_CMD의 의도적 단어 분리
-  MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
+  # shellcheck disable=SC2086 — CLAUDE_CMD/TIMEOUT_CMD/MODEL_OPT의 의도적 단어 분리
+  MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" $MODEL_OPT --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
   EXIT_CODE=$?
 
   # [^<]* 대신 .* — BLOCKED 사유에 '<'가 포함돼도 계약이 파싱되도록 (계약은 한 줄에 하나)
@@ -125,17 +134,31 @@ while [ "$i" -le "$MAX_ITER" ]; do
 
   POST_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "none")
   POST_AC=$(ac_hash)
+  POST_PASSES=$(ac_passes)
   if [ "$PRE_HEAD" = "$POST_HEAD" ] && [ "$PRE_AC" = "$POST_AC" ]; then
     NO_DRIFT=$((NO_DRIFT+1))
     echo "[gx-ralph] 경고: 반복 $i 무변화 (연속 $NO_DRIFT회)"
-    # 한계: verify 실패 반복도 attempts++로 원장이 변하므로 이 감지는 완전 무변화(크래시성)만 잡는다.
-    # 실질 무진전은 AC별 attempts 상한(3회)과 MAX_ITER가 최종 방어한다.
+    # cksum 가드는 크래시성 무변화(임계 2)를 잡는다. verify 실패 반복은 attempts++로 원장이 변해 여기에 걸리지 않으며,
+    # 그 경우는 아래 NO_PROGRESS 가드(임계 4)가 잡는다.
     if [ "$NO_DRIFT" -ge 2 ]; then
       echo "[gx-ralph] ⛔ NO_DRIFT — 2회 연속 아무 변화 없음. 루프를 중단합니다" >&2
       exit 4
     fi
   else
     NO_DRIFT=0
+  fi
+
+  # 무진전 가드 — 커밋(HEAD)도 AC 완료(passes:true 건수)도 없는 반복이 4회 연속이면 중단한다.
+  # 임계 4는 AC별 attempts 상한(3)보다 커야 한다: 3 이하면 같은 AC 3회 실패 시 반복 세션의 BLOCKED(사유 포함) 경로를
+  # 이 가드가 가로채 진단 정보가 사라진다. 4는 "AC-1 3회 실패 후 AC-2도 1회 실패"처럼 AC를 바꿔도 진전이 없는 상태를 잡는다.
+  if [ "$PRE_HEAD" = "$POST_HEAD" ] && [ "$PRE_PASSES" = "$POST_PASSES" ]; then
+    NO_PROGRESS=$((NO_PROGRESS+1))
+    if [ "$NO_PROGRESS" -ge 4 ]; then
+      echo "[gx-ralph] ⛔ NO_PROGRESS — 4회 연속 커밋·AC 완료 없음 (attempts 상한과 무관한 루프 단위 방어). /oh-my-gx:gx-ralph --status 로 원장을 확인하세요" >&2
+      exit 7
+    fi
+  else
+    NO_PROGRESS=0
   fi
 
   # last-known-head 갱신 (state.md 계약 필드) — sed -i는 BSD sed(macOS) 비호환이라 임시 파일 사용

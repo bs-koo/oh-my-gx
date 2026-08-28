@@ -2,6 +2,7 @@
 # gx-ralph 러너 분기 테스트 — mock claude로 scripts/gx-ralph.sh의 종료 분기를 검증한다.
 # 실행: bash scripts/test-gx-ralph.sh
 set -uo pipefail
+unset GX_RALPH_MODEL  # 개발자 셸에 export돼 있으면 T11의 "미설정" 케이스가 오탐한다
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="$SCRIPT_DIR/gx-ralph.sh"
@@ -12,6 +13,8 @@ make_mock() {
   local sandbox="$1"
   cat > "$sandbox/mock-claude.sh" <<'MOCK'
 #!/usr/bin/env bash
+# 러너가 넘긴 인자를 기록한다 (T11: allowedTools·--model 전달 검증). 인용 히어독이라 경로는 env로 받는다
+printf '%s\n' "$*" >> "${GX_RALPH_MOCK_ARGS:-/dev/null}"
 step=$(head -1 "$GX_RALPH_MOCK_SCENARIO" 2>/dev/null || echo "")
 # sed -i는 BSD sed(macOS)에서 에러가 삼켜져 시나리오가 소비되지 않음 — 임시 파일 사용
 { sed '1d' "$GX_RALPH_MOCK_SCENARIO" > "$GX_RALPH_MOCK_SCENARIO.tmp" && mv "$GX_RALPH_MOCK_SCENARIO.tmp" "$GX_RALPH_MOCK_SCENARIO"; } 2>/dev/null || true
@@ -20,6 +23,12 @@ case "$step" in
     echo "x" >> work.txt && git add work.txt >/dev/null 2>&1 && git commit -q -m "feat: mock 구현 (AC-x)" >/dev/null 2>&1
     echo "<ralph>CONTINUE</ralph>" ;;
   CONTINUE_NOOP) echo "<ralph>CONTINUE</ralph>" ;;
+  CONTINUE_ATTEMPT)
+    # verify 실패 반복 재현: 커밋 없이 attempts만 +1 (원장 cksum은 바뀌므로 NO_DRIFT는 미발화). sed -i 금지 — 임시 파일
+    f=.dev/feat-t/ac-status.json
+    n=$(grep -o '"attempts":[0-9]*' "$f" | grep -o '[0-9]*$' | head -1)
+    sed "s/\"attempts\":$n/\"attempts\":$((n+1))/" "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    echo "<ralph>CONTINUE</ralph>" ;;
   COMPLETE)      echo "<ralph>COMPLETE</ralph>" ;;
   BLOCKED)       echo "<ralph>BLOCKED: mock 사유</ralph>" ;;
   NOTHING)       echo "종료 계약 없이 끝나는 출력" ;;
@@ -53,6 +62,7 @@ run_runner() {
   ( cd "$sandbox" \
     && GX_RALPH_CLAUDE_CMD="bash $sandbox/mock-claude.sh" \
        GX_RALPH_MOCK_SCENARIO="$sandbox/scenario.txt" \
+       GX_RALPH_MOCK_ARGS="$sandbox/mock-args.txt" \
        bash "$RUNNER" $max_iter >/dev/null 2>&1 )
   echo $?
 }
@@ -146,6 +156,28 @@ case "$OUT" in
   *"/gx-tdd --phase review"*) assert "origin 분기 (CRLF)" 1 1 ;;
   *)                          assert "origin 분기 (CRLF)" 1 0 ;;
 esac
+rm -rf "$SB"
+
+echo "[T11] 러너 → claude 인자 전달: allowedTools 동기(make·dotnet) + GX_RALPH_MODEL 조건부 --model"
+SB=$(make_sandbox)
+: > "$SB/mock-args.txt"
+assert "미설정 exit=0" 0 "$(run_runner "$SB" "COMPLETE")"
+assert "allowedTools에 Bash(make *)" 1 "$(grep -c 'Bash(make \*)' "$SB/mock-args.txt")"
+assert "allowedTools에 Bash(dotnet *)" 1 "$(grep -c 'Bash(dotnet \*)' "$SB/mock-args.txt")"
+assert "미설정 시 --model 없음" 0 "$(grep -c -- '--model' "$SB/mock-args.txt")"
+: > "$SB/mock-args.txt"
+assert "GX_RALPH_MODEL=sonnet exit=0" 0 "$(GX_RALPH_MODEL=sonnet run_runner "$SB" "COMPLETE")"
+assert "--model sonnet 전달" 1 "$(grep -c -- '--model sonnet' "$SB/mock-args.txt")"
+rm -rf "$SB"
+
+echo "[T12] NO_PROGRESS: attempts++만 있는 반복(verify 실패 재현) 4회 연속 → exit 7, 3회는 미발화"
+SB=$(make_sandbox)
+assert "4회 연속 exit=7" 7 "$(run_runner "$SB" "CONTINUE_ATTEMPT CONTINUE_ATTEMPT CONTINUE_ATTEMPT CONTINUE_ATTEMPT")"
+assert "반복 4회" 4 "$(iter_logs "$SB")"
+rm -rf "$SB"
+SB=$(make_sandbox)
+assert "3회 후 COMPLETE exit=0" 0 "$(run_runner "$SB" "CONTINUE_ATTEMPT CONTINUE_ATTEMPT CONTINUE_ATTEMPT COMPLETE")"
+assert "반복 4회 (NO_PROGRESS 미발화)" 4 "$(iter_logs "$SB")"
 rm -rf "$SB"
 
 echo

@@ -223,7 +223,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline` 필드가 있으면(다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태(verify 게이트 포함)가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
-- vcs-type, branch, base, dev-dir, project-type, project-root, args, flags 기록
+- vcs-type, branch, base, dev-dir, project-type, project-root, args, flags 기록. `flags`에는 의도 파싱에서 RALPH가 추출되었으면(자연어 `랄프로` 등 포함) `--ralph`를 **정규화하여** 포함한다 — phase-implement "gx-ralph 전환" 절의 판정 키이며 별도 필드를 두지 않는다. `VCS_TYPE`이 `svn`이면 포함하지 않고 "gx-ralph는 SVN 미지원 — 대화형으로 진행합니다" 1줄을 안내한다
 - mode, intent-source 기록 (의도 파싱 결과)
 - model-profile 기록 (Step 1.5 결정 값)
 - phases: { setup: completed }
