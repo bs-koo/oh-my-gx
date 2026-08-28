@@ -3,7 +3,7 @@
 # 사용: bash scripts/lint-consistency.sh (어디서 실행하든 저장소 루트 기준으로 동작)
 #
 # 검사 항목:
-#  1. 버전 3중 일치 (plugin.json / marketplace.json / CHANGELOG 최신 섹션)
+#  1. 버전 4중 일치 (.claude-plugin/plugin.json / marketplace.json / .codex-plugin/plugin.json / CHANGELOG)
 #  2. 서브에이전트 도구명 Task 통일 (Agent( 호출 문법·allowed-tools Agent 선언 금지)
 #  3. RGR 드리프트 키워드 (refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달)
 #  4. verify 게이트 판별식 키 존재 (rules 2 + 스킬 3 + 훅 1)
@@ -35,14 +35,16 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-echo "[1/24] 버전 3중 일치"
+echo "[1/24] 버전 4중 일치"
+# Codex 매니페스트(.codex-plugin/plugin.json)도 같은 버전을 싣는다 — 어긋나면 Codex UI에 옛 버전이 뜬다
 V_PLUGIN=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 V_MARKET=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/marketplace.json | head -1)
+V_CODEX=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .codex-plugin/plugin.json | head -1)
 V_CHANGE=$(sed -n 's/^## v\([0-9.]*\).*/\1/p' CHANGELOG.md | head -1)
-if [ -n "$V_PLUGIN" ] && [ "$V_PLUGIN" = "$V_MARKET" ] && [ "$V_PLUGIN" = "$V_CHANGE" ]; then
-  ok "plugin.json = marketplace.json = CHANGELOG = $V_PLUGIN"
+if [ -n "$V_PLUGIN" ] && [ "$V_PLUGIN" = "$V_MARKET" ] && [ "$V_PLUGIN" = "$V_CODEX" ] && [ "$V_PLUGIN" = "$V_CHANGE" ]; then
+  ok "plugin.json = marketplace.json = codex-plugin = CHANGELOG = $V_PLUGIN"
 else
-  fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET CHANGELOG=$V_CHANGE"
+  fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET codex-plugin=$V_CODEX CHANGELOG=$V_CHANGE"
 fi
 
 echo "[2/24] 서브에이전트 도구명 통일 (Task)"
