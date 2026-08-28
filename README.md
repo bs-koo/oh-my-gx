@@ -55,13 +55,15 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 |------|-------------|-------|
 | 스킬 인식·로드 | 지원 | 지원 — 17개 전부 로드 확인 |
 | 단일 파일 스킬 13개 | 지원 | 지원 — commit·pull-request·humanizer·research·tech-debt·context·cross-review·verify·red·green·refactor·ralph |
-| 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | **미동작** — phase·reference 파일 경로가 어긋난다 |
+| 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | 경로 해결됨 — 서브에이전트·스킬 호출 표기는 남아 있다 |
 | 서브에이전트 17개 (`agents/`) | 자동 로드 | 수동 배치 — Codex 매니페스트에 `agents` 필드가 없다 |
 | 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 — Codex의 `plugin_hooks`가 개발 중 |
 
 ### 알려진 제약
 
-**번들 파일 경로가 어긋난다.** `dev`·`tdd`·`lens`·`setup`은 자기 `phases/`·`references/` 파일을 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...`로 조립해 읽는다(27곳). Codex 설치 구조에는 `.claude/skills/` 중간 경로가 없고 이 변수가 설정된다는 보장도 없어, 변수 미설정 시 프로젝트 루트 기준으로 폴백해 파일을 찾지 못한다. 그러면 파이프라인이 첫 단계에서 멈춘다. `humanizer`처럼 스킬 기준 상대경로(`references/patterns-ko.md`)를 쓰면 하네스와 무관하게 동작하므로, 나머지도 그 방식으로 옮기는 것이 해법이다.
+**번들 파일 경로는 해결했다.** 예전에는 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...` 형태로 조립해 읽었고(27곳), Codex 설치 구조에는 그 중간 경로가 없어 파이프라인이 첫 단계에서 멈췄다. 지금은 `humanizer`와 같은 방식으로 **그 지시가 적힌 파일을 기준으로 한 상대경로**(`phases/phase-setup.md`)를 쓴다. 설치 위치와 무관하게 해석되므로 두 하네스 모두에서 동작하며, `lint-consistency.sh`의 `[15/24]`가 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
+
+다만 `setup`의 config.json 템플릿 하나는 예외다. 이 파일만 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포되는 Codex에서는 읽지 못한다. Read가 실패하면 사용자에게 저장소의 `.claude/config.json`을 수동 복사하도록 안내하게 해두었다.
 
 **서브에이전트를 플러그인으로 배포할 수 없다.** Codex `plugin.json`이 지원하는 필드는 `skills`·`hooks`·`mcpServers`·`apps`뿐이라 `agents/`를 실을 자리가 없다. 사용자가 `~/.codex/agents/`에 직접 배치해야 한다.
 
@@ -427,7 +429,7 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 
 **스킬은 그대로 동작합니다.** 스킬 파일을 하나도 고치지 않은 상태에서 Codex가 17개를 모두 인식하는 것을 확인했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`이며, `codex plugin`에 설치 서브커맨드가 없어 활성화는 Codex TUI에서 합니다.
 
-다만 **`dev`·`tdd`·`lens`·`setup`은 아직 동작하지 않습니다.** 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 조립해 읽는데, Codex 설치 구조에서는 그 경로가 어긋나기 때문입니다. 서브에이전트(`agents/`)도 Codex 매니페스트에 실을 자리가 없어 수동 배치가 필요합니다. 나머지 13개 스킬은 번들 파일에 의존하지 않아 그대로 동작합니다. 자세한 내용은 [하네스 지원](#하네스-지원)의 '알려진 제약'을 참고하세요.
+`dev`·`tdd`·`lens`·`setup`의 번들 파일 경로 문제는 해결됐습니다. 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 읽었는데, 지금은 상대경로로 바꿔 설치 위치와 무관하게 동작합니다. 다만 서브에이전트(`agents/`)는 Codex 매니페스트에 실을 자리가 없어 수동 배치가 필요하고, `Skill()` 상호 호출과 `setup`의 config 템플릿은 아직 남은 과제입니다. 자세한 내용은 [하네스 지원](#하네스-지원)의 '알려진 제약'을 참고하세요.
 </details>
 
 <details>

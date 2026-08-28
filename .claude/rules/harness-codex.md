@@ -55,19 +55,21 @@ codex plugin marketplace add <저장소 경로>
 
 아래는 실측으로 확인한 비호환이다. 스킬 본문을 고쳐야 해결된다.
 
-### 번들 파일 경로 — dev·tdd·lens·setup
+### 번들 파일 경로 (해결됨)
 
-이 네 스킬은 자기 `phases/`·`references/` 파일을 이렇게 읽는다.
+예전에는 네 스킬(`dev`·`tdd`·`lens`·`setup`)이 자기 `phases/`·`references/` 파일을 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...` 형태로 조립해 읽었다(27곳). Codex 스킬 루트에는 `.claude/skills/` 중간 경로가 없고 이 변수가 설정된다는 보장도 없어, 변수가 비면 작업 중인 프로젝트 루트를 뒤지다 파일을 찾지 못했다.
+
+지금은 **그 지시가 적힌 파일의 위치를 기준으로 한 상대경로**를 쓴다.
 
 ```
-Read("${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/gx-tdd/phases/phase-setup.md")
+Read("phases/phase-setup.md")                          # 같은 스킬 안
+Read("../references/report-guide.md")                  # 같은 스킬의 다른 폴더
+Read("../../gx-setup/references/project-type-hints.md")  # 형제 스킬
 ```
 
-Codex 설치 구조에는 `.claude/skills/` 중간 경로가 없다. 스킬 루트 바로 아래가 `gx-tdd/`이고, 프롬프트도 `.../skills/gx-tdd/SKILL.md` 형태의 절대경로를 알려준다. `CLAUDE_PLUGIN_ROOT`가 설정된다는 보장도 없어 변수가 비면 `.`로 폴백하는데, 그러면 작업 중인 프로젝트 루트를 뒤지므로 oh-my-gx 저장소 자신이 아닌 곳에서는 파일을 찾지 못한다. 파이프라인은 첫 phase 로드에서 멈춘다.
+파일 사이의 상대 위치는 설치 위치와 무관하게 같으므로 두 하네스 모두에서 해석된다. `lint-consistency.sh`의 `[15/24]`가 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
 
-참조 지점은 gx-tdd 8곳, gx-dev 7곳, gx-lens 7곳, gx-setup 5곳으로 모두 27곳이다.
-
-해법은 스킬 기준 상대경로다. `gx-humanizer`가 이미 `references/patterns-ko.md` 형태로 쓰고 있어 하네스와 무관하게 동작하고, superpowers도 `CLAUDE_PLUGIN_ROOT`를 한 번도 쓰지 않고 상대경로만 쓴다.
+**예외 하나가 남았다.** `gx-setup`이 읽는 config.json 템플릿은 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있다. Claude Code에서는 `../../config.json`이 맞지만, 스킬 디렉토리만 배포되는 Codex에서는 그 위치에 파일이 없다. 스킬은 Read 실패 시 사용자에게 수동 복사를 안내하고 다음 단계로 넘어가도록 되어 있다.
 
 ### 서브에이전트 배포
 

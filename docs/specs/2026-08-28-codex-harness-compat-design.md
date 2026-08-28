@@ -2,7 +2,7 @@
 
 작성일: 2026-08-28
 브랜치: `feat/codex-compat-smoke`
-상태: Phase 1(스모크 테스트) 완료
+상태: Phase 1(스모크 테스트) · Phase 0(번들 경로 정규화) 완료
 
 ## 배경
 
@@ -64,7 +64,7 @@ Codex는 Claude Code의 플러그인 규격을 상당 부분 그대로 채택했
 
 | 항목 | 영향 | 원인 |
 |------|------|------|
-| 번들 파일 경로 | `dev`·`tdd`·`lens`·`setup` 미동작 (27곳) | `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/...` 조립. Codex 구조에 `.claude/skills/` 중간 경로가 없고 변수 설정도 미보장 |
+| 번들 파일 경로 | **해결됨** — 상대경로 전환 (27곳) | `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/...` 조립. Codex 구조에 `.claude/skills/` 중간 경로가 없고 변수 설정도 미보장 |
 | 서브에이전트 배포 | 17개 에이전트 수동 배치 | Codex `plugin.json`에 `agents` 필드가 없다 (`skills`·`hooks`·`mcpServers`·`apps`만) |
 | 스킬 상호 호출 | `Skill()` 44곳 | Codex에 등가 도구 없음. 파일을 읽어 따르는 방식 |
 | `allowed-tools` | 권한 사전 승인 효과 없음 | 모델 프롬프트에 전달되지 않음 (측정 0건) |
@@ -75,7 +75,7 @@ Codex는 Claude Code의 플러그인 규격을 상당 부분 그대로 채택했
 
 ## 남은 작업
 
-**Phase 0 — 번들 경로 정규화 (최우선).** `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/` 조립 27곳을 스킬 기준 상대경로로 바꾼다. `lint-consistency.sh`의 `[15/24] 플러그인 번들 경로 규약`이 현재 이 조립을 **요구**하고 있으므로 검사도 함께 뒤집는다. 이 작업만으로 Codex에서 파이프라인 4개가 살아난다.
+**Phase 0 — 번들 경로 정규화 (완료).** `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/` 조립 27곳을 스킬 기준 상대경로로 바꾼다. `lint-consistency.sh`의 `[15/24] 플러그인 번들 경로 규약`이 현재 이 조립을 **요구**하고 있으므로 검사도 함께 뒤집는다. 검사는 절대경로 조립 재발과 참조 대상 부재를 함께 본다. 전환 후 상대경로 13건이 모두 실제 파일을 가리키는 것을 확인했고, Codex 스킬 루트 구조에서도 해석됨을 검증했다. `gx-setup`의 config.json 템플릿만 스킬 밖에 있어 Codex에서는 수동 복사 안내로 대체한다.
 
 **Phase 2 — 표기 중립화.** 스킬 본문의 Claude Code API 직접 호출을 하네스 중립 서술로 바꾸고, 실제 API는 `harness-codex.md`에 위임한다. 대상은 `AskUserQuestion` 183건, `Task(`/`subagent_type` 각 48/47건, `Skill(` 44건이다. `lint-consistency.sh`의 `[2/24] 서브에이전트 도구명 통일`이 현재 Claude Code 표기를 강제하고 있으므로, 이 검사를 중립 표기 강제로 뒤집는 것이 재발 방지 수단이 된다.
 
