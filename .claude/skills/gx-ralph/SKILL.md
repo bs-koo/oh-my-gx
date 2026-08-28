@@ -1,7 +1,7 @@
 ---
 name: gx-ralph
 version: 1.0.0
-description: "루프 엔지니어링(Ralph 루프) 진입 스킬 - PRD 수용 기준을 AC 원장으로 변환하고 외부 러너의 무인 반복을 준비한다. PRD 확정 후 사용. '랄프', 'ralph', '루프 돌려' 시 사용."
+description: "루프 엔지니어링(Ralph 루프) 진입 스킬 - PRD 수용 기준을 AC 원장으로 변환하고 외부 러너의 무인 반복을 준비한다. PRD 확정 후 사용. '랄프 준비', '랄프 루프 준비해줘', 'ralph', '루프 돌려', '랄프 상태' 시 사용. '랄프로 … 개발해줘'처럼 개발 요청에 붙는 발화는 이 스킬이 아니라 /gx-dev·/gx-tdd의 --ralph 전환으로 라우팅한다 (skill-routing.md)."
 argument-hint: "[--status]"
 allowed-tools:
   - Read
@@ -36,7 +36,7 @@ Ralph Wiggum 루프 패턴의 진입 스킬. PRD의 수용 기준(AC)을 기계 
                                         (origin이 gx-tdd면 /gx-tdd, 그 외 /gx-dev)
 ```
 
-진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) gx-dev/gx-tdd의 phase-implement "구현 방식 확인" 질문에서 "ralph 무인 루프"를 선택하면 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출.
+진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) `/gx-dev` 또는 `/gx-tdd`에 `--ralph` 플래그(또는 "랄프로 …" 발화)를 주면 phase-implement 진입 시 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출 (기본 경로에서는 묻지 않는다 — 무인 루프는 명시적 opt-in).
 
 핵심 원리 (Ralph 루프): 진행 상태는 대화 이력이 아닌 **파일과 git 히스토리에 영속**하고, 매 반복은 **신선한 컨텍스트**로 시작하며, **verify가 backpressure**, **종료 계약**으로 루프를 탈출한다. 루프당 AC 1건만 처리한다.
 
@@ -84,7 +84,7 @@ args: "{원 요청}"
 
 **verify-status 전이 규칙 (주체: 반복 세션)**: 코드 변경 직후 `pending`으로 리셋(`verify-fingerprint`도 빈 값으로) → gx-verify 통과 시 `passed`로 전이하며 **verify가 보고한 지문을 `verify-fingerprint`에 함께 기록** → **커밋은 `passed` + 지문 일치 상태에서만 실행** (훅 G3가 커밋 시점에 둘 다 검사하는 최종 방어선이므로 순서를 지켜야 헤드리스에서 자기 차단되지 않는다 — 지문 기록 후 코드를 더 고치면 게이트가 다시 열린다). 지문 계산 규약은 gx-tdd SKILL.md의 "verify 지문" 섹션이 SSOT이며, 지문 필드가 없는 구 세션은 `verify-status`만으로 판정된다.
 
-**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시하고 표준(에이전트 기본) 모델로 반복한다 — eco 프로파일은 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
+**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시한다 — 에이전트(coder·red/green/refactor-coder)는 각자의 frontmatter 기본 모델로 디스패치되고, 반복 세션의 오케스트레이터 모델만 러너 환경변수 `GX_RALPH_MODEL`로 지정할 수 있다(미지정 시 CLI 기본 = 표준). eco 프로파일 자체는 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
 
 ### 종료 계약 (반복 세션 → 러너)
 
@@ -190,6 +190,7 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
      bash {러너 절대 경로}
 
    - 러너는 반복마다 새 claude 세션을 기동해 AC 1건씩 처리합니다 (최대 {max-iterations}회)
+   - 러너 종료 코드: 0 COMPLETE · 2 BLOCKED(반복 세션이 사유와 함께 중단 선언) · 3 종료 계약 미출력(세션 크래시·타임아웃 의심) · 4 NO_DRIFT(CONTINUE인데 원장·HEAD 무변화 2회 연속) · 5 반복 상한 소진 · 6 사전 조건 실패 · 7 NO_PROGRESS(커밋도 AC 완료도 없는 반복 4회 연속 — 단일 AC 3회 실패의 BLOCKED는 그대로 나오고, 미완료 AC가 여럿이면 전부 소진되기 전에 먼저 중단하며 원장 요약을 출력). 반복 세션 오케스트레이터 모델은 GX_RALPH_MODEL 환경변수로 지정할 수 있습니다 (기본 CLI 기본 모델). 러너는 config.json projectTypes의 test/build 명령 첫 토큰에서 --allowedTools prefix를 파생합니다
    - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세)
    - 중간 상태 확인: /oh-my-gx:gx-ralph --status
    - 루프 종료 후: {origin이 gx-tdd면 /gx-tdd --phase review, 그 외 /gx-dev --phase review} 로 리뷰 → --phase complete 로 인수·PR

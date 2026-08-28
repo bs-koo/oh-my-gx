@@ -14,3 +14,5 @@ jobs:
         run: bash scripts/lint-consistency.sh
       - name: 훅 회귀 테스트
         run: bash scripts/hook-tests.sh
+      - name: gx-ralph 러너 테스트
+        run: bash scripts/test-gx-ralph.sh

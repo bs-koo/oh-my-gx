@@ -34,7 +34,9 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S15 | 일반 프로젝트 | `/gx-dev --eco {기능}` (전체 모드 선택) | 에코 프로파일 적용 — state.md `model-profile: eco`, coder 디스패치에 `model: "sonnet"` 오버라이드 관찰 (design-critic은 선택적 단계 — **디스패치된 경우** 동일 오버라이드). **architect는 오버라이드 없이 opus 유지**, sonnet 에이전트 무변경. 게이트·Phase 구성은 표준과 동일 | phase-setup Step 1.5 → SKILL 공유 규칙 "모델 프로파일" |
 | S16 | config.json `modelProfile: "eco"` | `/gx-tdd {기능}` (질문 경로) / `--standard` 지정 / `--eco --standard` 동시 지정 | 질문 경로 → 모드·프로파일 질문이 **한 AskUserQuestion 호출**에 함께 제시되고 "에코 (현재 설정)"이 첫 옵션 — 답변이 최종 결정. `--standard` → 프로파일 질문 생략·이번 실행만 표준. `--eco --standard` 동시 → 충돌 에러 후 중단 | Step 3 2질문 + MODEL_PROFILE 결정 우선순위 + 플래그 충돌 검증 |
 | S17 | 일반 프로젝트 | `/gx-tdd --eco {기능}` (전체 모드 선택) | 에코 프로파일 적용 — state.md `model-profile: eco`. **design-critic·test-architect·quality-reviewer 디스패치에 `model: "sonnet"` 오버라이드 관찰** (design-critic·test-architect는 design phase, quality-reviewer는 review phase — 디스패치된 경우). **architect는 오버라이드 없이 opus 유지**. spec-reviewer·security-auditor·red/green/refactor-coder는 표준에서도 sonnet이라 무변경. RGR·verify·G-W-T·testability 게이트는 표준과 동일 | phase-setup Step 1.5 → SKILL 공유 규칙 "모델 프로파일" (gx-tdd 하향 3종) |
+| S18 | `projectTypes` 등록된 git 프로젝트 | `/gx-tdd 랄프로 알림 임계값 검증 개발해줘` | 모드 질문 생략(all 확정) — 프로파일 질문만 제시(미확정 시) → requirements·design 정상 → Step 0.5 기준선 게이트 통과 후 질문 없이 `Skill("oh-my-gx:gx-ralph")` 호출·파이프라인 종료. state.md `flags`에 `--ralph` 기록. "랄프로 이어서 해줘"는 RESUME이 우선하고 RALPH 무시 안내(flags에 미기록). design 승인 후 세션을 끊고 `--resume`하면 flags의 `--ralph`가 복원되어 Step 0.7에서 그대로 전환(대화형으로 바뀌면 회귀). `/gx-tdd --ralph 긴급 수정해줘`는 에러 후 중단 | 의도 파싱 RALPH 우선순위 규칙 + Step 3 모드 질문 생략 규칙 → phase-setup Step 7 flags → phase-implement Step 0.7 |
+| S19 ★ | 동일 | `/gx-tdd 알림 임계값 검증 개발해줘` (전체 모드 선택) | implement 진입 시 AskUserQuestion 없이 Step 1 태스크 분해로 직행 — "구현 방식" 질문이 뜨면 회귀 (v1.23.0 격하). gx-dev 전체 모드도 동일하게 설계 확정 후 바로 구현 | phase-implement Step 0.7 flags 판정 (dev: "gx-ralph 전환" 절) |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/17 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/19 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.

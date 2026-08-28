@@ -222,8 +222,9 @@ GX 사업본부 개발자를 위한 배포용 가이드. 설치부터 첫 PR까�
 | `--eco` / `--standard` | 모델 프로파일 지정 |
 | `--base <branch>` | 베이스 브랜치 지정 |
 | `--status` / `--resume` | 현황 조회 / 재개 |
+| `--ralph` | 설계 확정 후 구현을 gx-ralph 무인 루프로 전환 (전체 모드 전용 — `--core`·`--phase`·`--resume`과 충돌 시 에러, svn은 무시) |
 
-- **자연어로도 같은 효과**: "설계만 해줘"(`--phase design`), "리뷰만"(`--phase review`), "가볍게"·"긴급"(`--core`), "develop 브랜치 기반으로"(`--base develop`), "이어서 해줘"(`--resume`)
+- **자연어로도 같은 효과**: "설계만 해줘"(`--phase design`), "리뷰만"(`--phase review`), "가볍게"·"긴급"(`--core`), "develop 브랜치 기반으로"(`--base develop`), "이어서 해줘"(`--resume`), "랄프로 … 개발해줘"(`--ralph`)
 - **산출물**: `.dev/{브랜치명}/` 아래 `prd.md`·`design.md`·`state.md`·`summary.md`·`diff.txt` 등 (자동으로 `.gitignore`에 추가됨)
 
 #### `/gx-tdd` — TDD 개발 사이클
@@ -244,7 +245,7 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 | quality-reviewer | 코드 품질만 검증 (AC는 보지 않음) |
 
 - **verify 게이트**: 테스트 명령을 실제로 실행해 실패 0건을 확인해야 커밋·PR로 넘어갑니다. "아마 동작할 겁니다" 같은 추측성 완료 보고가 차단됩니다.
-- **인자**: `/gx-dev`와 동일한 플래그 체계(`--phase`, `--core`, `--eco`, `--base`, `--status`, `--resume`)를 지원합니다.
+- **인자**: `/gx-dev`와 동일한 플래그 체계(`--phase`, `--core`, `--eco`, `--base`, `--status`, `--resume`, `--ralph`)를 지원합니다.
 
 > **`/gx-dev`와 `/gx-tdd`의 차이는 세 곳뿐입니다.**
 > 1. **구현 방식** — dev는 coder가 한 번에 구현, tdd는 실패 테스트 → 최소 구현 → 정리를 사이클로 반복
@@ -257,12 +258,12 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 
 PRD의 수용 기준(AC)을 원장으로 변환하고, 외부 러너가 AC를 1건씩 무인으로 구현하도록 준비합니다. AC가 많고 자리를 비울 수 있을 때 쓰는 선택적 기능입니다.
 
-- **발화**: "랄프", "루프 돌려" / `/gx-dev`·`/gx-tdd`의 구현 진입 질문에서 "ralph 무인 루프" 선택
+- **발화**: "랄프", "루프 돌려"(직접 호출) / `/gx-dev --ralph …`·`/gx-tdd --ralph …` 또는 "랄프로 …"(파이프라인에서 전환 — 기본 경로는 묻지 않음)
 - **전제**: git 프로젝트, 작업 브랜치, **PRD 확정 필수**, `projectTypes`에 테스트 명령 등록
 - **실행**: 준비 후 터미널에서 `bash scripts/gx-ralph.sh` (기본 최대 10회 반복)
 - **상태 확인**: `/gx-ralph --status`, `.dev/{브랜치명}/progress.txt`
 - **복귀**: 루프 종료 후 `--phase review` → `--phase complete`로 리뷰·인수·PR을 대화형으로 마무리
-- **제약**: SVN 미지원, 모델 프로파일 미적용(항상 표준 모델로 반복)
+- **제약**: SVN 미지원, 모델 프로파일(eco) 미적용 — 반복 세션 오케스트레이터 모델만 `GX_RALPH_MODEL` 환경변수로 바꿀 수 있음
 
 > `gx-ralph-iterate`는 러너가 헤드리스로 호출하는 내부 스킬입니다. 사용자가 직접 부르지 않습니다.
 

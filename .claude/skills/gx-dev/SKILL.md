@@ -77,7 +77,8 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
-- 모드 관련 플래그가 없으면 Step 2로 진행한다 (`--eco`/`--standard`만 있는 경우에도 Step 2의 자연어 판정을 계속한다).
+- `--ralph`가 포함되면 **gx-ralph 전환 플래그**로 기록한다 (Step 2 "RALPH 우선순위 규칙"·Step 3 "모드 질문 생략 규칙" 참조). 전환 플래그는 모드 판정과 독립이므로 나머지 플래그·자연어 파싱을 계속 진행한다.
+- 모드 관련 플래그가 없으면 Step 2로 진행한다 (`--eco`/`--standard`/`--ralph`만 있는 경우에도 Step 2의 자연어 판정을 계속한다).
 
 **Step 2: 자연어 → 모드 판정**
 
@@ -92,6 +93,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
 | `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 알림 기능 개발해줘" |
+| `랄프로`, `ralph로`, `무인 루프로` | RALPH 추출 (gx-ralph 전환 플래그 — 프로파일과 독립) | "랄프로 알림 기능 개발해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — 설계서 기반 구현 단독 실행과 의도가 다르다).
 
@@ -99,9 +101,17 @@ BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 bra
 
 ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
 
+RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`가 포함되면 gx-ralph 전환 플래그를 기록한다 (`--ralph`와 동일. 단독 명사 `랄프`/`ralph`/`루프 돌려`는 gx-ralph 스킬 직접 호출 트리거와 충돌하므로, 일반 부사 `무인으로`는 도메인 문장 오탐 방지를 위해 — 예: "무인으로 운영되는 매장 재고 기능" — 매칭하지 않는다).
+
+**RALPH 우선순위 규칙** (출처에 따라 다르다 — 명시 플래그는 조용히 버리지 않는다):
+- **svn 우선 배제**: `.claude/config.json`의 `vcs`가 `svn`이면 출처와 무관하게 RALPH를 무시하고 1줄 안내한다 — "gx-ralph는 SVN 미지원입니다 — 진행 방식을 확인합니다." 이후 Step 3의 모드 질문을 정상 제시한다 (phase-setup Step 7의 svn 처리는 이 규칙의 2차 방어. config.json은 정적 파일이라 이 시점에 읽을 수 있다).
+- **자연어 RALPH + 선판정 모드**: Step 1·Step 2에서 STATUS/RESUME/CORE/PHASE 중 하나가 **이미 판정되었으면 RALPH를 무시**하고 1줄 안내한다 — "`랄프로`는 전체 모드 신규 실행에서만 유효합니다 — {판정된 모드}로 진행합니다." (예: "랄프로 이어서 해줘" → RESUME, "랄프로 긴급 수정해줘" → CORE).
+- **플래그 `--ralph` + 자연어 모드 트리거**: Step 2 자연어가 STATUS/RESUME/CORE/PHASE를 판정하면 **플래그 충돌과 동일하게 에러 후 중단**한다 — "`--ralph`는 전체 모드 전용입니다 — 요청의 '{매칭 키워드}'가 {판정된 모드}를 요구합니다. 플래그를 빼거나 문구를 바꿔주세요." (`--ralph --core`가 에러인데 `--ralph 빨리 고쳐`만 조용히 core로 가면 심각도가 어긋난다.)
+- 위에 걸리지 않고 모드가 미결정이면 Step 3으로 진행한다 — 거기서 RALPH가 모드를 확정한다.
+
 **Step 3: 모드·프로파일 확인 (위 패턴에 해당하지 않는 경우)**
 
-위 자동 판정 패턴에서 모드(STATUS/RESUME/CORE/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다. 오케스트레이터가 임의로 모드를 판정하지 않는다. 모델 프로파일이 미확정이면(플래그·자연어 없음) **같은 호출의 두 번째 질문**으로 함께 묻는다 — 한 번의 submit으로 두 축이 함께 결정된다.
+위 자동 판정 패턴에서 모드(STATUS/RESUME/CORE/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다 (예외: RALPH가 추출된 경우 — 아래 "모드 질문 생략 규칙"). 오케스트레이터가 임의로 모드를 판정하지 않는다. 모델 프로파일이 미확정이면(플래그·자연어 없음) **같은 호출의 두 번째 질문**으로 함께 묻는다 — 한 번의 submit으로 두 축이 함께 결정된다.
 
 ```
 AskUserQuestion(
@@ -129,6 +139,7 @@ AskUserQuestion(
 ```
 
 - **프로파일 질문 포함 규칙**: `--eco`/`--standard` 플래그나 자연어(`에코 모드`/`에코로`/`절약 모드`)로 이미 확정됐으면 두 번째 질문을 **생략**한다 (모드 질문만 제시). config.json `modelProfile`이 설정되어 있으면 해당 옵션을 **첫 번째에 배치**하고 label 끝에 `(현재 설정)`을 붙인다 — 이 질문의 답변이 이번 실행의 최종 결정이다.
+- **모드 질문 생략 규칙**: 모드가 미결정이고 RALPH가 추출된 상태이면 **모드를 `all`로 확정하고 모드 질문을 생략**한다 — 무인 루프는 PRD가 필수(gx-ralph Step 1-4)라 core와 양립하지 않으므로 선택지가 하나뿐이다. 프로파일이 미확정이면 프로파일 질문만 단독으로 제시한다. `intent-source`는 `flag` 또는 `natural-language`로 기록한다.
 - "전체 과정 진행" 선택 → 전체 모드(all) (전체 Phase 실행)
 - "핵심 과정만 진행" 선택 → 핵심 모드(core): setup → core → complete (설계/정식 리뷰 생략, 기록·Mechanical Gate·커밋/PR은 유지)
 - "표준"/"에코" 선택 → `MODEL_PROFILE`로 확정 (phase-setup Step 1.5가 결정을 확정하고, Step 7이 state.md `model-profile`에 기록)
@@ -151,6 +162,7 @@ intent-source: flag | natural-language | user-selection
 - `--base <branch>`: 베이스 브랜치 지정
 - `--status`: 현재 파이프라인 진행 상태 조회
 - `--resume`: 이전 파이프라인 재개
+- `--ralph`: 전체 모드 implement 진입 시 gx-ralph(무인 루프)로 전환 — 자연어 `랄프로`와 동일. `--core`·`--phase`·`--resume`·`--status`와 동시 사용 불가(에러), 자연어 모드 트리거(`긴급`·`구현만` 등)와 충돌해도 에러. svn 프로젝트에서는 무시하고 안내 (RALPH 우선순위 규칙)
 
 ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 "구현할 기능이나 수정할 버그를 설명해주세요. 예: `/gx-dev 로그인 기능 추가해줘`"
@@ -231,7 +243,7 @@ all:  setup → requirements → design → implement → review → complete
 
 > **CRITICAL: Phase 스킵 절대 금지.**
 > "요구사항이 명확하다", "범위가 작다", "이미 확정되어 있다", "간단하다" 등 어떤 이유로도 Phase를 건너뛰지 않는다.
-> Phase를 건너뛸 수 있는 조건은 핵심 모드(사용자가 명시적으로 선택한 경량 경로 — 기록·Gate는 유지), `--phase` 플래그, 그리고 phase-implement의 "구현 방식 확인"에서 사용자가 **ralph 무인 루프**를 선택한 경우(gx-ralph 호출 후 종료 — 이후 Phase는 루프 종료 후 `--phase review`/`--phase complete`로 재개)뿐이다.
+> Phase를 건너뛸 수 있는 조건은 핵심 모드(사용자가 명시적으로 선택한 경량 경로 — 기록·Gate는 유지), `--phase` 플래그, 그리고 `--ralph`(플래그 또는 자연어 `랄프로` 등)로 phase-implement에서 **gx-ralph로 전환**한 경우(gx-ralph 호출 후 종료 — 이후 Phase는 루프 종료 후 `--phase review`/`--phase complete`로 재개)뿐이다.
 > 이 규칙을 위반하면 사용자가 기대하는 PRD, 설계서, 리뷰가 누락되어 품질 사고가 발생한다.
 
 ### Phase 실행 루프
@@ -440,7 +452,7 @@ dev-dir: .dev/JIRA-123
 project-type: java-spring
 project-root: ./
 args: "[JIRA-123] 로그인 기능 추가"
-flags: --core
+flags: --core              # 의도 파싱 플래그. 자연어 RALPH 추출도 --ralph로 정규화해 기록 (phase-setup Step 7) — phase-implement 전환 절의 판정 키
 started: 2026-02-17T10:30:00
 current-step: "자기점검"
 phases:
@@ -653,6 +665,7 @@ AskUserQuestion(
 - `--eco`와 `--standard`는 **동시 사용 불가**. 둘 다 있으면: "`--eco`와 `--standard`는 동시에 사용할 수 없습니다." 에러 후 중단.
 - `--resume`과 `--phase`, `--core`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
+- `--ralph`와 `--core`, `--phase`, `--resume`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--ralph`는 전체 모드 전용입니다 — `--core`/`--phase`/`--resume`/`--status`와 함께 쓸 수 없습니다." 에러 후 중단.
 
 ## Phase 선택 (--phase 플래그)
 

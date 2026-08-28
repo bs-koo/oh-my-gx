@@ -531,7 +531,7 @@ PRD에서 PR까지 전체 개발 파이프라인을 에이전트 팀으로 실�
 | setup | (오케스트레이터) | 환경 준비, 브랜치 생성, 코드 맵 |
 | requirements | product-owner | PRD 작성 (Q&A 루프) |
 | design | architect + design-critic | 설계 (Q&A 루프) |
-| implement | coder + qa-manager | 구현 + 자기점검. 진입 시 "대화형 구현 vs ralph 무인 루프"를 1회 확인 — 전환 시 §4.13으로 이어짐 (svn·`--phase`/`--resume`은 질문 생략) |
+| implement | coder + qa-manager | 구현 + 자기점검. `--ralph`(또는 "랄프로 …")로 시작한 실행만 진입 시 기준 GREEN 확인 후 §4.13으로 전환 — 기본 경로는 묻지 않음 (svn·`--phase`/`--resume`·핵심 모드는 무시) |
 | core | (오케스트레이터, 규모에 따라 coder) | AC 작성·확인 → 구현 → Mechanical Gate(빌드+테스트 필수) → 기록. 핵심 모드 전용 |
 | review | qa-manager + security-auditor | 코드 리뷰 + 보안 감사 (병렬) |
 | complete | product-owner | 인수 검증 → 커밋 → PR. 핵심 모드는 product-owner 대신 AC 자가 검증 |
@@ -675,7 +675,7 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 |------|------|
 | 트리거 | "TDD로", "테스트 먼저", "RED-GREEN-REFACTOR" 등 명시적 TDD 키워드 |
 | 설계 추가 게이트 | test-architect가 testability score(≥7)를 판정 |
-| 무인 루프 전환 | 기준선 게이트(Step 0.5) 통과 후 "대화형 RGR vs ralph 무인 루프"를 1회 확인(Step 0.7) — 전환 시 루프 안에서도 RGR 트리오가 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
+| 무인 루프 전환 | `--ralph`(또는 "랄프로 …")로 시작한 실행만 기준선 게이트(Step 0.5) 통과 후 전환(Step 0.7) — 기본 경로는 묻지 않음. 루프 안에서도 RGR 트리오가 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
 | verify 게이트 | 테스트 직접 실행 + 0 failures 증거 없이는 commit/PR 진입 불가 (훅이 최종 방어) |
 | 핵심 모드(core) | gx-dev 핵심 모드와 달리 **RGR·verify·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로 (Iron Law 불변). 생략은 design(testability)·정식 review뿐이며, AC 작성이 product-owner 대신 오케스트레이터 직접(ac.md). 테스트 강제 없는 경량 경로가 필요하면 gx-dev 핵심 모드 사용 |
 | 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·quality-reviewer를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
@@ -701,16 +701,17 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 
 ### 4.13 `/gx-ralph` -- 루프 엔지니어링 (무인 반복)
 
-PRD 확정 후 구현 구간을 무인 루프로 돌립니다. `/gx-ralph`가 PRD의 수용 기준(AC)을 원장(`.dev/{branch-slug}/ac-status.json`)으로 변환하면, 외부 러너(`scripts/gx-ralph.sh`)가 반복마다 **새 claude 세션**을 기동해 AC 1건 구현 → `verify --non-interactive` → 커밋을 반복합니다. 종료 계약(`<ralph>COMPLETE|CONTINUE|BLOCKED</ralph>`)으로 루프를 탈출하며, 리뷰·인수·PR은 사용자 복귀 후 대화형으로 진행합니다.
+PRD 확정 후 구현 구간을 무인 루프로 돌립니다. `/gx-ralph`가 PRD의 수용 기준(AC)을 원장(`.dev/{branch-slug}/ac-status.json`)으로 변환하면, 외부 러너(`scripts/gx-ralph.sh`)가 반복마다 **새 claude 세션**을 기동해 AC 1건 구현 → `verify --non-interactive` → 커밋을 반복합니다. 종료 계약(`<ralph>COMPLETE|CONTINUE|BLOCKED</ralph>`)으로 루프를 탈출하며, 리뷰·인수·PR은 사용자 복귀 후 대화형으로 진행합니다. v1.23.0부터 기본 경로에서는 전환을 묻지 않습니다 — 무인 루프는 명시적 opt-in입니다.
 
 | 항목 | 설명 |
 |------|------|
-| 트리거 | "랄프", "ralph", "루프 돌려" · dev/tdd 구현 진입 질문에서 "ralph 무인 루프" 선택 시 자동 전환 |
+| 트리거 | "랄프", "ralph", "루프 돌려"(직접 호출) · `/gx-dev --ralph`·`/gx-tdd --ralph` 또는 "랄프로 …" 발화(파이프라인에서 전환 — 기본 경로에서는 묻지 않음) |
 | 선행 조건 | 승인된 PRD (`/gx-dev`·`/gx-tdd`로 확정), git 작업 브랜치, `projectTypes` verify 명령 감지 가능 (svn·보호 브랜치·verify 명령 미감지·lock 존재 시 진입 차단) |
-| 안전장치 | 최대 반복(기본 10) · 반복당 타임아웃(기본 30분) · 무변화 2회 감지 · lock · AC별 3회 시도 상한 · 매 반복 verify backpressure |
+| 안전장치 | 최대 반복(기본 10) · 반복당 타임아웃(기본 30분) · 무변화 2회 감지(exit 4) · 무진전 4회 감지(exit 7 — 커밋도 AC 완료도 없는 반복. 단일 AC의 3회 실패 BLOCKED는 그대로 나오고, 미완료 AC가 여럿이면 전부 소진되기 전에 먼저 중단하며 원장 요약(id·attempts)을 출력) · lock · AC별 3회 시도 상한 · 매 반복 verify backpressure |
 | 내부 스킬 | `/gx-ralph-iterate` — 러너가 헤드리스로 호출하는 반복 1회 실행 스킬 (사용자 직접 호출 비대상) |
 | 상태 확인 | `/gx-ralph --status`, `.dev/{branch-slug}/progress.txt` · `iter-{N}.log` |
 | 복귀 경로 | 루프 종료 후 origin 파이프라인으로 복귀 — gx-tdd 출발이면 `/gx-tdd --phase review`, 그 외 `/gx-dev --phase review` → `--phase complete` |
+| 환경변수 | `GX_RALPH_MODEL` — 반복 세션 오케스트레이터 모델 (기본 미지정 = CLI 기본. 에이전트는 자기 frontmatter 모델 유지) · `GX_RALPH_ITER_TIMEOUT` — 반복당 타임아웃 초 · `GX_RALPH_CLAUDE_CMD` — claude CLI 명령 |
 
 ---
 
@@ -813,3 +814,5 @@ SVN 환경에서는 일부 기능이 제한됩니다.
 | 빌드 타임아웃 (5분) | 빌드가 너무 오래 걸림 | 빌드 단계 건너뜀 (자동) |
 | `--core와 --phase는 동시에 사용할 수 없습니다` | 플래그 충돌 | 하나만 사용 |
 | `--eco와 --standard는 동시에 사용할 수 없습니다` | 프로파일 플래그 충돌 | 하나만 사용 |
+| `--ralph는 전체 모드 전용입니다` | `--ralph`가 `--core`/`--phase`/`--resume`/`--status` 또는 자연어 모드 트리거(`긴급`·`구현만` 등)와 충돌 | 플래그를 빼거나 문구를 바꿔 전체 모드 신규 실행으로 |
+| `gx-ralph는 SVN 미지원입니다` | svn 프로젝트에서 `--ralph`/`랄프로` 사용 | 무시되고 모드 질문이 정상 제시됨 — 대화형으로 진행 |

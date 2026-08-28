@@ -81,31 +81,18 @@ AskUserQuestion(
 
 이 게이트는 모노레포 복합 명령(`references/frontend-testing.md` §7)이 등록되어 있어도 동작한다 — 명령이 등록되었는지가 아니라 **그 레이어에 실행 가능한 테스트가 있는지**를 본다.
 
-## Step 0.7: 구현 방식 확인 (ralph 무인 루프 전환)
+## Step 0.7: gx-ralph 전환 (--ralph 전용)
 
-기준선 게이트 통과 직후, RGR 사이클 진입 전에 구현 방식을 사용자에게 **1회** 확인한다. 기준선 게이트를 먼저 통과시키는 이유: 깨진 기준 위에서 무인 루프를 돌리면 verify가 매 반복 차단되어 루프가 즉시 BLOCKED로 낭비된다 (warnings-baseline도 이 시점에 기록되어 루프의 verify가 신규 경고를 비교할 수 있다).
+state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 직행한다** — 기본 경로에서는 묻지 않는다 (v1.23.0에서 진입 질문을 제거했다. 무인 루프는 명시적 opt-in — `--ralph` 플래그 또는 "랄프로 …" 발화 — 으로만 진입하며, 의도 파싱이 phase-setup Step 7을 통해 `flags`에 정규화 기록한다). 있으면 기준선 게이트 통과 직후, RGR 사이클 진입 전에 아래 전환 절차를 실행한다. 기준선 게이트를 먼저 통과시키는 이유: 깨진 기준 위에서 무인 루프를 돌리면 verify가 매 반복 차단되어 루프가 즉시 BLOCKED로 낭비된다 (warnings-baseline도 이 시점에 기록되어 루프의 verify가 신규 경고를 비교할 수 있다).
 
-**질문 생략 조건** (하나라도 해당하면 질문 없이 Step 1로 직행):
+**방어 조건** (`--ralph`가 있어도 하나라도 해당하면 무시하고 "gx-ralph 전환을 건너뜁니다 — {사유}" 1줄 안내 후 Step 1로 직행. 의도 파싱의 RALPH 우선순위 규칙이 정상 경로에서 이 조합을 막지만, state.md를 손으로 고친 경우 등을 방어한다):
 - 핵심 모드 (경량 경로 — PRD가 없어 gx-ralph 진입 조건을 충족하지 않음)
-- `--phase implement` 단독 실행 또는 `--resume` 재진입 (진행 방식 의도가 이미 명시됨)
+- `--phase implement` 단독 실행 (구현 단독 실행 의도가 명시됨)
 - `VCS_TYPE`이 `svn` (gx-ralph 미지원)
 
-```
-AskUserQuestion(
-  questions: [{
-    question: "기준선 게이트를 통과했습니다. RGR 구현을 어떻게 진행할까요?",
-    header: "구현 방식",
-    options: [
-      { label: "대화형 RGR (Recommended)", description: "이 세션에서 RED→GREEN→REFACTOR 사이클을 바로 진행합니다 (기존 방식)" },
-      { label: "ralph 무인 루프", description: "외부 러너가 AC 1건 단위로 무인 반복합니다. 루프 안에서도 RGR 트리오가 유지됩니다 (origin: gx-tdd)" }
-    ],
-    multiSelect: false
-  }]
-)
-```
+`--resume` 재진입은 방어 조건이 **아니다** — 재개된 state.md의 `flags`에 `--ralph`가 있으면 그대로 전환한다. PRD·설계 승인 도중 세션이 유실된 정당한 opt-in을 재개 시 조용히 대화형으로 바꾸지 않는다 (구 버전 state.md에는 `--ralph`가 존재하지 않으므로 별도 방어가 필요 없다).
 
-- **"대화형 RGR"** → Step 1로 진행한다.
-- **"ralph 무인 루프"** → `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일을 아직 지원하지 않습니다 — 반복은 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
+**전환 절차**: `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
 
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 

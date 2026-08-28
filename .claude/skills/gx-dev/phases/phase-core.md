@@ -3,7 +3,7 @@
 소형 변경용 경량 경로. 에이전트 팀 대신 오케스트레이터가 직접 수행하되, **기록(ac.md·summary.md)과 Mechanical Gate는 생략하지 않는다.** 이 둘이 "그냥 프롬프팅"과 이 파이프라인의 차이다.
 
 - 이 phase는 핵심 모드(`mode: core`)에서만 진입한다. 전체 모드는 requirements → design → implement → review를 따른다.
-- ralph 무인 루프 전환 질문은 두지 않는다 — 핵심 모드에는 PRD가 없어 gx-ralph 진입 조건(PRD 필수)을 충족하지 않는다.
+- `--ralph`는 핵심 모드에서 무시된다 — 핵심 모드에는 PRD가 없어 gx-ralph 진입 조건(PRD 필수)을 충족하지 않는다. 의도 파싱이 RALPH 추출 시 모드를 all로 확정하므로 정상 경로에서는 이 조합에 도달하지 않는다.
 
 ## Step 0: AC 작성 (오케스트레이터 직접, 에이전트 디스패치 없음)
 

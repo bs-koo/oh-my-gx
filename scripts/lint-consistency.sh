@@ -13,7 +13,7 @@
 #  8. RGR 보조 스킬 allowed-tools Skill 선언 (본문이 Skill 체이닝 지시)
 #  9. gx-humanizer 에이전트 접두사 (bare humanizer-* 금지)
 # 10. force-push deny 패턴 bare 형태 커버 (settings.json)
-# 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿)
+# 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿·러너 allowedTools 동기)
 # 12. gx-dev CORE 모드 계약 (Gate 필수·산출물 계약·구 버전 방어·폐지 모드 잔존 금지)
 # 13. gx-tdd CORE 모드 계약 (RGR·G-W-T 게이트 유지·긴급 감사·구 버전 방어·폐지 모드 잔존 금지)
 # 14. 모델 프로파일(standard/eco) 계약 (config 키·기록 규칙·eco 오버라이드·결정 로직·setup 단계)
@@ -199,16 +199,42 @@ done
 if grep -rn 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" >/dev/null 2>&1; then
   fail "이중 접두사 템플릿(AC-{id}) 잔존: $(grep -l 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" | tr '\n' ' ')"
 fi
-# dev/tdd 구현 진입 시 무인 루프 전환 질문이 두 파이프라인 모두에 존재 (드리프트 방지)
+# dev/tdd phase-implement에 gx-ralph 전환 절(--ralph opt-in)이 두 파이프라인 모두에 존재 (드리프트 방지)
+# + 폐지된 진입 질문이 되살아나지 않도록 "구현 방식 확인" 문구 잔존 금지 (v1.23.0 격하)
+grep -q '^## Step 0.7: gx-ralph 전환 (--ralph 전용)' .claude/skills/gx-tdd/phases/phase-implement.md \
+  || fail "gx-tdd phase-implement Step 0.7 전환 절 헤더 누락"
+grep -q '^## gx-ralph 전환 (--ralph 전용)' .claude/skills/gx-dev/phases/phase-implement.md \
+  || fail "gx-dev phase-implement 전환 절 헤더 누락"
 for f in .claude/skills/gx-dev/phases/phase-implement.md .claude/skills/gx-tdd/phases/phase-implement.md; do
-  grep -q "ralph 무인 루프" "$f" || fail "구현 방식 확인(ralph 무인 루프 전환) 누락: $f"
+  grep -q '`--resume` 재진입은 방어 조건이 \*\*아니다\*\*' "$f" || fail "전환 절 --resume 비방어 규칙 누락: $f"
 done
+# dev/tdd 쌍둥이 opt-in 규칙 문구 대조 (의도 파싱) + phase-setup flags 기록 기준
+for key in 'RALPH 추출:' 'RALPH 우선순위 규칙' 'svn 우선 배제' '모드 질문 생략 규칙' '`--ralph`와 `--core`'; do
+  for f in .claude/skills/gx-dev/SKILL.md .claude/skills/gx-tdd/SKILL.md; do
+    grep -qF "$key" "$f" || fail "RALPH 쌍둥이 규칙($key) 누락: $f"
+  done
+done
+for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phases/phase-setup.md; do
+  grep -q '무시된 RALPH는 기록하지 않는다' "$f" || fail "phase-setup Step 7 --ralph 기록 기준(무시된 RALPH 미기록) 누락: $f"
+done
+# 폐지된 진입 질문 문구 잔존 금지 — 스킬 디렉토리 전체 ([12]/[13]과 같은 관례)
+if grep -rl "구현 방식 확인" .claude/skills >/dev/null 2>&1; then
+  fail "폐지된 ralph 진입 질문(구현 방식 확인) 잔존: $(grep -rl '구현 방식 확인' .claude/skills | tr '\n' ' ')"
+fi
+# skill-routing이 '랄프로 …' 발화를 --ralph 전환으로 라우팅 (gx-ralph 직접 호출로 새지 않도록)
+grep -q -- '--ralph' .claude/rules/skill-routing.md || fail "skill-routing에 --ralph 전환 라우팅 행 누락"
+# 러너 --allowedTools ↔ gx-ralph-iterate allowed-tools 집합 동기 — 러너만 누락되면 헤드리스 세션이
+# 해당 test 명령을 실행하지 못해 매 반복 verify 차단 → attempts 소진 → BLOCKED로 낭비된다 (v1.21.0 회귀)
+TOOLS_DIFF=$(diff <(sed -n '/^allowed-tools:/,/^---/p' "$RALPH_ITER" | tr -d '\r' | grep '^  - ' | sed 's/^  - //' | sort) \
+                  <(grep '^ALLOWED_TOOLS=' "$RALPH_RUNNER" | sed 's/^ALLOWED_TOOLS="//; s/"$//' | tr ',' '\n' | sort) \
+             | grep '^[<>]' | tr '\n' ' ')
+[ -z "$TOOLS_DIFF" ] || fail "러너 ALLOWED_TOOLS가 gx-ralph-iterate allowed-tools와 불일치 (<: iterate에만, >: 러너에만): $TOOLS_DIFF"
 # 복귀 안내 origin 분기 — gx-tdd 출발 루프가 gx-dev 리뷰(qa-manager)로 유도되지 않도록
 grep -q '/gx-tdd --phase review' "$RALPH_ENTRY" \
   || fail "복귀 안내 origin 분기(/gx-tdd --phase review) 누락: $RALPH_ENTRY"
 grep -q 'origin:' "$RALPH_RUNNER" \
   || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
-[ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿 확인"
+[ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿·러너 allowedTools 동기 확인"
 
 echo "[12/24] gx-dev CORE 모드 계약 정합"
 GXDEV=.claude/skills/gx-dev/SKILL.md
