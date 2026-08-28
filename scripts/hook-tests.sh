@@ -33,6 +33,14 @@ payload fp4 "git push origin +feat/x:main"; check "+refspec 강제푸시 차단"
 payload ok1 "git push origin feat/x"; check "정상 push 통과" ok1 PASS
 payload ok2 "rm -f tmp.txt";      check "무관한 -f 통과" ok2 PASS
 
+# Codex 하네스: 셸 도구명이 exec_command/local_shell로 달라도 판정은 같아야 한다.
+# 가드는 tool_input.command만 읽고 tool_name은 보지 않는다 — tool_name 기반 분기가
+# 생기면 이 두 케이스가 잡는다. (.claude/rules/harness-codex.md 참조)
+printf '{"tool_name":"exec_command","tool_input":{"command":"%s"}}' "$FORCE" > "$TMP/cx1.json"
+check "Codex exec_command에서도 차단" cx1 deny
+printf '{"tool_name":"local_shell","tool_input":{"command":"git push origin feat/x"}}' > "$TMP/cx2.json"
+check "Codex local_shell 정상 push 통과" cx2 PASS
+
 echo "[2/5] 추출 견고성 (오탐 방어)"
 printf '{"tool_input":{"command":"echo hello","description":"%s 관련 안내"}}' "$SVN_C" > "$TMP/fp3.json"
 check "description 오탐 없음" fp3 PASS

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "exec_command|local_shell|shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT:-.}/.claude/hooks/pre-tool-guard.sh",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}
