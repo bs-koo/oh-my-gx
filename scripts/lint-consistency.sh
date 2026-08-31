@@ -516,6 +516,15 @@ grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복
 grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
 grep -q '\.dev/plan\.md' .claude/skills/gx-context/SKILL.md || fail "gx-context에 plan.md 생성 절 누락"
 grep -q '예약 도메인' .claude/skills/gx-context/SKILL.md || fail "gx-context에 예약 도메인 규칙 누락"
+# 픽스처로 파서를 검증한다 — plan.md 자체는 소비 프로젝트의 런타임 파일이라 이 저장소에 없다
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/plan-lint.py tests/fixtures/plan-valid.md >/dev/null 2>&1     || fail "정상 픽스처가 plan-lint를 통과하지 못함"
+  for bad in cycle badref; do
+    python3 scripts/plan-lint.py "tests/fixtures/plan-$bad.md" >/dev/null 2>&1       && fail "오류 픽스처 plan-$bad.md를 검출하지 못함"
+  done
+else
+  echo "  (python3 없음 — plan-lint 픽스처 검사 건너뜀)"
+fi
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
