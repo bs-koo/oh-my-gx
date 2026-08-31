@@ -516,9 +516,21 @@ grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복
 grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
 grep -q '\.dev/plan\.md' .claude/skills/gx-context/SKILL.md || fail "gx-context에 plan.md 생성 절 누락"
 grep -q '예약 도메인' .claude/skills/gx-context/SKILL.md || fail "gx-context에 예약 도메인 규칙 누락"
+# 소비 프로젝트의 cwd에는 scripts/가 없어 plan-lint를 실행할 수 없고, 번들 경로 규약([15/25])이
+# ${CLAUDE_PLUGIN_ROOT} 조립을 금지한다 — 그래서 무결성 확인은 스킬이 직접 수행해야 한다.
+# 이 항목들이 빠지면 잘못된 계획이 아무 검증 없이 의존 확인의 근거가 된다.
+grep -q '이 시점이 유일한 검증 지점' .claude/skills/gx-context/SKILL.md \
+  || fail "gx-context 저장 후 검증 절 누락"
+for item in 'ID가 중복되지 않는다' '표에 실제로 있다' '서로 물려 순환하지 않는다' '의존하는 행이 없다'; do
+  grep -qF "$item" .claude/skills/gx-context/SKILL.md \
+    || fail "plan.md 무결성 확인 항목 누락: $item"
+done
 # 픽스처로 파서를 검증한다 — plan.md 자체는 소비 프로젝트의 런타임 파일이라 이 저장소에 없다
 if command -v python3 >/dev/null 2>&1; then
-  python3 scripts/plan-lint.py tests/fixtures/plan-valid.md >/dev/null 2>&1     || fail "정상 픽스처가 plan-lint를 통과하지 못함"
+  # twotables: 의존 근거 각주 등 표가 둘 이상이어도 첫 표만 읽어야 한다
+  for good in valid twotables; do
+    python3 scripts/plan-lint.py "tests/fixtures/plan-$good.md" >/dev/null 2>&1     || fail "정상 픽스처 plan-$good.md가 plan-lint를 통과하지 못함"
+  done
   for bad in cycle badref; do
     python3 scripts/plan-lint.py "tests/fixtures/plan-$bad.md" >/dev/null 2>&1       && fail "오류 픽스처 plan-$bad.md를 검출하지 못함"
   done
@@ -530,6 +542,12 @@ test -f .claude/hooks/capture-decision.sh || fail "capture-decision.sh 누락"
 test -f .claude/hooks/capture_decision.py || fail "capture_decision.py 누락"
 grep -q 'AskUserQuestion' .claude-plugin/plugin.json || fail "Claude Code 매니페스트에 PostToolUse 미등록"
 grep -q 'AskUserQuestion' hooks.json || fail "Codex hooks.json에 PostToolUse 미등록"
+# matcher가 받는 도구명과 스크립트가 처리하는 도구명은 같은 집합이어야 한다 —
+# matcher만 넓히면 훅은 발화하는데 기록은 남지 않는다 (Codex request_user_input 사례)
+for t in AskUserQuestion request_user_input; do
+  grep -q "$t" hooks.json                                 || fail "hooks.json matcher에 $t 누락"
+  grep -q "\"$t\"" .claude/hooks/capture_decision.py      || fail "capture_decision.py CAPTURED_TOOLS에 $t 누락"
+done
 grep -q 'decisions.md merge=union' .gitattributes || fail ".gitattributes에 decisions.md union 머지 미등록"
 # --- 구조·순서 검사 (문구 존재만으로는 잡히지 않는 결함들) ---
 
@@ -584,6 +602,41 @@ grep -q '판정 기준을 함께 안내' .claude/skills/gx-context/SKILL.md   ||
 for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
   grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$f"     || fail "계획 존재 시 요청 대조 안내 누락: $f"
   grep -q '진행할 작업 확인' "$f" || fail "작업 확정 후 사용자 표시 누락: $f"
+done
+# S10~S13: 착수 기록의 실행 시점. 3.0.5 시점의 현재 브랜치는 아직 베이스 브랜치이므로
+# (Step 2.2가 checkout한다) 여기서 커밋하면 훅 G1이 deny한다 — 기입·커밋은 작업 브랜치를
+# 만든 뒤 Step 5.5의 몫이고, 그 사이 공백은 원격 브랜치 조회로 메운다.
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$f")
+  printf '%s' "$SEC" | grep -q '메시지로 커밋' \
+    && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $f"
+  printf '%s' "$SEC" | grep -q 'ls-remote' \
+    || fail "3.0.5에 원격 브랜치 중복 감지 누락: $f"
+  S5=$(grep -n '^## Step 5:' "$f" | head -1 | cut -d: -f1)
+  S55=$(grep -n '^## Step 5\.5:' "$f" | head -1 | cut -d: -f1)
+  S6=$(grep -n '^## Step 6:' "$f" | head -1 | cut -d: -f1)
+  if [ -z "$S5" ] || [ -z "$S55" ] || [ -z "$S6" ] || [ "$S55" -lt "$S5" ] || [ "$S55" -gt "$S6" ]; then
+    fail "Step 5.5(착수 기록)가 Step 5와 Step 6 사이에 없음: $f"
+  fi
+  grep -q '베이스 브랜치로 보내지 않는다' "$f" \
+    || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $f"
+done
+# 착수·완료가 같은 층위여야 한다 — 한쪽만 베이스로 보내면 가시성이 어긋난다
+for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
+  grep -q '현재 작업 브랜치로' "$f" || fail "완료 커밋의 push 대상 명시 누락: $f"
+done
+grep -q '베이스 브랜치로 바로 반영' README.md && fail "README에 폐기된 베이스 push 서술 잔존"
+# 되돌림은 완료를 뒤집는 순간(state.md Write)에만 할 수 있다. phase-complete에 두면
+# 그 시점에는 재진입 사실을 알 수 없어 규칙이 영영 실행되지 않는다.
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  grep -q '작업 계획 되돌림' "$f" || fail "Step 7에 plan.md 되돌림 규칙 누락: $f"
+done
+for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
+  grep -q '되돌림은 여기서 하지 않는다' "$f" || fail "phase-complete에 되돌림 위치 포인터 누락: $f"
+done
+# 자기 재개를 타인의 착수로 오인하지 않아야 한다 (--resume·재실행에서 매번 경고가 뜬다)
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  grep -q '자기 재개' "$f" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $f"
 done
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 

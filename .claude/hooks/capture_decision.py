@@ -14,6 +14,10 @@ import os
 import subprocess
 import sys
 
+# hooks.json·plugin.json의 PostToolUse matcher와 같은 집합이어야 한다. matcher만 넓히고
+# 여기를 좁혀두면 Codex의 request_user_input이 matcher에는 걸리고 기록은 남지 않는다.
+CAPTURED_TOOLS = ("AskUserQuestion", "request_user_input")
+
 
 def load_payload():
     """훅 페이로드를 읽는다.
@@ -62,9 +66,15 @@ def render(payload):
         options = meta.get("options") or []
         if options:
             out.append("선택지:\n\n")
+            matched = False
             for opt in options:
-                mark = "**→**" if opt.get("label") == answer else "-"
-                out.append(f"{mark} {opt.get('label')} — {opt.get('description', '')}\n")
+                chosen = opt.get("label") == answer
+                matched = matched or chosen
+                out.append(f"{'**→**' if chosen else '-'} {opt.get('label')} — {opt.get('description', '')}\n")
+            if not matched:
+                # Other 자유 입력·다중 선택은 어떤 label과도 일치하지 않는다. 표식이
+                # 통째로 빠지면 무엇을 골랐는지가 선택지 목록과 연결되지 않는다.
+                out.append(f"**→** (직접 입력) {answer}\n")
             out.append("\n")
         out.append(f"**A.** {answer}\n")
         note = (notes.get(question) or {}).get("notes")
@@ -75,7 +85,7 @@ def render(payload):
 
 def main():
     payload = load_payload()
-    if not payload or payload.get("tool_name") != "AskUserQuestion":
+    if not payload or payload.get("tool_name") not in CAPTURED_TOOLS:
         return 0
 
     block = render(payload)
