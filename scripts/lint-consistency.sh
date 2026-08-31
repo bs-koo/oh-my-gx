@@ -565,6 +565,11 @@ for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phase
   grep -q '3.0.5에서 이미 결정한 브랜치명을 그대로 쓴다' "$f"     || fail "Step 5에 --work 브랜치 재사용 분기 누락: $f"
 done
 
+# S6: 작업 ID는 자연어로도 진입해야 한다 (플래그 암기를 강요하지 않는다)
+for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
+  grep -q 'WORK 추출' "$f" || fail "자연어 작업 ID 추출 규칙 누락: $f"
+done
+grep -q 'W01 시작해줘' .claude/rules/skill-routing.md || fail "skill-routing에 작업 ID 자연어 라우팅 미등록"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
