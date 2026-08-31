@@ -24,7 +24,8 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 HEADER = ["ID", "작업", "도메인", "요구사항", "의존", "작업 위치", "상태"]
-STATES = {"대기", "진행", "완료"}
+# 폐기: 요구사항이 삭제되어 할 일이 없어진 작업. 행을 지우지 않고 상태로 남긴다
+STATES = {"대기", "진행", "완료", "폐기"}
 ID_RE = re.compile(r"^W\d{2}$")
 
 
@@ -85,6 +86,15 @@ def check(rows):
         for target in d:
             if target not in known:
                 errors.append(f"{r['ID']}: 의존 대상 {target}이(가) 표에 없습니다")
+
+    # 폐기된 작업에 의존하면 그 작업은 영원히 시작할 수 없다
+    discarded = {r["ID"] for r in rows if r["상태"] == "폐기"}
+    for r in rows:
+        if r["상태"] == "폐기":
+            continue
+        for target in deps.get(r["ID"], []):
+            if target in discarded:
+                errors.append(f"{r['ID']}: 폐기된 작업 {target}에 의존한다 (의존을 정리하거나 대체 작업을 지정할 것)")
 
     # 순환 — 실존하는 의존만 대상으로 DFS
     color = {}  # 0=미방문, 1=탐색중, 2=완료

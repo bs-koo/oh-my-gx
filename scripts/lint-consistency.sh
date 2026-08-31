@@ -573,6 +573,11 @@ grep -q 'W01 시작해줘' .claude/rules/skill-routing.md || fail "skill-routing
 # S7: 재계획 시 기존 행을 보존해야 한다. 저장 절에 신규/기존 분기가 없으면
 # 모델이 Write로 통째로 갈아엎어 완료·진행 중 상태가 사라진다.
 grep -q '기존 파일이 있으면' .claude/skills/gx-context/SKILL.md   || fail "plan.md 저장 절에 신규/기존 분기 누락 (재계획 시 덮어쓰기 위험)"
+# S8: 재계획은 "대기는 재조정" 한 줄로 끝나면 안 된다. 겹침·불필요 판정과
+# 폐기 처리가 없으면 낡은 작업이 계획에 남아 의존 확인의 근거가 된다.
+grep -q '겹침' .claude/skills/gx-context/SKILL.md   || fail "재계획에 기존 작업 겹침 판정 누락"
+grep -q '폐기' .claude/skills/gx-context/SKILL.md   || fail "재계획에 불필요해진 작업 처리 누락"
+grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 폐기 미등록"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
