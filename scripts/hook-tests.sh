@@ -41,6 +41,21 @@ check "Codex exec_command에서도 차단" cx1 deny
 printf '{"tool_name":"local_shell","tool_input":{"command":"git push origin feat/x"}}' > "$TMP/cx2.json"
 check "Codex local_shell 정상 push 통과" cx2 PASS
 
+# capture-decision: 기록 훅은 판정하지 않으므로 어떤 입력에도 0으로 끝나야 한다.
+# 0이 아니면 PostToolUse가 도구 실행을 막는다.
+CAP=".claude/hooks/capture-decision.sh"
+if [ -f "$CAP" ]; then
+  for payload in '' 'not json' '{"tool_name":"Bash","tool_input":{}}' '{"tool_name":"AskUserQuestion","tool_response":{}}'; do
+    printf '%s' "$payload" | bash "$CAP" >/dev/null 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+      echo "  ok: capture-decision 비정상 입력 무해 통과 (rc=0)"
+    else
+      echo "  FAIL: capture-decision이 rc=$rc로 종료 — 도구 실행을 막는다"; FAIL=1
+    fi
+  done
+fi
+
 echo "[2/5] 추출 견고성 (오탐 방어)"
 printf '{"tool_input":{"command":"echo hello","description":"%s 관련 안내"}}' "$SVN_C" > "$TMP/fp3.json"
 check "description 오탐 없음" fp3 PASS

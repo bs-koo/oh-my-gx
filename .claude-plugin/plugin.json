@@ -7,7 +7,16 @@
   },
   "homepage": "https://github.com/bs-koo/oh-my-gx",
   "repository": "https://github.com/bs-koo/oh-my-gx",
-  "keywords": ["java", "spring-boot", "vue", "fullstack", "korean", "dev-workflow", "prd", "code-review"],
+  "keywords": [
+    "java",
+    "spring-boot",
+    "vue",
+    "fullstack",
+    "korean",
+    "dev-workflow",
+    "prd",
+    "code-review"
+  ],
   "skills": "./.claude/skills/",
   "hooks": {
     "PreToolUse": [
@@ -17,6 +26,17 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-tool-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/capture-decision.sh"
           }
         ]
       }

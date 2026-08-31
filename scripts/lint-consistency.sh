@@ -525,6 +525,12 @@ if command -v python3 >/dev/null 2>&1; then
 else
   echo "  (python3 없음 — plan-lint 픽스처 검사 건너뜀)"
 fi
+# 의사결정 기록 훅: 스크립트 실체 + 양 하네스 매니페스트 + 머지 전략
+test -f .claude/hooks/capture-decision.sh || fail "capture-decision.sh 누락"
+test -f .claude/hooks/capture_decision.py || fail "capture_decision.py 누락"
+grep -q 'AskUserQuestion' .claude-plugin/plugin.json || fail "Claude Code 매니페스트에 PostToolUse 미등록"
+grep -q 'AskUserQuestion' hooks.json || fail "Codex hooks.json에 PostToolUse 미등록"
+grep -q 'decisions.md merge=union' .gitattributes || fail ".gitattributes에 decisions.md union 머지 미등록"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then

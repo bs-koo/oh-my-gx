@@ -11,6 +11,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion|request_user_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT:-.}/.claude/hooks/capture-decision.sh",
+            "shell": "bash"
+          }
+        ]
+      }
     ]
   }
 }
