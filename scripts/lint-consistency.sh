@@ -637,7 +637,31 @@ done
 # 자기 재개를 타인의 착수로 오인하지 않아야 한다 (--resume·재실행에서 매번 경고가 뜬다)
 for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
   grep -q '자기 재개' "$f" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $f"
+  # 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
+  # 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
+  # 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
+  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -qF 'git push -u origin' \
+    || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $f"
+  awk '/^### 착수 기록 보정/,/^## Step 1:/' "$f" | grep -qF 'git push -u origin' \
+    || fail "착수 기록 보정의 push에 -u 누락: $f"
+  # 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
+  grep -q '폐기된 작업입니다' "$f" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $f"
+  # 재개 경로는 Step 5를 거치지 않는다 — 보정이 없으면 중단된 세션의 착수가 영영 안 남는다
+  grep -q '착수 기록 보정' "$f" || fail "재개 시 착수 기록 보정 절 누락: $f"
+  # --work 유무로 브랜치 명명 규칙이 갈리지 않아야 한다
+  grep -q '한국어→영어로 번역하고 최대 40자' "$f" || fail "--work 브랜치명 번역·길이 규칙 누락: $f"
 done
+# 폐기를 완료로 덮으면 요구사항이 왜 사라졌는지가 지워진다
+for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
+  grep -q '폐기된 작업이 완료 처리 대상입니다' "$f" || fail "완료 갱신에 폐기 가드 누락: $f"
+done
+# ralph의 완료 갱신도 push해야 후속 담당자의 의존 확인이 풀린다
+# 'push' 단순 검색은 같은 구간의 설명 문장("완료로 표시되고 push된다")에 걸려 무력하다 — 지시 문구로 본다
+awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md | grep -q '현재 브랜치로 push한다' \
+  || fail "ralph plan 완료 갱신에 push 지시 누락"
+# 브랜치 예시는 영어로 통일한다 (--work 경로만 한글이면 명명이 갈린다)
+grep -rn 'feat/[가-힣]' .claude/skills README.md >/dev/null 2>&1 \
+  && fail "한글 브랜치 예시 잔존: $(grep -rl 'feat/[가-힣]' .claude/skills README.md | tr '\n' ' ')"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
