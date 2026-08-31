@@ -501,6 +501,9 @@ echo "[25/25] 작업 계획(plan.md) 계약"
 # --work 플래그·읽기 절차·갱신 Step·커밋 규칙이 dev/tdd 양쪽과 라우팅 규칙에 대칭으로 존재하는지 대조한다.
 # plan.md 자체는 소비 프로젝트의 런타임 파일이라 이 저장소에 없다 — 문구 존재만 검사하고,
 # 표 파싱·의존 그래프 검증은 Phase C의 scripts/plan-lint.py가 담당한다.
+for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
+  grep -q -- '--work' "$f" || fail "--work 플래그 파싱 규칙 누락: $f"
+done
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
