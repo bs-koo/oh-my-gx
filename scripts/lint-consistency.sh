@@ -570,6 +570,9 @@ for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
   grep -q 'WORK 추출' "$f" || fail "자연어 작업 ID 추출 규칙 누락: $f"
 done
 grep -q 'W01 시작해줘' .claude/rules/skill-routing.md || fail "skill-routing에 작업 ID 자연어 라우팅 미등록"
+# S7: 재계획 시 기존 행을 보존해야 한다. 저장 절에 신규/기존 분기가 없으면
+# 모델이 Write로 통째로 갈아엎어 완료·진행 중 상태가 사라진다.
+grep -q '기존 파일이 있으면' .claude/skills/gx-context/SKILL.md   || fail "plan.md 저장 절에 신규/기존 분기 누락 (재계획 시 덮어쓰기 위험)"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then

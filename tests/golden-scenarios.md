@@ -42,7 +42,8 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S23 | vcs=svn + `.dev/.active`가 slug를 가리킴 + plan.md에 그 slug가 `작업 위치`인 행 | 완료 절차 진행 | 브랜치 없이 `.dev/.active` slug로 행을 찾아 `완료` 갱신 + 커밋 대신 사용자 안내 (git 전용 Step 3은 건너뛰어도 plan 갱신은 수행) | phase-complete Step 3.5 svn 분기 |
 | S24 | `--work W01 --ralph`로 AC 3건 원장 생성, 1건만 통과 | ralph 반복 1회 종료 | plan.md 행이 **`진행` 유지** — `완료`로 바뀌면 조기 완료 회귀. 3건 모두 통과한 반복에서만 `완료` + 커밋 | gx-ralph-iterate Step 5.5 선행 조건 |
 | S25 | `.dev/plan.md` **없는** 프로젝트 | `"W01 화면 정렬 버그 고쳐줘"` | 작업 참조로 오인하지 않고 일반 요청으로 처리 — "작업 계획이 없습니다" 안내가 뜨거나 중단되면 회귀 | SKILL.md WORK 추출 규칙 (plan.md 실존 조건) |
+| S26 ★ | `.dev/plan.md`에 W00(완료)·W01(진행)·W02(대기)가 있는 상태 | `/gx-context 재고관리 --from requirements/추가요구사항.md` | 기존 행 보존 — W00은 `완료`, W01은 `진행` 유지, W02만 재조정 대상. 새 작업은 뒤에 추가. **W00·W01 상태가 `대기`로 돌아가거나 행이 사라지면 회귀**(Write로 덮어쓴 것) | gx-context C-5-5 저장 분기 → C-5-6 보존 규칙 |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/25 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/26 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
