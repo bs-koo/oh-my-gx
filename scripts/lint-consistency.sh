@@ -504,6 +504,10 @@ echo "[25/25] 작업 계획(plan.md) 계약"
 for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
   grep -q -- '--work' "$f" || fail "--work 플래그 파싱 규칙 누락: $f"
 done
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  grep -q '작업 계획 참조' "$f" || fail "작업 계획 참조 절 누락: $f"
+  grep -q 'work-id' "$f" || fail "state.md work-id 기록 누락: $f"
+done
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then

@@ -159,6 +159,7 @@ AskUserQuestion(
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
 mode: all | core
+work-id: W01        # --work로 진입한 경우의 작업 ID (미사용 시 생략). phase-complete가 plan.md 행 매칭에 쓴다
 model-profile: standard | eco
 intent-source: flag | natural-language | user-selection
 ```
