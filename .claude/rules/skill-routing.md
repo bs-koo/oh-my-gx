@@ -67,4 +67,4 @@
 - **금지**: `git commit`, `gh pr create`, `git push` 직접 실행
 - **필수**: `Skill(skill: "oh-my-gx:gx-commit")`, `Skill(skill: "oh-my-gx:gx-pull-request")` 호출
 - **실패 시**: 직접 명령어로 우회하지 않고 사용자에게 보고한다.
-- **예외**: gx-dev phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. gx-ralph-iterate의 헤드리스 직접 커밋과 함께 이 규칙의 명시적 예외다.
+- **예외**: gx-dev phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. gx-ralph-iterate의 헤드리스 직접 커밋과 함께 이 규칙의 명시적 예외다. phase-complete Step 3.5의 작업 계획 갱신 커밋(`docs: [plan] …`)도 같은 예외다 — `.dev/plan.md` 한 파일만 스테이징하며 기능 코드를 포함하지 않는다.
