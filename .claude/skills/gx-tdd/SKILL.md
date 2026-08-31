@@ -68,9 +68,9 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **state.md 초기화 필드**: phase-setup Step 7이 정본이며, `--phase` 부트스트랩 골격(환경 감지 5항)은 그 부분집합 사본.
 > - **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/green/refactor) ↔ 이 파일(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
 > - **"수동 수정 재주입" 기록 문구**: phase-review(2곳)·phase-complete(Step -1)에 산재 — 문구 변경 시 함께 동기화.
-> - **모델 프로파일 규칙**(결정 우선순위 5단계·eco 하향 대상·프로파일 질문 포함 규칙): gx-dev SKILL.md ↔ 이 파일의 "모델 프로파일" 공유 규칙이 쌍둥이 (하향 대상만 파이프라인별로 다름 — dev: design-critic·coder / tdd: design-critic·test-architect·quality-reviewer. architect 유지는 공통 불변) ↔ 각 phase-setup Step 1.5. 파생 사본은 spec·guide·glossary·CHANGELOG. 린트 [14/14]가 키 문구와 opus 집합↔하향 목록 대조를 검사한다.
+> - **모델 프로파일 규칙**(결정 우선순위 5단계·eco 하향 대상·프로파일 질문 포함 규칙): gx-dev SKILL.md ↔ 이 파일의 "모델 프로파일" 공유 규칙이 쌍둥이 (하향 대상만 파이프라인별로 다름 — dev: design-critic·coder / tdd: design-critic·test-architect·quality-reviewer. architect 유지는 공통 불변) ↔ 각 phase-setup Step 1.5. 파생 사본은 spec·guide·glossary·CHANGELOG. 린트 [14/25]가 키 문구와 opus 집합↔하향 목록 대조를 검사한다.
 > - **ralph 전환 eco 미지원 경고**(`"ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다."`): gx-dev·gx-tdd phase-implement.md의 gx-ralph 전환 절(--ralph)에 동일 문구 중복 — 한쪽 수정 시 함께 갱신 (린트 미검사, 수동 동기화).
-> - **gx-ralph opt-in 규칙**(RALPH 추출 트리거·RALPH 우선순위 규칙(svn 우선 배제/자연어 RALPH+선판정 모드/플래그 `--ralph`+자연어 트리거)·Step 3 모드 질문 생략 규칙·`--ralph` 플래그 충돌 검증): gx-dev SKILL.md ↔ 이 파일 쌍둥이. phase-setup Step 7의 `flags` 기록 기준(무시된 RALPH 미기록)과 phase-implement 전환 절(방어 조건 — `--resume`은 비방어)도 dev/tdd 쌍둥이. 린트 [11/24]가 전환 절 헤더·핵심 규칙 문구 존재를 두 파이프라인에서 대조한다.
+> - **gx-ralph opt-in 규칙**(RALPH 추출 트리거·RALPH 우선순위 규칙(svn 우선 배제/자연어 RALPH+선판정 모드/플래그 `--ralph`+자연어 트리거)·Step 3 모드 질문 생략 규칙·`--ralph` 플래그 충돌 검증): gx-dev SKILL.md ↔ 이 파일 쌍둥이. phase-setup Step 7의 `flags` 기록 기준(무시된 RALPH 미기록)과 phase-implement 전환 절(방어 조건 — `--resume`은 비방어)도 dev/tdd 쌍둥이. 린트 [11/25]가 전환 절 헤더·핵심 규칙 문구 존재를 두 파이프라인에서 대조한다.
 
 ## 인자
 
@@ -81,9 +81,11 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 
 **Step 1: 플래그 호환** (기존 사용자 보호)
+- **`--work {ID}`는 다른 플래그보다 먼저 추출한다.** 아래 모드 플래그 분기에서 파싱이 종료되기 전에 소비해야 `--work --core`처럼 조합된 경우에도 작업 계획 참조가 유실되지 않는다. 추출 후 남은 인자로 아래 분기를 계속 판정한다.
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
 - `--ralph`가 포함되면 **gx-ralph 전환 플래그**로 기록한다 (Step 2 "RALPH 우선순위 규칙"·Step 3 "모드 질문 생략 규칙" 참조). 전환 플래그는 모드 판정과 독립이므로 나머지 플래그·자연어 파싱을 계속 진행한다.
+- `--work {ID}`가 포함되면 **작업 계획 참조 플래그**로 기록한다 — `.dev/plan.md`의 해당 행에서 도메인·요구사항·브랜치명을 확정한다 (phase-setup "작업 계획 참조" 절). ID는 `W` + 두 자리 숫자 형식이다(예: `W01`). 하이픈을 쓰지 않는 이유는 `config.json`의 `issueKey.pattern`(`^[A-Z]+-[0-9]+$`)에 매칭되면 브랜치명이 이슈 키로 오염되어 gx-commit의 타입 파싱이 깨지기 때문이다. 작업 계획 플래그는 모드 판정과 독립이므로 나머지 플래그·자연어 파싱을 계속 진행한다.
 - 모드 관련 플래그가 없으면 Step 2로 진행한다 (`--eco`/`--standard`/`--ralph`만 있는 경우에도 Step 2의 자연어 판정을 계속한다).
 
 **Step 2: 자연어 → 모드 판정**
@@ -100,6 +102,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
 | `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 TDD 개발해줘" |
 | `랄프로`, `ralph로`, `무인 루프로` | RALPH 추출 (gx-ralph 전환 플래그 — 프로파일과 독립) | "랄프로 알림 임계값 검증 TDD 개발해줘" |
+| `W00`~`W99` 형태의 토큰 | WORK 추출 (작업 계획 참조 — 모드와 독립) | "W01 시작해줘", "phase W01 개발해줘" |
 
 PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — gx-dev와 동일한 정렬).
 
@@ -108,6 +111,15 @@ BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 bra
 ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
 
 RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`가 포함되면 gx-ralph 전환 플래그를 기록한다 (`--ralph`와 동일. 단독 명사 `랄프`/`ralph`/`루프 돌려`는 gx-ralph 스킬 직접 호출 트리거와 충돌하므로, 일반 부사 `무인으로`는 도메인 문장 오탐 방지를 위해 — 예: "무인으로 운영되는 매장 재고 기능" — 매칭하지 않는다).
+
+**WORK 추출 규칙** (오탐 방지가 핵심이다):
+
+- 요청에서 `W` + 두 자리 숫자 토큰(`W01`·`W12`)을 찾는다. 앞뒤가 단어 경계여야 한다.
+- **토큰을 찾았다고 바로 작업 참조로 단정하지 않는다.** `.dev/plan.md`가 존재하고 그 표에 **같은 ID의 행이 실제로 있을 때만** 작업 참조로 확정한다. 화면 코드·버전 표기 등 우연히 형태가 겹치는 경우를 걸러내기 위함이다.
+- 계획 파일이 없거나 행이 없으면 **추출하지 않고** 그 토큰을 일반 요청 문구의 일부로 남긴다. 사용자에게 되묻지 않는다 — 계획이 없는 프로젝트에서 `W01`은 그냥 단어다.
+- 확정되면 `--work {ID}`를 명시한 것과 동일하게 처리한다 (phase-setup "작업 계획 참조" 절).
+- `phase W01`처럼 앞에 `phase`가 붙어도 같다. 뒤따르는 토큰이 두 자리 숫자를 가진 `W` 토큰이면 작업 ID이고, `design`·`implement` 같은 단계명이면 기존 PHASE 판정이다.
+- **자연어 WORK + RESUME 판정**: Step 1·Step 2에서 RESUME이 판정되었으면 WORK를 **무시하고** 1줄 안내한다 — "재개는 state.md의 `work-id`로 작업 문맥을 복원합니다 — {ID} 지정 없이 이어서 진행합니다." ("W01 이어서 해줘"처럼 둘 다 성립하는 발화가 플래그 충돌로 중단되지 않게 한다.) 명시 플래그 `--work`는 이 양보 대상이 아니며 기존대로 충돌 에러를 낸다 — 사용자가 명시한 것을 조용히 버리지 않는다. RALPH 우선순위 규칙과 같은 구조다.
 
 **RALPH 우선순위 규칙** (출처에 따라 다르다 — 명시 플래그는 조용히 버리지 않는다):
 - **svn 우선 배제**: `.claude/config.json`의 `vcs`가 `svn`이면 출처와 무관하게 RALPH를 무시하고 1줄 안내한다 — "gx-ralph는 SVN 미지원입니다 — 진행 방식을 확인합니다." 이후 Step 3의 모드 질문을 정상 제시한다 (phase-setup Step 7의 svn 처리는 이 규칙의 2차 방어. config.json은 정적 파일이라 이 시점에 읽을 수 있다).
@@ -157,6 +169,7 @@ AskUserQuestion(
 의도 파싱 결과를 state.md에 기록한다:
 ```yaml
 mode: all | core
+work-id: W01        # --work로 진입한 경우의 작업 ID (미사용 시 생략). phase-complete가 plan.md 행 매칭에 쓴다
 model-profile: standard | eco
 intent-source: flag | natural-language | user-selection
 ```
@@ -756,6 +769,7 @@ AskUserQuestion(
 - `--resume`과 `--phase`, `--core`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 - `--ralph`와 `--core`, `--phase`, `--resume`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--ralph`는 전체 모드 전용입니다 — `--core`/`--phase`/`--resume`/`--status`와 함께 쓸 수 없습니다." 에러 후 중단.
+- `--work`와 `--resume`은 **동시 사용 불가**. 함께 있으면: "`--work`와 `--resume`은 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `work-id`에서 작업 문맥을 복원하므로 ID를 다시 받을 이유가 없다).
 
 ## Phase 선택 (--phase 플래그)
 
@@ -773,6 +787,7 @@ AskUserQuestion(
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`을 결정한다: `${DEV_DIR}/state.md`가 있으면 그 `model-profile` 필드 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌린다** (`verify-fingerprint`도 빈 값으로 리셋) — 완료된 세션에 재진입하면 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구해 전부 꺼지기 때문이다. `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
+> 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
 
 ---
 

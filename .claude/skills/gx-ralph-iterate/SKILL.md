@@ -124,6 +124,14 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 1. ac-status.json: 해당 AC `passes: true`, `updated` 갱신.
 2. progress.txt에 1줄 append: `[iter] {id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
 
+### Step 5.5: 작업 계획(plan.md) 갱신 (**모든 AC 완료 시에만**)
+
+**선행 조건**: ac-status.json의 모든 AC가 `passes: true`여야 한다. 하나라도 `passes: false`이면 이 단계를 건너뛴다.
+
+루프는 AC를 1건씩 처리하므로, 이 조건 없이 갱신하면 첫 반복에서 작업 전체가 `완료`로 표시되고 push된다. 그러면 이 작업에 의존하는 다른 작업의 담당자가 phase-setup 3.0.5의 의존 확인을 통과해, 1/N만 끝난 산출물 위에서 착수하게 된다.
+
+조건을 만족하면: `.dev/plan.md`가 존재하고 state.md에 `work-id`가 있을 때 해당 행의 `상태`를 `완료`로 바꾸고 `docs: [plan] {ID} 완료` 메시지로 커밋한 뒤 **현재 브랜치로 push한다** — phase-complete Step 3.5와 같은 층위이며, push하지 않으면 이 작업에 의존하는 담당자의 의존 확인이 계속 막힌다. 이 루프는 phase-complete를 거치지 않으므로 여기서 직접 수행한다. 파일이 없거나 행을 찾지 못하면 건너뛴다. 현재 값이 `폐기`이면 바꾸지 않는다.
+
 ### Step 6: 종료 계약 출력
 
 - 남은 미완료 AC(`passes: false`)가 있으면 → `<ralph>CONTINUE</ralph>`

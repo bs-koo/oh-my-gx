@@ -1,13 +1,22 @@
 {
   "name": "oh-my-gx",
   "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 구현, 리뷰, PR까지 에이전트 팀이 처리합니다.",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "author": {
     "name": "bs-koo"
   },
   "homepage": "https://github.com/bs-koo/oh-my-gx",
   "repository": "https://github.com/bs-koo/oh-my-gx",
-  "keywords": ["java", "spring-boot", "vue", "fullstack", "korean", "dev-workflow", "prd", "code-review"],
+  "keywords": [
+    "java",
+    "spring-boot",
+    "vue",
+    "fullstack",
+    "korean",
+    "dev-workflow",
+    "prd",
+    "code-review"
+  ],
   "skills": "./.claude/skills/",
   "hooks": {
     "PreToolUse": [
@@ -17,6 +26,17 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-tool-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/capture-decision.sh"
           }
         ]
       }

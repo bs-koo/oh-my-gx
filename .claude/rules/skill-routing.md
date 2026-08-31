@@ -30,6 +30,17 @@
 | `TDD로`, `TDD로 개발`, `테스트 먼저`, `테스트 주도`, `RED-GREEN-REFACTOR`, `RGR` | `/gx-tdd` (TDD 강제) |
 | `랄프로 … 개발해줘`, `ralph로 …`, `무인 루프로 …` (개발 요청에 붙는 전환 발화) | `/gx-dev --ralph …` (TDD 키워드가 함께 있으면 `/gx-tdd --ralph …`) — gx-ralph 직접 호출이 아니다 |
 
+### 작업 계획 참조 (`.dev/plan.md`가 있을 때)
+
+| 사용자 표현 | 처리 |
+|------------|------|
+| `W01 시작해줘`, `phase W01 개발해줘`, `W01 진행` | 계획의 W01 행으로 파이프라인 진입 (`/gx-dev` 또는 `/gx-tdd` — TDD 키워드 유무로 분기) |
+| `지금 뭐 할 수 있어?`, `병렬 가능한 작업` | 계획을 읽어 의존이 풀린 작업을 계산해 제시 (파이프라인 진입 없음) |
+
+- 작업 ID는 `W` + 두 자리 숫자다. **`.dev/plan.md`에 같은 ID의 행이 실제로 있을 때만** 작업 참조로 해석한다 — 계획이 없거나 행이 없으면 그냥 요청 문구의 일부로 둔다.
+- 도메인·요구사항 범위는 계획 행에서 읽으므로 사용자가 말할 필요가 없다.
+- 명시적으로 지정하려면 `--work W01` 플래그를 쓴다. 자연어와 동일하게 처리된다.
+
 **분기 규칙:**
 - 명시적 TDD 키워드(`TDD`, `테스트 먼저`, `테스트 주도`, `RED-GREEN-REFACTOR` 등)가 있으면 `/gx-tdd`를 호출한다.
 - TDD 키워드가 없는 일반 개발 요청은 `/gx-dev`를 호출한다.
@@ -67,4 +78,4 @@
 - **금지**: `git commit`, `gh pr create`, `git push` 직접 실행
 - **필수**: `Skill(skill: "oh-my-gx:gx-commit")`, `Skill(skill: "oh-my-gx:gx-pull-request")` 호출
 - **실패 시**: 직접 명령어로 우회하지 않고 사용자에게 보고한다.
-- **예외**: gx-dev phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. gx-ralph-iterate의 헤드리스 직접 커밋과 함께 이 규칙의 명시적 예외다.
+- **예외**: gx-dev phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. gx-ralph-iterate의 헤드리스 직접 커밋과 함께 이 규칙의 명시적 예외다. phase-setup 3.0.5의 착수 기록 커밋과 phase-complete Step 3.5의 완료 갱신 커밋(둘 다 `docs: [plan] …`)도 같은 예외다 — `.dev/plan.md` 한 파일만 스테이징하며 기능 코드를 포함하지 않는다.

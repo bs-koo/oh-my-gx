@@ -41,6 +41,44 @@ check "Codex exec_command에서도 차단" cx1 deny
 printf '{"tool_name":"local_shell","tool_input":{"command":"git push origin feat/x"}}' > "$TMP/cx2.json"
 check "Codex local_shell 정상 push 통과" cx2 PASS
 
+# capture-decision: 기록 훅은 판정하지 않으므로 어떤 입력에도 0으로 끝나야 한다.
+# 0이 아니면 PostToolUse가 도구 실행을 막는다.
+CAP=".claude/hooks/capture-decision.sh"
+[ -f "$CAP" ] || { echo "  FAIL: $CAP 없음 — 의사결정 기록 훅이 배포되지 않는다"; FAIL=1; }
+for payload in '' 'not json' '{"tool_name":"Bash","tool_input":{}}' '{"tool_name":"AskUserQuestion","tool_response":{}}'; do
+  printf '%s' "$payload" | bash "$CAP" >/dev/null 2>&1
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "  ok: capture-decision 비정상 입력 무해 통과 (rc=0)"
+  else
+    echo "  FAIL: capture-decision이 rc=$rc로 종료 — 도구 실행을 막는다"; FAIL=1
+  fi
+done
+
+# 정상 페이로드 — 기록 경로(render + 파일 쓰기)가 실제로 도는지 본다. 비정상 입력의
+# rc=0만 검사하면 render가 깨져도, 하네스별 도구명을 버려도 전부 통과한다.
+# Windows의 python은 MSYS 경로(/tmp/...)를 해석하지 못하므로 cygpath로 넘긴다.
+CAPDIR="$TMP/cap"; mkdir -p "$CAPDIR"
+if command -v cygpath >/dev/null 2>&1; then CAPARG=$(cygpath -m "$CAPDIR"); else CAPARG="$CAPDIR"; fi
+for tool in AskUserQuestion request_user_input; do
+  printf '{"tool_name":"%s","cwd":"%s","tool_input":{"questions":[{"header":"H","question":"Q1","options":[{"label":"A","description":"da"},{"label":"B","description":"db"}]}]},"tool_response":{"answers":{"Q1":"B"}}}' \
+    "$tool" "$CAPARG" | bash "$CAP" >/dev/null 2>&1
+done
+REC=$(find "$CAPDIR" -name decisions.md 2>/dev/null | head -1)
+if [ -n "$REC" ] && [ "$(grep -c '^\*\*→\*\* B' "$REC")" -eq 2 ]; then
+  echo "  ok: capture-decision 정상 기록 (양 하네스 도구명 2건 + 선택 표식)"
+else
+  echo "  FAIL: capture-decision 기록 누락 — matcher가 받는 도구명 중 일부가 기록되지 않는다"; FAIL=1
+fi
+# Other 자유 입력은 어떤 label과도 일치하지 않는다. 표식이 빠지면 무엇을 골랐는지 알 수 없다.
+printf '{"tool_name":"AskUserQuestion","cwd":"%s","tool_input":{"questions":[{"header":"H","question":"Q2","options":[{"label":"A","description":"da"}]}]},"tool_response":{"answers":{"Q2":"직접 쓴 답"}}}' \
+  "$CAPARG" | bash "$CAP" >/dev/null 2>&1
+if [ -n "$REC" ] && grep -q '직접 입력' "$REC"; then
+  echo "  ok: capture-decision Other 응답 선택 표식"
+else
+  echo "  FAIL: Other 자유 입력에 선택 표식 없음"; FAIL=1
+fi
+
 echo "[2/5] 추출 견고성 (오탐 방어)"
 printf '{"tool_input":{"command":"echo hello","description":"%s 관련 안내"}}' "$SVN_C" > "$TMP/fp3.json"
 check "description 오탐 없음" fp3 PASS
