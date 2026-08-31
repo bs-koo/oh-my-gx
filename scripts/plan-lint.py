@@ -33,7 +33,9 @@ def parse(path):
     try:
         text = io.open(path, encoding="utf-8").read()
     except OSError as exc:
-        raise SystemExit(f"파일을 읽을 수 없습니다: {exc}") from exc
+        # docstring이 약속한 대로 2로 종료한다. SystemExit(str)은 1이 되어 "검증 실패"와 구분되지 않는다.
+        print(f"FAIL {path}: 파일을 읽을 수 없습니다: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
     lines = [ln.strip() for ln in text.splitlines() if ln.strip().startswith("|")]
     if len(lines) < 2:
@@ -77,7 +79,8 @@ def check(rows):
     deps = {}
     for r in rows:
         raw = r["의존"]
-        d = [] if raw == "-" else [x.strip() for x in raw.split(",") if x.strip()]
+        # 쉼표가 규약이지만 문서 예시에 가운뎃점이 쓰여 둘 다 받는다
+        d = [] if raw == "-" else [x.strip() for x in re.split(r"[,·]", raw) if x.strip()]
         deps[r["ID"]] = d
         for target in d:
             if target not in known:
@@ -94,7 +97,7 @@ def check(rows):
             if color.get(nxt, 0) == 1:
                 cycle = trail[trail.index(nxt):] + [nxt] if nxt in trail else [nxt, node, nxt]
                 errors.append(f"의존 순환: {' → '.join(cycle)}")
-                return
+                continue  # return하면 node가 탐색중(1)으로 남아 이후 노드가 가짜 순환으로 보고된다
             if color.get(nxt, 0) == 0:
                 visit(nxt, trail + [nxt])
         color[node] = 2

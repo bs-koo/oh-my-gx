@@ -150,7 +150,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 - **존재 시**: Read하여 `vcs`, `modelProfile`, `projectTypes`, `sensitiveFilePatterns`, `buildArtifactPatterns`, `timeouts`, `contextLimits`를 변수에 로드. **Step 1에서 config 부재로 `VCS_TYPE`을 git으로 잠정했다면 여기서 `vcs` 값으로 재확정한다** (이후 Phase에 반영). Step 1.5에서 플래그·자연어·질문 답변 없이 잠정 `standard`였다면 `modelProfile` 값(비어있으면 `standard` 유지)으로 `MODEL_PROFILE`을 재확정한다.
 - JSON 파싱 실패 시: "config.json이 손상되었습니다. 백업 후 재설정하세요." 출력 후 중단.
 
-### 3.0 작업 계획 참조 (`--work` 사용 시)
+### 3.0.5 작업 계획 참조 (`--work` 사용 시)
 
 `--work {ID}`가 지정된 경우에만 수행한다. 지정되지 않았으면 이 절을 통째로 건너뛰고 아래 병렬 수집으로 진행한다 — plan.md를 읽지 않으므로 기존 동작이 그대로 유지된다.
 
@@ -162,6 +162,8 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 6. **도메인 컨텍스트**를 `도메인` 열의 도메인 하나만 로드한다 (`glossary.md`·`architecture.md`·`status.md`). 도메인이 예약어 `공통` 또는 `통합`이면 context를 읽지 않고 `DOMAIN_CONTEXT`를 빈 상태로 둔다. 이 경우 아래 병렬 수집의 "도메인 컨텍스트 탐색"(레포 매칭)은 수행하지 않는다 — 작업 계획이 도메인을 이미 확정했다.
 7. **의존 확인**: `의존` 열의 각 ID가 표에서 `완료` 상태인지 확인한다. 아닌 것이 있으면 AskUserQuestion으로 진행 여부를 확인한다.
 8. **착수 기록**: `작업 위치` 열에 브랜치명(svn은 slug)을 기입하고 `상태` 열을 `진행`으로 바꾼다. 기입 전 값이 `-`가 아니면 다른 사람이 이미 착수한 것이므로 경고하고 확인받는다.
+   - **즉시 베이스 브랜치에 반영한다**: `.dev/plan.md`만 스테이징해 `docs: [plan] {ID} 착수` 메시지로 커밋하고, 작업 브랜치가 아닌 **베이스 브랜치(main 등)로 push**한다. 작업 브랜치에만 두면 PR이 머지되기 전까지 팀원에게 보이지 않아 위의 중복 착수 경고가 영영 발화하지 않는다. push가 실패하면(권한·충돌) 경고만 남기고 진행한다 — 착수 기록은 조율 수단이지 게이트가 아니다.
+   - svn이면 커밋하지 않고 사용자에게 터미널에서 반영하도록 안내한다.
 9. **ARGS[0] 보강**: `작업` 열 텍스트를 요청 문구로 사용한다.
 10. **state.md에 `work-id: {ID}`를 기록한다** — `--resume` 시 문맥 복원과 phase-complete의 행 매칭 근거가 된다.
 
@@ -203,11 +205,12 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 5: 작업환경 생성
 
-**svn인 경우** → 격리 브랜치를 만들지 않는다. SVN은 trunk에서 직접 작업하며, `svn update`로 최신 상태만 동기화한다. **작업 slug를 git 브랜치명 생성과 동일 규칙으로 만든다** — `--slug <name>` > ARGS[0] 이슈 키(config `issueKey.pattern`) > 타입+키워드 `{type}-{description}`(최대 40자) 순. slug는 `/`→`-` 치환 후 `[a-zA-Z0-9._-]`로 정규화하고(대문자 이슈 키 보존) `/`·`..`를 제거한다. `DEV_DIR = .dev/{slug}/`(기능별 격리)로 설정하고 `mkdir -p ${DEV_DIR}`를 실행한 뒤, 결정한 slug를 `.dev/.active`에 기록한다(덮어쓰기 — 훅·라우팅·verify가 활성 작업을 찾는 포인터). 완료 후 프로젝트 타입, 작업 경로, slug를 사용자에게 보고하고 **Step 6(VCS ignore 확인)으로 진행**한다 (Step 6.5는 git 전용이라 건너뜀).
+**svn인 경우** → 격리 브랜치를 만들지 않는다. SVN은 trunk에서 직접 작업하며, `svn update`로 최신 상태만 동기화한다. **작업 slug를 git 브랜치명 생성과 동일 규칙으로 만든다** — `--work` 사용 시 3.0.5가 결정한 slug > `--slug <name>` > ARGS[0] 이슈 키(config `issueKey.pattern`) > 타입+키워드 `{type}-{description}`(최대 40자) 순. slug는 `/`→`-` 치환 후 `[a-zA-Z0-9._-]`로 정규화하고(대문자 이슈 키 보존) `/`·`..`를 제거한다. `DEV_DIR = .dev/{slug}/`(기능별 격리)로 설정하고 `mkdir -p ${DEV_DIR}`를 실행한 뒤, 결정한 slug를 `.dev/.active`에 기록한다(덮어쓰기 — 훅·라우팅·verify가 활성 작업을 찾는 포인터). 완료 후 프로젝트 타입, 작업 경로, slug를 사용자에게 보고하고 **Step 6(VCS ignore 확인)으로 진행**한다 (Step 6.5는 git 전용이라 건너뜀).
 
 **git인 경우:**
 격리된 작업환경을 생성한다.
-- ARGS[0]에서 브랜치명을 생성한다:
+- **`--work` 사용 시**: 3.0.5에서 이미 결정한 브랜치명을 그대로 쓴다. 아래 유도 절차(이슈 키 추출 포함)를 수행하지 않는다 — 여기서 다시 유도하면 3.0.5가 `작업 위치` 열에 기록한 이름과 어긋나고, phase-complete의 작업 계획 갱신 단계에서 행 매칭(`작업 위치` = 현재 브랜치)이 실패한다.
+- ARGS[0]에서 브랜치명을 생성한다 (`--work` 미사용 시):
   1. 이슈 키 추출 시도: 대문자 영문 + `-` + 숫자 패턴 (e.g., `JIRA-123`, `PAY-456`)
   2. **이슈 키가 있으면**: 이슈 키를 브랜치명으로 사용 (e.g., `[JIRA-123] 로그인 기능 추가` → 브랜치 `JIRA-123`)
   3. **이슈 키가 없으면**: 요청 성격에 맞는 타입(config.json `conventions.branchTypes` 중 선택)과 핵심 키워드로 `conventions.branchFormat`(`{type}/{description}`) 형식의 브랜치명을 생성한다. description은 한국어→영어 번역, 최대 40자 (e.g., `로그인 기능 추가` → `feat/login-feature`. 타입 접두사가 있어야 gx-commit의 타입 파싱이 동작한다)
