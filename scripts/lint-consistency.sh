@@ -578,6 +578,13 @@ grep -q '기존 파일이 있으면' .claude/skills/gx-context/SKILL.md   || fai
 grep -q '겹침' .claude/skills/gx-context/SKILL.md   || fail "재계획에 기존 작업 겹침 판정 누락"
 grep -q '폐기' .claude/skills/gx-context/SKILL.md   || fail "재계획에 불필요해진 작업 처리 누락"
 grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 폐기 미등록"
+# S9: 온보딩 — 계획을 만든 뒤 어떻게 쓰는지, 계획이 있는데 그냥 요청했을 때
+# 무엇을 안내하는지가 없으면 사용자가 기능의 존재를 모른 채 지나간다.
+grep -q '판정 기준을 함께 안내' .claude/skills/gx-context/SKILL.md   || fail "gx-context 저장 안내에 판정 기준 설명 누락"
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$f"     || fail "계획 존재 시 요청 대조 안내 누락: $f"
+  grep -q '진행할 작업 확인' "$f" || fail "작업 확정 후 사용자 표시 누락: $f"
+done
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
