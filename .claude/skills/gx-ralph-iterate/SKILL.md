@@ -124,6 +124,10 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 1. ac-status.json: 해당 AC `passes: true`, `updated` 갱신.
 2. progress.txt에 1줄 append: `[iter] {id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
 
+### Step 5.5: 작업 계획(plan.md) 갱신
+
+`.dev/plan.md`가 존재하고 state.md에 `work-id`가 있으면, 해당 행의 `상태`를 `완료`로 바꾸고 `docs: [plan] {ID} 완료` 메시지로 커밋한다. 이 루프는 phase-complete를 거치지 않으므로 여기서 직접 수행한다. 파일이 없거나 행을 찾지 못하면 건너뛴다.
+
 ### Step 6: 종료 계약 출력
 
 - 남은 미완료 AC(`passes: false`)가 있으면 → `<ralph>CONTINUE</ralph>`

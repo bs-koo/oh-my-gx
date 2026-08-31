@@ -512,6 +512,8 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
   grep -q 'docs: \[plan\]' "$f" || fail "plan.md 전용 커밋 규칙 누락: $f"
 done
 grep -q 'docs: \[plan\]' .claude/rules/skill-routing.md || fail "skill-routing 예외 목록에 plan 커밋 미등록"
+grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복에 작업 계획 갱신 누락"
+grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
