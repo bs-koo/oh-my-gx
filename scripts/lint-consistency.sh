@@ -655,6 +655,21 @@ done
 for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
   grep -q '폐기된 작업이 완료 처리 대상입니다' "$f" || fail "완료 갱신에 폐기 가드 누락: $f"
 done
+# svn에서는 Claude의 커밋이 훅에 차단된다 — plan.md를 커밋하는 지점마다 svn 분기가 필요하다
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep -q 'svn이면' \
+    || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $f"
+  # svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
+  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -q '중복 착수를 감지하지 못한다' \
+    || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $f"
+done
+for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
+  # "W01 이어서 해줘"는 WORK와 RESUME이 함께 성립한다 — 양보 규칙이 없으면 충돌로 중단된다
+  grep -q '자연어 WORK + RESUME 판정' "$f" || fail "자연어 WORK의 RESUME 양보 규칙 누락: $f"
+  # --phase 경로는 phase-setup(3.0.5)을 건너뛴다 — work-id를 싣지 않으면 --work가 조용히 무시된다
+  awk '/\*\*환경 감지\*\*/,/^---/' "$f" | grep -q 'work-id' \
+    || fail "--phase 환경 감지에 work-id 기록 누락 (--work가 조용히 무시된다): $f"
+done
 # ralph의 완료 갱신도 push해야 후속 담당자의 의존 확인이 풀린다
 # 'push' 단순 검색은 같은 구간의 설명 문장("완료로 표시되고 push된다")에 걸려 무력하다 — 지시 문구로 본다
 awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md | grep -q '현재 브랜치로 push한다' \

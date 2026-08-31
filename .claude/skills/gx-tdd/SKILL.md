@@ -119,6 +119,7 @@ RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`가 포함되�
 - 계획 파일이 없거나 행이 없으면 **추출하지 않고** 그 토큰을 일반 요청 문구의 일부로 남긴다. 사용자에게 되묻지 않는다 — 계획이 없는 프로젝트에서 `W01`은 그냥 단어다.
 - 확정되면 `--work {ID}`를 명시한 것과 동일하게 처리한다 (phase-setup "작업 계획 참조" 절).
 - `phase W01`처럼 앞에 `phase`가 붙어도 같다. 뒤따르는 토큰이 두 자리 숫자를 가진 `W` 토큰이면 작업 ID이고, `design`·`implement` 같은 단계명이면 기존 PHASE 판정이다.
+- **자연어 WORK + RESUME 판정**: Step 1·Step 2에서 RESUME이 판정되었으면 WORK를 **무시하고** 1줄 안내한다 — "재개는 state.md의 `work-id`로 작업 문맥을 복원합니다 — {ID} 지정 없이 이어서 진행합니다." ("W01 이어서 해줘"처럼 둘 다 성립하는 발화가 플래그 충돌로 중단되지 않게 한다.) 명시 플래그 `--work`는 이 양보 대상이 아니며 기존대로 충돌 에러를 낸다 — 사용자가 명시한 것을 조용히 버리지 않는다. RALPH 우선순위 규칙과 같은 구조다.
 
 **RALPH 우선순위 규칙** (출처에 따라 다르다 — 명시 플래그는 조용히 버리지 않는다):
 - **svn 우선 배제**: `.claude/config.json`의 `vcs`가 `svn`이면 출처와 무관하게 RALPH를 무시하고 1줄 안내한다 — "gx-ralph는 SVN 미지원입니다 — 진행 방식을 확인합니다." 이후 Step 3의 모드 질문을 정상 제시한다 (phase-setup Step 7의 svn 처리는 이 규칙의 2차 방어. config.json은 정적 파일이라 이 시점에 읽을 수 있다).
@@ -786,6 +787,7 @@ AskUserQuestion(
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`을 결정한다: `${DEV_DIR}/state.md`가 있으면 그 `model-profile` 필드 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌린다** (`verify-fingerprint`도 빈 값으로 리셋) — 완료된 세션에 재진입하면 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구해 전부 꺼지기 때문이다. `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
+> 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
 
 ---
 

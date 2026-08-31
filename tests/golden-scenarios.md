@@ -47,6 +47,9 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S28 | `.dev/plan.md`에 W05가 `폐기` 상태 | `"W05 시작해줘"` | "폐기된 작업입니다 — 계획을 확인하세요" 경고 + 진행 여부 확인. **경고 없이 그대로 개발이 시작되면 회귀** (`작업 위치`가 `-`라 중복 착수 경고에는 걸리지 않는다) | phase-setup 3.0.5 Step 8 상태 확인 |
 | S29 | `--work W01`로 시작해 Step 2.3 stash pop 충돌로 중단 (브랜치는 생성됨, plan.md는 `대기`) | `/gx-tdd --resume` | 착수 기록 보정이 실행되어 행이 `진행`·`작업 위치`가 채워지고 `docs: [plan] W01 착수` 커밋 + push. **`대기`로 남으면 회귀** — 재개 경로는 Step 5를 거치지 않으므로 여기서 못 잡으면 영영 안 남는다 | phase-setup 착수 기록 보정 절 |
 | S30 | 원격이 있는 저장소에서 `--work W01`로 신규 브랜치 생성 | Step 5.5 진행 | `git push -u origin {브랜치}`가 실행되어 원격 브랜치가 생성됨. **`-u` 없이 push해 `no upstream branch`로 실패하면 회귀** — 다른 팀원의 `ls-remote` 중복 감지가 무력화된다 | phase-setup Step 5.5-2 |
+| S31 | vcs=svn + `work-id`가 있는 `status: completed` state.md에 새 작업으로 재진입 | `/gx-tdd {새 요청}` | plan.md 행이 `완료 → 진행`으로 되돌아가되 **커밋하지 않고 사용자에게 안내**. `svn commit`을 시도하면 훅에 차단되어 되돌림 자체가 실패하므로 회귀 | phase-setup Step 7 되돌림 svn 분기 |
+| S32 | `.dev/plan.md`에 W01이 있고 진행 중 state.md 존재 | `"W01 이어서 해줘"` | 중단 없이 재개. "재개는 state.md의 work-id로 문맥을 복원합니다" 안내 후 진행. **`--work`와 `--resume` 충돌 에러로 멈추면 회귀** (자연어는 양보, 명시 플래그는 에러) | SKILL.md 자연어 WORK + RESUME 판정 |
+| S33 | `.dev/plan.md`에 W01(진행)이 있고 구현·리뷰가 끝난 상태 | `/gx-tdd --work W01 --phase complete` | state.md에 `work-id: W01`이 기록되고 그 행이 `완료`로 갱신됨. **`--work`가 무시되어 아무 갱신도 없으면 회귀** — 이 경로는 phase-setup을 건너뛰므로 3.0.5가 실행되지 않는다 | SKILL.md 환경 감지 work-id 항목 |
 
 ## 기록
 
