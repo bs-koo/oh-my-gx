@@ -531,6 +531,40 @@ test -f .claude/hooks/capture_decision.py || fail "capture_decision.py 누락"
 grep -q 'AskUserQuestion' .claude-plugin/plugin.json || fail "Claude Code 매니페스트에 PostToolUse 미등록"
 grep -q 'AskUserQuestion' hooks.json || fail "Codex hooks.json에 PostToolUse 미등록"
 grep -q 'decisions.md merge=union' .gitattributes || fail ".gitattributes에 decisions.md union 머지 미등록"
+# --- 구조·순서 검사 (문구 존재만으로는 잡히지 않는 결함들) ---
+
+# S1: 3.0.5 절이 후속 헤딩 없이 끝나면 그 뒤 절차가 "--work 없으면 건너뛴다"에 삼켜진다
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  L1=$(grep -n '^### 3\.0\.5 작업 계획 참조' "$f" | head -1 | cut -d: -f1)
+  L2=$(awk -v s="$L1" 'NR>s && /^### /{print NR; exit}' "$f")
+  if [ -z "$L1" ] || [ -z "$L2" ]; then
+    fail "3.0.5 절 뒤에 후속 ### 헤딩 없음 (이후 절차가 --work 조건에 삼켜짐): $f"
+  fi
+done
+
+# S2: ralph의 plan 갱신이 종료 판정보다 앞이면 AC 1건마다 작업 전체를 완료로 표시한다
+RF=.claude/skills/gx-ralph-iterate/SKILL.md
+R55=$(grep -n '^### Step 5\.5' "$RF" | head -1 | cut -d: -f1)
+R6=$(grep -n '^### Step 6' "$RF" | head -1 | cut -d: -f1)
+if [ -n "$R55" ] && [ -n "$R6" ] && [ "$R55" -lt "$R6" ]; then
+  grep -q 'passes: true' "$RF" || fail "ralph plan 갱신이 종료 판정보다 앞인데 전체 AC 완료 조건이 없음"
+fi
+
+# S3: plan 갱신 Step이 DOMAIN_CONTEXT에 종속되면 --phase complete 경로에서 실행되지 않는다
+for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
+  grep -q 'Step 3과 독립적으로 판정한다' "$f"     || fail "plan 갱신 Step의 DOMAIN_CONTEXT 비종속 문구 누락: $f"
+done
+
+# S4: --work 충돌 규칙이 정식 목록에 없으면 첫 bullet에서 파싱이 끝나 도달하지 못한다
+for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
+  awk '/^## 플래그 충돌 검증/{f=1;next} f&&/^## /{exit} f' "$f" | grep -q -- '--work'     || fail "정식 플래그 충돌 목록에 --work 미등록: $f"
+done
+
+# S5: Step 5가 브랜치를 재유도하면 3.0.5가 기록한 이름과 어긋나 행 매칭이 실패한다
+for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+  grep -q '3.0.5에서 이미 결정한 브랜치명을 그대로 쓴다' "$f"     || fail "Step 5에 --work 브랜치 재사용 분기 누락: $f"
+done
+
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then
