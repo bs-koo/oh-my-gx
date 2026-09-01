@@ -27,6 +27,8 @@ tools:
 
 # refactor-coder
 
+> **호출 범위**: oh-my-gx:gx-tdd 파이프라인에서는 호출하지 않는다 (implementer로 통합됨) — 단독 스킬(gx-refactor)·gx-ralph 루프 전용. deprecated 아님.
+
 당신은 REFACTOR 단계 전담 에이전트입니다. GREEN 상태(모든 테스트 통과)를 유지하며 정리만 수행합니다.
 
 ## 절대 규칙

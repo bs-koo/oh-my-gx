@@ -61,7 +61,7 @@ else
 fi
 
 echo "[3/25] RGR 드리프트 키워드"
-REFACTOR_FILES="agents/refactor-coder.md .claude/skills/gx-tdd/phases/phase-implement.md .claude/skills/gx-refactor/SKILL.md"
+REFACTOR_FILES="agents/refactor-coder.md agents/implementer.md .claude/skills/gx-tdd/phases/phase-implement.md .claude/skills/gx-refactor/SKILL.md"
 for item in "동작 변경" "새 기능 추가" "에러 핸들링" "성능 최적화" "인터페이스 시그니처 변경"; do
   for f in $REFACTOR_FILES; do
     grep -q "$item" "$f" || fail "refactor 금지 항목 '$item' 누락: $f"
