@@ -69,8 +69,8 @@ for item in "동작 변경" "새 기능 추가" "에러 핸들링" "성능 최�
 done
 grep -q "수행 불가능한 정리" .claude/skills/gx-refactor/SKILL.md \
   || fail "gx-refactor Task 프롬프트에 [수행 불가능한 정리] 누락"
-grep -q "최대 2회" .claude/skills/gx-tdd/phases/phase-implement.md \
-  || fail "green 재호출 상한(최대 2회) 누락: phase-implement.md"
+grep -q "라운드 5" .claude/skills/gx-tdd/phases/phase-implement.md \
+  || fail "fix 라운드 상한(라운드 5) 누락: phase-implement.md"
 grep -q "최대 2회" .claude/skills/gx-green/SKILL.md \
   || fail "green 재호출 상한(최대 2회) 누락: gx-green/SKILL.md"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md .claude/skills/gx-refactor/SKILL.md; do
