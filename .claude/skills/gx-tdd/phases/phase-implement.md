@@ -223,23 +223,22 @@ Task(subagent_type="oh-my-gx:red-writer"):
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
 
     [report 파일]
-    {reports/t{N}-red.md} — 테스트 코드 전문·실패 확인 명령·실패 메시지를 이 파일에 Write하고, 최종 메시지에는 아래 출력 형식의 요약만 반환하십시오
+    {reports/t{N}-red.md} — 테스트 코드 전문·실패 확인 명령·실패 메시지·참조한 파일 전체 목록을 이 파일에 Write하십시오
 
-    [출력 형식]
+    [반환 형식 — 15줄 이내. 전문은 report 파일에]
+    - Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
     - 테스트 파일: {경로}
-    - 테스트 코드: {코드 블록}
-    - 실패 확인 명령: {명령}
-    - 실패 메시지: {메시지 마지막 10줄}
-    - 실패 사유: {유형}
-    - 참조한 파일: {Read/Grep으로 참조한 파일 전체 목록}
+    - 실패 확인: {1줄 — 명령 + 실패 유형 (NoSuchMethod / assertion / etc)}
+    - 우려사항: {1~2줄, 없으면 "없음"}
+    - report: {reports/t{N}-red.md}
 ```
 
 **verify_red**: 오케스트레이터가 직접 검증.
-1. red-writer가 보고한 테스트 명령을 직접 실행.
+1. report 파일(`reports/t{N}-red.md`)에서 테스트 명령을 읽어 직접 실행.
 2. **실패 확인** (통과 시 잘못된 테스트 → red-writer 재호출).
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
-4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
-5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
+4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
+5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
 6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
 7. **report 저장 확인**: `reports/t{N}-red.md`가 존재하고 테스트 코드·실패 메시지를 담고 있는지 확인한다. 다음 단계(2-I) 인계는 이 파일 경로로만 한다.
 8. ✅ 실패 정상 → IMPLEMENT(2-I)로 진행.
@@ -288,6 +287,8 @@ Task(subagent_type="oh-my-gx:implementer"):
 - `{pattern}` 플레이스홀더: 각 테스트 파일명(확장자 제외)에서 유도한 클래스 글롭 `*.{파일명}`으로 치환하고, 복수 파일이면 플레이스홀더를 포함한 인자를 반복한다 (예: `./gradlew test --tests *.PaymentLimitTest --tests *.PaymentServiceTest`).
 - `focusedTest` 필드가 없으면 해당 타입의 전체 `test` 명령을 사용하고 execution-log에 `"focused 미지원 — 전체 실행 폴백"`을 기록한다.
 
+**명령 오류 가드**: focused 실행이 테스트 실패가 아니라 **명령 자체 오류**(러너 미설치·옵션 오류 등 — 출력에 테스트 결과 요약이 없음)로 끝나면 fix loop에 넣지 않는다. execution-log에 `"focusedTest 명령 오류 — 전체 실행 폴백"`을 기록하고 이 파이프라인 실행의 남은 구간은 전체 `test` 명령으로 전환하며, 사용자에게 config의 `focusedTest` 값 확인을 안내한다.
+
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
 1. **Status 분기**: `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (implementer가 테스트를 고치지 않는다).
@@ -331,7 +332,7 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 ## Step 3.5: 경계 회귀 (핵심 모드·--phase implement 단독 전용)
 
-**핵심 모드** 또는 **`--phase implement` 단독 실행**이면 전체 테스트를 1회 실행한다 — 사이클 중 focused만 돌렸으므로 기존 스위트 회귀를 여기서 확인한다 (전체 모드는 phase-review Step 0 Mechanical Gate가 이 역할을 겸하므로 건너뛴다). 실패 시 깨진 테스트를 implementer에 전달해 수정한다 (fix loop 규칙 적용).
+**핵심 모드** 또는 **`--phase implement` 단독 실행**이면 전체 테스트를 1회 실행한다 — 사이클 중 focused만 돌렸으므로 기존 스위트 회귀를 여기서 확인한다 (전체 모드는 phase-review Step 0 Mechanical Gate가 이 역할을 겸하므로 건너뛴다). 실패 시 깨진 테스트 파일 경로 + 에러를 implementer에 **수리 모드**(RED report 없음 — agents/implementer.md 참조)로 전달해 수정한다. 검증 명령은 깨진 대상으로 조립한 focused 명령을 전달하고, 수리 후 전체 테스트를 오케스트레이터가 1회 재실행해 확인한다. 재시도는 1회로 제한하며(태스크 fix-round와 무관 — 태스크가 특정되지 않는 경계 수리다), 재차 실패하면 사용자에게 보고한다. `current-step`은 `"경계 회귀 수리"`로 갱신한다.
 
 ---
 
@@ -439,7 +440,7 @@ steps:
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: IMPLEMENT"` → 해당 태스크의 implementer 재디스패치 (RED report는 reports/t{N}-red.md에서 복원)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
-- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 implementer 재디스패치로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "2석 전환 재개 — 인라인 인계"를 기록한다. 추가: 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다.
+- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 implementer 재디스패치로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "2석 전환 재개 — 인라인 인계"를 기록한다. 추가: 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-count` 기준선도 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다.
 - `"변경사항 수집"` → Step 5부터 재실행
 
 ---
@@ -462,7 +463,9 @@ steps:
 
 ## 부록 A: gx-ralph 전용 트리오 프롬프트 (구 Step 2-G/2-F)
 
-> 이 부록은 gx-tdd 파이프라인이 사용하지 않는다. `gx-ralph-iterate`(헤드리스 반복)가 origin: gx-tdd 루프에서 red-writer → green-coder → refactor-coder 트리오를 디스패치할 때의 프롬프트 소스로만 보존된다. 파이프라인 본문은 Step 2-I(implementer)를 사용한다.
+> 이 부록은 gx-tdd 파이프라인의 구현 경로가 사용하지 않는다 (한시 예외: phase-review Step 4b가 구 Step 2-F의 디스패치 형식을 포인터 참조 — Phase B에서 해소). `gx-ralph-iterate`(헤드리스 반복)가 origin: gx-tdd 루프에서 red-writer → green-coder → refactor-coder 트리오를 디스패치할 때의 프롬프트 소스로만 보존된다. 파이프라인 본문은 Step 2-I(implementer)를 사용한다.
+>
+> 부록 A의 verify_green/verify_refactor가 기록하는 `test-count`는 **전체 스위트 기준**(3석 세대 규약)으로, 파이프라인 verify_implement의 focused 기준과 정의가 다르다. ralph 루프가 남긴 state를 gx-tdd `--resume`으로 이어받을 때 `test-count` 기준선은 비교하지 않고 재측정한다.
 
 ### 구 Step 2-G: GREEN (green-coder 디스패치 — gx-ralph 전용)
 

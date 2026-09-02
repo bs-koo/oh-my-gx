@@ -375,7 +375,7 @@ for phase in PHASES:
 
 ### Agent 팀 강제
 
-Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, implementer, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)을 사용한다. (green-coder·refactor-coder는 파이프라인 미호출 — 단독 스킬·gx-ralph 전용이며 이 팀 표에서 디스패치하지 않는다) (완료 검증은 별도 에이전트가 아니라 `oh-my-gx:gx-verify` 스킬이 담당한다.)
+Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, implementer, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)을 사용한다. (green-coder·refactor-coder는 파이프라인 미호출 — 단독 스킬·gx-ralph 전용. 한시 예외: phase-review Step 4b의 refactor-coder 정리 디스패치는 Phase B 주체 교체 전까지 유지된다) (완료 검증은 별도 에이전트가 아니라 `oh-my-gx:gx-verify` 스킬이 담당한다.)
 
 **디스패치 이름 규칙**: `Task` 호출 시 `subagent_type`은 `oh-my-gx:` 접두사를 포함한 정식 이름을 사용한다 (예: `oh-my-gx:red-writer`). 플러그인 설치 환경에서 에이전트는 접두사형으로 등록되므로 bare 이름은 해석되지 않을 수 있다.
 

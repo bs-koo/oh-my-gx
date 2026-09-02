@@ -26,7 +26,7 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-dev/gx-tdd phase-setup의 인
 | `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | (없음) | `warning` | `target/` | `Bash(mvn *)` |
 | `composer.json` | `php` | (없음) | `./vendor/bin/phpunit` | (없음) | `warning` | `vendor/` | `Bash(./vendor/bin/phpunit *)` |
 | `build.gradle(.kts)` | `java-spring` | (기본 템플릿 참조) | (기본 템플릿 참조) | `./gradlew test --tests {pattern}` | `warning` | `.gradle/`, `build/` | `Bash(./gradlew *)` |
-| `package.json` | `node` | (기본 템플릿 참조) | (기본 템플릿 참조) | (기본 템플릿 참조) | `warn` | `node_modules/`, `dist/` | `Bash(npm *)` |
+| `package.json` | `node` | (기본 템플릿 참조) | (기본 템플릿 참조) | (없음 — vitest/jest 행 참조) | `warn` | `node_modules/`, `dist/` | `Bash(npm *)` |
 | `vitest.config.*` / devDeps에 `vitest` | `node` | (프로젝트 build 스크립트) | `vitest run` | `npx vitest run {files}` | `warn` | `node_modules/`, `dist/`, `.nuxt/`, `.next/` | `Bash(npx *)` 또는 패키지 매니저 |
 | `jest.config.*` / devDeps에 `jest` | `node` | (프로젝트 build 스크립트) | `jest --ci` | `npx jest {files}` | `warn` | `node_modules/`, `dist/` | `Bash(npx *)` 또는 패키지 매니저 |
 

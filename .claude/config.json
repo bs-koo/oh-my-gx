@@ -52,7 +52,6 @@
       "detect": ["package.json"],
       "build": "npm run build",
       "test": "npm test",
-      "focusedTest": "npx vitest run {files}",
       "warningPattern": "warn",
       "artifacts": ["node_modules/", "dist/"]
     }
