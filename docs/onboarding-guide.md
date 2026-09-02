@@ -233,7 +233,7 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 
 - **발화**: "TDD로 개발해줘", "테스트 먼저", "테스트 주도로"
 - **흐름**: setup → requirements(PRD) → design(설계 + testability 평가) → implement(RGR 사이클) → review(reviewer 통합 1석, spec verdict 선행) → verify(테스트 실행 증거) → complete(인수·커밋·PR)
-- **에이전트 15종**. `/gx-dev`와 다른 지점만 보면:
+- **에이전트 16종**. `/gx-dev`와 다른 지점만 보면:
 
 | 에이전트 | 역할 |
 |---|---|
@@ -251,7 +251,7 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 
 > **`/gx-dev`와 `/gx-tdd`의 차이는 세 곳뿐입니다.**
 > 1. **구현 방식** — dev는 coder가 한 번에 구현, tdd는 실패 테스트 → 최소 구현 → 정리를 사이클로 반복
-> 2. **리뷰 방식** — dev는 qa-manager가 스펙·품질을 함께, tdd는 스펙과 품질을 2단계로 분리
+> 2. **리뷰 방식** — dev는 qa-manager가 스펙·품질을 함께, tdd는 reviewer 1석이 spec verdict 선행(Part 1 → Part 2 내부 순서)으로 검증
 > 3. **완료 조건** — tdd에만 테스트 실행 증거를 요구하는 verify 게이트가 있음
 >
 > PRD·설계·커밋·PR 절차와 `context/` 참조 방식은 동일합니다. 선택 기준은 "정답을 자동 테스트로 표현할 수 있는가"입니다 — 계산·검증·결제·인증 로직과 버그 수정은 `/gx-tdd`, UI·설정·문서 변경과 테스트 인프라가 없는 레거시는 `/gx-dev`가 적합합니다. 애매하면 어느 방식으로 갈지 물어봅니다.
