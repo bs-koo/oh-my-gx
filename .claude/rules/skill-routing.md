@@ -50,7 +50,7 @@
 
 ### TDD 보조 스킬 (단독 호출)
 
-아래 스킬은 명시적 키워드로 단독 호출할 수 있다. `gx-red`/`gx-green`/`gx-refactor`는 gx-tdd 파이프라인이 직접 호출하지 않고 `red-writer`/`green-coder`/`refactor-coder` 에이전트를 디스패치하므로 단독·체이닝 전용이며, `gx-verify`만 phase-complete가 Skill로 호출한다:
+아래 스킬은 명시적 키워드로 단독 호출할 수 있다. `gx-red`/`gx-green`/`gx-refactor`는 gx-tdd 파이프라인이 직접 호출하지 않고 `red-writer`/`implementer` 에이전트를 디스패치하므로(green-coder/refactor-coder는 단독 스킬·gx-ralph 전용) 단독·체이닝 전용이며, `gx-verify`만 phase-complete가 Skill로 호출한다:
 
 | 사용자 표현 | 호출 스킬 |
 |------------|----------|

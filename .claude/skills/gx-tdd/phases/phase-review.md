@@ -19,7 +19,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 
 ## Step 0: Mechanical Gate (build + test)
 
-리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. 실패하는 코드를 리뷰하는 것은 토큰 낭비이다.
+리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. 실패하는 코드를 리뷰하는 것은 토큰 낭비이다. 이 Gate는 사이클 중 focused만 실행한 implement 단계의 **경계 회귀**를 겸한다 — 기존 스위트 회귀가 여기서 처음 전체 실행으로 검증된다.
 
 프로젝트 타입은 config.json의 `projectTypes`를, 타임아웃은 `timeouts`를 참조한다.
 
@@ -40,7 +40,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 감지된 빌드 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 0-2로 진행.
-3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:green-coder")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 GREEN 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 green-coder가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). green-coder 수정 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 재호출한다 (state.md의 `test-file-hash` 대조).
+3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:implementer")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 IMPLEMENT 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated)·`green-coder`(파이프라인 미호출) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 implementer가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). implementer 수정 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 재호출한다 (state.md의 `test-file-hash` 대조). 이 수리는 fix loop 라운드에 계상하지 않는다.
 4. 수정 후 빌드를 **1회 재시도**한다.
 5. **재시도 성공** → Step 0-2로 진행.
 6. **재시도 실패** → 사용자에게 빌드 에러 표시 후 AskUserQuestion: "빌드 실패. 직접 수정 후 계속 / 중단".
@@ -52,7 +52,7 @@ security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
 **실행 흐름**:
 1. 테스트 명령을 `PROJECT_ROOT`에서 실행한다.
 2. **성공** → Step 1로 진행.
-3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `green-coder`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `refactor-coder`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지. green-coder 수정 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재호출 — 프로덕션 코드로만 해결).
+3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `implementer`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `implementer`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지. implementer 수정 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재호출 — 프로덕션 코드로만 해결).
 4. 수정 후 테스트를 **1회 재시도**한다.
 5. **재시도 성공** → Step 1로 진행.
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
@@ -358,7 +358,7 @@ if refactor_only:
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
       - "예" → Task(subagent_type="oh-my-gx:refactor-coder"):
                입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT.
-               디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement Step 2-F를 따르되,
+               디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement 부록 A의 구 Step 2-F를 따르되,
                "정리 대상"은 green 산출물이 아니라 위 리뷰 findings이며 GREEN 기준선은 Step0에서 통과한 전체 테스트다.
                → 정리 후 전체 테스트 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록

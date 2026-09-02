@@ -86,7 +86,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
   - 이 AC 하나만 구현한다. 다른 AC 범위를 건드리지 않는다.
   - 완료 후 변경 파일 목록과 요약을 보고하라.
   ```
-- **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/G/F 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다.
+- **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R 및 **부록 A(gx-ralph 전용 트리오 프롬프트 — 구 Step 2-G/2-F)** 의 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다.
 
   **하네스 사전 확인 (origin: gx-tdd 전용, 디스패치 전 1회)**: 이 AC가 요구하는 레이어에 실행 가능한 테스트 러너가 있는지 먼저 확인한다. 대화형 파이프라인은 phase-implement Step 0.5의 하네스 게이트에서 사용자에게 물어보지만, **헤드리스에는 답할 사람이 없다.** 러너가 없는 채로 RED를 디스패치하면 "실패"가 아니라 "실행 불가"가 나오고, 그 AC는 attempts만 3회 소진한 뒤 BLOCKED가 된다 — 러너 부재라는 진짜 원인은 로그에 묻힌다.
 
