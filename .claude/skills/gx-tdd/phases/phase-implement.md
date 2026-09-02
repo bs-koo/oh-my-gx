@@ -291,7 +291,7 @@ Task(subagent_type="oh-my-gx:implementer"):
 
 **focused 테스트 명령 조립**: config.json `projectTypes.{타입}.focusedTest` 템플릿을 사용한다. 대상은 이 태스크의 테스트 파일 + 이번 파이프라인 실행에서 이전 태스크들이 만든 신규 테스트 파일 전부(state.md 각 태스크의 `test-file` 기록)다.
 - `{files}` 플레이스홀더: 테스트 파일 경로들을 공백 구분으로 치환한다 (예: `npx vitest run src/a.spec.ts src/b.spec.ts`).
-- `{pattern}` 플레이스홀더: 각 테스트 파일명(확장자 제외)에서 유도한 클래스 글롭 `*.{파일명}`으로 치환하고, 복수 파일이면 플레이스홀더를 포함한 인자를 반복한다 (예: `./gradlew test --tests *.PaymentLimitTest --tests *.PaymentServiceTest`).
+- `{pattern}` 플레이스홀더: 각 테스트 파일명(확장자 제외)에서 유도한 클래스 글롭 `*.{파일명}`으로 치환하고, 복수 파일이면 플레이스홀더를 포함한 인자를 반복한다 (예: `./gradlew test --tests '*.PaymentLimitTest' --tests '*.PaymentServiceTest'`).
 - `focusedTest` 필드가 없으면 해당 타입의 전체 `test` 명령을 사용하고 execution-log에 `"focused 미지원 — 전체 실행 폴백"`을 기록한다.
 
 **명령 오류 가드**: focused 실행이 테스트 실패가 아니라 **명령 자체 오류**(러너 미설치·옵션 오류 등 — 출력에 테스트 결과 요약이 없음)로 끝나면 fix loop에 넣지 않는다. execution-log에 `"focusedTest 명령 오류 — 전체 실행 폴백"`을 기록하고 이 파이프라인 실행의 남은 구간은 전체 `test` 명령으로 전환하며, 사용자에게 config의 `focusedTest` 값 확인을 안내한다.
@@ -299,7 +299,7 @@ Task(subagent_type="oh-my-gx:implementer"):
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
 1. **Status 분기**: `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (implementer가 테스트를 고치지 않는다).
-3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 implementer 재호출 1회 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
+3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 implementer 재호출 1회 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
 5. **과잉 구현 감지**: 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지. YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
 6. ✅ 통과 + 무결성 유지 → 태스크 완료, 다음 태스크로 진행.

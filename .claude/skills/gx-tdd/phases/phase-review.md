@@ -207,13 +207,13 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
 
 분기 선택 전에 Step 4.1(Trust Ledger 저장)을 먼저 수행한다 — 재구현·수동 수정으로 이 라운드가 끝나도 Part 2 quality findings와 병렬 실행된 security 결과가 원장에 남아야 한다.
 
-- **SPEC PASS** (모두 ✅) → Step 4.1로 진행
+- **SPEC PASS** (모두 ✅) → Step 4.1 이후 절차 계속
 - **SPEC FAIL** (⚠️ 또는 ❌ 1건 이상) → 다음 처리:
   1. 미충족/부분 AC를 사용자에게 표시 (reviewer가 Part 2에서 "(재구현 대상 — AC-N)"으로 표기한 품질 지적도 함께 표시)
   2. AskUserQuestion: "spec 미충족 항목 발견. RGR 사이클로 재구현 시도할까요?"
      - "재구현" → 미충족 AC를 새 태스크로 정의 (reviewer가 표기한 "(재구현 대상)" 품질 지적을 태스크 정의에 함께 전달) → `phase-implement`로 복귀 (해당 AC만 RGR)
      - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
-     - "이대로 진행" → 미충족 AC를 trust-ledger에 "미충족 AC" 섹션으로 기록 후 Step 4.1 진행 (예외)
+     - "이대로 진행" → 미충족 AC를 trust-ledger에 추가 기록 후 계속 진행 (위험 수용)
   3. 재구현 후 reviewer 재호출 (반복 카운트에 포함)
 
 **Iron Law 위반 감지**: reviewer 출력에 `spec_verdict` 없이 `quality_verdict`만 있는 등 Part 1 verdict 없이 Part 2 판정을 수용하려는 시도가 발견되면 Step 4.0의 "verdict 블록 부재 시 우선순위"를 따른다 (즉시 중단은 그 (3) 단계에서만 발생).
