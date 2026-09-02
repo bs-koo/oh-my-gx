@@ -14,21 +14,21 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-dev/gx-tdd phase-setup의 인
 
 ## 힌트 표
 
-| 감지 파일 | 타입 키 | build 제안 | test 제안 | warningPattern | artifacts | 권한 prefix |
-|-----------|--------|-----------|----------|----------------|-----------|------------|
-| `Makefile` | `c-make` | `make` | `make test` | `warning:` | `build/`, `*.o` | `Bash(make *)` |
-| `CMakeLists.txt` | `c-cmake` | `cmake --build build` | `ctest --test-dir build --output-on-failure` | `warning:` | `build/` | `Bash(cmake *)`, `Bash(ctest *)` |
-| `project.yml` (Ceedling) | `c-ceedling` | (없음 — test가 빌드 포함) | `ceedling test:all` | `warning:` | `build/` | `Bash(ceedling *)` |
-| `pyproject.toml` / `setup.py` / `requirements.txt` | `python` | (없음) | `pytest` | `warning` | `.venv/`, `__pycache__/` | `Bash(pytest *)` |
-| `go.mod` | `go` | `go build ./...` | `go test ./...` | `warning` | (없음) | `Bash(go *)` |
-| `Cargo.toml` | `rust` | `cargo build` | `cargo test` | `warning:` | `target/` | `Bash(cargo *)` |
-| `*.csproj` / `*.sln` | `dotnet` | `dotnet build` | `dotnet test` | `warning` | `bin/`, `obj/` | `Bash(dotnet *)` |
-| `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | `warning` | `target/` | `Bash(mvn *)` |
-| `composer.json` | `php` | (없음) | `./vendor/bin/phpunit` | `warning` | `vendor/` | `Bash(./vendor/bin/phpunit *)` |
-| `build.gradle(.kts)` | `java-spring` | (기본 템플릿 참조) | (기본 템플릿 참조) | `warning` | `.gradle/`, `build/` | `Bash(./gradlew *)` |
-| `package.json` | `node` | (기본 템플릿 참조) | (기본 템플릿 참조) | `warn` | `node_modules/`, `dist/` | `Bash(npm *)` |
-| `vitest.config.*` / devDeps에 `vitest` | `node` | (프로젝트 build 스크립트) | `vitest run` | `warn` | `node_modules/`, `dist/`, `.nuxt/`, `.next/` | `Bash(npx *)` 또는 패키지 매니저 |
-| `jest.config.*` / devDeps에 `jest` | `node` | (프로젝트 build 스크립트) | `jest --ci` | `warn` | `node_modules/`, `dist/` | `Bash(npx *)` 또는 패키지 매니저 |
+| 감지 파일 | 타입 키 | build 제안 | test 제안 | focusedTest 제안 | warningPattern | artifacts | 권한 prefix |
+|-----------|--------|-----------|----------|------------------|----------------|-----------|------------|
+| `Makefile` | `c-make` | `make` | `make test` | (없음) | `warning:` | `build/`, `*.o` | `Bash(make *)` |
+| `CMakeLists.txt` | `c-cmake` | `cmake --build build` | `ctest --test-dir build --output-on-failure` | (없음) | `warning:` | `build/` | `Bash(cmake *)`, `Bash(ctest *)` |
+| `project.yml` (Ceedling) | `c-ceedling` | (없음 — test가 빌드 포함) | `ceedling test:all` | (없음) | `warning:` | `build/` | `Bash(ceedling *)` |
+| `pyproject.toml` / `setup.py` / `requirements.txt` | `python` | (없음) | `pytest` | `pytest {files}` | `warning` | `.venv/`, `__pycache__/` | `Bash(pytest *)` |
+| `go.mod` | `go` | `go build ./...` | `go test ./...` | `go test -run {pattern} ./...` | `warning` | (없음) | `Bash(go *)` |
+| `Cargo.toml` | `rust` | `cargo build` | `cargo test` | (없음) | `warning:` | `target/` | `Bash(cargo *)` |
+| `*.csproj` / `*.sln` | `dotnet` | `dotnet build` | `dotnet test` | (없음) | `warning` | `bin/`, `obj/` | `Bash(dotnet *)` |
+| `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | (없음) | `warning` | `target/` | `Bash(mvn *)` |
+| `composer.json` | `php` | (없음) | `./vendor/bin/phpunit` | (없음) | `warning` | `vendor/` | `Bash(./vendor/bin/phpunit *)` |
+| `build.gradle(.kts)` | `java-spring` | (기본 템플릿 참조) | (기본 템플릿 참조) | `./gradlew test --tests {pattern}` | `warning` | `.gradle/`, `build/` | `Bash(./gradlew *)` |
+| `package.json` | `node` | (기본 템플릿 참조) | (기본 템플릿 참조) | (기본 템플릿 참조) | `warn` | `node_modules/`, `dist/` | `Bash(npm *)` |
+| `vitest.config.*` / devDeps에 `vitest` | `node` | (프로젝트 build 스크립트) | `vitest run` | `npx vitest run {files}` | `warn` | `node_modules/`, `dist/`, `.nuxt/`, `.next/` | `Bash(npx *)` 또는 패키지 매니저 |
+| `jest.config.*` / devDeps에 `jest` | `node` | (프로젝트 build 스크립트) | `jest --ci` | `npx jest {files}` | `warn` | `node_modules/`, `dist/` | `Bash(npx *)` 또는 패키지 매니저 |
 
 ## 프론트엔드 주의 — `npm test`를 그대로 제안하지 않는다
 

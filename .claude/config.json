@@ -44,6 +44,7 @@
       "detect": ["build.gradle.kts", "build.gradle"],
       "build": "./gradlew build",
       "test": "./gradlew test",
+      "focusedTest": "./gradlew test --tests {pattern}",
       "warningPattern": "warning",
       "artifacts": [".gradle/", "build/"]
     },
@@ -51,6 +52,7 @@
       "detect": ["package.json"],
       "build": "npm run build",
       "test": "npm test",
+      "focusedTest": "npx vitest run {files}",
       "warningPattern": "warn",
       "artifacts": ["node_modules/", "dist/"]
     }
@@ -74,9 +76,11 @@
     "test-architect": { "maxInputLines": 1000, "note": "설계서 + PRD 수용 기준 + 코드 맵" },
     "red-writer": { "maxInputLines": 800, "note": "AC + testability 섹션 + 테스트 스타일 (프로덕션 코드 미포함)" },
     "green-coder": { "maxInputLines": 1000, "note": "실패 테스트 + 설계서 인터페이스" },
+    "implementer": { "maxInputLines": 1000, "note": "실패 테스트 + 설계서 인터페이스" },
     "refactor-coder": { "maxInputLines": 1000, "note": "정리 대상 파일 + 항목" },
     "spec-reviewer": { "maxInputLines": 1500, "note": "PRD 요구사항/수용 기준 + diff" },
     "quality-reviewer": { "maxInputLines": 1500, "note": "diff + 코드 맵 + 컨벤션" },
+    "reviewer": { "maxInputLines": 1500, "note": "diff + 코드 맵 + 컨벤션" },
     "humanizer-fidelity": { "maxInputLines": 1500, "note": "원문 + 윤문본 + 변경 diff" },
     "humanizer-naturalness": { "maxInputLines": 1200, "note": "윤문본 + 탐지 리포트" }
   }
