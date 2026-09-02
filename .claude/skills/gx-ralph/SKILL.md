@@ -194,6 +194,6 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
    - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세)
    - 중간 상태 확인: /oh-my-gx:gx-ralph --status
    - 루프 종료 후: {origin이 gx-tdd면 /gx-tdd --phase review, 그 외 /gx-dev --phase review} 로 리뷰 → --phase complete 로 인수·PR
-     (gx-tdd 출발 루프는 spec→quality 2단계 리뷰가 정본 — gx-dev 리뷰(qa-manager)로 유도하지 않는다)
+     (gx-tdd 출발 루프는 reviewer 통합 리뷰(spec+quality 1석)가 정본 — gx-dev 리뷰(qa-manager)로 유도하지 않는다)
    ```
    이 스킬은 러너를 직접 실행하지 않는다 — 러너는 수 분~수십 분 실행되는 사용자 터미널 프로세스다.
