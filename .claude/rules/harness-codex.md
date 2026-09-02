@@ -30,7 +30,7 @@ codex plugin marketplace add <저장소 경로>
 | `AskUserQuestion` | `request_user_input` | 선택지 지원. EXPERIMENTAL — 아래 제약 참조 |
 | Bash 실행 | `exec_command` / `local_shell` | 훅 matcher가 달라지는 원인 |
 
-`agents/`의 19개 에이전트 정의는 `model: opus` / `model: sonnet`을 쓴다. Codex에서는 해당 모델이 없으므로 `spawn_agent` 시 현재 spawn 허용 목록의 모델과 `reasoning_effort`를 함께 지정한다. `model`만 지정하면 effort가 그 모델의 기본값으로 조용히 되돌아간다.
+`agents/`의 17개 에이전트 정의는 `model: opus` / `model: sonnet`을 쓴다. Codex에서는 해당 모델이 없으므로 `spawn_agent` 시 현재 spawn 허용 목록의 모델과 `reasoning_effort`를 함께 지정한다. `model`만 지정하면 effort가 그 모델의 기본값으로 조용히 되돌아간다.
 
 ## 훅
 
@@ -75,7 +75,7 @@ Read("../../gx-setup/references/project-type-hints.md")  # 형제 스킬
 
 ### 서브에이전트 배포
 
-Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`mcpServers`·`apps`다. `agents`가 없어 19개 에이전트 정의를 플러그인으로 실을 수 없다.
+Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`mcpServers`·`apps`다. `agents`가 없어 17개 에이전트 정의를 플러그인으로 실을 수 없다.
 
 수동 배치도 통하지 않는다. `~/.codex/agents/`를 만들어 `agents/*.md`를 넣고 프롬프트를 렌더링해봤지만 로드되지 않았다(0.130 실측, 노출 0건). 역할 파일에 대응하는 `child_agents_md`가 아직 개발 중이고, codex-tools.md도 이 기능에 0.145+를 요구한다.
 

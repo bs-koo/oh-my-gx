@@ -536,7 +536,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 
 핵심 모드에서도 **RGR 사이클, G-W-T 게이트, verify 게이트는 유지된다.** 생략되는 것은 설계 단계(testability 평가)와 정식 리뷰뿐이다. "급하니까 TDD를 건너뛴다"는 선택지는 이 스킬에 없다. 테스트 없이 바로 구현하려면 `gx-dev`의 핵심 모드를 쓴다.
 
-모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·reviewer(+quality-reviewer 잔존 등재)가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
+모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·reviewer가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
 
 ### 6.9 단계별 단독 호출
 

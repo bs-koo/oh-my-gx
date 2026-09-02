@@ -455,7 +455,7 @@ steps:
 ## 금지 사항 (Iron Law 강제)
 
 이 Phase에서 절대 호출하지 않는 에이전트:
-- ❌ `coder` (deprecated) / `green-coder`·`refactor-coder` (파이프라인 미호출 — implementer로 통합. 단독 스킬·gx-ralph 전용)
+- ❌ `coder` (deprecated) / `green-coder`·`refactor-coder` (파이프라인 미호출 — implementer로 통합. 단독 스킬 전용)
 - ❌ `qa-manager` (자기점검은 reviewer가 phase-review에서 수행)
 
 이 Phase에서 절대 수행하지 않는 동작:

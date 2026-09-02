@@ -103,7 +103,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 3. **결과 수집 및 판단**: Agent의 출력을 받아 다음 행동(사용자에게 질문, 다음 Agent 호출, 다음 Phase 전환)을 결정합니다.
 4. **상태 관리**: `.dev/{branch-slug}/state.md`에 현재 Phase와 Step을 지속적으로 기록하여 세션 재개를 지원합니다.
 
-#### Agent 팀 (gx-dev 기준 9명 — 플러그인 전체 19명)
+#### Agent 팀 (gx-dev 기준 9명 — 플러그인 전체 17명)
 
 | Agent | 분류 | 역할 | 관점 | 모델 |
 |-------|------|------|------|------|
@@ -117,7 +117,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 | hacker | RECOVERY | 제약 우회 + 정체 탈출 | "다른 길이 있다" (정체 감지 시 호출) | sonnet |
 | simplifier | RECOVERY | 복잡도 제거 + 범위 축소 | "더 작게 만들자" (정체 감지 시 호출) | sonnet |
 
-이 밖에 `gx-tdd` 파이프라인 전용 6종(red-writer, implementer, reviewer, spec-reviewer, quality-reviewer, test-architect — spec-reviewer·quality-reviewer는 reviewer로 통합되어 파이프라인 미호출이나 정의는 존치)과 단독 스킬·`gx-ralph` 전용 2종(green-coder, refactor-coder), `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 19종입니다.
+이 밖에 `gx-tdd` 파이프라인 전용 4종(red-writer, implementer, reviewer, test-architect)과 단독 스킬 전용 2종(green-coder, refactor-coder), `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 17종입니다.
 
 #### 모델 라우팅 원칙
 
@@ -678,7 +678,7 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 | 무인 루프 전환 | `--ralph`(또는 "랄프로 …")로 시작한 실행만 기준선 게이트(Step 0.5) 통과 후 전환(Step 0.7) — 기본 경로는 묻지 않음. 루프 안에서도 RGR 트리오가 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
 | verify 게이트 | 테스트 직접 실행 + 0 failures 증거 없이는 commit/PR 진입 불가 (훅이 최종 방어) |
 | 핵심 모드(core) | gx-dev 핵심 모드와 달리 **RGR·verify·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로 (Iron Law 불변). 생략은 design(testability)·정식 review뿐이며, AC 작성이 product-owner 대신 오케스트레이터 직접(ac.md). 테스트 강제 없는 경량 경로가 필요하면 gx-dev 핵심 모드 사용 |
-| 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·reviewer(+quality-reviewer 잔존 등재)를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
+| 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·reviewer를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
 
 ### 4.10 TDD 보조 스킬 -- `/gx-red` `/gx-green` `/gx-refactor` `/gx-verify`
 
