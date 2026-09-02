@@ -619,7 +619,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - ~~qa-manager (리뷰/자기점검)~~ → spec-reviewer/quality-reviewer 분해를 거쳐 reviewer로 통합됨
 - 위 에이전트의 Context Slicing 정의는 기존(gx-dev) 호환을 위해 디렉토리에 파일은 남아있으나 gx-tdd 파이프라인에서는 참조하지 않는다.
 
-#### REVIEW (2단계 순차)
+#### REVIEW (reviewer 통합 — Part 1→Part 2 내부 순서)
 - **reviewer (통합 리뷰)**: PRD의 "요구사항"+"수용 기준" + 설계서의 "변경 범위" + diff 파일 경로(DIFF_FILE) + 코드 맵 + 프로젝트 컨벤션 + 테스트 품질 기준 파일 경로. **"Part 1 verdict 선행. 테스트 재실행 금지"** 지시.
 - **security-auditor (통합 감사, reviewer와 병렬)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
 
