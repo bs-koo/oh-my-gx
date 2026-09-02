@@ -98,8 +98,8 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 
 설계서의 "구현 순서"와 PRD의 AC를 결합하여 **RGR 사이클 단위 태스크**로 분해한다. 각 태스크는 다음을 만족한다:
 
-1. **단일 AC 또는 단일 컴포넌트**에 매핑된다.
-2. **2-15분 단위**로 RED→GREEN→REFACTOR 완료 가능한 크기.
+1. **단일 AC 또는 단일 컴포넌트**에 매핑된다. 단, **같은 패턴의 소형 변경으로 환산되는 AC들**(동일 검증 로직의 필드별 반복, 동일 형태의 매핑 추가 등)은 하나의 태스크로 배칭할 수 있다 — RED는 테이블 드리븐 또는 케이스별 테스트를 한 파일에 작성하고, 한 번의 R→I 사이클로 처리하며, 태스크 표의 AC 매핑에 `AC-2~AC-4 (배칭)` 형태로 표기해 승인 게이트에서 확인받는다. 분리 기준: 독자적 판단·독자적 테스트 전략·독자적 리뷰 표면이 필요한 작업만 태스크를 분리한다.
+2. **2-15분 단위**로 RED→IMPLEMENT 완료 가능한 크기.
 3. 다른 태스크와 **파일이 겹치지 않는다** (사이클 간 간섭 방지 — 태스크는 순차 실행된다). 겹치면 앞 태스크의 `test-file-hash`·porcelain 스냅샷 기준선이 뒤 태스크의 변경으로 오염되어 무결성 검증이 오탐한다.
 
 ### 1.1 태스크 표 생성
@@ -109,11 +109,11 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 ```
 ## RGR 태스크 분해
 
-| # | AC 매핑 | 컴포넌트 | RED (테스트 작성) | GREEN (구현) | REFACTOR (정리) |
-|---|---------|---------|-------------------|--------------|-----------------|
-| 1 | AC-1 | PaymentLimit | PaymentLimitTest.shouldRejectExceededLimit | PaymentLimit.kt: data class + validate() | 매직 넘버 상수화 |
-| 2 | AC-2 | PaymentService | PaymentServiceTest.shouldThrowOnExcess | PaymentService.processPayment() 한도 검증 추가 | 중복 검증 로직 추출 |
-| 3 | AC-3 | PaymentController | PaymentControllerE2ETest | PaymentController.updateLimit() 엔드포인트 | — |
+| # | AC 매핑 | 컴포넌트 | RED (테스트 작성) | IMPLEMENT (구현+정리) |
+|---|---------|---------|-------------------|------------------------|
+| 1 | AC-1 | PaymentLimit | PaymentLimitTest.shouldRejectExceededLimit | PaymentLimit.kt: data class + validate() → 매직 넘버 상수화 |
+| 2 | AC-2, AC-3 (배칭) | PaymentService | PaymentServiceTest (케이스 2건) | PaymentService.processPayment() 한도 검증 추가 → 중복 검증 로직 추출 |
+| 3 | AC-4 | PaymentController | PaymentControllerE2ETest | PaymentController.updateLimit() 엔드포인트 |
 
 ### 의존성 (실행 순서)
 - T1 (PaymentLimit) → T2 (PaymentService가 PaymentLimit 참조) → T3 (Controller가 Service 참조)
@@ -218,6 +218,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
     2. 테스트 명령 실행으로 실패 확인 (에러 메시지 캡처)
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
 
+    [report 파일]
+    {reports/t{N}-red.md} — 테스트 코드 전문·실패 확인 명령·실패 메시지를 이 파일에 Write하고, 최종 메시지에는 아래 출력 형식의 요약만 반환하십시오
+
     [출력 형식]
     - 테스트 파일: {경로}
     - 테스트 코드: {코드 블록}
@@ -233,8 +236,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: 보고된 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
 5. **"설계서 인터페이스 불충분" 보고 처리**: red-writer가 이 보고를 하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
-6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다).
-7. ✅ 실패 정상 → GREEN으로 진행.
+6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
+7. **report 저장 확인**: `reports/t{N}-red.md`가 존재하고 테스트 코드·실패 메시지를 담고 있는지 확인한다. 다음 단계(2-I) 인계는 이 파일 경로로만 한다.
+8. ✅ 실패 정상 → IMPLEMENT(2-I)로 진행.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
 
@@ -319,6 +323,12 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 ---
 
+## Step 3.5: 경계 회귀 (핵심 모드·--phase implement 단독 전용)
+
+**핵심 모드** 또는 **`--phase implement` 단독 실행**이면 전체 테스트를 1회 실행한다 — 사이클 중 focused만 돌렸으므로 기존 스위트 회귀를 여기서 확인한다 (전체 모드는 phase-review Step 0 Mechanical Gate가 이 역할을 겸하므로 건너뛴다). 실패 시 깨진 테스트를 implementer에 전달해 수정한다 (fix loop 규칙 적용).
+
+---
+
 ## Step 4: 사이클 완료 보고
 
 모든 태스크 완료 후 사용자에게 **요약만** 보고한다 (Agent 전문 출력 금지).
@@ -326,15 +336,15 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 ```
 RGR 사이클 완료: {N}개 태스크
 
-- T1 (AC-1): RED ✅ → GREEN ✅ → REFACTOR ✅
-- T2 (AC-2): RED ✅ → GREEN ✅ → REFACTOR ✅ (회귀 0건)
-- T3 (AC-3): RED ✅ → GREEN ✅ → REFACTOR — (정리 대상 없음)
+- T1 (AC-1): RED ✅ → IMPLEMENT ✅
+- T2 (AC-2, AC-3 배칭): RED ✅ → IMPLEMENT ✅ (fix 라운드 1회)
+- T3 (AC-4): RED ✅ → IMPLEMENT ✅ (정리 대상 없음)
 
-전체 테스트: {N pass}, 0 fail
+focused 누적: {N pass}, 0 fail (전체 회귀는 경계에서 — 전체 모드: review Step 0 / 핵심 모드·단독: Step 3.5)
 변경 파일: {N}개
 
 특이사항: (있으면)
-- T2 GREEN 단계에서 과잉 구현 감지 → 사용자 승인으로 다음 RED로 미룸
+- T2 IMPLEMENT 단계에서 과잉 구현 감지 → 사용자 승인으로 다음 RED로 미룸
 ```
 
 ---
@@ -389,16 +399,18 @@ steps:
     - 태스크 분해 승인: completed
     - "RGR T1 (AC-1)":
         red: completed
-        green: completed
-        refactor: completed
+        test-file: src/test/.../PaymentLimitTest.java   # verify_red 기록 — focused 집합 조립에 사용
+        test-file-hash: 3ca970cc...   # verify_red 기록 — verify_implement 무결성 비교 기준선
+        test-count: 47                # verify_implement 기록 — focused 직접 실행 결과 (테스트 삭제 감지 기준선)
+        report: reports/t1-impl.md
+        impl: completed
     - "RGR T2 (AC-2)":
         red: completed
-        green: completed
-        refactor: skipped (대상 없음)
+        impl: in_progress
+        fix-round: 2/5
     - "RGR T3 (AC-3)":
-        red: completed
-        green: in_progress
-        refactor: pending
+        red: pending
+        impl: pending
     - 변경사항 수집: pending
 ```
 
@@ -408,11 +420,8 @@ steps:
   agent: red-writer (T1)
   result: "실패 테스트 작성 + 실패 확인"
 - phase: implement
-  agent: green-coder (T1)
-  result: "최소 구현 + 통과 + 회귀 0건"
-- phase: implement
-  agent: refactor-coder (T1)
-  result: "매직 넘버 상수화 + GREEN 유지"
+  agent: implementer (T1)
+  result: "최소 구현 + focused 3/3 pass + 매직 넘버 상수화"
 ```
 
 ---
@@ -422,8 +431,9 @@ steps:
 - `"기준선 게이트"` → Step 0.5부터 재실행
 - `"태스크 분해 승인"` → Step 1.1부터 재실행
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
-- `"RGR T{N}: GREEN"` → 해당 태스크의 GREEN부터 재시작 (RED는 file에서 복원)
-- `"RGR T{N}: REFACTOR"` → 해당 태스크의 REFACTOR부터 재시작
+- `"RGR T{N}: IMPLEMENT"` → 해당 태스크의 implementer 재디스패치 (RED report는 reports/t{N}-red.md에서 복원)
+- `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
+- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 implementer 재디스패치로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "2석 전환 재개 — 인라인 인계"를 기록한다
 - `"변경사항 수집"` → Step 5부터 재실행
 
 ---
@@ -431,14 +441,14 @@ steps:
 ## 금지 사항 (Iron Law 강제)
 
 이 Phase에서 절대 호출하지 않는 에이전트:
-- ❌ `coder` (deprecated — red-writer/green-coder/refactor-coder로 분해됨)
+- ❌ `coder` (deprecated) / `green-coder`·`refactor-coder` (파이프라인 미호출 — implementer로 통합. 단독 스킬·gx-ralph 전용)
 - ❌ `qa-manager` (자기점검은 spec-reviewer가 phase-review에서 수행)
 
 이 Phase에서 절대 수행하지 않는 동작:
 - ❌ "구현 후 테스트 작성" — Iron Law 1 정면 위반
 - ❌ RGR 사이클 병렬 실행 — 격리 깨짐
 - ❌ "이번 한 번만" 코드 우선 작성 — 첫 예외가 규칙이 됨
-- ❌ 검증 명령 생략 (verify_red/green/refactor) — Iron Law 3 위반
+- ❌ 검증 명령 생략 (verify_red/verify_implement) — Iron Law 3 위반
 
 위반 감지 시 즉시 중단하고 RED 단계부터 재시작한다.
 
