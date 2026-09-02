@@ -20,7 +20,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 |------|--------|----------------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가** |
-| implement | coder 단일 호출 | **RED → GREEN → REFACTOR (3에이전트 순차; red-writer만 코드 격리)** |
+| implement | coder 단일 호출 | **RED → IMPLEMENT (2에이전트 순차; red-writer만 코드 격리, implementer가 GREEN+REFACTOR 수행)** |
 | review | qa+security 병렬 | **spec → quality 순차 강제** |
 | complete | qa 통과 → commit | **verify 게이트 → commit** |
 
@@ -50,14 +50,14 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
 
-> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`/`green-coder`/`refactor-coder` 에이전트를 **직접 `Task`로 디스패치**하며, 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
+> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`/`implementer` 에이전트를 **직접 `Task`로 디스패치**하며(green-coder/refactor-coder는 단독 스킬·gx-ralph 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
 >
 > **드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
 > 이 중 기계 검증 가능한 불변식(refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달, verify 판별식 키, 디스패치 이름↔agents/ 대조)은 `scripts/lint-consistency.sh`가 CI(`.github/workflows/lint.yml`)에서 자동 검사한다. 나머지는 여전히 수동 동기화 대상이다.
-> - **디스패치 프롬프트**(red-writer/green-coder/refactor-coder): phase-implement.md(Step 2-R/G/F)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b의 refactor-coder 호출은 Step 2-F를 **포인터 참조**하므로 2-F만 고치면 따라온다.
+> - **디스패치 프롬프트**(red-writer/green-coder/refactor-coder): phase-implement.md(Step 2-R/2-I — 부록 A는 gx-ralph 전용)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b의 refactor-coder 호출은 부록 A의 구 Step 2-F를 **포인터 참조**한다 (Step 4b 주체 교체는 Phase B 범위).
 > - **마커 분류**(`[동작결함]`/`[동작불변]`): `agents/quality-reviewer.md`가 SSOT이며, phase-review의 Task A 프롬프트·Step 4.4 의사코드에 라우팅 강제를 위해 재명시된다.
 > - **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 각 에이전트 정의(`agents/spec-reviewer.md`·`agents/quality-reviewer.md`)가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 2.1/4.0 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사.
-> - **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md` ↔ phase-implement.md(Step 2-G, verify_red/verify_green) ↔ gx-green SKILL.md(Step 1~3)에 중복.
+> - **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md`·`agents/implementer.md` ↔ phase-implement.md(Step 2-I, verify_red/verify_implement) ↔ gx-green SKILL.md(Step 1~3)에 중복 (4중).
 > - **테스트 품질 가드**(anti-pattern 요약 + Good Tests 3기준): `agents/red-writer.md` ↔ phase-implement.md(Step 2-R) ↔ gx-red SKILL.md(Step 2)에 중복. 상세 기준의 SSOT는 `references/testing-anti-patterns.md`.
 > - **UI 가드**(셀렉터 우선순위 + 스타일 assert 금지 + 스냅샷 금지): 위와 같은 3파일에 중복. 상세 기준의 SSOT는 `references/frontend-testing.md`이며, 레이어 분류(동작/표현)는 phase-design의 test-architect 프롬프트가, 하네스 게이트는 phase-implement Step 0.5가 소비한다. 린트 [23/23]이 3중 동기와 소비 지점을 검사한다.
 > - **참조 파일 자기신고 + 격리 오염 검증**: `agents/red-writer.md`(출력 형식) ↔ phase-implement.md(Step 2-R 출력·verify_red) ↔ gx-red SKILL.md(Step 2 출력·Step 3)에 중복.
@@ -66,11 +66,12 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 > - **review 진입 '변경 없음' 판정**: 이 파일(실행 루프 2a) ↔ gx-dev SKILL.md에 쌍둥이 — 한쪽 보수 시 함께 갱신.
 > - **프로젝트 타입 폴백 표**: SSOT는 `.claude/config.json`의 projectTypes. gx-verify Step 1·gx-tdd/gx-dev phase-review의 표는 파생 사본(예시)이다. 힌트 카탈로그(`gx-setup/references/project-type-hints.md`)는 제안용으로 config에 종속되며, 경고 카운트(`warningPattern` — gx-verify Step 2 폴백 포함)와 ignore 보강(`artifacts` — phase-setup Step 6)도 이 SSOT를 따른다. agents/architect.md·coder.md의 타입 감지 표와 gx-commit의 아티팩트 패턴 합집합 규칙도 이 SSOT의 파생 소비자다.
 > - **state.md 초기화 필드**: phase-setup Step 7이 정본이며, `--phase` 부트스트랩 골격(환경 감지 5항)은 그 부분집합 사본.
-> - **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/green/refactor) ↔ 이 파일(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
+> - **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/verify_implement — porcelain 대조는 테스트 파일 라인 필터, test-count는 오케스트레이터의 focused 직접 실행 결과) ↔ 이 파일(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
 > - **"수동 수정 재주입" 기록 문구**: phase-review(2곳)·phase-complete(Step -1)에 산재 — 문구 변경 시 함께 동기화.
 > - **모델 프로파일 규칙**(결정 우선순위 5단계·eco 하향 대상·프로파일 질문 포함 규칙): gx-dev SKILL.md ↔ 이 파일의 "모델 프로파일" 공유 규칙이 쌍둥이 (하향 대상만 파이프라인별로 다름 — dev: design-critic·coder / tdd: design-critic·test-architect·quality-reviewer. architect 유지는 공통 불변) ↔ 각 phase-setup Step 1.5. 파생 사본은 spec·guide·glossary·CHANGELOG. 린트 [14/25]가 키 문구와 opus 집합↔하향 목록 대조를 검사한다.
 > - **ralph 전환 eco 미지원 경고**(`"ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다."`): gx-dev·gx-tdd phase-implement.md의 gx-ralph 전환 절(--ralph)에 동일 문구 중복 — 한쪽 수정 시 함께 갱신 (린트 미검사, 수동 동기화).
 > - **gx-ralph opt-in 규칙**(RALPH 추출 트리거·RALPH 우선순위 규칙(svn 우선 배제/자연어 RALPH+선판정 모드/플래그 `--ralph`+자연어 트리거)·Step 3 모드 질문 생략 규칙·`--ralph` 플래그 충돌 검증): gx-dev SKILL.md ↔ 이 파일 쌍둥이. phase-setup Step 7의 `flags` 기록 기준(무시된 RALPH 미기록)과 phase-implement 전환 절(방어 조건 — `--resume`은 비방어)도 dev/tdd 쌍둥이. 린트 [11/25]가 전환 절 헤더·핵심 규칙 문구 존재를 두 파이프라인에서 대조한다.
+> - **fix 라운드 상한**: 파이프라인 phase-implement `라운드 5` ↔ 단독 gx-green SKILL.md `최대 2회` — **의도적 분기**다 (단독 스킬은 fix loop 없이 현행 상한 유지). 린트 [3/26]이 각각을 검사한다.
 
 ## 인자
 
@@ -233,13 +234,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer + quality-reviewer로 분해) | — | — |
 
-### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
+### EXECUTION (RED → IMPLEMENT 순차; red-writer만 코드 격리)
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | **red-writer** | **실패 테스트 작성 전담 (신규)** | **"테스트만 작성" — 프로덕션 코드 안 봄** | **sonnet** |
-| **green-coder** | **통과 최소 코드 (신규)** | **"YAGNI" — 테스트만 통과시킴** | **sonnet** |
-| **refactor-coder** | **안전한 정리 (신규)** | **"동작 변경 금지" — GREEN 유지** | **sonnet** |
-| ~~coder~~ | (deprecated — red-writer/green-coder/refactor-coder로 분해) | — | — |
+| **implementer** | **GREEN+REFACTOR 통합 (신설)** | **"최소 통과 후 안전한 정리" — 테스트 수정 금지, focused만 실행** | **sonnet** |
+| green-coder / refactor-coder | (파이프라인 미호출 — 단독 스킬·gx-ralph 전용) | — | sonnet |
+| ~~coder~~ | (deprecated — red-writer/implementer로 재편. 구 3석: green/refactor-coder) | — | — |
 
 ### VERIFICATION
 완료 검증은 **에이전트가 아니라 `oh-my-gx:gx-verify` 스킬**이 담당한다. phase-complete의 Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출되어 테스트/빌드를 직접 실행하고 0 failures를 확인한다.
@@ -262,12 +263,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 - verify 게이트: **`oh-my-gx:gx-verify` 스킬**이 담당 (별도 에이전트 아님). 테스트/빌드 직접 실행 + 0 failures 확인
 - Mechanical Gate 결과 판단: 오케스트레이터가 직접 수행 — 에이전트 불필요
 - 위 원칙과 Agent 팀 표의 모델은 **표준 프로파일(standard)** 기준이다. 에코 모드(eco)에서는 architect를 제외한 opus 에이전트가 sonnet으로 하향된다 — 공유 규칙 "모델 프로파일" 참조.
+- **최소 강도 + 실패 시 격상**: 각 역할을 감당하는 가장 약한 모델을 쓰되(sonnet이 바닥 — haiku 강등 금지), 격상은 fix loop 라운드 4~5에서만 수행한다.
 
 ### Deprecated 에이전트 처리
 
 - `qa-manager`, `coder`는 기존(gx-dev) 호환을 위해 디렉토리에 남아있으나 oh-my-gx:gx-tdd에서는 **호출하지 않는다**.
 - 자기점검은 spec-reviewer가 대체한다.
-- 구현은 red-writer/green-coder/refactor-coder가 분담한다.
+- 구현은 red-writer/implementer가 분담한다 (green/refactor-coder는 단독 스킬·gx-ralph 전용).
 
 ## Phase 개요 (TDD 강제)
 
@@ -276,13 +278,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 오케스트레이터 직접 ac.md) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer → green-coder → refactor-coder (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| implement | phase-implement.md | **red-writer → implementer (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **spec-reviewer → quality-reviewer (순차 강제)** + security-auditor (quality와 병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
 - requirements/design에 **사전 게이트** (G-W-T, testability)
-- implement는 단일 coder가 아니라 **3 에이전트 순차 사이클** (red-writer만 기존 코드 격리; green/refactor는 입력 범위만 제한)
+- implement는 단일 coder가 아니라 **RED 격리 + IMPLEMENT의 2 에이전트 순차 사이클** (red-writer만 기존 코드 격리; implementer는 입력 범위만 제한)
 - review는 병렬이 아니라 **spec → quality 순차** (spec 우선)
 - complete는 **gx-verify 스킬 우선 호출** (verify 통과 없이 commit 진입 금지)
 
@@ -295,7 +297,7 @@ all:  setup → requirements → design → implement (RGR) → review (spec→q
 ```
 - **requirements (core 분기)**: 오케스트레이터가 `${DEV_DIR}/ac.md`(배경 + 요구사항: G-W-T 형식 AC 3~5개)를 직접 작성한다 — product-owner 디스패치 없음. **G-W-T 검증 게이트는 동일하게 통과 필수** (RGR의 입력 계약이므로), 사용자 확인 1회.
 - **design**: 건너뛴다. RGR 사이클이 ac.md + 코드 맵을 기반으로 진행 (testability 평가 없이).
-- **implement**: 전체 모드와 동일하게 RGR 사이클 수행. 단, design.md 부재로 red-writer/green-coder에 ac.md의 AC만 전달. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
+- **implement**: 전체 모드와 동일하게 RGR 사이클 수행. 단, design.md 부재로 red-writer/implementer에 ac.md의 AC만 전달. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
 - **review**: 건너뛴다 (긴급 보안 감사가 H1~H4에서 대체).
 - **complete**: verify 게이트 → **AC 자가 검증**(오케스트레이터가 ac.md의 AC별 충족을 체크리스트로 판정 — product-owner 디스패치 없음. verify가 테스트 증거를 이미 강제한다) → commit → PR.
 - 긴급 버그 수정 요청("긴급/핫픽스" 키워드)도 이 경로다 — AC를 재현 조건 관점의 G-W-T로 작성한다.
@@ -373,12 +375,12 @@ for phase in PHASES:
 
 ### Agent 팀 강제
 
-Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, green-coder, refactor-coder, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)을 사용한다. (완료 검증은 별도 에이전트가 아니라 `oh-my-gx:gx-verify` 스킬이 담당한다.)
+Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, architect, test-architect, design-critic, red-writer, implementer, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)을 사용한다. (green-coder·refactor-coder는 파이프라인 미호출 — 단독 스킬·gx-ralph 전용이며 이 팀 표에서 디스패치하지 않는다) (완료 검증은 별도 에이전트가 아니라 `oh-my-gx:gx-verify` 스킬이 담당한다.)
 
 **디스패치 이름 규칙**: `Task` 호출 시 `subagent_type`은 `oh-my-gx:` 접두사를 포함한 정식 이름을 사용한다 (예: `oh-my-gx:red-writer`). 플러그인 설치 환경에서 에이전트는 접두사형으로 등록되므로 bare 이름은 해석되지 않을 수 있다.
 
 **Iron Law**: 다음 에이전트는 oh-my-gx:gx-tdd에서 **절대 호출하지 않는다** (deprecated):
-- `coder` — red-writer/green-coder/refactor-coder로 분해됨
+- `coder` — red-writer/implementer로 재편됨 (구 3석: green/refactor-coder)
 - `qa-manager` — spec-reviewer/quality-reviewer로 분해됨
 
 외부 Agent(sisyphus-junior, sisyphus-junior-high 등)로 대체하지 않는다.
@@ -460,7 +462,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 
 - 결정 우선순위: `--eco`/`--standard` 플래그 > ARGS[0] 자연어(`에코 모드`/`에코로`/`절약 모드` → eco) > **의도 파싱 Step 3 질문 답변**(모드 확인 질문에 프로파일 질문이 함께 제시된 경우) > config.json `modelProfile` > 기본 `standard`. phase-setup Step 1.5가 이 순서로 확정해 state.md에 기록한다.
 - **standard (표준)**: Agent 팀 표의 모델 그대로 디스패치한다.
-- **eco (에코 모드)**: **design-critic, test-architect, quality-reviewer**를 Task 호출 시 `model: "sonnet"` 파라미터로 오버라이드하여 디스패치한다 — Task의 model 파라미터는 에이전트 정의(frontmatter)보다 우선한다. **architect는 eco에서도 opus를 유지한다** — 설계 오류는 게이트가 방어하지 못하고 하류 전체로 전파되는 유일한 상류 실패인 반면 호출은 1~2회로 가장 적다 (하향되는 3종은 실패 모드가 '놓침'인 검증자이며 spec-reviewer·security-auditor·verify가 별도 축에서 방어). 이미 sonnet인 에이전트(red/green/refactor-coder 포함)는 그대로 유지한다 (haiku 강등 금지). 이 규칙은 **모든 Phase의 모든 Task 디스패치에 적용**된다 — phase 파일에 개별 표기가 없어도 적용한다.
+- **eco (에코 모드)**: **design-critic, test-architect, quality-reviewer**를 Task 호출 시 `model: "sonnet"` 파라미터로 오버라이드하여 디스패치한다 — Task의 model 파라미터는 에이전트 정의(frontmatter)보다 우선한다. **architect는 eco에서도 opus를 유지한다** — 설계 오류는 게이트가 방어하지 못하고 하류 전체로 전파되는 유일한 상류 실패인 반면 호출은 1~2회로 가장 적다 (하향되는 3종은 실패 모드가 '놓침'인 검증자이며 spec-reviewer·security-auditor·verify가 별도 축에서 방어). 이미 sonnet인 에이전트(red/green/refactor-coder 포함)는 그대로 유지한다 (haiku 강등 금지). 이 규칙은 **모든 Phase의 모든 Task 디스패치에 적용**된다 — phase 파일에 개별 표기가 없어도 적용한다. fix loop 라운드 4~5의 opus 격상은 "실패의 대응"으로 프로파일과 독립이다 — eco 세션에서도 격상한다 (하향 규칙은 초기 디스패치 모델에만 적용된다).
 - 게이트(G-W-T·testability·기준선·Mechanical Gate·verify)는 모델 무관 기계 검증 또는 스킬(gx-verify) 실행이므로 eco에서도 동일하게 유지된다.
 - 오케스트레이터가 직접 수행하는 단계(핵심 모드 ac.md 작성, AC 자가 검증 등)는 메인 세션 모델을 따른다 — 플러그인이 제어하지 않는다.
 - `--resume` 시 state.md의 `model-profile`을 복원한다. 재개 중 프로파일 변경은 지원하지 않는다.
@@ -489,6 +491,7 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 - **Q&A Phase** (requirements, design): Agent 출력의 첫 표시는 항상 **전문 표시**한다 (사용자가 산출물을 검토할 수 있도록). Phase 파일의 구체적인 표시 규칙이 이 일반 규칙보다 우선한다.
 - **Q&A Phase 완료 보고**: 확정된 산출물을 파일에 저장하고, 사용자에게는 **요약만** 보고한다 ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨" 등).
 - **Q&A 없는 Phase** (implement, review, complete): Agent 출력의 **요약만** 사용자에게 표시한다. 전문은 파일에 저장하거나 변수에 보관한다.
+- **implement Phase의 인계는 report 파일 경로로만 한다**: red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write하고 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)·요약만 반환한다. 오케스트레이터는 다음 에이전트에 파일 경로를 전달하며 전문을 인라인으로 붙이지 않는다.
 
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
@@ -522,7 +525,7 @@ started: 2026-02-17T10:30:00
 last-known-head: 7c9e814abc...
 config-setup-attempts: 1   # phase-setup 3.0 가드의 재시도 카운터
 warnings-baseline: 12      # phase-implement Step 0.5 기준선 게이트가 기록. gx-verify가 신규 경고 판정 기준으로 사용
-current-step: "RGR T1: GREEN"
+current-step: "RGR T1: IMPLEMENT"
 phases:
   setup: completed
   requirements: completed       # G-W-T 게이트 통과
@@ -533,10 +536,11 @@ steps:
     - 태스크 분해 승인: completed
     - "RGR T1 (AC-1)":
         red: completed
-        test-file-hash: 3ca970cc...   # verify_red 기록 — verify_green 무결성 비교 기준선
-        test-count: 47                # verify_green 기록 — verify_refactor 테스트 삭제 감지 기준선
-        green: in_progress
-        refactor: pending
+        test-file: src/test/.../PasswordValidatorTest.java   # verify_red 기록 — focused 집합 조립에 사용
+        test-file-hash: 3ca970cc...   # verify_red 기록 — verify_implement 무결성 비교 기준선
+        test-count: 47                # verify_implement 기록 — focused 직접 실행 결과 (테스트 삭제 감지 기준선)
+        report: reports/t1-impl.md
+        impl: completed
     - "RGR T2 (AC-2)": pending
     - 변경사항 수집: pending
   review:
@@ -557,7 +561,7 @@ execution-log:
     agent: red-writer (T1)
     result: "PasswordValidatorTest.shouldReject401 작성 + 실패 확인"
   - phase: implement
-    agent: green-coder (T1)
+    agent: implementer (T1)
     result: "in_progress"
 ```
 
@@ -603,13 +607,12 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
 - **test-architect (testability 평가)** ← 신규: 설계서 + PRD의 "수용 기준" + 코드 맵 + 프로젝트 루트 경로 + **"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** 지시
 
-#### EXECUTION (RED-GREEN-REFACTOR 순차; red-writer만 코드 격리)
+#### EXECUTION (RED → IMPLEMENT 순차; red-writer만 코드 격리)
 - **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오 — 핵심 모드이면 ac.md의 AC) + 설계서의 testability 섹션 (핵심 모드는 없음 — 기존 테스트 스타일만 근거) + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리 — 위반 여부는 verify_red가 "참조한 파일" 자기신고로 검증). "테스트만 작성. 프로덕션 코드 작성 금지" 지시. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`)를 추가 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.
-- **green-coder (GREEN)** ← 신규: 실패 테스트 (파일/코드/에러 메시지) + 설계서 인터페이스 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. green-coder는 구현을 위해 기존 코드를 Read할 수 있으며, 다만 전체 문서 대신 대상 시그니처만 전달받는다). "테스트만 통과시키는 최소 코드. 과잉 구현 금지" 지시.
-- **refactor-coder (REFACTOR)** ← 신규: 정리 대상 파일 목록 + 정리 항목 (중복/네이밍/구조) + 프로젝트 루트 경로. "GREEN 유지하며 정리만. 동작 변경 금지" 지시.
+- **implementer (IMPLEMENT)**: RED report 경로 (reports/t{N}-red.md) + 설계서 인터페이스(대상 시그니처만) + focused 테스트 명령 + report 파일 경로 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. implementer는 구현을 위해 기존 코드를 Read할 수 있다). "최소 코드로 통과 후 GREEN 유지 정리. 테스트 수정 금지. focused만 실행" 지시.
 
 #### Deprecated (oh-my-gx:gx-tdd에서 절대 호출 안 함)
-- ~~coder (구현/배치/수정)~~ → red-writer/green-coder/refactor-coder로 분해됨
+- ~~coder (구현/배치/수정)~~ → red-writer/implementer로 재편됨
 - ~~qa-manager (리뷰/자기점검)~~ → spec-reviewer/quality-reviewer로 분해됨
 - 위 에이전트의 Context Slicing 정의는 기존(gx-dev) 호환을 위해 디렉토리에 파일은 남아있으나 gx-tdd 파이프라인에서는 참조하지 않는다.
 
@@ -632,9 +635,9 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 읽기 전용 Agent(product-owner, architect, test-architect, design-critic, spec-reviewer, quality-reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
 1. 하나의 메시지에서 여러 `Task()` 호출을 동시에 발행한다.
 2. 모든 병렬 Task가 완료된 후 결과를 합산한다 (Gate 로직).
-3. 쓰기 Agent(red-writer, green-coder, refactor-coder)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
-4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → green-coder → refactor-coder는 **반드시 순차** 실행한다. 병렬 금지.
-   - 이유: red-writer 산출물(실패 테스트)이 green-coder의 입력. green-coder 산출물(통과 코드)이 refactor-coder의 입력.
+3. 쓰기 Agent(red-writer, implementer)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
+4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → implementer는 **반드시 순차** 실행한다. 병렬 금지.
+   - 이유: red-writer 산출물(실패 테스트 — RED report)이 implementer의 입력.
    - 위반 시: 격리가 깨져 Iron Law 1 위반.
 5. **review 2단계 순차 강제 (Iron Law)**: spec-reviewer → quality-reviewer는 **반드시 순차**. spec 통과 후에만 quality 진입.
    - security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).

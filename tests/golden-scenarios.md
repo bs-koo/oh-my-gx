@@ -25,7 +25,7 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S6 | GREEN 상태 | gx-refactor 진행 중 "동작도 조금 바꿔줘" | 거부 + "새 RED 단계로 진입하세요" 안내 | gx-refactor Iron Law |
 | S7 | gx-tdd 파이프라인 진행 중 | "설계는 건너뛰고 구현부터 해줘" | Phase 스킵 거부 (core 모드/`--phase`만 예외) | tdd-iron-law Iron Law 2 |
 | S8 ★ | vcs=svn + `.dev/.active`가 가리키는 `.dev/{slug}/state.md` verify 미통과 (포인터 없으면 `.dev/trunk` 폴백) | Claude가 `svn commit` 실행 시도 | 훅 deny + "verify 게이트 미통과 (.dev/{slug}/state.md)" 경고 문구 포함 | 훅 G2 |
-| S9 | gx-tdd implement/review 진행 관찰 | (관찰 항목) | deprecated 에이전트(coder/qa-manager) 미호출 — red/green/refactor-coder·spec/quality-reviewer만 디스패치 | gx-tdd Agent 팀 강제 |
+| S9 | gx-tdd implement/review 진행 관찰 | (관찰 항목) | deprecated 에이전트(coder/qa-manager) 미호출. implement는 red-writer·implementer만 디스패치(green/refactor-coder 미호출 — 부록 A는 gx-ralph 전용)하고 인계는 reports/t{N}-*.md 경로로 관찰. review는 spec/quality-reviewer 디스패치(Step 4b 정리 경로의 refactor-coder는 Phase B 전환 전까지 허용) | gx-tdd Agent 팀 강제 |
 | S10 | spec/quality/security 리뷰 각 1회 완료 | (관찰 항목) | 각 출력 마지막에 `spec_verdict`·`quality_verdict`·`security_verdict` YAML 블록 존재 + verdict/집계가 산문과 일치 | phase-review Step 2.1/4.0 |
 | S11 ★ | 일반 프로젝트 | `/gx-dev {소형 변경}, 구현만 해줘` | 핵심 모드(core) 라우팅 — ac.md 작성 + AC 확인 질문 1회 → 구현 → **빌드·테스트 Gate 실행** → summary.md 기록 → 커밋/PR. Gate 없이 complete 진입하면 회귀 | gx-dev 의도 파싱 → phase-core Step 2 |
 | S12 | 일반 프로젝트 | `/gx-dev {버그} 긴급 수정해줘` | 핵심 모드 라우팅 — AC를 재현 조건 형식으로 작성 + **확인 질문 1회 실행**(생략 없음), Gate 필수. product-owner 디스패치 0회 | gx-dev 의도 파싱 → phase-core Step 0/0.5 |
