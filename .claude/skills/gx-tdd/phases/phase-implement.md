@@ -463,7 +463,7 @@ steps:
 
 ## 부록 A: gx-ralph 전용 트리오 프롬프트 (구 Step 2-G/2-F)
 
-> 이 부록은 gx-tdd 파이프라인의 구현 경로가 사용하지 않는다 (한시 예외: phase-review Step 4b가 구 Step 2-F의 디스패치 형식을 포인터 참조 — Phase B에서 해소). `gx-ralph-iterate`(헤드리스 반복)가 origin: gx-tdd 루프에서 red-writer → green-coder → refactor-coder 트리오를 디스패치할 때의 프롬프트 소스로만 보존된다. 파이프라인 본문은 Step 2-I(implementer)를 사용한다.
+> 이 부록은 gx-tdd 파이프라인이 사용하지 않는다. `gx-ralph-iterate`(헤드리스 반복)가 origin: gx-tdd 루프에서 red-writer → green-coder → refactor-coder 트리오를 디스패치할 때의 프롬프트 소스로만 보존된다. 파이프라인 본문은 Step 2-I(implementer)를 사용한다.
 >
 > 부록 A의 verify_green/verify_refactor가 기록하는 `test-count`는 **전체 스위트 기준**(3석 세대 규약)으로, 파이프라인 verify_implement의 focused 기준과 정의가 다르다. ralph 루프가 남긴 state를 gx-tdd `--resume`으로 이어받을 때 `test-count` 기준선은 비교하지 않고 재측정한다.
 

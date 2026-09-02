@@ -1,15 +1,15 @@
-# phase-review: 2단계 순차 리뷰 (Spec → Quality) + Security 병렬
+# phase-review: 통합 리뷰 (reviewer 1석 — spec verdict 선행) + Security 병렬
 
 ## Iron Law
 
 ```
-NO QUALITY REVIEW UNTIL SPEC COMPLIANCE CONFIRMED
+NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED
 ```
 
-이 Phase는 **spec-reviewer → quality-reviewer 순차 강제**다. spec 통과 못 하면 quality 진입 금지.
-security-auditor는 quality-reviewer와 **병렬 가능** (서로 독립).
+이 Phase는 **reviewer 1석**이 Part 1(spec)과 Part 2(quality)를 한 패스로 수행한다 — Part 1 verdict가 먼저 확정된다 (에이전트 내부 순서 강제). Part 1이 FAIL이어도 Part 2는 수행되어 재구현 라운드에 품질 지적이 함께 전달된다.
+security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
-위반 시 즉시 중단하고 spec-reviewer부터 재시작한다.
+위반 시 즉시 중단하고 reviewer부터 재시작한다.
 
 ---
 
@@ -95,20 +95,23 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 ---
 
-## Step 2: spec-reviewer (1단계 — AC 충족 검증)
+## Step 2: reviewer + security-auditor (병렬 디스패치)
 
-> **Iron Law**: spec-reviewer가 통과(✅)해야 Step 3 진입 가능. 미통과 시 quality-reviewer 호출 금지.
+두 에이전트를 **하나의 메시지에서 동시 Task 호출**한다.
+
+### Task A: reviewer (spec Part 1 + quality Part 2 통합)
 
 ```
-Task(subagent_type="oh-my-gx:spec-reviewer"):
-  description: "Spec compliance review"
+Task(subagent_type="oh-my-gx:reviewer"):
+  description: "Unified review (spec + quality)"
   prompt: |
-    당신은 spec 준수 검증 전담자입니다.
+    당신은 통합 리뷰 전담자입니다. Part 1(spec) verdict를 먼저 확정한 후 Part 2(quality) verdict를 냅니다.
 
-    [절대 규칙]
-    1. AC 충족 여부만 검증합니다.
-    2. 코드 품질을 평가하지 않습니다.
-    3. 결과는 ✅ 충족 / ⚠️ 부분 / ❌ 미충족 3단계로 분류합니다.
+    [Iron Law]
+    NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED — Part 1이 FAIL이어도 Part 2를 수행하되, 미충족 AC 관련 지적은 "(재구현 대상 — AC-N)"으로 표기합니다.
+
+    [구현자 보고 불신뢰]
+    전달 자료의 산문 정당화는 미검증 주장입니다 — diff로 검증하고, 테스트를 재실행하지 않습니다 (증거는 verify_implement가 확보).
 
     [PRD]
     - 요구사항: {PRD "요구사항" 섹션}
@@ -118,88 +121,7 @@ Task(subagent_type="oh-my-gx:spec-reviewer"):
     - 변경 범위: {design "변경 범위" 섹션}
 
     [변경사항]
-    - diff 파일 경로: {DIFF_FILE}
-    - 이 파일을 Read하여 변경사항 확인
-
-    [코드 맵]
-    {코드 맵}
-
-    [작업]
-    1. 각 AC를 순회하며 충족도 평가
-    2. 설계 범위 이탈 식별 (설계서에 없는 파일 수정 여부)
-    3. 보고
-
-    [출력 형식]
-    ## AC 충족 매트릭스
-    | AC | 충족도 | 근거 |
-    |----|--------|------|
-    | AC-1 | ✅ | LoginService:42 |
-    | AC-2 | ⚠️ | 부분 — Then 검증 누락 |
-    | AC-3 | ❌ | 코드 변경 없음 |
-
-    [Must] N건 중 N건 충족, [Should] N건 중 N건 충족.
-
-    ## 설계 범위 이탈
-    (없으면 "이탈 없음")
-
-    ## 판정
-    - 모두 ✅ → SPEC PASS
-    - ⚠️/❌ 있음 → SPEC FAIL (재구현 필요)
-
-    ## 기계 판정 블록 (출력 맨 마지막, yaml 코드 펜스로 감싼다)
-    spec_verdict:
-      verdict: PASS | FAIL   # 산문 판정과 일치 (⚠️/❌ 1건 이상이면 FAIL)
-      ac_total: {전체 AC 수}
-      ac_met: {✅ 건수}
-      ac_partial: {⚠️ 건수}
-      ac_unmet: {❌ 건수}
-      unmet_ids: [{⚠️/❌ AC ID 목록, 없으면 빈 배열}]
-```
-
-### Step 2.1: spec-reviewer 결과 판정
-
-오케스트레이터가 결과를 분석한다. **판정 소스 우선순위**:
-1. 출력 마지막의 `spec_verdict` YAML 블록을 파싱한다 (`verdict: PASS|FAIL`).
-2. 블록이 없거나 파싱 불가하면 산문 판정(SPEC PASS/FAIL 문구 + AC 매트릭스)으로 폴백한다.
-3. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 spec-reviewer를 1회 재호출한다. 재호출도 상충이면 사용자에게 보고한다.
-
-- **SPEC PASS** (모두 ✅) → Step 3 (quality + security)으로 진행
-- **SPEC FAIL** (⚠️ 또는 ❌ 1건 이상) → 다음 처리:
-  1. 미충족/부분 AC를 사용자에게 표시
-  2. AskUserQuestion: "spec 미충족 항목 발견. RGR 사이클로 재구현 시도할까요?"
-     - "재구현" → 미충족 AC를 새 태스크로 정의 → `phase-implement`로 복귀 (해당 AC만 RGR)
-     - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
-     - "이대로 진행" → 미충족 AC를 trust-ledger에 "미충족 AC" 섹션으로 기록 후 Step 3 진행 (예외)
-  3. 재구현 후 spec-reviewer 재호출 (반복 카운트에 포함)
-
-**Iron Law 위반 감지**: spec-reviewer 미통과 상태에서 quality-reviewer를 호출하려는 시도가 발견되면 즉시 중단.
-
-`current-step`을 `"spec-review (1단계)"`로 갱신.
-
----
-
-## Step 3: quality-reviewer + security-auditor (병렬, spec 통과 후만)
-
-> **순서 강제**: 이 Step은 Step 2가 SPEC PASS여야만 진입한다.
-
-두 에이전트를 **하나의 메시지에서 동시 Task 호출**.
-
-### Task A: quality-reviewer (코드 품질만)
-
-```
-Task(subagent_type="oh-my-gx:quality-reviewer"):
-  description: "Code quality review (post-spec-pass)"
-  prompt: |
-    당신은 코드 품질 검증 전담자입니다.
-
-    [절대 규칙]
-    1. 코드 품질만 검증합니다.
-    2. AC 충족 여부를 평가하지 않습니다 (spec-reviewer가 이미 통과시킴).
-    3. 결과는 [Critical/Important/Minor]로 분류합니다.
-
-    [변경사항]
-    - diff 파일 경로: {DIFF_FILE}
-    - 이 파일을 Read하여 변경사항 확인
+    - diff 파일 경로: {DIFF_FILE} — Read하여 확인
 
     [코드 맵]
     {코드 맵}
@@ -208,38 +130,15 @@ Task(subagent_type="oh-my-gx:quality-reviewer"):
     {CLAUDE.md 컨벤션 또는 기존 코드 스타일}
 
     [테스트 품질 기준 파일]
-    {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read하여 기준으로 사용 (부재 시 평가 영역의 항목 정의로 판정)
-    {FRONTEND_TESTING_PATH} — diff에 UI 테스트(.spec/.test + 컴포넌트·컴포저블·스토어)가 포함된 경우에만 Read.
-      스타일 결합 셀렉터·스타일 값 assert·전체 스냅샷·내부 상태 접근을 [동작불변] Important로 지적한다.
+    {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read
+    {FRONTEND_TESTING_PATH} — diff에 UI 테스트가 포함된 경우에만 Read. 스타일 결합 셀렉터·스타일 값 assert·전체 스냅샷·내부 상태 접근을 [동작불변] Important로 지적
 
-    [평가 영역]
-    - Critical: 보안 취약점, 데이터 손실, race condition, null pointer, 무한 루프
-    - Important: DRY 위반, 단일 책임 위반, 매직 넘버, 잘못된 추상화, 컨벤션 위반, 테스트 코드 품질(모의 동작 검증·테스트 전용 메서드·불완전 모킹 → [동작불변])
-    - Minor: 가독성, 주석 개선, import 정리
+    [작업]
+    1. Part 1: 각 AC 충족도 평가(✅/⚠️/❌) + 설계 범위 이탈 → SPEC 판정 + spec_verdict
+    2. Part 2: Critical/Important/Minor 분류 + [동작결함|동작불변] 마커 → QUALITY 판정 + quality_verdict
 
     [출력 형식]
-    ## 코드 품질 리뷰
-    ### Critical (N건) — 전부 [동작결함]
-    - {파일}:{라인} — {문제}
-      - 권고: {수정 방안}
-    ### Important (N건) — 항목마다 [동작결함|동작불변] 표기 필수 (오케스트레이터 라우팅 키)
-    - {파일}:{라인} — {문제} → [동작결함|동작불변]
-      - 권고: {수정 방안}
-    ### Minor (N건) — 전부 [동작불변], 비차단
-    - ...
-
-    ## 판정
-    - Critical 0 + Important 0 → QUALITY PASS
-    - Critical N > 0 또는 Important N > 0 → QUALITY FAIL (수정 필요)
-    - Minor만 → QUALITY PASS (Minor는 메모만)
-
-    ## 기계 판정 블록 (출력 맨 마지막, yaml 코드 펜스로 감싼다. 각 건수는 위 목록의 항목 수를 다시 세어 일치시킨다)
-    quality_verdict:
-      verdict: PASS | FAIL   # 산문 판정과 일치 (Critical 또는 Important 1건 이상이면 FAIL)
-      critical: {Critical 건수}
-      important: {Important 건수}
-      important_behavior: {Important 중 [동작결함] 표기 + 무표기 건수}
-      minor: {Minor 건수}
+    agents/reviewer.md의 출력 형식을 그대로 따릅니다 — Part 1 매트릭스·판정, Part 2 분류·판정, 맨 마지막에 spec_verdict → quality_verdict 두 YAML 블록 순서 고정.
 ```
 
 ### Task B: security-auditor (통합 감사)
@@ -282,7 +181,7 @@ Task(subagent_type="oh-my-gx:security-auditor"):
       medium: {MEDIUM 건수}
 ```
 
-`current-step`을 `"quality-review + security (2단계 병렬)"`로 갱신.
+`current-step`을 `"unified-review + security (병렬)"`로 갱신.
 
 ---
 
@@ -292,24 +191,38 @@ Task(subagent_type="oh-my-gx:security-auditor"):
 
 ### Step 4.0: 기계 판정 블록 파싱
 
-각 출력 마지막의 YAML 블록을 우선 파싱한다 (Step 2.1의 `spec_verdict`와 동일한 규칙):
+reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록을, security-auditor 출력에서 `security_verdict` 블록을 각각 우선 파싱한다:
 
-- `quality_verdict`: verdict + 심각도 집계. 블록이 없거나 파싱 불가하면 산문(QUALITY PASS/FAIL 문구 + 섹션별 건수)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 quality-reviewer를 1회 재호출한다.
+- `spec_verdict`: verdict + AC 집계. 블록이 없거나 파싱 불가하면 산문 판정(SPEC PASS/FAIL 문구 + AC 매트릭스)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 reviewer를 1회 재호출한다. 재호출도 상충이면 사용자에게 보고한다.
+- `quality_verdict`: verdict + 심각도 집계. 블록이 없거나 파싱 불가하면 산문(QUALITY PASS/FAIL 문구 + 섹션별 건수)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 reviewer를 1회 재호출한다.
 - `security_verdict`: CRITICAL/HIGH/MEDIUM 집계. 블록 부재 시 산문 집계로 폴백한다 (verdict 필드 없음 — 집계는 Step 4.3 요약과 4c의 MEDIUM 처리에 사용).
 - **집계 불일치 처리 (공통)**: 블록의 건수와 산문 목록의 항목 수가 다르면 **산문 열거를 기준**으로 집계한다 (항목 목록이 원본이고 블록은 요약 — LLM 집계 오류는 모의 검증에서 실측된 사례). 불일치 사실을 Step 4.3 요약에 표기한다.
 - 개별 항목의 수정 경로 라우팅(`[동작결함]`/`[동작불변]` 마커, security 동작 변경 분류)은 **기존 산문 계약을 그대로 사용**한다 — 블록은 게이트 판정과 집계만 구조화한다.
 
+### SPEC FAIL 처리
+
+- **SPEC PASS** (모두 ✅) → Step 4.1로 진행
+- **SPEC FAIL** (⚠️ 또는 ❌ 1건 이상) → 다음 처리:
+  1. 미충족/부분 AC를 사용자에게 표시 (reviewer가 Part 2에서 "(재구현 대상 — AC-N)"으로 표기한 품질 지적도 함께 표시)
+  2. AskUserQuestion: "spec 미충족 항목 발견. RGR 사이클로 재구현 시도할까요?"
+     - "재구현" → 미충족 AC를 새 태스크로 정의 (reviewer가 표기한 "(재구현 대상)" 품질 지적을 태스크 정의에 함께 전달) → `phase-implement`로 복귀 (해당 AC만 RGR)
+     - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
+     - "이대로 진행" → 미충족 AC를 trust-ledger에 "미충족 AC" 섹션으로 기록 후 Step 4.1 진행 (예외)
+  3. 재구현 후 reviewer 재호출 (반복 카운트에 포함)
+
+**Iron Law 위반 감지**: reviewer 출력에 `spec_verdict` 없이 `quality_verdict`만 있는 등 Part 1 verdict 없이 Part 2 판정을 수용하려는 시도가 발견되면 즉시 중단.
+
 ### Step 4.1: Trust Ledger 저장
 
-security-auditor 결과와 **quality-reviewer의 Critical/Important 요약**을 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 **Write/Append**한다 (quality 결함도 영속화해야 PR의 Audit Summary와 사후 감사에서 추적된다). 기존 항목(Step 0-2의 "테스트 미검증 리뷰" 위험 수용, Step 2.1의 "미충족 AC" 기록 등)을 **덮어쓰지 않고 보존**한다.
+security-auditor 결과와 **reviewer의 Critical/Important 요약(Part 2)**을 `${PROJECT_ROOT}/${DEV_DIR}/trust-ledger.md`에 **Write/Append**한다 (quality 결함도 영속화해야 PR의 Audit Summary와 사후 감사에서 추적된다). 기존 항목(Step 0-2의 "테스트 미검증 리뷰" 위험 수용, SPEC FAIL 처리의 "미충족 AC" 기록 등)을 **덮어쓰지 않고 보존**한다.
 
 ### Step 4.2: 통합 findings 구성
 
 ```
 findings = {
-  spec: spec-reviewer 결과 (Step 2),
-  quality: quality-reviewer 결과 (Step 3 Task A),
-  security: security-auditor 결과 (Step 3 Task B)
+  spec: reviewer 결과 Part 1 (Step 2 Task A),
+  quality: reviewer 결과 Part 2 (Step 2 Task A),
+  security: security-auditor 결과 (Step 2 Task B)
 }
 ```
 
@@ -329,9 +242,9 @@ findings = {
 
 ### Step 4.4: 결과 처리 (의사코드)
 
-> 결함을 **동작 결함**과 **동작 불변 품질 결함**으로 분류하여 수정 경로를 달리한다 (quality-reviewer의 `[동작결함]`/`[동작불변]` 표기 사용).
+> 결함을 **동작 결함**과 **동작 불변 품질 결함**으로 분류하여 수정 경로를 달리한다 (reviewer의 `[동작결함]`/`[동작불변]` 표기 사용).
 > - **동작 결함** → RGR 사이클(RED 선행). 결함을 재현하는 실패 테스트가 먼저 있어야 한다 (Iron Law 1).
-> - **동작 불변 품질 결함**(DRY/네이밍/매직넘버/추상화 정리) → refactor-coder 단독. 기존 테스트 GREEN 유지하며 정리하므로 새 RED 불필요 (= RGR의 REFACTOR 단계).
+> - **동작 불변 품질 결함**(DRY/네이밍/매직넘버/추상화 정리) → implementer 정리 모드. 기존 테스트 GREEN 유지하며 정리하므로 새 RED 불필요 (= RGR의 REFACTOR 단계).
 
 ```
 did_fix = false
@@ -355,29 +268,28 @@ if behavior_defects:
       - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
     did_fix = true (RGR 선택 시)
 
-# 4b: 동작 불변 품질 결함 → refactor-coder 단독 (새 RED 없음)
-#  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → refactor-coder의 GREEN 선행 조건 충족
+# 4b: 동작 불변 품질 결함 → implementer 정리 모드 (새 RED 없음)
+#  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → implementer 정리 모드의 GREEN 선행 조건 충족
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → Task(subagent_type="oh-my-gx:refactor-coder"):
-               입력 = refactor_only 항목들의 {파일:라인 + 권고}를 "정리 대상"으로 전달 + PROJECT_ROOT.
-               디스패치 형식(절대 규칙/수행 가능·불가 정리/출력 형식)은 phase-implement 부록 A의 구 Step 2-F를 따르되,
-               "정리 대상"은 green 산출물이 아니라 위 리뷰 findings이며 GREEN 기준선은 Step0에서 통과한 전체 테스트다.
-               → 정리 후 전체 테스트 GREEN 재확인
+      - "예" → Task(subagent_type="oh-my-gx:implementer"):
+               정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + PROJECT_ROOT.
+               GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 전체 테스트다.
+               → 정리 후 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록
     did_fix = true (수행 시)
 
 # 4c: 반복 판단
 if did_fix:
-    → 다음 반복 (Step 2부터 재실행: spec → quality)
+    → 다음 반복 (Step 2부터 재실행: reviewer + security)
 else:
     # 동작 결함도 동작 불변 결함도 없는 경우
     if Minor(quality) 또는 MEDIUM(security) 항목 있음:
         항목 목록 표시 + "수정할까요?" 확인
         if 수정 선택:
-            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → refactor-coder 단독,
-            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 refactor-coder 단독)
+            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → implementer 정리 모드,
+            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 implementer 정리 모드)
             → 단발성 확인 리뷰 (반복 카운트 미포함)
         else:
             → phase-complete
@@ -395,18 +307,14 @@ else:
 steps:
   review:
     - mechanical-gate (build + test): completed
-    - spec-review (1단계): completed
-    - quality-review + security (2단계 병렬): in_progress
+    - unified-review + security (병렬): in_progress
 execution-log:
   - phase: review
     step: mechanical-gate
     result: "build ✓, test ✓"
   - phase: review
-    agent: spec-reviewer
-    result: "SPEC PASS — [Must] 5/5, [Should] 2/3"
-  - phase: review
-    agent: quality-reviewer
-    result: "Critical 0, Important 2, Minor 5"
+    agent: reviewer
+    result: "SPEC PASS ([Must] 5/5) · Quality: Critical 0, Important 2, Minor 5"
   - phase: review
     agent: security-auditor
     result: "CRITICAL 0, HIGH 1, MEDIUM 3"
@@ -417,24 +325,24 @@ execution-log:
 ## --resume 호환
 
 - `"mechanical-gate"` → Step 0부터 재실행
-- `"spec-review (1단계)"` → Step 2부터 재실행
-- `"quality-review + security (2단계 병렬)"` → Step 3부터 재실행 (spec 결과는 trust-ledger/execution-log에서 복원)
+- `"unified-review + security (병렬)"` → Step 2부터 재실행
+- 구 세션 호환: `"spec-review (1단계)"`/`"quality-review + security (2단계 병렬)"`(2석 세대) → Step 2(통합 디스패치)부터 재실행
 
 ---
 
 ## 금지 사항 (Iron Law 강제)
 
 이 Phase에서 절대 호출하지 않는 에이전트:
-- ❌ `qa-manager` (deprecated — spec-reviewer + quality-reviewer로 분해됨)
+- ❌ `qa-manager` (deprecated — spec-reviewer·quality-reviewer 구 2석 분해를 거쳐 reviewer 1석으로 통합됨)
 - ❌ `coder` (deprecated — 수정은 RGR 사이클로 phase-implement 재진입)
 
 이 Phase에서 절대 수행하지 않는 동작:
-- ❌ spec-reviewer 미통과 상태에서 quality-reviewer 호출 — Iron Law 위반
-- ❌ spec-reviewer와 quality-reviewer 병렬 호출 — 순서 강제 위반
+- ❌ Part 1 verdict 없이 quality 판정 수용 — Iron Law 위반 (reviewer 출력에 spec_verdict가 없으면 재호출)
+- ❌ spec-reviewer·quality-reviewer 개별 디스패치 — reviewer 1석으로 통합됨 (구 2석은 파이프라인 미호출)
 - ❌ `coder`(deprecated) 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
 - ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지
 
-**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `refactor-coder` **단독 호출**로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
+**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `implementer` **정리 모드**로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
 
-위반 감지 시 즉시 중단하고 spec-reviewer부터 재시작한다.
+위반 감지 시 즉시 중단하고 reviewer부터 재시작한다.
