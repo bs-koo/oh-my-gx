@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>oh-my-gx — GX 사업본부 개발 자동화 플러그인</title>
-  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 17개 스킬과 17개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
+  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 17개 스킬과 18개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -914,7 +914,7 @@
         <ul class="feature-list">
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
-          <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
+          <li><strong>implement</strong> — red-writer → implementer 격리 순차</li>
           <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 기준선 게이트 통과 후 gx-ralph 무인 루프로 전환 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
           <li><strong>핵심 모드(core)</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
@@ -928,10 +928,10 @@
 <span class="ln"><span class="c-key">RED</span>      red-writer    <span class="c-dim">실패 테스트 작성</span></span>
 <span class="ln">         <span class="c-dim">▸ test FAILED  (의도된 실패)</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-ok">GREEN</span>    green-coder   <span class="c-dim">통과 최소 코드</span></span>
+<span class="ln"><span class="c-ok">GREEN</span>    implementer   <span class="c-dim">통과 최소 코드</span></span>
 <span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-key">REFACTOR</span> refactor-coder <span class="c-dim">GREEN 유지하며 정리</span></span>
+<span class="ln"><span class="c-key">REFACTOR</span> implementer    <span class="c-dim">GREEN 유지하며 정리</span></span>
 <span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-cmd">verify</span>   실제 실행 증거 없으면 commit 차단</span>
@@ -1076,7 +1076,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">에이전트 팀</p>
-      <h2 class="display-lg">17개 에이전트, 하나의 관점씩</h2>
+      <h2 class="display-lg">18개 에이전트, 하나의 관점씩</h2>
       <p>스킬은 내부적으로 직무별 에이전트 팀을 부릅니다. 에이전트 하나는 관점 하나만 맡고, 작업 성격에 따라 Opus나 Sonnet 모델이 배정됩니다.</p>
     </div>
 
@@ -1091,12 +1091,13 @@
     </div>
 
     <div class="agent-group">
-      <div class="agent-group-head"><h3 class="display-sm">구현</h3><span class="count">4</span></div>
+      <div class="agent-group-head"><h3 class="display-sm">구현</h3><span class="count">5</span></div>
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계 기반 코드 구현 (dev)</div></div>
         <div class="agent"><div class="agent-name">red-writer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">실패 테스트 작성 전담 (tdd)</div></div>
-        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (tdd, YAGNI)</div></div>
-        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">implementer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN+REFACTOR 통합 구현 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (단독 스킬·gx-ralph 전용)</div></div>
+        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (단독 스킬·gx-ralph 전용)</div></div>
       </div>
     </div>
 
@@ -1186,7 +1187,7 @@
       <div>지원</div>
       <div class="hl">경로 해결됨 — 서브에이전트 · 스킬 호출 표기는 남음</div>
 
-      <div class="rk">서브에이전트 17개</div>
+      <div class="rk">서브에이전트 18개</div>
       <div>자동 로드</div>
       <div class="hl">미지원 — 역할 파일 로드 기능이 개발 중</div>
 

@@ -103,7 +103,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 3. **결과 수집 및 판단**: Agent의 출력을 받아 다음 행동(사용자에게 질문, 다음 Agent 호출, 다음 Phase 전환)을 결정합니다.
 4. **상태 관리**: `.dev/{branch-slug}/state.md`에 현재 Phase와 Step을 지속적으로 기록하여 세션 재개를 지원합니다.
 
-#### Agent 팀 (gx-dev 기준 9명 — 플러그인 전체 17명)
+#### Agent 팀 (gx-dev 기준 9명 — 플러그인 전체 18명)
 
 | Agent | 분류 | 역할 | 관점 | 모델 |
 |-------|------|------|------|------|
@@ -117,7 +117,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 | hacker | RECOVERY | 제약 우회 + 정체 탈출 | "다른 길이 있다" (정체 감지 시 호출) | sonnet |
 | simplifier | RECOVERY | 복잡도 제거 + 범위 축소 | "더 작게 만들자" (정체 감지 시 호출) | sonnet |
 
-이 밖에 `gx-tdd` 파이프라인 전용 6종(red-writer, green-coder, refactor-coder, spec-reviewer, quality-reviewer, test-architect)과 `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 17종입니다.
+이 밖에 `gx-tdd` 파이프라인 전용 5종(red-writer, implementer, spec-reviewer, quality-reviewer, test-architect)과 단독 스킬·`gx-ralph` 전용 2종(green-coder, refactor-coder), `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 18종입니다.
 
 #### 모델 라우팅 원칙
 
@@ -669,7 +669,7 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 
 ### 4.9 `/gx-tdd` -- TDD 개발 사이클
 
-`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → GREEN(green-coder) → REFACTOR(refactor-coder)** 사이클로, 리뷰는 **spec-reviewer(AC 충족) → quality-reviewer(코드 품질)** 2단계로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
+`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → IMPLEMENT(implementer — GREEN+REFACTOR 통합)** 사이클로, 리뷰는 **spec-reviewer(AC 충족) → quality-reviewer(코드 품질)** 2단계로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
 
 | 항목 | 설명 |
 |------|------|

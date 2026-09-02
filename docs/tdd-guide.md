@@ -424,7 +424,7 @@ for 태스크:
 |------|--------|--------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가 (score ≥ 7)** |
-| implement | coder 단일 호출 | **red-writer → green-coder → refactor-coder 순차** |
+| implement | coder 단일 호출 | **red-writer → implementer 순차** |
 | review | qa + security 병렬 | **spec → quality 순차 강제** |
 | complete | qa 통과 후 커밋 | **verify 게이트 통과 후 커밋** |
 
@@ -461,7 +461,7 @@ requirements ─ PRD 작성 (product-owner)
 design ─────── 설계 (architect) + 비판 검토 (design-critic)
    ↓          [게이트 2] testability score ≥ 7 (test-architect)
 implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록
-   ↓          RGR 사이클: red-writer → green-coder → refactor-coder (태스크별 순차)
+   ↓          RGR 사이클: red-writer → implementer (태스크별 순차)
 review ─────── [게이트 4] Mechanical Gate (build + test)
    ↓          spec-reviewer (AC 충족) → quality-reviewer (코드 품질) + security-auditor
 complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify)
@@ -477,8 +477,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 | 단계 | 에이전트 | 무엇을 보는가 | 무엇이 금지되는가 |
 |------|---------|-------------|-----------------|
 | RED | `red-writer` | AC(G-W-T) + 설계서 testability 섹션 + 기존 테스트 스타일 | **기존 프로덕션 코드 참조**, 프로덕션 코드 작성 |
-| GREEN | `green-coder` | 실패 테스트 + 대상 시그니처 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반) |
-| REFACTOR | `refactor-coder` | 정리 대상 파일 + 정리 항목 | 동작 변경, 기능 추가, 시그니처 변경 |
+| IMPLEMENT | `implementer` | 실패 테스트 + 대상 시그니처 + 정리 대상 파일 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반), 동작 변경 |
 | 스펙 리뷰 | `spec-reviewer` | PRD의 AC + diff | 코드 품질 평가 |
 | 품질 리뷰 | `quality-reviewer` | diff + 컨벤션 | AC 충족 여부 평가 (PRD를 받지 않음) |
 | testability | `test-architect` | 설계서 + AC | — |

@@ -71,7 +71,7 @@ tools:
 ## 판정
 
 - ✅ 모두 충족 → quality-reviewer 단계 진입 가능
-- ⚠️ 부분 / ❌ 미충족 → green-coder/red-writer 재호출 필요. 다음 단계 진입 금지
+- ⚠️ 부분 / ❌ 미충족 → implementer/red-writer 재호출 필요. 다음 단계 진입 금지
 ```
 
 ### 기계 판정 블록 (필수)
