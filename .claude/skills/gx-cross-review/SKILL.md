@@ -804,7 +804,7 @@ processed:
 ## 다른 스킬과의 관계
 
 - `/gx-dev`: cross-review의 산출물(prd/design/trust-ledger)을 생성한다. 선행 의존.
-- `/gx-tdd`: 산출물 파일 구조(prd/design/trust-ledger)가 동일하므로 gx-tdd 완료물에도 그대로 동작한다. 이때 claude advisor가 호출하는 qa-manager는 "gx-tdd 파이프라인 내부 호출 금지" 대상이 아니다 — cross-review는 파이프라인 완료 후의 독립 스킬이므로 허용된다 (gx-tdd 내부 리뷰는 spec-reviewer→quality-reviewer가 담당하며, cross-review는 그와 별개의 사후 검증 층이다).
+- `/gx-tdd`: 산출물 파일 구조(prd/design/trust-ledger)가 동일하므로 gx-tdd 완료물에도 그대로 동작한다. 이때 claude advisor가 호출하는 qa-manager는 "gx-tdd 파이프라인 내부 호출 금지" 대상이 아니다 — cross-review는 파이프라인 완료 후의 독립 스킬이므로 허용된다 (gx-tdd 내부 리뷰는 reviewer(spec→quality 통합 1석)가 담당하며, cross-review는 그와 별개의 사후 검증 층이다).
 - `/codex:review`: 일반 코드 리뷰. cross-review와 별개로 사용 가능.
 - `/codex:adversarial-review`: cross-review의 codex 경로보다 더 공격적인 비판이 필요하면 별도 호출.
 - `/gx-commit`, `/gx-pull-request`: cross-review 후 처리한 변경사항을 커밋/PR.

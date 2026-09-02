@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>oh-my-gx — GX 사업본부 개발 자동화 플러그인</title>
-  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 17개 스킬과 18개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
+  <meta name="description" content="자연어 한 줄로 PRD·설계·구현·리뷰·PR까지. 17개 스킬과 19개 에이전트 팀이 처리하는 Claude Code 개발 자동화 플러그인.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -1076,7 +1076,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">에이전트 팀</p>
-      <h2 class="display-lg">18개 에이전트, 하나의 관점씩</h2>
+      <h2 class="display-lg">19개 에이전트, 하나의 관점씩</h2>
       <p>스킬은 내부적으로 직무별 에이전트 팀을 부릅니다. 에이전트 하나는 관점 하나만 맡고, 작업 성격에 따라 Opus나 Sonnet 모델이 배정됩니다.</p>
     </div>
 
@@ -1102,11 +1102,12 @@
     </div>
 
     <div class="agent-group">
-      <div class="agent-group-head"><h3 class="display-sm">리뷰</h3><span class="count">4</span></div>
+      <div class="agent-group-head"><h3 class="display-sm">리뷰</h3><span class="count">5</span></div>
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">qa-manager <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드 리뷰 + 스펙 충족 검증 (dev)</div></div>
-        <div class="agent"><div class="agent-name">spec-reviewer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">AC 충족만 검증 (tdd 1단계)</div></div>
-        <div class="agent"><div class="agent-name">quality-reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">코드 품질만 검증 (tdd 2단계)</div></div>
+        <div class="agent"><div class="agent-name">reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">AC 충족 → 코드 품질 통합 1석 (tdd, spec verdict 선행)</div></div>
+        <div class="agent"><div class="agent-name">spec-reviewer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">AC 충족만 검증 (reviewer로 통합 — 미호출)</div></div>
+        <div class="agent"><div class="agent-name">quality-reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">코드 품질만 검증 (reviewer로 통합 — 미호출)</div></div>
         <div class="agent"><div class="agent-name">security-auditor <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">정책 · 보안 · 허점 교차 검증</div></div>
       </div>
     </div>
@@ -1187,7 +1188,7 @@
       <div>지원</div>
       <div class="hl">경로 해결됨 — 서브에이전트 · 스킬 호출 표기는 남음</div>
 
-      <div class="rk">서브에이전트 18개</div>
+      <div class="rk">서브에이전트 19개</div>
       <div>자동 로드</div>
       <div class="hl">미지원 — 역할 파일 로드 기능이 개발 중</div>
 

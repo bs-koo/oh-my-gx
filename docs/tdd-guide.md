@@ -463,7 +463,7 @@ design ─────── 설계 (architect) + 비판 검토 (design-critic)
 implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록
    ↓          RGR 사이클: red-writer → implementer (태스크별 순차)
 review ─────── [게이트 4] Mechanical Gate (build + test)
-   ↓          spec-reviewer (AC 충족) → quality-reviewer (코드 품질) + security-auditor
+   ↓          reviewer (AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + security-auditor 병렬
 complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify)
               → 인수 검증 (product-owner) → commit → PR
 ```
@@ -478,8 +478,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 |------|---------|-------------|-----------------|
 | RED | `red-writer` | AC(G-W-T) + 설계서 testability 섹션 + 기존 테스트 스타일 | **기존 프로덕션 코드 참조**, 프로덕션 코드 작성 |
 | IMPLEMENT | `implementer` | 실패 테스트 + 대상 시그니처 + 정리 대상 파일 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반), 동작 변경 |
-| 스펙 리뷰 | `spec-reviewer` | PRD의 AC + diff | 코드 품질 평가 |
-| 품질 리뷰 | `quality-reviewer` | diff + 컨벤션 | AC 충족 여부 평가 (PRD를 받지 않음) |
+| 리뷰 | `reviewer` | PRD의 AC + diff + 컨벤션 (Part 1: AC 충족 → Part 2: 코드 품질) | Part 1 verdict 확정 전 품질 판정 |
 | testability | `test-architect` | 설계서 + AC | — |
 
 **red-writer의 격리**가 이 구조의 핵심이다. 기존 구현을 보지 않고 AC와 인터페이스 정의만으로 테스트를 쓴다. 구현에 적응한 테스트("코드가 이러니까 이렇게 검증하자")를 원천 차단하기 위해서다. red-writer는 참조한 파일 목록을 자기신고하고, 오케스트레이터가 그 목록에 프로덕션 소스가 있으면 해당 테스트를 폐기하고 재작성시킨다.
@@ -537,7 +536,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 
 핵심 모드에서도 **RGR 사이클, G-W-T 게이트, verify 게이트는 유지된다.** 생략되는 것은 설계 단계(testability 평가)와 정식 리뷰뿐이다. "급하니까 TDD를 건너뛴다"는 선택지는 이 스킬에 없다. 테스트 없이 바로 구현하려면 `gx-dev`의 핵심 모드를 쓴다.
 
-모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·quality-reviewer가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
+모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·reviewer(+quality-reviewer 잔존 등재)가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
 
 ### 6.9 단계별 단독 호출
 
@@ -672,8 +671,8 @@ REFACTOR refactor-coder가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로
 
 ### 7.5 review → complete
 
-- spec-reviewer가 AC-1~4 충족 여부만 판정 (코드 품질은 보지 않음)
-- 통과 후 quality-reviewer(품질) + security-auditor(보안)가 병렬 실행
+- reviewer 1석이 Part 1(AC-1~4 충족 판정) → Part 2(코드 품질) 순서로 수행 (Part 1 FAIL이어도 Part 2 진행)
+- security-auditor(보안)가 reviewer와 병렬 실행
 - verify 게이트가 `./gradlew test`와 `./gradlew build`를 새로 실행해 0 failures 확인
 - product-owner 인수 검증 → 커밋 → PR
 

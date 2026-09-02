@@ -56,7 +56,7 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 | 스킬 인식·로드 | 지원 | 지원 — 17개 전부 로드 확인 |
 | 단일 파일 스킬 13개 | 지원 | 지원 — commit·pull-request·humanizer·research·tech-debt·context·cross-review·verify·red·green·refactor·ralph |
 | 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | 경로 해결됨 — 서브에이전트·스킬 호출 표기는 남아 있다 |
-| 서브에이전트 18개 (`agents/`) | 자동 로드 | 미지원 — 역할 파일 로드 기능이 개발 중이라 수동 배치도 통하지 않는다 |
+| 서브에이전트 19개 (`agents/`) | 자동 로드 | 미지원 — 역할 파일 로드 기능이 개발 중이라 수동 배치도 통하지 않는다 |
 | 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 — Codex의 `plugin_hooks`가 개발 중 |
 
 ### 알려진 제약
@@ -253,7 +253,7 @@ references/
 - **requirements**: 수용 기준(AC)을 Given-When-Then 형식으로 강제 (자동 테스트로 변환 가능)
 - **design**: `test-architect`가 testability 점수(1-10)를 매기고, 7 미만이면 재설계
 - **implement**: `red-writer`(실패 테스트) → `implementer`(통과 최소 코드 + 정리)의 격리 순차 사이클. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 바로 사이클에 들어갑니다. `--ralph`나 "랄프로 …"로 명시한 실행만 그 시점에 무인 루프로 전환되며, 루프 안에서도 RGR 사이클이 AC 1건 단위로 유지됩니다
-- **review**: `spec-reviewer`(AC 충족) → `quality-reviewer`(코드 품질) 순차 게이트 + `security-auditor`
+- **review**: `reviewer`(AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + `security-auditor` 병렬
 - **complete**: `verify` 게이트(신선한 테스트 실행 증거)를 통과해야만 commit/PR
 
 tdd에도 **핵심 모드(core)**가 있습니다: 설계(testability 평가)와 정식 리뷰만 생략하는 경량 경로로, AC(Given-When-Then)를 오케스트레이터가 직접 작성해 확인받고 **RGR 사이클·verify 게이트·긴급 보안 감사는 그대로 유지**합니다. dev 핵심 모드와 달리 테스트 작성이 여전히 강제됩니다 — "TDD로 긴급 수정해줘", "TDD로 구현만 해줘"가 이 경로입니다.
@@ -399,8 +399,9 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 | | refactor-coder | GREEN 유지하며 정리 (단독 스킬·gx-ralph 전용) |
 | **리뷰** | design-critic | 암묵적 가정 도전, 과잉 설계 식별 |
 | | qa-manager | 코드 리뷰 + 스펙 충족 검증 (dev) |
-| | spec-reviewer | AC 충족만 검증 (tdd 1단계) |
-| | quality-reviewer | 코드 품질만 검증 (tdd 2단계) |
+| | reviewer | spec+quality 통합 리뷰 (tdd) |
+| | spec-reviewer | AC 충족만 검증 (reviewer로 통합 — 미호출) |
+| | quality-reviewer | 코드 품질만 검증 (reviewer로 통합 — 미호출) |
 | | security-auditor | 정책/보안/허점 교차 검증 |
 | **윤문 검증** | humanizer-fidelity | 의미 보존 감사 (strict) |
 | | humanizer-naturalness | 과윤문/AI티 잔존 검토 (strict) |
