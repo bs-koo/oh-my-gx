@@ -12,7 +12,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.
 
-> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor)·gx-ralph 루프 전용 (부록 A 참조).
+> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor) 전용. gx-ralph 루프도 red-writer→implementer 2석을 쓴다.
 
 ---
 
@@ -262,6 +262,13 @@ Task(subagent_type="oh-my-gx:implementer"):
     4. 테스트 실행은 아래 focused 명령만 사용합니다. 전체 스위트를 실행하지 않습니다.
     5. 보고 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정합니다.
 
+    [수행 불가능한 정리]
+    - 동작 변경
+    - 새 기능 추가
+    - 에러 핸들링 추가
+    - 성능 최적화
+    - 인터페이스 시그니처 변경
+
     [RED report]
     - 경로: {reports/t{N}-red.md} — Read하여 실패 테스트(파일·코드·실패 메시지)를 파악하십시오
 
@@ -458,120 +465,3 @@ steps:
 - ❌ 검증 명령 생략 (verify_red/verify_implement) — Iron Law 3 위반
 
 위반 감지 시 즉시 중단하고 RED 단계부터 재시작한다.
-
----
-
-## 부록 A: gx-ralph 전용 트리오 프롬프트 (구 Step 2-G/2-F)
-
-> 이 부록은 gx-tdd 파이프라인이 사용하지 않는다. `gx-ralph-iterate`(헤드리스 반복)가 origin: gx-tdd 루프에서 red-writer → green-coder → refactor-coder 트리오를 디스패치할 때의 프롬프트 소스로만 보존된다. 파이프라인 본문은 Step 2-I(implementer)를 사용한다.
->
-> 부록 A의 verify_green/verify_refactor가 기록하는 `test-count`는 **전체 스위트 기준**(3석 세대 규약)으로, 파이프라인 verify_implement의 focused 기준과 정의가 다르다. ralph 루프가 남긴 state를 gx-tdd `--resume`으로 이어받을 때 `test-count` 기준선은 비교하지 않고 재측정한다.
-
-### 구 Step 2-G: GREEN (green-coder 디스패치 — gx-ralph 전용)
-
-```
-Task(subagent_type="oh-my-gx:green-coder"):
-  description: "GREEN: Pass test {test-name}"
-  prompt: |
-    당신은 GREEN 단계 최소 코드 작성 전담자입니다.
-
-    [절대 규칙]
-    1. 실패 테스트 1개만 통과시키는 최소 코드만 작성합니다.
-    2. 추가 기능, 에러 핸들링, 검증, 로깅을 미리 넣지 않습니다 (YAGNI).
-    3. 다른 테스트가 깨지지 않는지 확인합니다.
-    4. 테스트 파일을 수정하지 않습니다. 테스트가 실패하면 코드를 고치고, 테스트를 고치지 않습니다. 테스트 자체 결함이 의심되면 수정하지 말고 "테스트 결함 의심"으로 보고합니다.
-
-    [실패 테스트]
-    - 파일: {red 결과의 테스트 파일}
-    - 코드: {테스트 코드}
-    - 실패 메시지: {메시지}
-
-    [설계서 인터페이스]
-    {대상 컴포넌트의 시그니처만}
-
-    [프로젝트 루트]
-    {PROJECT_ROOT}
-
-    [작업]
-    1. 테스트를 통과시키는 가장 단순한 구현 작성
-    2. 테스트 명령 실행으로 통과 확인
-    3. 전체 테스트 실행으로 회귀 없음 확인
-
-    [출력 형식]
-    - 구현 파일: {경로}
-    - 구현 코드: {코드 블록 — 최소}
-    - 통과 확인 명령: {명령}
-    - 통과 메시지: {N pass}
-    - 다른 테스트 영향: {0건 또는 영향 받은 테스트 목록}
-    - 테스트 결함 의심: {없음 | 사유}
-```
-
-**verify_green**: 오케스트레이터가 직접 검증. **저비용 검사(1~2번)를 테스트 실행보다 먼저 수행한다.**
-1. **테스트 결함 의심 확인**: green-coder가 "테스트 결함 의심"을 보고했으면 (해시 일치 여부와 무관) → 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (green-coder가 테스트를 고치지 않는다).
-2. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조하여 **다른 테스트 파일**의 변경 여부도 확인한다. (`.dev/` 경로 라인은 대조에서 제외한다 — 산출물 공유 전환으로 델타에 나타날 수 있으나 테스트 무결성과 무관하다) **이전 태스크들의 `test-file-hash`도 재검증**한다 (이미 dirty/untracked 상태라 porcelain 델타에 잡히지 않는 이전 테스트 파일의 내용 수정 감지).
-   - 무단 수정 감지 (해시 불일치 또는 타 테스트 파일 변경) → 해당 테스트를 RED 산출물(red 결과의 테스트 코드)로 원복하고 **green-coder 재호출** 1회 ("테스트 수정 금지" 재강조). **재차 위반 시** 사이클을 중단하고 사용자에게 보고한다.
-3. 대상 테스트 통과 확인.
-4. 전체 테스트 실행 → 다른 테스트 회귀 없음 확인. **전체 테스트 수를 state.md 해당 태스크의 `test-count: N` 필드로 기록**한다 (verify_refactor의 테스트 삭제 감지 기준선 — --resume 시에도 복원된다).
-5. **과잉 구현 감지**:
-   - 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지 ({N줄}). YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
-6. ✅ 통과 + 회귀 없음 + 무결성 유지 → REFACTOR로 진행.
-7. ❌ 실패 → green-coder 재호출 (에러 메시지 전달, 최대 2회).
-
-`current-step`을 `"RGR T{N}: GREEN"`으로 갱신.
-
----
-
-### 구 Step 2-F: REFACTOR (refactor-coder 디스패치 — gx-ralph 전용)
-
-```
-Task(subagent_type="oh-my-gx:refactor-coder"):
-  description: "REFACTOR: Clean up {component}"
-  prompt: |
-    당신은 REFACTOR 단계 정리 전담자입니다.
-
-    [절대 규칙]
-    1. 동작을 변경하지 않습니다.
-    2. 새 기능을 추가하지 않습니다.
-    3. 매 정리 후 테스트를 실행하여 GREEN 상태를 유지합니다.
-    4. 테스트가 깨지면 즉시 변경을 되돌립니다.
-
-    [정리 대상]
-    - 파일: {green 결과의 구현 파일}
-    - 식별된 정리 항목: {중복/네이밍/구조 등 — 오케스트레이터가 green-coder 결과의 구현 diff에서 식별하여 전달. 없으면 "없음"}
-
-    [프로젝트 루트]
-    {PROJECT_ROOT}
-
-    [수행 가능한 정리]
-    - 중복 제거 (Extract Method)
-    - 변수/함수 이름 개선 (Rename)
-    - 구조 정리 (Extract Class, Move Method)
-    - 매직 넘버 상수화
-    - 테스트 코드 정리 (모의 동작 검증을 실제 동작 검증으로 교체, 테스트 전용 프로덕션 메서드를 테스트 유틸리티로 이동 — 검증 강도를 낮추지 않는 범위. 프로덕션 호출자가 0인 테스트 전용 메서드 제거는 허용)
-
-    [수행 불가능한 정리]
-    - 동작 변경
-    - 새 기능 추가
-    - 에러 핸들링 추가
-    - 성능 최적화
-    - 인터페이스 시그니처 변경
-
-    [출력 형식]
-    - 정리 항목 (각 항목당 테스트 통과 확인):
-      1. {항목 1} → ✅ 테스트 통과
-      2. {항목 2} → ❌ 롤백
-    - 변경된 파일: {경로 목록}
-    - 최종 테스트 결과: {전체 통과}
-    - 동작 변경: 없음
-```
-
-**verify_refactor**: 오케스트레이터가 직접 검증.
-1. 전체 테스트 실행 → 모든 테스트 통과 확인.
-2. **테스트 수 확인**: 1번 실행 결과의 전체 테스트 수가 verify_green 시점(state.md의 `test-count`)보다 줄었으면 사유를 확인한다 (정당한 정리를 넘는 테스트 삭제는 금지 — 무단 삭제면 롤백 요청. 별도 재실행 없이 1번 출력에서 파싱한다).
-3. public 인터페이스 시그니처 변경 없음 확인.
-4. ❌ 테스트 실패 → refactor-coder에 즉시 롤백 요청. 롤백 실패 시 사용자에게 보고.
-5. ✅ GREEN 유지 → 태스크 완료. 다음 태스크로 진행.
-
-`current-step`을 `"RGR T{N}: REFACTOR"`로 갱신.
-
----

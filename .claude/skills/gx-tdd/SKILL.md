@@ -54,7 +54,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 >
 > **드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
 > 이 중 기계 검증 가능한 불변식(refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달, verify 판별식 키, 디스패치 이름↔agents/ 대조)은 `scripts/lint-consistency.sh`가 CI(`.github/workflows/lint.yml`)에서 자동 검사한다. 나머지는 여전히 수동 동기화 대상이다.
-> - **디스패치 프롬프트**(red-writer/implementer — 부록 A의 green/refactor 트리오는 gx-ralph 전용): phase-implement.md(Step 2-R/2-I — 부록 A는 gx-ralph 전용)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b는 implementer 정리 모드를 디스패치한다 — 부록 A와 무관.
+> - **디스패치 프롬프트**(red-writer/implementer — green/refactor 트리오는 단독 스킬 전용): phase-implement.md(Step 2-R/2-I)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b는 implementer 정리 모드를 디스패치한다.
 > - **마커 분류**(`[동작결함]`/`[동작불변]`): `agents/reviewer.md`가 SSOT이며, phase-review의 Task A 프롬프트·Step 4.4 의사코드에 라우팅 강제를 위해 재명시된다.
 > - **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 `agents/reviewer.md`가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 4.0/SPEC FAIL 처리 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사.
 > - **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md`·`agents/implementer.md` ↔ phase-implement.md(Step 2-I, verify_red/verify_implement) ↔ gx-green SKILL.md(Step 1~3)에 중복 (4중).

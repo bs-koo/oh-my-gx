@@ -73,7 +73,7 @@ Ralph Wiggum 루프 패턴의 진입 스킬. PRD의 수용 기준(AC)을 기계 
 ```yaml
 pipeline: gx-ralph        # 훅 G3·스킬 라우팅의 판별 키
 status: in_progress
-origin: gx-dev | gx-tdd   # 반복 세션의 구현 디스패치 방식 (gx-tdd면 RGR 트리오)
+origin: gx-dev | gx-tdd   # 반복 세션의 구현 디스패치 방식 (gx-tdd면 red-writer→implementer 2석)
 verify-status: pending    # pending|passed — 전이 규칙은 아래
 verify-fingerprint: ""    # verify 통과 시점의 코드 지문 (gx-tdd SKILL.md "verify 지문" 규약과 동일)
 last-known-head: {sha}    # 러너가 반복 전후 기록 (NO_DRIFT 감지용)
@@ -84,7 +84,7 @@ args: "{원 요청}"
 
 **verify-status 전이 규칙 (주체: 반복 세션)**: 코드 변경 직후 `pending`으로 리셋(`verify-fingerprint`도 빈 값으로) → gx-verify 통과 시 `passed`로 전이하며 **verify가 보고한 지문을 `verify-fingerprint`에 함께 기록** → **커밋은 `passed` + 지문 일치 상태에서만 실행** (훅 G3가 커밋 시점에 둘 다 검사하는 최종 방어선이므로 순서를 지켜야 헤드리스에서 자기 차단되지 않는다 — 지문 기록 후 코드를 더 고치면 게이트가 다시 열린다). 지문 계산 규약은 gx-tdd SKILL.md의 "verify 지문" 섹션이 SSOT이며, 지문 필드가 없는 구 세션은 `verify-status`만으로 판정된다.
 
-**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시한다 — 에이전트(coder·red/green/refactor-coder)는 각자의 frontmatter 기본 모델로 디스패치되고, 반복 세션의 오케스트레이터 모델만 러너 환경변수 `GX_RALPH_MODEL`로 지정할 수 있다(미지정 시 CLI 기본 = 표준). eco 프로파일 자체는 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
+**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시한다 — 에이전트(coder·red-writer·implementer)는 각자의 frontmatter 기본 모델로 디스패치되고, 반복 세션의 오케스트레이터 모델만 러너 환경변수 `GX_RALPH_MODEL`로 지정할 수 있다(미지정 시 CLI 기본 = 표준). eco 프로파일 자체는 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
 
 ### 종료 계약 (반복 세션 → 러너)
 

@@ -23,7 +23,7 @@ complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한�
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→green-coder→refactor-coder 트리오로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1로 진행한다** — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
+0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1로 진행한다** — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다

@@ -689,8 +689,8 @@ for s in DONE_WITH_CONCERNS NEEDS_CONTEXT BLOCKED; do
   grep -q "$s" .claude/skills/gx-tdd/phases/phase-implement.md || fail "4-status($s) 누락: phase-implement.md"
   grep -q "$s" agents/implementer.md || fail "4-status($s) 누락: agents/implementer.md"
 done
-grep -q "부록 A" .claude/skills/gx-ralph-iterate/SKILL.md \
-  || fail "ralph 트리오 프롬프트 참조(부록 A) 누락: gx-ralph-iterate/SKILL.md"
+grep -q "oh-my-gx:implementer" .claude/skills/gx-ralph-iterate/SKILL.md \
+  || fail "ralph 2석 디스패치(implementer) 누락: gx-ralph-iterate/SKILL.md"
 [ "$FAIL" -eq 0 ] && ok "report 경로·4-status·ralph 부록 참조 확인"
 
 if [ "$FAIL" -ne 0 ]; then
