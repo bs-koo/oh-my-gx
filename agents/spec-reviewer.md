@@ -1,7 +1,7 @@
 ---
 name: spec-reviewer
 description: |
-  AC 충족 여부만 검증하는 에이전트. 코드 품질은 평가하지 않는다 (그건 quality-reviewer). spec→quality 2단계 리뷰의 1단계.
+  (oh-my-gx:gx-tdd 파이프라인 미호출 — reviewer로 통합. 정의 존치) AC 충족 여부만 검증하는 에이전트. 코드 품질은 평가하지 않는다 (그건 quality-reviewer). spec→quality 2단계 리뷰의 1단계.
 
   <example>
   Context: phase-review Step 2 진입

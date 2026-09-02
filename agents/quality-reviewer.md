@@ -1,7 +1,7 @@
 ---
 name: quality-reviewer
 description: |
-  코드 품질만 검증하는 에이전트. AC 충족 여부는 무시 (spec-reviewer가 통과시킨 후에만 호출). Critical/Important/Minor 3단계로 분류.
+  (oh-my-gx:gx-tdd 파이프라인 미호출 — reviewer로 통합. 정의 존치) 코드 품질만 검증하는 에이전트. AC 충족 여부는 무시 (spec-reviewer가 통과시킨 후에만 호출). Critical/Important/Minor 3단계로 분류.
 
   <example>
   Context: spec-reviewer SPEC PASS 후 phase-review Step 3 진입

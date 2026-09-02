@@ -233,7 +233,7 @@ RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 �
 
 - **발화**: "TDD로 개발해줘", "테스트 먼저", "테스트 주도로"
 - **흐름**: setup → requirements(PRD) → design(설계 + testability 평가) → implement(RGR 사이클) → review(reviewer 통합 1석, spec verdict 선행) → verify(테스트 실행 증거) → complete(인수·커밋·PR)
-- **에이전트 16종**. `/gx-dev`와 다른 지점만 보면:
+- **에이전트 8종**. `/gx-dev`와 다른 지점만 보면:
 
 | 에이전트 | 역할 |
 |---|---|

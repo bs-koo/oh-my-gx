@@ -185,6 +185,8 @@ Task(subagent_type="oh-my-gx:security-auditor"):
 
 ---
 
+## (구 Step 3은 Step 2에 통합됨 — 번호는 --resume 호환을 위해 유지)
+
 ## Step 4: 결과 합산 및 처리
 
 두 Task 완료 후:
@@ -199,7 +201,11 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
 - **집계 불일치 처리 (공통)**: 블록의 건수와 산문 목록의 항목 수가 다르면 **산문 열거를 기준**으로 집계한다 (항목 목록이 원본이고 블록은 요약 — LLM 집계 오류는 모의 검증에서 실측된 사례). 불일치 사실을 Step 4.3 요약에 표기한다.
 - 개별 항목의 수정 경로 라우팅(`[동작결함]`/`[동작불변]` 마커, security 동작 변경 분류)은 **기존 산문 계약을 그대로 사용**한다 — 블록은 게이트 판정과 집계만 구조화한다.
 
+**verdict 블록 부재 시 우선순위**: (1) 산문 Part 1 판정(SPEC PASS/FAIL 문구)이 있으면 산문 폴백으로 진행한다. (2) 산문 Part 1 판정 자체가 없으면 reviewer를 1회 재호출한다. (3) 재호출 출력에도 Part 1 판정이 없으면 사용자에게 보고하고 중단한다. quality_verdict 부재도 같은 우선순위를 적용하며, 두 블록 모두 상충·부재인 경우에도 재호출은 합산 1회다.
+
 ### SPEC FAIL 처리
+
+분기 선택 전에 Step 4.1(Trust Ledger 저장)을 먼저 수행한다 — 재구현·수동 수정으로 이 라운드가 끝나도 Part 2 quality findings와 병렬 실행된 security 결과가 원장에 남아야 한다.
 
 - **SPEC PASS** (모두 ✅) → Step 4.1로 진행
 - **SPEC FAIL** (⚠️ 또는 ❌ 1건 이상) → 다음 처리:
@@ -210,7 +216,7 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
      - "이대로 진행" → 미충족 AC를 trust-ledger에 "미충족 AC" 섹션으로 기록 후 Step 4.1 진행 (예외)
   3. 재구현 후 reviewer 재호출 (반복 카운트에 포함)
 
-**Iron Law 위반 감지**: reviewer 출력에 `spec_verdict` 없이 `quality_verdict`만 있는 등 Part 1 verdict 없이 Part 2 판정을 수용하려는 시도가 발견되면 즉시 중단.
+**Iron Law 위반 감지**: reviewer 출력에 `spec_verdict` 없이 `quality_verdict`만 있는 등 Part 1 verdict 없이 Part 2 판정을 수용하려는 시도가 발견되면 Step 4.0의 "verdict 블록 부재 시 우선순위"를 따른다 (즉시 중단은 그 (3) 단계에서만 발생).
 
 ### Step 4.1: Trust Ledger 저장
 
@@ -274,7 +280,7 @@ if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
       - "예" → Task(subagent_type="oh-my-gx:implementer"):
-               정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + PROJECT_ROOT.
+               정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + PROJECT_ROOT + report 파일 경로(reports/review-cleanup.md — 반복 시 append).
                GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 전체 테스트다.
                → 정리 후 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록
@@ -337,7 +343,7 @@ execution-log:
 - ❌ `coder` (deprecated — 수정은 RGR 사이클로 phase-implement 재진입)
 
 이 Phase에서 절대 수행하지 않는 동작:
-- ❌ Part 1 verdict 없이 quality 판정 수용 — Iron Law 위반 (reviewer 출력에 spec_verdict가 없으면 재호출)
+- ❌ Part 1 verdict 없이 quality 판정 수용 — Iron Law 위반 (처리는 Step 4.0의 "verdict 블록 부재 시 우선순위" 참조)
 - ❌ spec-reviewer·quality-reviewer 개별 디스패치 — reviewer 1석으로 통합됨 (구 2석은 파이프라인 미호출)
 - ❌ `coder`(deprecated) 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
 - ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)

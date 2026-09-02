@@ -54,9 +54,9 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 >
 > **드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
 > 이 중 기계 검증 가능한 불변식(refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달, verify 판별식 키, 디스패치 이름↔agents/ 대조)은 `scripts/lint-consistency.sh`가 CI(`.github/workflows/lint.yml`)에서 자동 검사한다. 나머지는 여전히 수동 동기화 대상이다.
-> - **디스패치 프롬프트**(red-writer/implementer — 부록 A의 green/refactor 트리오는 gx-ralph 전용): phase-implement.md(Step 2-R/2-I — 부록 A는 gx-ralph 전용)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b의 refactor-coder 호출은 부록 A의 구 Step 2-F를 **포인터 참조**한다 (Step 4b 주체 교체는 Phase B 범위).
+> - **디스패치 프롬프트**(red-writer/implementer — 부록 A의 green/refactor 트리오는 gx-ralph 전용): phase-implement.md(Step 2-R/2-I — 부록 A는 gx-ralph 전용)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b는 implementer 정리 모드를 디스패치한다 — 부록 A와 무관.
 > - **마커 분류**(`[동작결함]`/`[동작불변]`): `agents/reviewer.md`가 SSOT이며, phase-review의 Task A 프롬프트·Step 4.4 의사코드에 라우팅 강제를 위해 재명시된다.
-> - **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 `agents/reviewer.md`가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 2.1/4.0 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사.
+> - **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 `agents/reviewer.md`가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 4.0/SPEC FAIL 처리 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사.
 > - **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md`·`agents/implementer.md` ↔ phase-implement.md(Step 2-I, verify_red/verify_implement) ↔ gx-green SKILL.md(Step 1~3)에 중복 (4중).
 > - **테스트 품질 가드**(anti-pattern 요약 + Good Tests 3기준): `agents/red-writer.md` ↔ phase-implement.md(Step 2-R) ↔ gx-red SKILL.md(Step 2)에 중복. 상세 기준의 SSOT는 `references/testing-anti-patterns.md`.
 > - **UI 가드**(셀렉터 우선순위 + 스타일 assert 금지 + 스냅샷 금지): 위와 같은 3파일에 중복. 상세 기준의 SSOT는 `references/frontend-testing.md`이며, 레이어 분류(동작/표현)는 phase-design의 test-architect 프롬프트가, 하네스 게이트는 phase-implement Step 0.5가 소비한다. 린트 [23/26]이 3중 동기와 소비 지점을 검사한다.
@@ -280,7 +280,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 오케스트레이터 직접 ac.md) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
 | implement | phase-implement.md | **red-writer → implementer (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
-| review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: spec 통과 못 하면 quality 진입 금지 | Yes (max 2) |
+| review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: Part 1(spec) verdict 확정 전 Part 2 판정 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
@@ -432,7 +432,7 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 ```
 
 **생성**:
-- 전체 모드: phase-review Step 3의 security-auditor 통합 감사 완료 시 생성.
+- 전체 모드: phase-review Step 2 Task B의 security-auditor 통합 감사 완료 시 생성.
 - 핵심 모드: phase-implement Step H1~H4의 긴급 보안 감사 완료 시 생성 (`### 핵심 모드 긴급 감사` 섹션).
 - 후속 review 반복마다 갱신/append.
 
@@ -641,7 +641,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → implementer는 **반드시 순차** 실행한다. 병렬 금지.
    - 이유: red-writer 산출물(실패 테스트 — RED report)이 implementer의 입력.
    - 위반 시: 격리가 깨져 Iron Law 1 위반.
-5. **review 2단계 순차 강제 (Iron Law)**: reviewer 1석이 Part 1 → Part 2를 내부 순서로 수행한다 (개별 2석 디스패치 금지).
+5. **review 통합 순서 강제 (Iron Law)**: reviewer 1석이 Part 1 → Part 2를 내부 순서로 수행한다 (개별 2석 디스패치 금지).
    - security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 6. RGR/review 사이클 외 읽기 Agent의 병렬은 **읽기 Agent가 이전 Phase의 산출물(설계서 등)만 참조하는 경우** 허용한다.
 

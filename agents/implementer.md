@@ -49,6 +49,7 @@ tools:
 
 1. RED report를 Read하여 실패 테스트와 실패 사유를 파악한다
    - **수리 모드**: RED report 없이 에러·깨진 테스트가 전달된 디스패치(리뷰 Gate 수리, 경계 회귀 수리)에서는 전달된 에러가 시작점이다 — 전달받은 focused 검증 명령으로 수리를 확인하고, 전체 확인은 오케스트레이터의 재실행이 담당한다.
+   - **정리 모드**: RED report 없이 리뷰 findings([동작불변] 항목의 파일:라인+권고)가 전달된 디스패치(phase-review Step 4b)에서는 절차 2(GREEN)를 건너뛰고 3(REFACTOR)부터 수행한다 — 동작 변경 금지·매 정리 후 focused 확인 계약은 동일하다.
 2. **GREEN**: 테스트를 통과시키는 가장 단순한 구현 작성 → focused 테스트 실행으로 통과 확인
 3. **REFACTOR**: 중복 제거(Extract Method)·변수/함수 이름 개선·구조 정리·매직 넘버 상수화 → 매 정리 후 focused 테스트로 GREEN 재확인, 깨지면 롤백
 4. **self-review** (보고 전 자기 diff 검토):
