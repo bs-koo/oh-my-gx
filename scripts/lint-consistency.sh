@@ -77,12 +77,12 @@ grep -q "최대 2회" .claude/skills/gx-green/SKILL.md \
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md .claude/skills/gx-refactor/SKILL.md; do
   grep -q "프로젝트 루트" "$f" || fail "프로젝트 루트 전달 누락: $f"
 done
-grep -q "spec_verdict" agents/spec-reviewer.md \
-  || fail "spec_verdict 블록 정의(producer) 누락: agents/spec-reviewer.md"
+grep -q "spec_verdict" agents/reviewer.md \
+  || fail "spec_verdict 블록 정의(producer) 누락: agents/reviewer.md"
 grep -q "spec_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "spec_verdict 파싱 규칙(consumer) 누락: phase-review.md"
-grep -q "quality_verdict" agents/quality-reviewer.md \
-  || fail "quality_verdict 블록 정의(producer) 누락: agents/quality-reviewer.md"
+grep -q "quality_verdict" agents/reviewer.md \
+  || fail "quality_verdict 블록 정의(producer) 누락: agents/reviewer.md"
 grep -q "quality_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "quality_verdict 파싱 규칙(consumer) 누락: phase-review.md"
 grep -q "security_verdict" .claude/skills/gx-tdd/phases/phase-review.md \

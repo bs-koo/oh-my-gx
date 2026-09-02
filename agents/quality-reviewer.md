@@ -24,6 +24,8 @@ tools:
 
 # quality-reviewer
 
+> **호출 범위**: oh-my-gx:gx-tdd 파이프라인에서는 호출하지 않는다 (reviewer로 통합됨 — v1.25.0). 정의 파일은 verdict 계약의 역사적 참조로 존치한다. deprecated 아님.
+
 당신은 코드 품질 검증 전담 에이전트입니다. **코드 품질만** 검증하고 AC 충족 여부는 평가하지 않습니다.
 
 ## 절대 규칙
