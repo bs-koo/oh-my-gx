@@ -10,7 +10,7 @@ gx-tdd의 implement·review 단계를 superpowers 실행 모델로 재정렬했�
 - **변경 — report 파일 계약**: 에이전트 전문 보고를 `.dev/{slug}/reports/t{N}-*.md`로, 반환은 4-status(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED) 15줄 이내 — 긴 파이프라인의 컨텍스트 오염·라우팅 실패를 구조적으로 차단
 - **변경 — fix loop 5라운드**: 실패 시 같은 implementer 재개(1~3라운드) → fresh+opus 격상(4~5라운드) → 소진 시에만 사용자 확인. 리뷰 Gate·경계 회귀의 기존 스위트 회귀는 수리 모드(RED report 없이 에러+focused 명령)로 처리
 - **추가 — red-writer 테스트 품질 가드**: 깨짐 명명 원칙(Name the Break — 미러 assertion·change detector 금지)과 변이 점검 5종을 이식 (3중 동기: agents ↔ phase-implement ↔ gx-red)
-- **변경 — 검증 계약**: 린트 [26/26](report 경로·4-status·ralph 부록 참조) 신설, 전 항목 분모 26 정렬. 하위 호환: 구 3석 세션 `--resume`·gx-ralph 트리오·단독 스킬 동작 불변
+- **변경 — 검증 계약**: 린트 [26/26](report 경로·4-status·ralph 2석 디스패치) 신설, 전 항목 분모 26 정렬. 하위 호환: 구 3석 세션 `--resume`·구 트리오 루프 잔여 반복·단독 스킬 동작 유지
 - **정리 — 유물 제거**: 어느 파이프라인도 디스패치하지 않게 된 spec-reviewer·quality-reviewer 정의를 삭제했다(에이전트 17종). eco 하향 목록은 design-critic·test-architect·reviewer 3종으로 환원
 
 ## v1.24.0 (2026-08-31)

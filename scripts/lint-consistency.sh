@@ -28,7 +28,7 @@
 # 23. 프론트엔드 테스트 규약 계약 (셀렉터 3중 동기·레이어 하네스 게이트·표현 속성 배제·UI 안티패턴)
 # 24. 하네스·복수 타입 검증 계약 (등록 검증·복합 타입·프론트 힌트·복수 명령 실행·헤드리스 처리·구축 가이드)
 # 25. 작업 계획(.dev/plan.md) 계약 — --work 인자·읽기·갱신·커밋 규칙의 3지점 문구 대조
-# 26. implement report 계약 (report 경로·4-status·ralph 부록 참조)
+# 26. implement report 계약 (report 경로·4-status·ralph 2석 디스패치)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -691,7 +691,7 @@ for s in DONE_WITH_CONCERNS NEEDS_CONTEXT BLOCKED; do
 done
 grep -q "oh-my-gx:implementer" .claude/skills/gx-ralph-iterate/SKILL.md \
   || fail "ralph 2석 디스패치(implementer) 누락: gx-ralph-iterate/SKILL.md"
-[ "$FAIL" -eq 0 ] && ok "report 경로·4-status·ralph 부록 참조 확인"
+[ "$FAIL" -eq 0 ] && ok "report 경로·4-status·ralph 2석 디스패치 확인"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."

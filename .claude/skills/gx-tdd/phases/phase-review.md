@@ -344,7 +344,7 @@ execution-log:
 
 이 Phase에서 절대 수행하지 않는 동작:
 - ❌ Part 1 verdict 없이 quality 판정 수용 — Iron Law 위반 (처리는 Step 4.0의 "verdict 블록 부재 시 우선순위" 참조)
-- ❌ spec-reviewer·quality-reviewer 개별 디스패치 — reviewer 1석으로 통합됨 (구 2석은 파이프라인 미호출)
+- ❌ spec-reviewer·quality-reviewer 개별 디스패치 — reviewer 1석으로 통합됨 (구 2석은 정의 삭제됨)
 - ❌ `coder`(deprecated) 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
 - ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지

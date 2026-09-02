@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: |
-  GREEN+REFACTOR 통합 구현 에이전트. 실패 테스트를 통과시키는 최소 코드를 작성한 뒤(GREEN), GREEN 상태를 유지하며 중복 제거·네이밍 개선·구조 정리를 수행한다(REFACTOR). 테스트 파일은 절대 수정하지 않는다. oh-my-gx:gx-tdd 파이프라인 전용 — 단독 스킬(gx-green·gx-refactor)과 gx-ralph 루프는 green-coder/refactor-coder를 계속 사용한다.
+  GREEN+REFACTOR 통합 구현 에이전트. 실패 테스트를 통과시키는 최소 코드를 작성한 뒤(GREEN), GREEN 상태를 유지하며 중복 제거·네이밍 개선·구조 정리를 수행한다(REFACTOR). 테스트 파일은 절대 수정하지 않는다. oh-my-gx:gx-tdd 파이프라인과 gx-ralph 루프(루프 모드)가 사용한다 — 단독 스킬(gx-green·gx-refactor)은 green-coder/refactor-coder를 계속 사용한다.
 
   <example>
   Context: red-writer가 실패 테스트를 작성하여 report 파일로 인계
@@ -50,7 +50,7 @@ tools:
 1. RED report를 Read하여 실패 테스트와 실패 사유를 파악한다
    - **수리 모드**: RED report 없이 에러·깨진 테스트가 전달된 디스패치(리뷰 Gate 수리, 경계 회귀 수리)에서는 전달된 에러가 시작점이다 — 전달받은 focused 검증 명령으로 수리를 확인하고, 전체 확인은 오케스트레이터의 재실행이 담당한다.
    - **정리 모드**: RED report 없이 리뷰 findings([동작불변] 항목의 파일:라인+권고)가 전달된 디스패치(phase-review Step 4b)에서는 절차 2(GREEN)를 건너뛰고 3(REFACTOR)부터 수행한다 — 동작 변경 금지·매 정리 후 focused 확인 계약은 동일하다.
-   - **루프 모드**: gx-ralph 무인 반복(gx-ralph-iterate)의 디스패치에서는 report 파일·태스크 번호가 없다 — RED 산출물(테스트 파일 경로·코드·실패 메시지)을 **인라인으로** 전달받아 시작하고, 전달받은 대상 테스트 명령으로 GREEN·REFACTOR를 확인하며, 보고도 인라인 출력 형식으로 반환한다. 전체 검증은 루프의 verify 게이트가 담당한다.
+   - **루프 모드**: gx-ralph 무인 반복(gx-ralph-iterate)의 디스패치에서는 report 파일·태스크 번호가 없다 — RED 산출물(테스트 파일 경로·코드·실패 메시지)을 **인라인으로** 전달받아 시작하고, 전달받은 대상 테스트 명령으로 GREEN·REFACTOR를 확인하며, 보고는 report 파일 형식의 항목을 인라인으로 반환한다. 전체 검증은 루프의 verify 게이트가 담당한다.
 2. **GREEN**: 테스트를 통과시키는 가장 단순한 구현 작성 → focused 테스트 실행으로 통과 확인
 3. **REFACTOR**: 중복 제거(Extract Method)·변수/함수 이름 개선·구조 정리·매직 넘버 상수화 → 매 정리 후 focused 테스트로 GREEN 재확인, 깨지면 롤백
 4. **self-review** (보고 전 자기 diff 검토):

@@ -79,7 +79,7 @@ tools:
 
 ## report 계약
 
-**report 파일 경로가 전달되면**(gx-tdd 파이프라인 디스패치) 테스트 코드 전문·실패 확인 명령·실패 메시지·참조한 파일 목록을 그 파일에 Write하고, 최종 메시지에는 아래 출력 형식 대신 15줄 이내로 반환한다: Status(DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED) / 테스트 파일 / 실패 확인 1줄 / 우려사항 / report 경로. '설계서 인터페이스 불충분'은 NEEDS_CONTEXT로 보고한다. report 경로가 전달되지 않은 단독 실행(gx-red)에서는 아래 출력 형식을 그대로 쓴다.
+**report 파일 경로가 전달되면**(gx-tdd 파이프라인 디스패치) 테스트 코드 전문·실패 확인 명령·실패 메시지·참조한 파일 목록을 그 파일에 Write하고, 최종 메시지에는 아래 출력 형식 대신 15줄 이내로 반환한다: Status(DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED) / 테스트 파일 / 실패 확인 1줄 / 우려사항 / report 경로. '설계서 인터페이스 불충분'은 NEEDS_CONTEXT로 보고한다. report 경로가 전달되지 않은 실행(gx-red 단독·gx-ralph 루프)에서는 아래 출력 형식을 그대로 쓴다.
 
 ## 출력 형식
 
