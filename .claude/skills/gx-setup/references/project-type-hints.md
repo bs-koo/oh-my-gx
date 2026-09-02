@@ -20,7 +20,7 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-dev/gx-tdd phase-setup의 인
 | `CMakeLists.txt` | `c-cmake` | `cmake --build build` | `ctest --test-dir build --output-on-failure` | (없음) | `warning:` | `build/` | `Bash(cmake *)`, `Bash(ctest *)` |
 | `project.yml` (Ceedling) | `c-ceedling` | (없음 — test가 빌드 포함) | `ceedling test:all` | (없음) | `warning:` | `build/` | `Bash(ceedling *)` |
 | `pyproject.toml` / `setup.py` / `requirements.txt` | `python` | (없음) | `pytest` | `pytest {files}` | `warning` | `.venv/`, `__pycache__/` | `Bash(pytest *)` |
-| `go.mod` | `go` | `go build ./...` | `go test ./...` | `go test -run {pattern} ./...` | `warning` | (없음) | `Bash(go *)` |
+| `go.mod` | `go` | `go build ./...` | `go test ./...` | (없음) | `warning` | (없음) | `Bash(go *)` |
 | `Cargo.toml` | `rust` | `cargo build` | `cargo test` | (없음) | `warning:` | `target/` | `Bash(cargo *)` |
 | `*.csproj` / `*.sln` | `dotnet` | `dotnet build` | `dotnet test` | (없음) | `warning` | `bin/`, `obj/` | `Bash(dotnet *)` |
 | `pom.xml` | `java-maven` | `mvn -B compile` | `mvn -B test` | (없음) | `warning` | `target/` | `Bash(mvn *)` |

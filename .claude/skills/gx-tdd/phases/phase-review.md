@@ -428,7 +428,7 @@ execution-log:
 - ❌ spec-reviewer 미통과 상태에서 quality-reviewer 호출 — Iron Law 위반
 - ❌ spec-reviewer와 quality-reviewer 병렬 호출 — 순서 강제 위반
 - ❌ `coder`(deprecated) 직접 호출로 수정 — RGR 사이클 우회 (Iron Law 1 위반)
-- ❌ 동작 결함을 실패 테스트 없이 green-coder로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
+- ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지
 
 **허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `refactor-coder` **단독 호출**로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
