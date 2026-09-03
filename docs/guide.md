@@ -117,7 +117,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 | hacker | RECOVERY | 제약 우회 + 정체 탈출 | "다른 길이 있다" (정체 감지 시 호출) | sonnet |
 | simplifier | RECOVERY | 복잡도 제거 + 범위 축소 | "더 작게 만들자" (정체 감지 시 호출) | sonnet |
 
-이 밖에 `gx-tdd` 파이프라인 전용 6종(red-writer, green-coder, refactor-coder, spec-reviewer, quality-reviewer, test-architect)과 `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 17종입니다.
+이 밖에 `gx-tdd` 파이프라인 전용 4종(red-writer, implementer, reviewer, test-architect)과 단독 스킬 전용 2종(green-coder, refactor-coder), `gx-humanizer` strict 모드 전용 2종(humanizer-fidelity, humanizer-naturalness)이 있어 플러그인 전체 에이전트는 17종입니다.
 
 #### 모델 라우팅 원칙
 
@@ -669,16 +669,16 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 
 ### 4.9 `/gx-tdd` -- TDD 개발 사이클
 
-`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → GREEN(green-coder) → REFACTOR(refactor-coder)** 사이클로, 리뷰는 **spec-reviewer(AC 충족) → quality-reviewer(코드 품질)** 2단계로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
+`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → IMPLEMENT(implementer — GREEN+REFACTOR 통합)** 사이클로, 리뷰는 **reviewer(AC 충족 → 코드 품질 통합 1석)**로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
 
 | 항목 | 설명 |
 |------|------|
 | 트리거 | "TDD로", "테스트 먼저", "RED-GREEN-REFACTOR" 등 명시적 TDD 키워드 |
 | 설계 추가 게이트 | test-architect가 testability score(≥7)를 판정 |
-| 무인 루프 전환 | `--ralph`(또는 "랄프로 …")로 시작한 실행만 기준선 게이트(Step 0.5) 통과 후 전환(Step 0.7) — 기본 경로는 묻지 않음. 루프 안에서도 RGR 트리오가 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
+| 무인 루프 전환 | `--ralph`(또는 "랄프로 …")로 시작한 실행만 기준선 게이트(Step 0.5) 통과 후 전환(Step 0.7) — 기본 경로는 묻지 않음. 루프 안에서도 red-writer→implementer 사이클이 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
 | verify 게이트 | 테스트 직접 실행 + 0 failures 증거 없이는 commit/PR 진입 불가 (훅이 최종 방어) |
 | 핵심 모드(core) | gx-dev 핵심 모드와 달리 **RGR·verify·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로 (Iron Law 불변). 생략은 design(testability)·정식 review뿐이며, AC 작성이 product-owner 대신 오케스트레이터 직접(ac.md). 테스트 강제 없는 경량 경로가 필요하면 gx-dev 핵심 모드 사용 |
-| 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·quality-reviewer를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
+| 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·reviewer를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
 
 ### 4.10 TDD 보조 스킬 -- `/gx-red` `/gx-green` `/gx-refactor` `/gx-verify`
 

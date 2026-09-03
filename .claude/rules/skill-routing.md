@@ -45,12 +45,12 @@
 - 명시적 TDD 키워드(`TDD`, `테스트 먼저`, `테스트 주도`, `RED-GREEN-REFACTOR` 등)가 있으면 `/gx-tdd`를 호출한다.
 - TDD 키워드가 없는 일반 개발 요청은 `/gx-dev`를 호출한다.
 - `랄프로`/`ralph로`/`무인 루프로`가 개발 요청에 붙으면 gx-ralph를 직접 호출하지 않고 해당 파이프라인에 `--ralph`를 붙여 호출한다 — gx-ralph 직접 호출은 PRD 부재 게이트에 막히고, 안내대로 재실행하면 opt-in이 증발한다. 단독 발화(`랄프 준비해줘`, `랄프 상태`, `루프 돌려`)만 `/gx-ralph` 직접 호출이다.
-- 두 스킬은 commit/pull-request 공유 스킬을 동일하게 Skill 호출로 사용하고, setup phase 구조와 `context/` 참조 방식도 같다 (단, phase-setup은 각자 별도 파일이며 gx-context는 파이프라인이 호출하지 않는 독립 스킬이다). 차이는 구현(RGR 격리)·리뷰(spec→quality)·verify 게이트뿐이다.
+- 두 스킬은 commit/pull-request 공유 스킬을 동일하게 Skill 호출로 사용하고, setup phase 구조와 `context/` 참조 방식도 같다 (단, phase-setup은 각자 별도 파일이며 gx-context는 파이프라인이 호출하지 않는 독립 스킬이다). 차이는 구현(RGR 격리)·리뷰(spec+quality 통합 1석)·verify 게이트뿐이다.
 - 애매하면 사용자에게 어느 방식으로 진행할지 확인한다.
 
 ### TDD 보조 스킬 (단독 호출)
 
-아래 스킬은 명시적 키워드로 단독 호출할 수 있다. `gx-red`/`gx-green`/`gx-refactor`는 gx-tdd 파이프라인이 직접 호출하지 않고 `red-writer`/`green-coder`/`refactor-coder` 에이전트를 디스패치하므로 단독·체이닝 전용이며, `gx-verify`만 phase-complete가 Skill로 호출한다:
+아래 스킬은 명시적 키워드로 단독 호출할 수 있다. `gx-red`/`gx-green`/`gx-refactor`는 gx-tdd 파이프라인이 직접 호출하지 않고 `red-writer`/`implementer` 에이전트를 디스패치하므로(green-coder/refactor-coder는 단독 스킬 전용) 단독·체이닝 전용이며, `gx-verify`만 phase-complete가 Skill로 호출한다:
 
 | 사용자 표현 | 호출 스킬 |
 |------------|----------|

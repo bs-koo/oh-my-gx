@@ -914,7 +914,7 @@
         <ul class="feature-list">
           <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
           <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
-          <li><strong>implement</strong> — red-writer → green-coder → refactor-coder 격리 순차</li>
+          <li><strong>implement</strong> — red-writer → implementer 격리 순차</li>
           <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 기준선 게이트 통과 후 gx-ralph 무인 루프로 전환 — 루프 안에서도 RGR 유지</li>
           <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
           <li><strong>핵심 모드(core)</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
@@ -928,10 +928,10 @@
 <span class="ln"><span class="c-key">RED</span>      red-writer    <span class="c-dim">실패 테스트 작성</span></span>
 <span class="ln">         <span class="c-dim">▸ test FAILED  (의도된 실패)</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-ok">GREEN</span>    green-coder   <span class="c-dim">통과 최소 코드</span></span>
+<span class="ln"><span class="c-ok">GREEN</span>    implementer   <span class="c-dim">통과 최소 코드</span></span>
 <span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-key">REFACTOR</span> refactor-coder <span class="c-dim">GREEN 유지하며 정리</span></span>
+<span class="ln"><span class="c-key">REFACTOR</span> implementer    <span class="c-dim">GREEN 유지하며 정리</span></span>
 <span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-cmd">verify</span>   실제 실행 증거 없으면 commit 차단</span>
@@ -1091,21 +1091,21 @@
     </div>
 
     <div class="agent-group">
-      <div class="agent-group-head"><h3 class="display-sm">구현</h3><span class="count">4</span></div>
+      <div class="agent-group-head"><h3 class="display-sm">구현</h3><span class="count">5</span></div>
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계 기반 코드 구현 (dev)</div></div>
         <div class="agent"><div class="agent-name">red-writer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">실패 테스트 작성 전담 (tdd)</div></div>
-        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (tdd, YAGNI)</div></div>
-        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">implementer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN+REFACTOR 통합 구현 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (단독 스킬 전용)</div></div>
+        <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (단독 스킬 전용)</div></div>
       </div>
     </div>
 
     <div class="agent-group">
-      <div class="agent-group-head"><h3 class="display-sm">리뷰</h3><span class="count">4</span></div>
+      <div class="agent-group-head"><h3 class="display-sm">리뷰</h3><span class="count">3</span></div>
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">qa-manager <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드 리뷰 + 스펙 충족 검증 (dev)</div></div>
-        <div class="agent"><div class="agent-name">spec-reviewer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">AC 충족만 검증 (tdd 1단계)</div></div>
-        <div class="agent"><div class="agent-name">quality-reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">코드 품질만 검증 (tdd 2단계)</div></div>
+        <div class="agent"><div class="agent-name">reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">AC 충족 → 코드 품질 통합 1석 (tdd, spec verdict 선행)</div></div>
         <div class="agent"><div class="agent-name">security-auditor <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">정책 · 보안 · 허점 교차 검증</div></div>
       </div>
     </div>

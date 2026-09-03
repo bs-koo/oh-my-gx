@@ -110,7 +110,7 @@ allowed-tools:
    )
    ```
    - "등록" → 5로 진행. "명령 수정" → 입력값 반영 후 5로 진행. "건너뛰기" → `프로젝트 타입 등록 : 건너뜀 (사용자 선택)` 출력 후 1단계로 진행.
-5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 Edit로 기록한다 (`detect`/`build`/`test`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다).
+5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 Edit로 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다.
 6. **권한 등록**: build/test 명령의 첫 토큰에서 prefix 권한을 도출하고 (예: `make test` → `Bash(make *)`) 확인받는다:
    ```
    AskUserQuestion(

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.25.0 (2026-09-02)
+
+gx-tdd의 implement·review 단계를 superpowers 실행 모델로 재정렬했다. 기존에는 W 하나(AC 4개)에 에이전트 디스패치 약 20회·전체 테스트 스위트 실행 10~14회가 들었다 — 태스크마다 3에이전트(red/green/refactor)를 순차 디스패치하며 매 단계 전체 테스트를 재실행하고, 리뷰도 spec→quality 2석 왕복이었기 때문이다. superpowers 원본(subagent-driven-development)과의 전면 대조로 이격을 도출해 2에이전트 구현·통합 1석 리뷰·focused 테스트 전략으로 재편했다. 확인 게이트(AskUserQuestion)는 협업 접점이므로 그대로 유지한다. 효과: 전체 테스트 10~14회 → 3회, implement 디스패치 태스크당 3 → 2, 리뷰 왕복 절반.
+
+- **추가 — implementer 에이전트**: green-coder+refactor-coder 통합(GREEN 최소 구현 + GREEN 유지 정리). 테스트 수정 금지·YAGNI 계약 승계, self-review 4관점, focused 전용 실행. 구 트리오는 단독 스킬(gx-green·gx-refactor) 전용으로 존치하며, gx-ralph 루프도 v1.25.0에서 red-writer→implementer 2석으로 전환했다(부록 A 제거)
+- **추가 — reviewer 에이전트**: spec(AC 충족)과 quality(코드 품질)를 한 디스패치로 — Part 1 verdict 선행(Iron Law: NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED), Part 1 FAIL이어도 Part 2를 수행해 재구현 라운드에 품질 지적을 함께 전달. 구 spec/quality-reviewer 2석은 삭제했다(아래 유물 제거 참조). phase-review Step 4b의 정리 주체도 refactor-coder에서 implementer 정리 모드로 교체했고, eco 하향 목록은 design-critic·test-architect·reviewer 3종이다
+- **변경 — focused 테스트 전략**: 사이클 중에는 대상+신규 테스트만 실행하고 전체 스위트는 경계 3회(기준선·Mechanical Gate·verify)로 한정. `projectTypes.focusedTest` 템플릿(`{files}`/`{pattern}`) 신설, 미등록·명령 오류 시 전체 폴백 가드
+- **변경 — report 파일 계약**: 에이전트 전문 보고를 `.dev/{slug}/reports/t{N}-*.md`로, 반환은 4-status(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED) 15줄 이내 — 긴 파이프라인의 컨텍스트 오염·라우팅 실패를 구조적으로 차단
+- **변경 — fix loop 5라운드**: 실패 시 같은 implementer 재개(1~3라운드) → fresh+opus 격상(4~5라운드) → 소진 시에만 사용자 확인. 리뷰 Gate·경계 회귀의 기존 스위트 회귀는 수리 모드(RED report 없이 에러+focused 명령)로 처리
+- **추가 — red-writer 테스트 품질 가드**: 깨짐 명명 원칙(Name the Break — 미러 assertion·change detector 금지)과 변이 점검 5종을 이식 (3중 동기: agents ↔ phase-implement ↔ gx-red)
+- **변경 — 검증 계약**: 린트 [26/26](report 경로·4-status·ralph 2석 디스패치) 신설, 전 항목 분모 26 정렬. 하위 호환: 구 3석 세션 `--resume`·구 트리오 루프 잔여 반복·단독 스킬 동작 유지
+- **정리 — 유물 제거**: 어느 파이프라인도 디스패치하지 않게 된 spec-reviewer·quality-reviewer 정의를 삭제했다(에이전트 17종). eco 하향 목록은 design-critic·test-architect·reviewer 3종으로 환원
+
 ## v1.24.0 (2026-08-31)
 
 작업 계획(`.dev/plan.md`)과 의사결정 기록(`decisions.md`) 도입. 요구사항이 여러 건일 때 "무엇을 먼저 하고 무엇을 동시에 할 수 있는가"를 알 방법이 없었다 — `context/{도메인}/status.md`는 도메인별로 흩어져 있고, 항목 간 의존이 없으며, 병렬 가능 여부를 표현하지 못한다. 그래서 사용자가 매번 status.md를 열어 할 일을 고르고 도메인·요구사항 범위를 프롬프트에 적어야 했다. 계획 파일이 요구사항을 개발 단위로 묶어 실행 순서를 정하고, 확인 게이트에서 오간 질문과 선택은 훅이 자동으로 남긴다.

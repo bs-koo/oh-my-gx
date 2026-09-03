@@ -110,7 +110,7 @@ DI/모의 개념을 다음으로 번역하여 평가한다:
 
 ## 금지 사항
 
-- 구현 세부사항 평가 (그건 quality-reviewer)
+- 구현 세부사항 평가 (그건 reviewer의 Part 2)
 - AC 자체의 적절성 평가 (그건 product-owner)
 - 직접 설계 수정 (architect 역할)
 

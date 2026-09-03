@@ -232,24 +232,24 @@ GX 사업본부 개발자를 위한 배포용 가이드. 설치부터 첫 PR까�
 RED-GREEN-REFACTOR 사이클과 완료 검증 게이트를 강제하는 개발 스킬입니다.
 
 - **발화**: "TDD로 개발해줘", "테스트 먼저", "테스트 주도로"
-- **흐름**: setup → requirements(PRD) → design(설계 + testability 평가) → implement(RGR 사이클) → review(스펙 → 품질 2단계) → verify(테스트 실행 증거) → complete(인수·커밋·PR)
-- **에이전트 15종**. `/gx-dev`와 다른 지점만 보면:
+- **흐름**: setup → requirements(PRD) → design(설계 + testability 평가) → implement(RGR 사이클) → review(reviewer 통합 1석, spec verdict 선행) → verify(테스트 실행 증거) → complete(인수·커밋·PR)
+- **에이전트 6종**. `/gx-dev`와 다른 지점만 보면:
 
 | 에이전트 | 역할 |
 |---|---|
 | test-architect | 설계의 테스트 가능성 평가 + 점수 산정. 점수가 낮으면 재설계를 요청 |
 | red-writer | 실패 테스트만 작성. 프로덕션 코드를 보지 않는 격리 상태로 동작 |
-| green-coder | 테스트를 통과시키는 최소 코드만 작성 (YAGNI 강제) |
-| refactor-coder | 테스트 통과 상태를 유지하며 정리. 동작 변경 금지 |
-| spec-reviewer | AC 충족만 검증 (코드 품질은 보지 않음) |
-| quality-reviewer | 코드 품질만 검증 (AC는 보지 않음) |
+| implementer | 테스트를 통과시키는 최소 코드 작성(YAGNI 강제) + 정리(동작 변경 금지) |
+| green-coder | 테스트를 통과시키는 최소 코드만 작성 (YAGNI 강제) (단독 전용) |
+| refactor-coder | 테스트 통과 상태를 유지하며 정리. 동작 변경 금지 (단독 전용) |
+| reviewer | AC 충족 → 코드 품질 통합 1석 (spec verdict 선행) |
 
 - **verify 게이트**: 테스트 명령을 실제로 실행해 실패 0건을 확인해야 커밋·PR로 넘어갑니다. "아마 동작할 겁니다" 같은 추측성 완료 보고가 차단됩니다.
 - **인자**: `/gx-dev`와 동일한 플래그 체계(`--phase`, `--core`, `--eco`, `--base`, `--status`, `--resume`, `--ralph`)를 지원합니다.
 
 > **`/gx-dev`와 `/gx-tdd`의 차이는 세 곳뿐입니다.**
 > 1. **구현 방식** — dev는 coder가 한 번에 구현, tdd는 실패 테스트 → 최소 구현 → 정리를 사이클로 반복
-> 2. **리뷰 방식** — dev는 qa-manager가 스펙·품질을 함께, tdd는 스펙과 품질을 2단계로 분리
+> 2. **리뷰 방식** — dev는 qa-manager가 스펙·품질을 함께, tdd는 reviewer 1석이 spec verdict 선행(Part 1 → Part 2 내부 순서)으로 검증
 > 3. **완료 조건** — tdd에만 테스트 실행 증거를 요구하는 verify 게이트가 있음
 >
 > PRD·설계·커밋·PR 절차와 `context/` 참조 방식은 동일합니다. 선택 기준은 "정답을 자동 테스트로 표현할 수 있는가"입니다 — 계산·검증·결제·인증 로직과 버그 수정은 `/gx-tdd`, UI·설정·문서 변경과 테스트 인프라가 없는 레거시는 `/gx-dev`가 적합합니다. 애매하면 어느 방식으로 갈지 물어봅니다.

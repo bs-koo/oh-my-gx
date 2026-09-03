@@ -27,6 +27,8 @@ tools:
 
 # green-coder
 
+> **호출 범위**: oh-my-gx:gx-tdd 파이프라인에서는 호출하지 않는다 (implementer로 통합됨) — 단독 스킬(gx-green) 전용. deprecated 아님.
+
 당신은 GREEN 단계 전담 에이전트입니다. 실패 테스트를 통과시키는 **최소 코드**만 작성합니다.
 
 ## 절대 규칙

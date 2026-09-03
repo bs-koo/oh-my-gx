@@ -86,7 +86,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
   - 이 AC 하나만 구현한다. 다른 AC 범위를 건드리지 않는다.
   - 완료 후 변경 파일 목록과 요약을 보고하라.
   ```
-- **origin: gx-tdd** → RGR 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:green-coder`(최소 구현으로 통과) → `oh-my-gx:refactor-coder`(GREEN 유지 정리). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/G/F 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정한다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다.
+- **origin: gx-tdd** → 2석 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:implementer`(GREEN 최소 구현 + REFACTOR 정리 — 루프 모드). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/2-I 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정하고 **report 파일·15줄 반환 계약은 제외**한다 — 루프에는 reports/ 디렉토리와 태스크 번호가 없으므로 RED 산출물은 인라인으로 인계하고 implementer는 루프 모드(agents/implementer.md)로 동작한다. focused 검증 명령은 이 AC의 테스트 파일로 조립한다(config `focusedTest` 템플릿 — 미지원 시 해당 타입의 전체 `test` 명령으로 폴백하고 반복 로그에 기록). phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다. (v1.25.0 이전에 시작된 루프의 잔여 반복도 다음 반복부터 이 2석으로 디스패치한다 — 반복은 서로 독립이다)
 
   **하네스 사전 확인 (origin: gx-tdd 전용, 디스패치 전 1회)**: 이 AC가 요구하는 레이어에 실행 가능한 테스트 러너가 있는지 먼저 확인한다. 대화형 파이프라인은 phase-implement Step 0.5의 하네스 게이트에서 사용자에게 물어보지만, **헤드리스에는 답할 사람이 없다.** 러너가 없는 채로 RED를 디스패치하면 "실패"가 아니라 "실행 불가"가 나오고, 그 AC는 attempts만 3회 소진한 뒤 BLOCKED가 된다 — 러너 부재라는 진짜 원인은 로그에 묻힌다.
 
@@ -116,7 +116,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 
 1. **커밋보다 먼저** state.md에 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값**을 함께 기록한다 (훅 G3가 커밋 시점에 passed와 지문 일치를 함께 요구한다 — 순서 위반 시 헤드리스에서 자기 차단). verify가 지문을 보고하지 않았으면(svn 등) `passed`만 기록한다 — 훅은 지문 없는 세션을 구 세션과 동일하게 판정한다. 이후 커밋까지 코드를 수정하지 않는다 (state.md 갱신은 `.dev/` 제외 규약, `git add -A` 스테이징은 트리 해시 규약 덕분에 지문에 영향이 없다).
 2. 스테이징: `git add -A` 후 런타임 파일을 unstage하고(`git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' 2>/dev/null` — 락·반복 로그는 커밋 금지) `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
-3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않는 gx-ralph 전용 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
+3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않고 gx-ralph만 사용하는 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
 4. 커밋이 훅에 의해 거부되면 → `<ralph>BLOCKED: 커밋 차단 — {훅 사유}</ralph>` 출력 후 종료.
 
 ### Step 5: 원장 갱신

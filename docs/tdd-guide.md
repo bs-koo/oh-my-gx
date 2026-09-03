@@ -45,7 +45,7 @@ gx-tdd가 하는 일
 | 구분 | 수동 TDD | gx-tdd |
 |------|---------|--------|
 | RED 선행 | 개발자의 규율에 의존 | red-writer 전담 + 격리 검증으로 강제 |
-| 최소 구현 | "이왕 하는 김에" 과잉 구현 | green-coder YAGNI + 과잉 구현 감지 |
+| 최소 구현 | "이왕 하는 김에" 과잉 구현 | implementer YAGNI + 과잉 구현 감지 |
 | 리팩터 안전성 | 수동 확인 | 매 정리 후 테스트 재실행, 깨지면 롤백 |
 | 완료 판정 | "돌려봤는데 되던데요" | verify 게이트 — 신선한 실행 증거 없으면 커밋 차단 |
 
@@ -424,8 +424,8 @@ for 태스크:
 |------|--------|--------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가 (score ≥ 7)** |
-| implement | coder 단일 호출 | **red-writer → green-coder → refactor-coder 순차** |
-| review | qa + security 병렬 | **spec → quality 순차 강제** |
+| implement | coder 단일 호출 | **red-writer → implementer 순차** |
+| review | qa + security 병렬 | **reviewer 통합 1석 (spec verdict 선행)** |
 | complete | qa 통과 후 커밋 | **verify 게이트 통과 후 커밋** |
 
 ### 6.3 3대 Iron Law
@@ -461,9 +461,9 @@ requirements ─ PRD 작성 (product-owner)
 design ─────── 설계 (architect) + 비판 검토 (design-critic)
    ↓          [게이트 2] testability score ≥ 7 (test-architect)
 implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록
-   ↓          RGR 사이클: red-writer → green-coder → refactor-coder (태스크별 순차)
+   ↓          RGR 사이클: red-writer → implementer (태스크별 순차)
 review ─────── [게이트 4] Mechanical Gate (build + test)
-   ↓          spec-reviewer (AC 충족) → quality-reviewer (코드 품질) + security-auditor
+   ↓          reviewer (AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + security-auditor 병렬
 complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify)
               → 인수 검증 (product-owner) → commit → PR
 ```
@@ -477,10 +477,8 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 | 단계 | 에이전트 | 무엇을 보는가 | 무엇이 금지되는가 |
 |------|---------|-------------|-----------------|
 | RED | `red-writer` | AC(G-W-T) + 설계서 testability 섹션 + 기존 테스트 스타일 | **기존 프로덕션 코드 참조**, 프로덕션 코드 작성 |
-| GREEN | `green-coder` | 실패 테스트 + 대상 시그니처 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반) |
-| REFACTOR | `refactor-coder` | 정리 대상 파일 + 정리 항목 | 동작 변경, 기능 추가, 시그니처 변경 |
-| 스펙 리뷰 | `spec-reviewer` | PRD의 AC + diff | 코드 품질 평가 |
-| 품질 리뷰 | `quality-reviewer` | diff + 컨벤션 | AC 충족 여부 평가 (PRD를 받지 않음) |
+| IMPLEMENT | `implementer` | 실패 테스트 + 대상 시그니처 + 정리 대상 파일 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반), 동작 변경 |
+| 리뷰 | `reviewer` | PRD의 AC + diff + 컨벤션 (Part 1: AC 충족 → Part 2: 코드 품질) | Part 1 verdict 확정 전 품질 판정 |
 | testability | `test-architect` | 설계서 + AC | — |
 
 **red-writer의 격리**가 이 구조의 핵심이다. 기존 구현을 보지 않고 AC와 인터페이스 정의만으로 테스트를 쓴다. 구현에 적응한 테스트("코드가 이러니까 이렇게 검증하자")를 원천 차단하기 위해서다. red-writer는 참조한 파일 목록을 자기신고하고, 오케스트레이터가 그 목록에 프로덕션 소스가 있으면 해당 테스트를 폐기하고 재작성시킨다.
@@ -495,20 +493,15 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 2. 참조 파일 목록에 프로덕션 소스가 있으면 격리 오염 → 폐기 후 재작성
 3. 테스트 파일 해시(`git hash-object`)와 `git status --porcelain` 스냅샷 기록 → GREEN 단계 무결성 기준선
 
-**verify_green (GREEN 직후)**
+**verify_implement (IMPLEMENT 직후 — GREEN+REFACTOR 통합)**
 
-1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (green-coder가 테스트를 고치지 않는다)
+1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (implementer가 테스트를 고치지 않는다)
 2. 테스트 파일 해시 재계산 → **RED 시점과 다르면 무단 수정**. 원복 후 재호출, 재차 위반 시 사이클 중단
-3. 대상 테스트 통과 + 전체 테스트 회귀 없음 확인, 전체 테스트 수 기록
+3. focused 테스트 집합을 오케스트레이터가 직접 실행 → 통과 확인 + 테스트 수 기록 (전체 회귀는 사이클 경계에서 별도 확인)
 4. 테스트에서 쓰이지 않는 메서드·필드가 추가됐으면 과잉 구현으로 보고
+5. public 시그니처 변경 없음 확인
 
-**verify_refactor (REFACTOR 직후)**
-
-1. 전체 테스트 통과 확인
-2. 테스트 수가 GREEN 시점보다 줄었으면 사유 확인 (무단 삭제면 롤백)
-3. public 시그니처 변경 없음 확인
-
-같은 태스크에서 green-coder가 3회 실패하면 사이클을 멈추고 architect에 재설계를 위임한다. 세 번 막히면 구현이 아니라 설계 문제라는 판단이다.
+fix loop 5라운드(1~3 재개, 4~5 opus 격상) 소진 시 사이클을 멈추고 architect에 재설계를 위임한다. 다섯 번 막히면 구현이 아니라 설계 문제라는 판단이다.
 
 ### 6.7 verify 게이트 — 완료의 정의
 
@@ -538,7 +531,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 
 핵심 모드에서도 **RGR 사이클, G-W-T 게이트, verify 게이트는 유지된다.** 생략되는 것은 설계 단계(testability 평가)와 정식 리뷰뿐이다. "급하니까 TDD를 건너뛴다"는 선택지는 이 스킬에 없다. 테스트 없이 바로 구현하려면 `gx-dev`의 핵심 모드를 쓴다.
 
-모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·quality-reviewer가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
+모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·reviewer가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
 
 ### 6.9 단계별 단독 호출
 
@@ -660,21 +653,21 @@ RED    red-writer가 UserTest.shouldRejectChargeOverLimit 작성
        → 실행 → ChargeLimitExceededException 미존재로 컴파일 실패 확인
        → 테스트 파일 해시 기록
 
-GREEN  green-coder가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
+GREEN  implementer가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
        → 대상 테스트 통과, 전체 회귀 0건
        → 테스트 파일 해시 재확인 (변조 없음)
 
-REFACTOR refactor-coder가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
+REFACTOR implementer가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
        → 테스트 재실행 → 통과 유지
        → 테스트 수 감소 없음 확인
 ```
 
-여기서 green-coder가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
+여기서 implementer가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
 
 ### 7.5 review → complete
 
-- spec-reviewer가 AC-1~4 충족 여부만 판정 (코드 품질은 보지 않음)
-- 통과 후 quality-reviewer(품질) + security-auditor(보안)가 병렬 실행
+- reviewer 1석이 Part 1(AC-1~4 충족 판정) → Part 2(코드 품질) 순서로 수행 (Part 1 FAIL이어도 Part 2 진행)
+- security-auditor(보안)가 reviewer와 병렬 실행
 - verify 게이트가 `./gradlew test`와 `./gradlew build`를 새로 실행해 0 failures 확인
 - product-owner 인수 검증 → 커밋 → PR
 
