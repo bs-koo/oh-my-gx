@@ -6,7 +6,7 @@ description: |
   <example>
   Context: oh-my-gx:gx-tdd의 phase-implement RGR 사이클 진입
   user: AC-1을 RGR 사이클로 구현해줘
-  assistant: red-writer를 호출하여 AC-1의 실패 테스트를 작성하고 실패를 확인한 뒤 green-coder로 인계
+  assistant: red-writer를 호출하여 AC-1의 실패 테스트를 작성하고 실패를 확인한 뒤 implementer로 인계
   </example>
 
   <example>

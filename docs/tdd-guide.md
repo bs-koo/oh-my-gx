@@ -45,7 +45,7 @@ gx-tdd가 하는 일
 | 구분 | 수동 TDD | gx-tdd |
 |------|---------|--------|
 | RED 선행 | 개발자의 규율에 의존 | red-writer 전담 + 격리 검증으로 강제 |
-| 최소 구현 | "이왕 하는 김에" 과잉 구현 | green-coder YAGNI + 과잉 구현 감지 |
+| 최소 구현 | "이왕 하는 김에" 과잉 구현 | implementer YAGNI + 과잉 구현 감지 |
 | 리팩터 안전성 | 수동 확인 | 매 정리 후 테스트 재실행, 깨지면 롤백 |
 | 완료 판정 | "돌려봤는데 되던데요" | verify 게이트 — 신선한 실행 증거 없으면 커밋 차단 |
 
@@ -425,7 +425,7 @@ for 태스크:
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가 (score ≥ 7)** |
 | implement | coder 단일 호출 | **red-writer → implementer 순차** |
-| review | qa + security 병렬 | **spec → quality 순차 강제** |
+| review | qa + security 병렬 | **reviewer 통합 1석 (spec verdict 선행)** |
 | complete | qa 통과 후 커밋 | **verify 게이트 통과 후 커밋** |
 
 ### 6.3 3대 Iron Law
@@ -493,20 +493,15 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 2. 참조 파일 목록에 프로덕션 소스가 있으면 격리 오염 → 폐기 후 재작성
 3. 테스트 파일 해시(`git hash-object`)와 `git status --porcelain` 스냅샷 기록 → GREEN 단계 무결성 기준선
 
-**verify_green (GREEN 직후)**
+**verify_implement (IMPLEMENT 직후 — GREEN+REFACTOR 통합)**
 
-1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (green-coder가 테스트를 고치지 않는다)
+1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (implementer가 테스트를 고치지 않는다)
 2. 테스트 파일 해시 재계산 → **RED 시점과 다르면 무단 수정**. 원복 후 재호출, 재차 위반 시 사이클 중단
-3. 대상 테스트 통과 + 전체 테스트 회귀 없음 확인, 전체 테스트 수 기록
+3. focused 테스트 집합을 오케스트레이터가 직접 실행 → 통과 확인 + 테스트 수 기록 (전체 회귀는 사이클 경계에서 별도 확인)
 4. 테스트에서 쓰이지 않는 메서드·필드가 추가됐으면 과잉 구현으로 보고
+5. public 시그니처 변경 없음 확인
 
-**verify_refactor (REFACTOR 직후)**
-
-1. 전체 테스트 통과 확인
-2. 테스트 수가 GREEN 시점보다 줄었으면 사유 확인 (무단 삭제면 롤백)
-3. public 시그니처 변경 없음 확인
-
-같은 태스크에서 green-coder가 3회 실패하면 사이클을 멈추고 architect에 재설계를 위임한다. 세 번 막히면 구현이 아니라 설계 문제라는 판단이다.
+fix loop 5라운드(1~3 재개, 4~5 opus 격상) 소진 시 사이클을 멈추고 architect에 재설계를 위임한다. 다섯 번 막히면 구현이 아니라 설계 문제라는 판단이다.
 
 ### 6.7 verify 게이트 — 완료의 정의
 
@@ -658,16 +653,16 @@ RED    red-writer가 UserTest.shouldRejectChargeOverLimit 작성
        → 실행 → ChargeLimitExceededException 미존재로 컴파일 실패 확인
        → 테스트 파일 해시 기록
 
-GREEN  green-coder가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
+GREEN  implementer가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
        → 대상 테스트 통과, 전체 회귀 0건
        → 테스트 파일 해시 재확인 (변조 없음)
 
-REFACTOR refactor-coder가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
+REFACTOR implementer가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
        → 테스트 재실행 → 통과 유지
        → 테스트 수 감소 없음 확인
 ```
 
-여기서 green-coder가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
+여기서 implementer가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
 
 ### 7.5 review → complete
 

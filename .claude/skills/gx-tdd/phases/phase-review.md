@@ -203,6 +203,8 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
 
 **verdict 블록 부재 시 우선순위**: (1) 산문 Part 1 판정(SPEC PASS/FAIL 문구)이 있으면 산문 폴백으로 진행한다. (2) 산문 Part 1 판정 자체가 없으면 reviewer를 1회 재호출한다. (3) 재호출 출력에도 Part 1 판정이 없으면 사용자에게 보고하고 중단한다. quality_verdict 부재도 같은 우선순위를 적용하며, 두 블록 모두 상충·부재인 경우에도 재호출은 합산 1회다.
 
+reviewer가 `[검증 필요]`를 남기면 오케스트레이터가 해당 focused 테스트를 1회 실행해 결과를 findings에 반영한다.
+
 ### SPEC FAIL 처리
 
 분기 선택 전에 Step 4.1(Trust Ledger 저장)을 먼저 수행한다 — 재구현·수동 수정으로 이 라운드가 끝나도 Part 2 quality findings와 병렬 실행된 security 결과가 원장에 남아야 한다.
@@ -214,7 +216,8 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
      - "재구현" → 미충족 AC를 새 태스크로 정의 (reviewer가 표기한 "(재구현 대상)" 품질 지적을 태스크 정의에 함께 전달) → `phase-implement`로 복귀 (해당 AC만 RGR)
      - "수동 수정" → 사용자가 코드 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
      - "이대로 진행" → 미충족 AC를 trust-ledger에 추가 기록 후 계속 진행 (위험 수용)
-  3. 재구현 후 reviewer 재호출 (반복 카운트에 포함)
+  3. 재구현 후 phase-review 재진입 (Step 0 Mechanical Gate부터 — 반복 카운트에 포함)
+- reviewer가 `⚠️ 명세 부족`을 표기한 AC가 있으면 AskUserQuestion으로 "product-owner PRD 보강 후 재리뷰" / "현재 명세로 진행(위험 수용 — trust-ledger 기록)"을 확인한다.
 
 **Iron Law 위반 감지**: reviewer 출력에 `spec_verdict` 없이 `quality_verdict`만 있는 등 Part 1 verdict 없이 Part 2 판정을 수용하려는 시도가 발견되면 Step 4.0의 "verdict 블록 부재 시 우선순위"를 따른다 (즉시 중단은 그 (3) 단계에서만 발생).
 
@@ -288,7 +291,7 @@ if refactor_only:
 
 # 4c: 반복 판단
 if did_fix:
-    → 다음 반복 (Step 2부터 재실행: reviewer + security)
+    → 다음 반복 (Step 0 Mechanical Gate부터 재실행 — 4a RGR 수정이 기존 스위트를 깨뜨렸는지 전체 테스트로 먼저 확인한 뒤 Step 2 reviewer + security)
 else:
     # 동작 결함도 동작 불변 결함도 없는 경우
     if Minor(quality) 또는 MEDIUM(security) 항목 있음:

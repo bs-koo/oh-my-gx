@@ -259,7 +259,7 @@ Task(subagent_type="oh-my-gx:implementer"):
     1. 테스트 파일을 수정하지 않습니다. 테스트가 실패하면 코드를 고치고, 테스트를 고치지 않습니다. 테스트 자체 결함이 의심되면 수정하지 말고 "테스트 결함 의심"으로 보고합니다.
     2. GREEN: 실패 테스트를 통과시키는 최소 코드만 작성합니다 (YAGNI — 추가 기능/에러 핸들링/검증/로깅 금지).
     3. REFACTOR: 동작 변경 금지. 매 정리 후 focused 테스트로 GREEN 유지 확인, 깨지면 즉시 롤백.
-    4. 테스트 실행은 아래 focused 명령만 사용합니다. 전체 스위트를 실행하지 않습니다.
+    4. 테스트 실행은 아래 focused 명령만 사용합니다. 전체 스위트를 임의로 실행하지 않습니다 (전달된 명령이 focusedTest 미등록 폴백으로 전체 test 명령이면 그 명령이 곧 focused 집합입니다).
     5. 보고 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정합니다.
 
     [수행 불가능한 정리]
@@ -302,8 +302,9 @@ Task(subagent_type="oh-my-gx:implementer"):
 3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 implementer 재호출 1회 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
 5. **과잉 구현 감지**: 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지. YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
-6. ✅ 통과 + 무결성 유지 → 태스크 완료, 다음 태스크로 진행.
-7. ❌ 실패 → **fix loop 진입** (아래).
+6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 implementer에 롤백 요청).
+7. ✅ 통과 + 무결성 유지 → 태스크 완료, 다음 태스크로 진행.
+8. ❌ 실패 → **fix loop 진입** (아래).
 
 **fix loop (실패 시 — 태스크당 최대 5라운드)**:
 
@@ -448,6 +449,7 @@ steps:
 - `"RGR T{N}: IMPLEMENT"` → 해당 태스크의 implementer 재디스패치 (RED report는 reports/t{N}-red.md에서 복원)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
 - 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 implementer 재디스패치로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "2석 전환 재개 — 인라인 인계"를 기록한다. 추가: 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-count` 기준선도 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다.
+- `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
 - `"변경사항 수집"` → Step 5부터 재실행
 
 ---

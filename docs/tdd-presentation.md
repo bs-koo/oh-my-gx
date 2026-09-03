@@ -6,6 +6,7 @@ header: "TDD — 개념에서 자동화까지"
 ---
 
 <!--
+이 자료는 v1.24 시점(3에이전트 RGR·2단계 리뷰) 발표 기록이다. 현행 구조(red-writer→implementer 2석·reviewer 통합 1석)는 docs/tdd-guide.md를 참조한다.
 PPT 원고 (슬라이드 36장 / 예상 30분)
 흐름: TDD 소개 → 수동으로 TDD 하기 → oh-my-gx gx-tdd 스킬 소개·사용법·작동 근거
 상세 근거 문서: docs/tdd-guide.md
