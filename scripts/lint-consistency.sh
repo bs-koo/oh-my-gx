@@ -711,16 +711,33 @@ grep -qF 'security 감사 미확보' "$REVIEW_MD" \
 echo "[28/29] 리뷰 발견 단계 커버리지 계약"
 # Sonnet 5는 "사소한 것은 생략" 류 지시를 이전 모델보다 충실히 따라 재현율이 떨어진다.
 # 필터링은 오케스트레이터의 라우팅·게이트가 담당하므로 발견 단계는 커버리지가 목표다.
-grep -qF '발견 단계의 목표는 커버리지다' agents/reviewer.md \
-  || fail "커버리지 지시 누락: agents/reviewer.md"
-# 삭제된 원문만 잡으면 재도입은 반드시 다른 문구가 되어 빠져나간다 — 패턴으로 훑는다.
-# 대상을 리뷰 계열로 한정하는 이유: researcher.md의 "가설 3개 이내"는 보고 필터가 아니라 가설 예산이다.
-grep -rnE '[0-9]+ *(개|건)[^.]{0,10}(이내|이하|만)[^.]{0,6}(제한|보고|남긴)' \
-  agents/reviewer.md agents/qa-manager.md agents/security-auditor.md \
-  && fail "보고 개수 상한 패턴 잔존: 발견 단계는 커버리지가 목표다"
+# 커버리지 지시는 두 리뷰 에이전트 모두에 있어야 한다 — 한쪽만 고치면 다른 파이프라인이 옛 동작을 유지한다.
+for f in agents/reviewer.md agents/qa-manager.md; do
+  [ -f "$f" ] || fail "리뷰 에이전트 정의 부재: $f"
+  grep -qF '발견 단계의 목표는 커버리지다' "$f" || fail "커버리지 지시 누락: $f"
+done
+# 보고 억제는 개수 상한만이 아니다 — 숫자 없는 "사소하면 간결하게" 류도 같은 재현율 억제다.
+# grep -r로 여러 파일을 한 번에 훑으면 대상이 하나라도 없을 때 exit 2가 되어 && fail이 건너뛰어진다
+# (매칭을 찾고도 통과한다 — 실측 확인). 파일별 -q 루프로 고정한다.
+# 창 폭({0,N})은 로케일에 따라 문자/바이트로 갈리므로 한글 3바이트 기준으로 넉넉히 잡는다.
+for f in agents/reviewer.md agents/qa-manager.md agents/security-auditor.md; do
+  [ -f "$f" ] || fail "리뷰 계열 에이전트 정의 부재: $f"
+  grep -qE '[0-9]+ *(개|건)[^.]{0,30}(이내|이하|만)[^.]{0,20}(제한|보고|남긴|선별)' "$f" \
+    && fail "보고 개수 상한 패턴 잔존: $f"
+  grep -qE '사소[^.]{0,30}(간결|생략|줄인|짧게)' "$f" \
+    && fail "경중 기반 보고 억제 문구 잔존: $f"
+done
+# 보안 항목은 "보고하지 말라"가 아니라 "탐색을 넓히지 말라"여야 한다 — 대체 문구의 존재까지 확인한다.
 grep -qF '중복 지적 불필요' agents/reviewer.md \
   && fail "보안 항목을 보고하지 말라는 오독 여지가 남아 있음: agents/reviewer.md"
-[ "$FAIL" -eq 0 ] && ok "커버리지 지시 + 개수 상한 제거 + 보안 보고 표현 확인"
+grep -qF 'Critical로 보고하되' agents/reviewer.md \
+  || fail "보안 발견 시 보고 의무 문구 누락: agents/reviewer.md"
+# Codex에는 agents/*.md가 배포되지 않는다 — 디스패치 프롬프트가 계약을 짊어져야 한다.
+for f in .claude/skills/gx-tdd/phases/phase-review.md .claude/skills/gx-dev/phases/phase-review.md; do
+  grep -qF '발견 단계의 목표는 커버리지다' "$f" \
+    || fail "디스패치 프롬프트에 커버리지 계약 미전달 (Codex 경로 무효): $f"
+done
+[ "$FAIL" -eq 0 ] && ok "커버리지 지시 2석 + 억제 문구 부재 + 보안 보고 의무 + 디스패치 전달 확인"
 
 echo "[29/29] 헤드리스 조기 종료 방지 철칙"
 # 헤드리스 반복에서 도구 호출 없이 의도만 말하고 턴을 끝내면 종료 계약 미출력(종료 코드 3)이거나

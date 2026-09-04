@@ -110,6 +110,9 @@ Task(subagent_type="oh-my-gx:reviewer"):
     [Iron Law]
     NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED — Part 1이 FAIL이어도 Part 2를 수행하되, 미충족 AC 관련 지적은 "(재구현 대상 — AC-N)"으로 표기합니다.
 
+    [발견 단계 커버리지]
+    발견 단계의 목표는 커버리지다. 확신이 서지 않거나 심각도가 낮다고 판단한 항목도 빠짐없이 보고합니다. 확신이 낮은 항목은 Minor로 분류하되 보고에서 빼지 않습니다 — 필터링은 오케스트레이터의 라우팅과 게이트가 담당합니다. 보안 결함을 읽다 발견하면 Critical로 보고하되 감사 범위를 넓히지는 않습니다 (security-auditor가 병렬 수행).
+
     [구현자 보고 불신뢰]
     전달 자료의 산문 정당화는 미검증 주장입니다 — diff로 검증하고, 테스트를 재실행하지 않습니다 (증거는 verify_implement가 확보).
 
@@ -309,6 +312,8 @@ else:
     else:
         → phase-complete (클린 통과)
 ```
+
+> **security 집계 미확보 상태의 라우팅**: 위험 수용으로 진행한 경우 `security` findings가 비어 있으므로 아래 분류에서 아무 항목도 나오지 않는다. 그 상태를 "클린 통과"로 처리하지 않는다 — 4c의 분기 판정 시 미확보를 MEDIUM 잔여와 동일하게 취급해 phase-complete 보고에 `security 감사 미확보(위험 수용)`를 명시한다.
 
 **2회 반복 후 미해결 Critical**: 2회 반복 후에도 Critical이 남으면 사용자에게 명시하고 AskUserQuestion: "수동 수정 후 재리뷰" / "현재 상태로 진행". **"현재 상태로 진행" 선택 시 trust-ledger에 "미해결 Critical 수용" 항목을 기록**하고, "수동 수정 후 재리뷰" 선택 시에는 execution-log에 "수동 수정 재주입"을 기록한다.
 
