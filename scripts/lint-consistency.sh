@@ -761,6 +761,11 @@ grep -qF 'CLAUDE_PLUGIN_ROOT' "$CODEX_MD" \
   || fail "경로 변수 폴백 위험 설명 누락: $CODEX_MD"
 grep -qF '게이트가 도는지 확인' "$CODEX_MD" \
   || fail "훅 동작 확인 절차 누락: $CODEX_MD"
+# agent_type·모델 목록은 Codex 세션에서만 확인 가능하다. 추측으로 채우면 잘못된 설정을 배포한다.
+grep -qF '## 실측 체크리스트' "$CODEX_MD" \
+  || fail "실측 체크리스트 절 누락: $CODEX_MD"
+grep -qF 'agent_type' "$CODEX_MD" \
+  || fail "agent_type 확인 항목 누락: $CODEX_MD"
 [ "$FAIL" -eq 0 ] && ok "Codex 훅 배치·실측 계약 확인"
 
 if [ "$FAIL" -ne 0 ]; then

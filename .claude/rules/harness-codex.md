@@ -129,8 +129,14 @@ Codex에는 `Skill()`에 해당하는 도구가 없다. 스킬은 프롬프트�
 
 Codex는 이 필드를 모델 프롬프트에 넣지 않는다(측정에서 `allowed-tools`·`argument-hint` 모두 0건). `Task`·`AskUserQuestion`·`Skill`처럼 Codex에 없는 도구명이 오류를 내지 않는 이유이기도 하지만, Claude Code에서 얻던 권한 사전 승인 효과가 사라져 승인 프롬프트가 잦아질 수 있다.
 
-## 미검증 항목
+## 실측 체크리스트
 
-`exec_command` 호출 시 훅 입력의 `tool_input`이 Claude Code와 동일하게 `command` 필드를 갖는지는 실행으로 확인하지 못했다(측정 당시 계정이 `deactivated_workspace` 상태였다). `pre-tool-guard.sh`는 `tool_input.command` 추출에 실패하면 입력 전체를 검사 대상으로 폴백하므로, 필드 구조가 다르면 오탐이 발생할 수 있다. Codex에서 처음 사용하기 전에 `scripts/hook-tests.sh`의 페이로드를 Codex 실제 입력으로 교체해 한 번 확인한다.
+아래는 Codex 세션에서만 확인할 수 있는 항목이다. 확인 전에는 추측으로 값을 채우지 않는다 — 잘못된 매핑은 조용히 잘못된 모델로 디스패치하거나 설치를 실패시킨다.
 
-`hooks.json`이 지정하는 `bash ...` 실행이 Windows Codex에서 동작하는지도 확인하지 않았다. superpowers는 Windows용으로 `hooks/run-hook.cmd` 래퍼를 따로 두고 있으므로, 문제가 생기면 같은 방식을 참고한다.
+**1. 훅 입력의 필드 구조.** `exec_command` 호출 시 훅 입력의 `tool_input`이 Claude Code와 동일하게 `command` 필드를 갖는가. `pre-tool-guard.sh`는 `tool_input.command` 추출에 실패하면 입력 전체를 검사 대상으로 폴백하므로, 구조가 다르면 무관한 명령이 차단되는 오탐이 난다. 확인 방법: Codex에서 훅 입력을 파일로 덤프하는 임시 훅을 걸고 실제 페이로드를 캡처한 뒤, `scripts/hook-tests.sh`의 Codex 케이스 페이로드와 대조한다. (가드 로직이 도구명에 의존하지 않는다는 것은 `hook-tests.sh`의 `exec_command`·`local_shell` 케이스로 이미 검증돼 있다 — 미확인 부분은 필드 구조뿐이다.)
+
+**2. `spawn_agent`의 `agent_type` 값.** 이 인자는 필수인데 `agents/*.md`가 배포되지 않아 `oh-my-gx:reviewer` 같은 값은 존재하지 않는다. Codex가 제공하는 내장 agent type 목록을 확인하고, 우리 17석을 그중 무엇에 태울지 정한다. 역할 정의는 디스패치 프롬프트가 통째로 전달하므로, `agent_type`은 도구 권한과 격리 수준을 고르는 용도로만 쓴다. 확인한 목록과 매핑을 이 문서의 도구 매핑 표에 추가한다.
+
+**3. spawn 허용 모델 목록.** 위 표는 `model`과 `reasoning_effort`를 함께 지정하라고 지시하지만 지정할 값을 알려주지 않는다. 확인 전까지 이 지시는 실행 불가 상태이며, **Codex에서는 17석의 모델 구분(reviewer는 opus, red-writer는 sonnet)이 사라진 채 동작한다.** 목록을 확인한 뒤 `high`/`mid`/`low` 세 티어에 대응하는 모델과 effort를 정해 표로 남긴다.
+
+**4. Windows에서의 훅 실행.** `hooks.json`이 지정하는 `bash ...` 실행이 Windows Codex에서 동작하는지 확인하지 않았다. superpowers는 Windows용으로 `hooks/run-hook.cmd` 래퍼를 따로 두므로, 문제가 생기면 같은 방식을 참고한다.
