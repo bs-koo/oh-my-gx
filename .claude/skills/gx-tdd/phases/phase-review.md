@@ -197,11 +197,13 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
 
 - `spec_verdict`: verdict + AC 집계. 블록이 없거나 파싱 불가하면 산문 판정(SPEC PASS/FAIL 문구 + AC 매트릭스)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 reviewer를 1회 재호출한다. 재호출도 상충이면 사용자에게 보고한다.
 - `quality_verdict`: verdict + 심각도 집계. 블록이 없거나 파싱 불가하면 산문(QUALITY PASS/FAIL 문구 + 섹션별 건수)으로 폴백한다. 블록과 산문 판정이 **상충하면 FAIL로 간주**하고 reviewer를 1회 재호출한다.
-- `security_verdict`: CRITICAL/HIGH/MEDIUM 집계. 블록 부재 시 산문 집계로 폴백한다 (verdict 필드 없음 — 집계는 Step 4.3 요약과 4c의 MEDIUM 처리에 사용). **블록과 산문 집계가 모두 부재하면 "집계 0건"이 아니라 "집계 미확보"다** — security-auditor를 1회 재호출한다 (spec/quality의 재호출 합산 1회와 별도 카운트). 재호출 출력에도 집계가 없으면: 대화형은 AskUserQuestion으로 "위험 수용(원장 기록 후 진행)" / "중단"을 확인하고, 헤드리스(gx-ralph-iterate)는 `<ralph>BLOCKED: security 감사 집계 확보 실패</ralph>`로 종료한다. 위험 수용을 선택하면 Step 4.1에서 trust-ledger에 `security 감사 미확보 — 위험 수용` 항목을 기록한다 (SPEC FAIL의 "이대로 진행"과 같은 취급 — 감사 흔적 없이 통과하는 경로를 남기지 않는다).
+- `security_verdict`: CRITICAL/HIGH/MEDIUM 집계. 블록 부재 시 산문 집계로 폴백한다 (verdict 필드 없음 — 집계는 Step 4.3 요약과 4c의 MEDIUM 처리에 사용). 블록과 산문 집계가 모두 부재한 경우의 처리는 아래 **security 집계 미확보 시 처리** 문단을 따른다.
 - **집계 불일치 처리 (공통)**: 블록의 건수와 산문 목록의 항목 수가 다르면 **산문 열거를 기준**으로 집계한다 (항목 목록이 원본이고 블록은 요약 — LLM 집계 오류는 모의 검증에서 실측된 사례). 불일치 사실을 Step 4.3 요약에 표기한다.
 - 개별 항목의 수정 경로 라우팅(`[동작결함]`/`[동작불변]` 마커, security 동작 변경 분류)은 **기존 산문 계약을 그대로 사용**한다 — 블록은 게이트 판정과 집계만 구조화한다.
 
 **verdict 블록 부재 시 우선순위**: (1) 산문 Part 1 판정(SPEC PASS/FAIL 문구)이 있으면 산문 폴백으로 진행한다. (2) 산문 Part 1 판정 자체가 없으면 reviewer를 1회 재호출한다. (3) 재호출 출력에도 Part 1 판정이 없으면 사용자에게 보고하고 중단한다. quality_verdict 부재도 같은 우선순위를 적용하며, 두 블록 모두 상충·부재인 경우에도 재호출은 합산 1회다.
+
+**security 집계 미확보 시 처리**: (1) 블록과 산문 집계가 모두 부재하면 "집계 0건"이 아니라 "집계 미확보"로 판별한다. (2) security-auditor를 1회 재호출한다 (spec/quality의 재호출 합산 1회와 별도 카운트). (3) 재호출 출력에도 집계가 없으면: 대화형은 AskUserQuestion으로 "위험 수용(원장 기록 후 진행)" / "중단"을 확인하고, 헤드리스(gx-ralph-iterate)는 `<ralph>BLOCKED: security 감사 집계 확보 실패</ralph>`로 종료한다 (현재 gx-ralph 루프는 phase-review를 실행하지 않는다 — 루프는 red-writer/implementer만 디스패치하고 리뷰는 루프 종료 후 대화형 재진입이다. 이 분기는 향후 비대화 리뷰 경로를 위한 예약이다). (4) 위험 수용을 선택하면 Step 4.1에서 trust-ledger에 `security 감사 미확보 — 위험 수용` 항목을 기록한다 (SPEC FAIL의 "이대로 진행"과 같은 취급 — 감사 흔적 없이 통과하는 경로를 남기지 않는다).
 
 reviewer가 `[검증 필요]`를 남기면 오케스트레이터가 해당 focused 테스트를 1회 실행해 결과를 findings에 반영한다.
 
@@ -248,6 +250,8 @@ findings = {
 - Security: CRITICAL N건, HIGH N건, MEDIUM N건
 - Trust Ledger: ${DEV_DIR}/trust-ledger.md
 ```
+
+집계를 확보하지 못한 채 위험 수용으로 진행한 경우에는 건수 대신 `Security: 집계 미확보 (위험 수용 — trust-ledger 기록)`을 표시한다.
 
 ### Step 4.4: 결과 처리 (의사코드)
 

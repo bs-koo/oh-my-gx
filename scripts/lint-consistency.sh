@@ -713,8 +713,11 @@ echo "[28/29] 리뷰 발견 단계 커버리지 계약"
 # 필터링은 오케스트레이터의 라우팅·게이트가 담당하므로 발견 단계는 커버리지가 목표다.
 grep -qF '발견 단계의 목표는 커버리지다' agents/reviewer.md \
   || fail "커버리지 지시 누락: agents/reviewer.md"
-grep -qF '3개 이내로 제한' agents/qa-manager.md \
-  && fail "보고 개수 상한이 남아 있음: agents/qa-manager.md"
+# 삭제된 원문만 잡으면 재도입은 반드시 다른 문구가 되어 빠져나간다 — 패턴으로 훑는다.
+# 대상을 리뷰 계열로 한정하는 이유: researcher.md의 "가설 3개 이내"는 보고 필터가 아니라 가설 예산이다.
+grep -rnE '[0-9]+ *(개|건)[^.]{0,10}(이내|이하|만)[^.]{0,6}(제한|보고|남긴)' \
+  agents/reviewer.md agents/qa-manager.md agents/security-auditor.md \
+  && fail "보고 개수 상한 패턴 잔존: 발견 단계는 커버리지가 목표다"
 grep -qF '중복 지적 불필요' agents/reviewer.md \
   && fail "보안 항목을 보고하지 말라는 오독 여지가 남아 있음: agents/reviewer.md"
 [ "$FAIL" -eq 0 ] && ok "커버리지 지시 + 개수 상한 제거 + 보안 보고 표현 확인"
