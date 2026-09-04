@@ -45,6 +45,40 @@ codex plugin marketplace add <저장소 경로>
 
 의사결정 기록 훅(`PostToolUse`)도 같은 구조다. matcher만 다르다 — Claude Code는 `AskUserQuestion`, Codex는 `AskUserQuestion|request_user_input`을 함께 받는다. `request_user_input`이 EXPERIMENTAL이라 기본 모드에서 발화하지 않으면 기록도 남지 않는다.
 
+### 훅 수동 배치
+
+`hooks.json`의 command는 `bash ${CLAUDE_PLUGIN_ROOT:-.}/.claude/hooks/pre-tool-guard.sh`다. Claude Code는 이 변수를 채우지만 **Codex가 채운다는 보장이 없다.** 비면 `.`로 폴백해 작업 중인 프로젝트 디렉토리를 뒤지고, 스크립트를 찾지 못한 채 조용히 끝난다. 훅이 실패했다는 신호가 없으므로 verify 게이트 G3가 안 도는 것을 알아챌 방법도 없다.
+
+`plugin_hooks`가 미완인 동안은 훅 설정을 손으로 배치한다. 경로에 변수를 쓰지 말고 **절대경로를 직접 적는다.**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "exec_command|local_shell|shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /절대/경로/oh-my-gx/.claude/hooks/pre-tool-guard.sh",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+배치한 뒤 **게이트가 도는지 확인**한다. 저장소 루트에서 아래를 실행하면 가드가 `deny` 판정을 내야 한다.
+
+```bash
+printf '{"tool_name":"exec_command","tool_input":{"command":"git push --force origin main"}}' \
+  | bash .claude/hooks/pre-tool-guard.sh
+```
+
+기대 출력에 `"permissionDecision": "deny"`가 포함된다. 이건 스크립트가 정상인지만 보는 검사다 — **Codex가 실제로 훅을 호출하는지**는 Codex 세션에서 force-push를 시도해 차단되는지로 확인한다. 차단되지 않으면 `hooks.json`이 로드되지 않은 것이므로 `codex features list`로 `plugin_hooks` 상태를 확인한다.
+
 ## 제약
 
 아래 두 항목은 Codex가 개발 중인 기능에 걸려 있다. `codex features list`로 현재 상태를 확인한 뒤 판단한다.
