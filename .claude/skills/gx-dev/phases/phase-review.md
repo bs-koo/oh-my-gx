@@ -110,6 +110,7 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 **Task A**: qa-manager agent.
 `Task(subagent_type="oh-my-gx:qa-manager")` — prompt에 다음을 포함:
+- **발견 단계 커버리지**: 발견 단계의 목표는 커버리지다. 확신이 서지 않거나 심각도가 낮다고 판단한 항목도 빠짐없이 보고한다. 확신이 낮은 항목은 QUESTION으로 분류하되 보고에서 빼지 않는다 — 필터링은 오케스트레이터의 라우팅과 게이트가 담당한다.
 - 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
 - PRD의 "요구사항" + "수용 기준" + 설계서의 "변경 범위" 섹션 (Context Slicing 규칙 참조). **`--phase review` 단독 실행으로 문서가 없으면**: 문서 없이 diff만으로 코드 품질 리뷰를 수행하도록 안내한다.
 - 코드 맵 (누적된 상태, 있으면)
@@ -132,8 +133,9 @@ build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케
 
 1. ZT 감사 결과를 Trust Ledger로 구성하고 `${DEV_DIR}/trust-ledger.md`에 저장한다.
 2. QA의 CERTAIN + ZT의 CRITICAL/HIGH/MEDIUM을 합산하여 **통합 findings**를 구성한다.
-3. 중복 항목은 병합한다 (같은 파일:라인을 둘 다 지적한 경우).
-4. 사용자에게 **요약만** 표시한다 (Agent 전문 출력 금지):
+3. **ZT 집계를 확보하지 못했으면 0건과 구분한다** — security-auditor 출력에 집계도 산문 목록도 없으면 "감사 미확보"다. security-auditor를 1회 재호출하고, 재호출도 비어 있으면 AskUserQuestion으로 "위험 수용(trust-ledger 기록 후 진행)" / "중단"을 확인한다. 위험 수용 시 trust-ledger에 `security 감사 미확보 — 위험 수용` 항목을 기록하고, 아래 요약에서 건수 대신 `ZT: 집계 미확보 (위험 수용 — trust-ledger 기록)`을 표시한다. 감사 흔적 없이 통과하는 경로를 남기지 않는다.
+4. 중복 항목은 병합한다 (같은 파일:라인을 둘 다 지적한 경우).
+5. 사용자에게 **요약만** 표시한다 (Agent 전문 출력 금지):
    ```
    리뷰 완료:
    - QA: Critical N건, Warning N건, Info N건, QUESTION N건

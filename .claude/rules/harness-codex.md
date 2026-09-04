@@ -69,7 +69,7 @@ Read("../references/report-guide.md")                  # 같은 스킬의 다른
 Read("../../gx-setup/references/project-type-hints.md")  # 형제 스킬
 ```
 
-파일 사이의 상대 위치는 설치 위치와 무관하게 같으므로 두 하네스 모두에서 해석된다. `lint-consistency.sh`의 `[15/26]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
+파일 사이의 상대 위치는 설치 위치와 무관하게 같으므로 두 하네스 모두에서 해석된다. `lint-consistency.sh`의 `[15/29]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
 
 **예외 하나가 남았다.** `gx-setup`이 읽는 config.json 템플릿은 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있다. Claude Code에서는 `../../config.json`이 맞지만, 스킬 디렉토리만 배포되는 Codex에서는 그 위치에 파일이 없다. 스킬은 Read 실패 시 사용자에게 수동 복사를 안내하고 다음 단계로 넘어가도록 되어 있다.
 

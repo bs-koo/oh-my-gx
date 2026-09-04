@@ -50,7 +50,10 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S31 | vcs=svn + `work-id`가 있는 `status: completed` state.md에 새 작업으로 재진입 | `/gx-tdd {새 요청}` | plan.md 행이 `완료 → 진행`으로 되돌아가되 **커밋하지 않고 사용자에게 안내**. `svn commit`을 시도하면 훅에 차단되어 되돌림 자체가 실패하므로 회귀 | phase-setup Step 7 되돌림 svn 분기 |
 | S32 | `.dev/plan.md`에 W01이 있고 진행 중 state.md 존재 | `"W01 이어서 해줘"` | 중단 없이 재개. "재개는 state.md의 work-id로 문맥을 복원합니다" 안내 후 진행. **`--work`와 `--resume` 충돌 에러로 멈추면 회귀** (자연어는 양보, 명시 플래그는 에러) | SKILL.md 자연어 WORK + RESUME 판정 |
 | S33 | `.dev/plan.md`에 W01(진행)이 있고 구현·리뷰가 끝난 상태 | `/gx-tdd --work W01 --phase complete` | state.md에 `work-id: W01`이 기록되고 그 행이 `완료`로 갱신됨. **`--work`가 무시되어 아무 갱신도 없으면 회귀** — 이 경로는 phase-setup을 건너뛰므로 3.0.5가 실행되지 않는다 | SKILL.md 환경 감지 work-id 항목 |
+| S34 | gx-tdd review phase 진행 중, security-auditor가 판정 블록도 산문 집계도 없는 출력을 반환 | `/gx-tdd --phase review` | 집계 미확보로 판별 → security-auditor 1회 재호출 → 재호출도 집계가 없으면 AskUserQuestion("위험 수용(원장 기록 후 진행)" / "중단")이 제시됨. **조용히 `CRITICAL 0건`으로 요약에 넘어가면 회귀** — 감사 없이 통과하는 경로다 | phase-review Step 4.0 security_verdict fail-closed |
+| S35 | 구현에 확신이 낮은 품질 관찰이 여러 건 있는 diff | `/gx-tdd --phase review` | reviewer가 저확신 항목을 **Minor로 강등하되 보고에는 남긴다**. 확신이 낮다는 이유로 항목이 사라지면 회귀. Minor는 비차단이므로 `quality_verdict`는 PASS를 유지한다 — 저확신 관찰이 전부 Important로 올라와 fix loop가 요동쳐도 회귀 | agents/reviewer.md Part 2 커버리지 문단 |
+| S36 ★ | gx-ralph 루프 반복 중, 모델이 "다음으로 …하겠습니다"로 턴을 끝내려는 상황 | 러너 `bash scripts/gx-ralph.sh` 실행 | 반복 세션이 설명 대신 도구를 호출해 그 일을 수행하고, 마지막 줄에 종료 계약(`COMPLETE`/`CONTINUE`/`BLOCKED`)을 출력한다. **러너가 종료 코드 3(계약 미출력)으로 끝나면 회귀.** 단 Step 0 가드 실패·Step 3 verify 차단·하네스 부재는 예외이며, 그 경우 즉시 해당 종료 계약을 내는 것이 정상이다 | gx-ralph-iterate 철칙 6번 + 예외 절 |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/27 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/36 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
