@@ -756,17 +756,18 @@ echo "[30/31] Codex 훅 배치·실측 계약"
 # hook-tests.sh는 스크립트를 직접 호출하므로 이 층을 검증하지 못한다.
 # 절차가 문서에 없으면 사용자는 G3가 안 도는 것을 알 방법이 없다.
 CODEX_MD=.claude/rules/harness-codex.md
-grep -qF '## 훅 수동 배치' "$CODEX_MD" \
+grep -qF '### 훅 수동 배치' "$CODEX_MD" \
   || fail "훅 수동 배치 절차 누락: $CODEX_MD"
-grep -qF 'CLAUDE_PLUGIN_ROOT' "$CODEX_MD" \
-  || fail "경로 변수 폴백 위험 설명 누락: $CODEX_MD"
+# 문서 전체 존재 검사는 기존 절에 같은 단어가 있으면 통과해 회귀를 놓친다 — 절 범위로 좁힌다.
+awk '/^### 훅 수동 배치/,/^## /' "$CODEX_MD" | grep -qF 'CLAUDE_PLUGIN_ROOT' \
+  || fail "훅 수동 배치 절에 경로 변수 폴백 위험 설명 누락: $CODEX_MD"
 grep -qF '게이트가 도는지 확인' "$CODEX_MD" \
   || fail "훅 동작 확인 절차 누락: $CODEX_MD"
 # agent_type·모델 목록은 Codex 세션에서만 확인 가능하다. 추측으로 채우면 잘못된 설정을 배포한다.
 grep -qF '## 실측 체크리스트' "$CODEX_MD" \
   || fail "실측 체크리스트 절 누락: $CODEX_MD"
-grep -qF 'agent_type' "$CODEX_MD" \
-  || fail "agent_type 확인 항목 누락: $CODEX_MD"
+awk '/^## 실측 체크리스트/,0' "$CODEX_MD" | grep -qF 'agent_type' \
+  || fail "실측 체크리스트에 agent_type 확인 항목 누락: $CODEX_MD"
 [ "$FAIL" -eq 0 ] && ok "Codex 훅 배치·실측 계약 확인"
 
 echo "[31/31] 린트 번호 크로스레퍼런스 정합"
