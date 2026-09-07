@@ -290,8 +290,8 @@ grep -q "핵심 모드 전용 긴급 보안 감사" "$TDD_IMPL" || fail "core �
 grep -q "AC 자가 검증" .claude/skills/gx-tdd/phases/phase-complete.md \
   || fail "phase-complete core AC 자가 검증 분기 누락"
 # 구 버전 세션 방어 (v1.18.0: 레거시 모드 호환 제거)
-grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/phase-setup.md \
-  || fail "구 버전 세션 방어 규칙 누락: gx-tdd phase-setup.md"
+grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/setup-resume.md \
+  || fail "구 버전 세션 방어 규칙 누락: gx-tdd setup-resume.md"
 # 레거시·폐지 모드 잔존 금지 (v1.18.0: --hotfix 플래그·구 명칭 hotfix/light 완전 제거 — 자연어 '핫픽스'는 한글이라 무관)
 grep -rqi "hotfix" .claude/skills/gx-tdd && fail "레거시 hotfix 잔존: gx-tdd"
 grep -rqiE "\blight\b" .claude/skills/gx-tdd && fail "구 명칭 light 잔존: gx-tdd"
@@ -605,28 +605,42 @@ grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 �
 # S9: 온보딩 — 계획을 만든 뒤 어떻게 쓰는지, 계획이 있는데 그냥 요청했을 때
 # 무엇을 안내하는지가 없으면 사용자가 기능의 존재를 모른 채 지나간다.
 grep -q '판정 기준을 함께 안내' .claude/skills/gx-context/SKILL.md   || fail "gx-context 저장 안내에 판정 기준 설명 누락"
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
-  grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$f"     || fail "계획 존재 시 요청 대조 안내 누락: $f"
-  grep -q '진행할 작업 확인' "$f" || fail "작업 확정 후 사용자 표시 누락: $f"
-done
+# gx-tdd는 이번 분리로 3.0.5/Step 5.5/되돌림 본문이 setup-work.md·setup-resume.md로
+# 옮겨갔다 — 아래 S9~S13·자기 재개·svn 분기 검사는 gx-tdd만 새 파일을 보고, gx-dev는
+# phase-setup.md를 그대로 본다 (검사 의미는 동일, 대상 파일·절 범위만 다르다).
+TDD_SETUP=.claude/skills/gx-tdd/phases/phase-setup.md
+TDD_RESUME=.claude/skills/gx-tdd/phases/setup-resume.md
+TDD_WORK=.claude/skills/gx-tdd/phases/setup-work.md
+DEV_SETUP=.claude/skills/gx-dev/phases/phase-setup.md
+grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$TDD_WORK"     || fail "계획 존재 시 요청 대조 안내 누락: $TDD_WORK"
+grep -q '진행할 작업 확인' "$TDD_WORK" || fail "작업 확정 후 사용자 표시 누락: $TDD_WORK"
+grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$DEV_SETUP"     || fail "계획 존재 시 요청 대조 안내 누락: $DEV_SETUP"
+grep -q '진행할 작업 확인' "$DEV_SETUP" || fail "작업 확정 후 사용자 표시 누락: $DEV_SETUP"
 # S10~S13: 착수 기록의 실행 시점. 3.0.5 시점의 현재 브랜치는 아직 베이스 브랜치이므로
 # (Step 2.2가 checkout한다) 여기서 커밋하면 훅 G1이 deny한다 — 기입·커밋은 작업 브랜치를
 # 만든 뒤 Step 5.5의 몫이고, 그 사이 공백은 원격 브랜치 조회로 메운다.
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
-  SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$f")
-  printf '%s' "$SEC" | grep -q '메시지로 커밋' \
-    && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $f"
-  printf '%s' "$SEC" | grep -q 'ls-remote' \
-    || fail "3.0.5에 원격 브랜치 중복 감지 누락: $f"
+TDD_305_SEC=$(awk '/^## 작업 계획 참조$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK")
+DEV_305_SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$DEV_SETUP")
+printf '%s' "$TDD_305_SEC" | grep -q '메시지로 커밋' \
+  && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $TDD_WORK"
+printf '%s' "$TDD_305_SEC" | grep -q 'ls-remote' \
+  || fail "3.0.5에 원격 브랜치 중복 감지 누락: $TDD_WORK"
+printf '%s' "$DEV_305_SEC" | grep -q '메시지로 커밋' \
+  && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $DEV_SETUP"
+printf '%s' "$DEV_305_SEC" | grep -q 'ls-remote' \
+  || fail "3.0.5에 원격 브랜치 중복 감지 누락: $DEV_SETUP"
+for f in "$TDD_SETUP" "$DEV_SETUP"; do
   S5=$(grep -n '^## Step 5:' "$f" | head -1 | cut -d: -f1)
   S55=$(grep -n '^## Step 5\.5:' "$f" | head -1 | cut -d: -f1)
   S6=$(grep -n '^## Step 6:' "$f" | head -1 | cut -d: -f1)
   if [ -z "$S5" ] || [ -z "$S55" ] || [ -z "$S6" ] || [ "$S55" -lt "$S5" ] || [ "$S55" -gt "$S6" ]; then
     fail "Step 5.5(착수 기록)가 Step 5와 Step 6 사이에 없음: $f"
   fi
-  grep -q '베이스 브랜치로 보내지 않는다' "$f" \
-    || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $f"
 done
+grep -q '베이스 브랜치로 보내지 않는다' "$TDD_WORK" \
+  || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $TDD_WORK"
+grep -q '베이스 브랜치로 보내지 않는다' "$DEV_SETUP" \
+  || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $DEV_SETUP"
 # 착수·완료가 같은 층위여야 한다 — 한쪽만 베이스로 보내면 가시성이 어긋난다
 for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
   grep -q '현재 작업 브랜치로' "$f" || fail "완료 커밋의 push 대상 명시 누락: $f"
@@ -641,20 +655,30 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
   grep -q '되돌림은 여기서 하지 않는다' "$f" || fail "phase-complete에 되돌림 위치 포인터 누락: $f"
 done
 # 자기 재개를 타인의 착수로 오인하지 않아야 한다 (--resume·재실행에서 매번 경고가 뜬다)
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+# gx-tdd: 자기 재개·폐기 경고·브랜치명 규칙은 setup-work.md, 착수 기록 보정은 setup-resume.md.
+grep -q '자기 재개' "$TDD_WORK" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $TDD_WORK"
+# 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
+# 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
+# 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
+awk '/^## 착수 기록$/{f=1;next} f&&/^## 작업 계획 되돌림$/{exit} f' "$TDD_WORK" | grep -qF 'git push -u origin' \
+  || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $TDD_WORK"
+awk '/^### 착수 기록 보정/{f=1} f{print}' "$TDD_RESUME" | grep -qF 'git push -u origin' \
+  || fail "착수 기록 보정의 push에 -u 누락: $TDD_RESUME"
+# 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
+grep -q '폐기된 작업입니다' "$TDD_WORK" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $TDD_WORK"
+# 재개 경로는 Step 5를 거치지 않는다 — 보정이 없으면 중단된 세션의 착수가 영영 안 남는다
+grep -q '착수 기록 보정' "$TDD_RESUME" || fail "재개 시 착수 기록 보정 절 누락: $TDD_RESUME"
+# --work 유무로 브랜치 명명 규칙이 갈리지 않아야 한다
+grep -q '한국어→영어로 번역하고 최대 40자' "$TDD_WORK" || fail "--work 브랜치명 번역·길이 규칙 누락: $TDD_WORK"
+
+for f in "$DEV_SETUP"; do
   grep -q '자기 재개' "$f" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $f"
-  # 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
-  # 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
-  # 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
   awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -qF 'git push -u origin' \
     || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $f"
   awk '/^### 착수 기록 보정/,/^## Step 1:/' "$f" | grep -qF 'git push -u origin' \
     || fail "착수 기록 보정의 push에 -u 누락: $f"
-  # 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
   grep -q '폐기된 작업입니다' "$f" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $f"
-  # 재개 경로는 Step 5를 거치지 않는다 — 보정이 없으면 중단된 세션의 착수가 영영 안 남는다
   grep -q '착수 기록 보정' "$f" || fail "재개 시 착수 기록 보정 절 누락: $f"
-  # --work 유무로 브랜치 명명 규칙이 갈리지 않아야 한다
   grep -q '한국어→영어로 번역하고 최대 40자' "$f" || fail "--work 브랜치명 번역·길이 규칙 누락: $f"
 done
 # 폐기를 완료로 덮으면 요구사항이 왜 사라졌는지가 지워진다
@@ -662,10 +686,15 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
   grep -q '폐기된 작업이 완료 처리 대상입니다' "$f" || fail "완료 갱신에 폐기 가드 누락: $f"
 done
 # svn에서는 Claude의 커밋이 훅에 차단된다 — plan.md를 커밋하는 지점마다 svn 분기가 필요하다
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+# gx-tdd: 되돌림·Step 5.5 세부 문구 모두 setup-work.md로 이동했다.
+awk '/^## 작업 계획 되돌림$/{f=1} f{print}' "$TDD_WORK" | grep -q 'svn이면' \
+  || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $TDD_WORK"
+# svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
+awk '/^## 착수 기록$/{f=1;next} f&&/^## 작업 계획 되돌림$/{exit} f' "$TDD_WORK" | grep -q '중복 착수를 감지하지 못한다' \
+  || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $TDD_WORK"
+for f in "$DEV_SETUP"; do
   awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep -q 'svn이면' \
     || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $f"
-  # svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
   awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -q '중복 착수를 감지하지 못한다' \
     || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $f"
 done
