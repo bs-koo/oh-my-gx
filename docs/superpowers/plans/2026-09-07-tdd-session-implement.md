@@ -16,7 +16,7 @@
 - **언어**: 문서·커밋 메시지 모두 한국어. 이모지 사용 금지.
 - **브랜치**: `main`/`master`/`develop`에서 커밋 불가 (훅 G1). 작업 시작 전 `feat/tdd-session-implement` 브랜치를 생성한다.
 - **커밋**: 메시지는 `feat: …`/`docs: …` 한 줄 제목 (`.claude/config.json` `conventions.commitFormat`). gx-commit 규칙에 따라 `Co-Authored-By` 등 트레일러를 **붙이지 않는다**. 서브에이전트는 gx-commit의 확인 게이트에 응답할 수 없으므로 직접 `git commit`을 허용한다 (이전 계획과 같은 ruling). grep 패턴 인자에 `git commit` 문자열을 넣지 않는다 (훅 G1 오탐).
-- **검증**: 모든 태스크는 `bash scripts/lint-consistency.sh`와 `bash scripts/hook-tests.sh`가 둘 다 통과한 상태로 끝난다. 린트 `[32/32]` 예산(SKILL.md ≤ 58,000B)이 살아 있으므로 SKILL.md에 문장을 **더할 때는 같은 절에서 같은 양을 줄인다**.
+- **검증**: 모든 태스크는 `bash scripts/lint-consistency.sh`와 `bash scripts/hook-tests.sh`가 둘 다 통과한 상태로 끝난다. 린트 `[32/32]` 예산(SKILL.md ≤ 61,500B)이 살아 있으므로 SKILL.md에 문장을 **더할 때는 같은 절에서 같은 양을 줄인다**.
 - **린트 번호 체계**: 현재 `[N/32]`. Task 6이 검사 1개를 추가하며 분모를 33으로 올린다. `.claude/`·`README.md`의 인용도 함께 치환한다 (`[31]`이 검사). `docs/`·`CHANGELOG.md`는 치환하지 않는다.
 - **린트가 고정하는 문구 (phase-implement.md)**: `[3]` — 금지 5항목 `동작 변경`·`새 기능 추가`·`에러 핸들링`·`성능 최적화`·`인터페이스 시그니처 변경`과 `라운드 5`. `[11]` — `## Step 0.7: gx-ralph 전환 (--ralph 전용)` 제목과 "`--resume` 재진입은 방어 조건이 **아니다**". `[26]` — `reports/t{N}-impl.md`·`reports/t{N}-red.md`·`DONE_WITH_CONCERNS`·`NEEDS_CONTEXT`·`BLOCKED`. 이 문구들은 새 텍스트와 보존되는 격리 경로 블록 양쪽에 남는다.
 - **gx-ralph-iterate는 손대지 않는다**: 무인 루프는 항상 2석 격리 경로다 (`[26]`이 `oh-my-gx:implementer` 언급을 검사한다).
@@ -330,7 +330,7 @@ phase-setup Step 7의 `flags` 기록 불릿 끝에 문장을 더한다: ` `--iso
 - [ ] **Step 5: 검증**
 
 Run: `grep -c -- '--isolated' .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-tdd/references/maintenance-notes.md; grep -c '2에이전트 순차\|2 에이전트 순차' .claude/skills/gx-tdd/SKILL.md; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: SKILL.md 4 이상, phase-setup 1 이상, maintenance-notes 1 이상; `0`; SKILL.md ≤ 58,000B (초과하면 Agent 팀 표의 deprecated 행 두 개를 한 줄로 합쳐 상쇄한다).
+Expected: SKILL.md 4 이상, phase-setup 1 이상, maintenance-notes 1 이상; `0`; SKILL.md ≤ 61,500B (초과하면 Agent 팀 표의 deprecated 행 두 개를 한 줄로 합쳐 상쇄한다).
 
 Run: `bash scripts/lint-consistency.sh && bash scripts/hook-tests.sh`
 Expected: 32/32 통과 (`[14]` 모델 프로파일 문구·`[25]` --work·`[32]` 예산 유지), 훅 테스트 통과.
@@ -536,7 +536,7 @@ MSG
 
 ## 완료 기준
 
-- 린트 33/33·훅 테스트 통과. `[32]` 예산이 유지된다 (SKILL.md ≤ 58,000B).
+- 린트 33/33·훅 테스트 통과. `[32]` 예산이 유지된다 (SKILL.md ≤ 61,500B).
 - phase-implement의 기본 경로에 `Task(subagent_type="oh-my-gx:implementer")`가 **격리 경로 블록과 fix 라운드 4~5에만** 남는다.
 - 골든 시나리오 S38을 실제로 한 번 돌려 red-writer 디스패치 1회·implementer 0회·`reports/t{N}-impl.md` 세션 작성·`test-file-hash` 기록을 눈으로 확인한다 (PR 체크박스).
 - 남는 후속: SKILL.md 인자 절 재작성(45KB 목표), 게이트를 설계 시점으로 모으기, gx-dev 쌍둥이 정리 — 설계 문서 D4.

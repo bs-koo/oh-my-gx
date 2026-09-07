@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** gx-tdd 오케스트레이터가 사이클마다 읽는 지시문을 줄인다 — SKILL.md 74,904B → 58,000B 이하, phase-setup.md 35,622B → 22,000B 이하 — 그리고 그 예산을 정합성 린트로 고정한다. 실행 규칙·판별 키·지시 문구는 하나도 바꾸지 않는다.
+**Goal:** gx-tdd 오케스트레이터가 사이클마다 읽는 지시문을 줄인다 — SKILL.md 74,904B → 61,500B 이하, phase-setup.md 35,622B → 22,000B 이하 — 그리고 그 예산을 정합성 린트로 고정한다. 실행 규칙·판별 키·지시 문구는 하나도 바꾸지 않는다.
 
 **Architecture:** 세 가지 수단만 쓴다. (1) **추출** — 실행 중 읽히지 않는 유지보수 노트와 하네스 대응표를 `references/`로 옮기고 한 줄 포인터를 남긴다. (2) **압축** — 산문·YAML 예시로 서술된 스키마와 입력 규칙을 표로 바꾼다. (3) **조건부 로드** — phase-setup에서 `--resume`·`--work` 경로에만 필요한 절을 별도 phase 파일로 빼고 플래그가 있을 때만 Read한다. 이 저장소의 테스트는 `scripts/lint-consistency.sh`이므로 각 태스크는 린트 통과 상태로 끝나고, 마지막 태스크가 바이트 예산 검사를 추가한다(변이 시험으로 RED 확인).
 
@@ -20,7 +20,7 @@
 - **`sed -i` 이식성**: GNU sed(Linux·Git Bash) 전제. 치환 후 반드시 `grep -c`로 결과를 확인한다.
 - **외과적 변경**: 옮기는 텍스트는 **원문 그대로** 옮긴다(잘라내기·붙여넣기). 압축 태스크에서도 굵은 지시 문구·판별 키·경로 문자열은 글자 하나 바꾸지 않는다. 옮기거나 압축하는 대상이 아닌 줄은 건드리지 않는다.
 - **gx-dev는 범위 밖**: gx-dev SKILL.md·phase-setup에 같은 구조의 쌍둥이 블록이 있지만 이번에는 손대지 않는다. 린트 [11]·[12]·[21]·[25]가 두 파이프라인을 각각 검사하므로 gx-dev를 안 건드리면 그쪽은 그대로 초록이다.
-- **경로 규약**: 새 references·phase 파일은 `.claude/skills/gx-tdd/` 아래에 두고, 지시가 적힌 파일 기준 상대경로로 Read한다 (`Read("references/x.md")`, `Read("phases/setup-work.md")`). 린트 `[15/31]`이 Read 대상의 실존을 검사한다.
+- **경로 규약**: 새 references·phase 파일은 `.claude/skills/gx-tdd/` 아래에 두고, **지시가 적힌 파일의 디렉토리 기준** 상대경로로 Read한다 — SKILL.md에서는 `Read("references/x.md")`, phase-setup.md(이미 `phases/` 안)에서는 `Read("setup-work.md")`. 린트 `[15/31]`이 `dirname(호출 파일)/참조경로`로 실존을 검사하므로 `phases/phases/…`가 되지 않게 한다.
 
 ---
 
@@ -175,7 +175,7 @@ execution-log:
 - [ ] **Step 3: 검증**
 
 Run: `for k in 'pipeline: gx-tdd' verify-status verify-fingerprint model-profile warnings-baseline work-id test-file-hash test-count fix-round execution-log current-step last-known-head config-setup-attempts auto-stashed; do grep -q "$k" .claude/skills/gx-tdd/SKILL.md || echo "MISSING $k"; done; grep -c '^\*\*갱신 규칙:\*\*' .claude/skills/gx-tdd/SKILL.md; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: `MISSING` 출력 없음, `1`, SKILL.md가 **61,000B 이하**.
+Expected: `MISSING` 출력 없음, `1`, SKILL.md가 **61,500B 이하**.
 
 Run: `bash scripts/lint-consistency.sh`
 Expected: 31/31 통과.
@@ -246,7 +246,7 @@ phase-setup Step 0이 `--resume` 지정 또는 ARGS[0] 부재일 때만 이 파�
 
 ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건너뛰고 Step 1로 진행한다.
 
-그 외(`--resume` 지정, 또는 ARGS[0] 부재)에는 `Read("phases/setup-resume.md")`를 수행한다. 그 파일이 state.md 탐색·재개 정합성 체크(0.1)·"이어서 진행" 복원·구 버전 세션 방어·`--work` 세션의 착수 기록 보정을 담당한다. 재개가 확정되면 phase-setup의 나머지 Step(1~7)을 건너뛴다.
+그 외(`--resume` 지정, 또는 ARGS[0] 부재)에는 `Read("setup-resume.md")`를 수행한다. 그 파일이 state.md 탐색·재개 정합성 체크(0.1)·"이어서 진행" 복원·구 버전 세션 방어·`--work` 세션의 착수 기록 보정을 담당한다. 재개가 확정되면 phase-setup의 나머지 Step(1~7)을 건너뛴다.
 ```
 
 잘라낸 3.0.5 자리:
@@ -254,7 +254,7 @@ ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건�
 ```markdown
 ### 3.0.5 작업 계획 참조 (`--work` 사용 시)
 
-의도 파싱이 `--work {ID}`(플래그 또는 WORK 추출)로 작업 ID를 확정했으면 `Read("phases/setup-work.md")`의 "작업 계획 참조" 절을 수행한다 — 계획 행에서 도메인·요구사항·브랜치명을 확정하고 의존·중복 착수를 확인하며, Step 7에서 state.md에 `work-id`를 기록한다. 작업 ID가 없으면 이 Step을 건너뛴다.
+의도 파싱이 `--work {ID}`(플래그 또는 WORK 추출)로 작업 ID를 확정했으면 `Read("setup-work.md")`의 "작업 계획 참조" 절을 수행한다 — 계획 행에서 도메인·요구사항·브랜치명을 확정하고 의존·중복 착수를 확인하며, Step 7에서 state.md에 `work-id`를 기록한다. 작업 ID가 없으면 이 Step을 건너뛴다.
 ```
 
 잘라낸 Step 5.5 자리:
@@ -275,7 +275,11 @@ Step 7의 되돌림 문단 자리:
 
 SKILL.md 갱신 규칙의 `--resume` 불릿에서 `재개 전에 phase-setup Step 0.1 정합성 체크(브랜치/HEAD)를 수행한다`를 `재개 전에 phases/setup-resume.md의 0.1 정합성 체크(브랜치/HEAD)를 수행한다`로 바꾼다.
 
-`scripts/lint-consistency.sh` 293행의 검사 대상을 바꾼다.
+`scripts/lint-consistency.sh`에서 옮긴 문구를 phase-setup.md에서 찾는 검사를 전부 새 파일로 돌린다. 두 갈래다.
+
+(a) `[13/31]`의 293행 `구 버전 세션 방어` 검사 — 아래 sed 두 줄.
+
+(b) `[25/31]` 블록(약 608~670행)에 3.0.5·5.5·되돌림의 **세부 문구**(ls-remote 중복 감지, 자기 재개 구분, 폐기 상태 경고, 브랜치명 영문 40자 규칙, `git push -u origin`, svn 분기, "진행할 작업 확인" 안내 등)를 gx-tdd·gx-dev 두 phase-setup에서 같은 루프로 grep/awk하는 하위 검사가 9건 있다. gx-tdd 반복만 대상을 바꾼다 — 3.0.5 세부는 `setup-work.md`의 `## 작업 계획 참조` 절, 5.5 세부는 `## 착수 기록` 절, 되돌림은 `## 작업 계획 되돌림` 절을 보게 하고, 절 범위를 잡는 awk는 새 제목을 경계로 쓴다. **검사의 의미는 바꾸지 않는다.** gx-dev 반복은 한 글자도 바꾸지 않는다. 수정 후 변이 시험 1건: `setup-work.md`에서 검사 문구 하나(예: `git push -u origin`)를 일시 삭제 → 린트 FAIL → 복구 → 통과. (Ruling 6 — 계획이 [25] 후반을 실측하지 않은 결함을 실행 중 발견해 추가)
 
 ```bash
 sed -i 's|grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/phase-setup.md|grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/setup-resume.md|' scripts/lint-consistency.sh
@@ -383,10 +387,41 @@ Deprecated(~~coder~~ → red-writer/implementer로 재편, ~~qa-manager~~ → re
 | implement Phase의 인계 | **report 파일 경로로만** 한다 — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write하고 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환한다 |
 ```
 
+- [ ] **Step 3-1: 진행 상태 추적 절의 필드 표를 문단 + 확장 예시로 바꾼다** (Task 2 실측 후 추가 — 한국어 표가 YAML 예시보다 바이트가 무거워 Task 2가 크기를 줄이지 못했다. 컨트롤러 Ruling 4)
+
+`**state.md 필드** (초기화의 정본은 phase-setup Step 7. …):` 문단부터 필드 표의 마지막 행(`| \`execution-log\` | …`)까지를 아래 한 문단으로 교체한다. 그 아래의 ```` ```yaml ```` 예시 블록과 `**갱신 규칙:**` 이하는 그대로 둔다.
+
+```markdown
+**state.md 필드**: 초기화 필드의 정본은 phase-setup Step 7, 태스크 객체의 정본 예시는 phase-implement "state.md 추적" 절이다. 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)은 `pipeline: gx-tdd`·`status: in_progress`·`verify-status`·`verify-fingerprint`를 판별 키로 쓴다. `steps`의 RGR 태스크는 `"RGR T{N} (AC-N)"` 객체에 `red`·`impl`·`test-file`·`test-file-hash`·`test-count`·`report`·`fix-round`를 중첩한다 (구 green/refactor 키는 3석 세대 전용 — 신규 기록 금지). `execution-log`는 `phase`·`agent`·`gate`·`result`·`stagnation` 엔트리 배열이다. 아래 예시가 최상위 필드 전체다.
+```
+
+그리고 ```` ```yaml ```` 예시 블록의 `model-profile: standard` 행 **바로 아래**에 다음 행들을 추가한다 (표가 사라져도 필드 목록이 예시에 남도록):
+
+```yaml
+mode: all
+intent-source: user-selection
+work-id: W01
+flags: ""
+vcs-type: git
+branch: feat/login
+base: main
+project-type: java-spring
+project-root: ./
+args: "로그인 기능 추가"
+started: 2026-02-17T10:30:00
+last-known-head: 7c9e814
+auto-stashed: false
+config-setup-attempts: 0
+```
+
+- [ ] **Step 3-2: Agent 팀 절의 `### Deprecated 에이전트 처리` 소절을 삭제한다** (Ruling 4)
+
+`### Deprecated 에이전트 처리` 제목부터 `## Phase 개요 (TDD 강제)` 직전 빈 줄까지(불릿 3개)를 삭제한다. 같은 사실이 Agent 팀 표의 취소선 행과 Context Slicing 표 아래 문장에 이미 있다. 삭제 전 `grep -n 'Deprecated 에이전트 처리' .claude/skills/gx-tdd/SKILL.md`로 위치를 확인한다.
+
 - [ ] **Step 4: 검증**
 
-Run: `for s in 'AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함' '각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려' '각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정' 'Part 1 verdict 선행. 테스트 재실행 금지' '기존 프로덕션 코드는 절대 포함하지 않는다' '협업 공유 대상' ':(exclude).dev' 'model: "sonnet"' 'architect는 eco에서도 opus'; do grep -qF "$s" .claude/skills/gx-tdd/SKILL.md || echo "MISSING: $s"; done; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: `MISSING` 없음, SKILL.md가 **58,000B 이하**. 초과하면 Step 1~3의 표에서 설명 셀을 더 줄이되 굵은 지시문·판별 키·경로는 유지한다.
+Run: `for s in 'AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함' '각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려' '각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정' 'Part 1 verdict 선행. 테스트 재실행 금지' '기존 프로덕션 코드는 절대 포함하지 않는다' '협업 공유 대상' ':(exclude).dev' 'model: "sonnet"' 'architect는 eco에서도 opus' 'pipeline: gx-tdd' verify-fingerprint work-id last-known-head config-setup-attempts auto-stashed test-file-hash fix-round; do grep -qF "$s" .claude/skills/gx-tdd/SKILL.md || echo "MISSING: $s"; done; grep -c 'Deprecated 에이전트 처리' .claude/skills/gx-tdd/SKILL.md; wc -c .claude/skills/gx-tdd/SKILL.md`
+Expected: `MISSING` 없음, `0`, SKILL.md가 **61,500B 이하**. 초과하면 Step 1~3의 표에서 설명 셀을 더 줄이되 굵은 지시문·판별 키·경로는 유지한다.
 
 Run: `bash scripts/lint-consistency.sh`
 Expected: 31/31 통과.
@@ -409,7 +444,7 @@ MSG
 - Modify: `.claude/rules/release.md`, `.claude/rules/harness-codex.md`, `.claude/skills/gx-tdd/SKILL.md`, `.claude/skills/gx-dev/SKILL.md`, `README.md` 등 `[N/31]`을 인용하는 파일 전부 (린트 `[31]`이 목록을 알려준다)
 
 **Interfaces:**
-- Consumes: Task 1~4가 만든 크기 (SKILL.md ≤ 58,000B, phase-setup.md ≤ 22,000B)
+- Consumes: Task 1~4가 만든 크기 (SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B)
 - Produces: 린트 `[32/32] gx-tdd 지시문 바이트 예산`
 
 - [ ] **Step 1: 새 검사를 스크립트 끝의 `[31/31]` 블록 **뒤**에 추가한다 (분모는 아직 31로 쓴다 — Step 3에서 한꺼번에 치환)**
@@ -417,23 +452,23 @@ MSG
 ```bash
 echo "[32/31] gx-tdd 지시문 바이트 예산"
 # 오케스트레이터가 사이클마다 읽는 파일의 상한. 설계: docs/specs/2026-09-07-tdd-density-rhythm-design.md D3
-for spec in ".claude/skills/gx-tdd/SKILL.md:58000" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
+for spec in ".claude/skills/gx-tdd/SKILL.md:61500" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
   f=${spec%%:*}; max=${spec##*:}
   [ -f "$f" ] || { fail "예산 대상 파일 부재: $f"; continue; }
   sz=$(wc -c <"$f" | tr -d ' ')
   [ "$sz" -le "$max" ] || fail "지시문 예산 초과: $f ${sz}B > ${max}B (추출·압축·조건부 로드로 줄일 것)"
 done
-[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 58000B · phase-setup.md ≤ 22000B"
+[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B"
 ```
 
 스크립트 헤더의 검사 항목 주석 목록(`sed -n '1,60p' scripts/lint-consistency.sh`로 확인)에 `[31/31]` 항목 아래 같은 형식으로 `[32/31] gx-tdd 지시문 바이트 예산`을 한 줄 추가한다.
 
 - [ ] **Step 2: 변이 시험으로 검출력을 확인한다 (RED)**
 
-Run: `sed -i 's|SKILL.md:58000|SKILL.md:1000|' scripts/lint-consistency.sh && bash scripts/lint-consistency.sh; echo "exit=$?"`
+Run: `sed -i 's|SKILL.md:61500|SKILL.md:1000|' scripts/lint-consistency.sh && bash scripts/lint-consistency.sh; echo "exit=$?"`
 Expected: `지시문 예산 초과: .claude/skills/gx-tdd/SKILL.md …B > 1000B`로 FAIL, exit 1.
 
-Run: `sed -i 's|SKILL.md:1000|SKILL.md:58000|' scripts/lint-consistency.sh && grep -c 'SKILL.md:58000' scripts/lint-consistency.sh`
+Run: `sed -i 's|SKILL.md:1000|SKILL.md:61500|' scripts/lint-consistency.sh && grep -c 'SKILL.md:61500' scripts/lint-consistency.sh`
 Expected: `1`.
 
 - [ ] **Step 3: 분모를 32로 올린다**
@@ -492,7 +527,7 @@ gx-tdd 오케스트레이터가 사이클마다 읽는 지시문을 줄인다. �
 - **변경 — 유지보수 노트 추출**: SKILL.md의 하네스 적응 표는 `references/harness-adaptation.md`로, 의도적 중복 목록 19항목은 `references/maintenance-notes.md`로 옮겼다. 전자는 Codex 실행 시 포인터를 따라 읽고, 후자는 스킬을 수정할 때만 읽는다.
 - **변경 — 조건부 로드**: phase-setup의 재개 감지(Step 0)와 작업 계획(3.0.5·5.5·되돌림) 절을 `phases/setup-resume.md`·`phases/setup-work.md`로 분리했다. `--resume`·`--work`가 없는 기본 경로에서는 읽히지 않는다.
 - **변경 — 표로 압축**: state.md 스키마 예시, Context Slicing, 작업 경로 기준, Agent 결과 전달 규칙을 표로 바꿨다. 굵은 지시문·판별 키·경로는 원문 그대로다.
-- **추가 — 린트 [32] 지시문 바이트 예산**: SKILL.md ≤ 58,000B, phase-setup.md ≤ 22,000B를 고정한다. 변이 시험으로 검출을 확인했다.
+- **추가 — 린트 [32] 지시문 바이트 예산**: SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B를 고정한다. 변이 시험으로 검출을 확인했다.
 ```
 
 - [ ] **Step 3: 버전 세 곳을 올린다**
@@ -521,7 +556,7 @@ MSG
 
 ## 완료 기준
 
-- `wc -c` 기준 SKILL.md ≤ 58,000B, phase-setup.md ≤ 22,000B, 린트 32/32·훅 테스트 통과.
+- `wc -c` 기준 SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B, 린트 32/32·훅 테스트 통과.
 - `grep -c '드리프트 주의' .claude/skills/gx-tdd/SKILL.md` = 0, `grep -c spawn_agent .claude/skills/gx-tdd/SKILL.md` = 0.
 - 새 파일 4개(`references/harness-adaptation.md`, `references/maintenance-notes.md`, `phases/setup-resume.md`, `phases/setup-work.md`)가 존재하고 린트 `[15/32]`가 Read 대상으로 확인한다.
 - 후속 계획 `2026-09-07-tdd-session-implement.md`는 이 계획이 main에 머지된 뒤 착수한다 (분모 32를 전제).
