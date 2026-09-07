@@ -1,6 +1,6 @@
 # gx-tdd 하네스 적응표
 
-이 스킬의 본문은 Claude Code 도구명(`Task`·`AskUserQuestion`·`Skill`)으로 서술한다. Codex 등 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다. SKILL.md가 실행 진입 시 이 파일을 가리킨다.
+SKILL.md가 실행 진입 시 이 파일을 가리킨다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 

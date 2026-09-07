@@ -423,7 +423,7 @@ phase-setup 결정, 모든 Phase 사용.
 | `REFERENCES` | `references/` 문서 목록. 없으면 빈 상태·미포함 | Step 3.1 |
 | `MODEL_PROFILE` | `standard`/`eco` | Step 1.5 |
 
-- Agent에 `PROJECT_ROOT`를 전달해 파일 도구 기준점으로 쓴다.
+- Agent에 `PROJECT_ROOT`를 **항상** 전달해 파일 도구 기준점으로 쓴다.
 - 빌드/테스트 명령은 `PROJECT_ROOT`에서 실행. 기본값 `./`이면 **bare 명령**으로 실행(`allowed-tools` prefix 매칭 — 권한 프롬프트 없음), 아니면 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다.
 
 ### 모델 프로파일 (MODEL_PROFILE)
@@ -544,7 +544,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **svn**: git 지문을 계산할 수 없어 대조가 성립하지 않는다. 훅은 이 경우 보수적으로 "재검증 권고"를 안내한다.
 
 ### Context Slicing 규칙
-설계서·PRD는 역할별 필요 섹션만 전달한다. `contextLimits`(config.json) 초과 시 우선순위 낮은 섹션부터 요약·생략.
+설계서·PRD는 역할별 필요 섹션만 전달한다. 모든 디스패치에 프로젝트 루트 경로를 포함한다. `contextLimits`(config.json) 초과 시 우선순위 낮은 섹션부터 요약·생략.
 
 | 에이전트 | 전달 입력 |
 |---|---|

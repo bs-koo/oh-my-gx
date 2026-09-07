@@ -661,7 +661,7 @@ grep -q '자기 재개' "$TDD_WORK" || fail "3.0.5 중복 착수 판정에 자�
 # 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
 # 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
 # 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
-awk '/^## 착수 기록$/{f=1;next} f&&/^## 작업 계획 되돌림$/{exit} f' "$TDD_WORK" | grep -qF 'git push -u origin' \
+awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -qF 'git push -u origin' \
   || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $TDD_WORK"
 awk '/^### 착수 기록 보정/{f=1} f{print}' "$TDD_RESUME" | grep -qF 'git push -u origin' \
   || fail "착수 기록 보정의 push에 -u 누락: $TDD_RESUME"
@@ -691,7 +691,7 @@ done
 awk '/^## 작업 계획 되돌림$/{f=1} f{print}' "$TDD_WORK" | grep -q 'svn이면' \
   || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $TDD_WORK"
 # svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
-awk '/^## 착수 기록$/{f=1;next} f&&/^## 작업 계획 되돌림$/{exit} f' "$TDD_WORK" | grep -q '중복 착수를 감지하지 못한다' \
+awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -q '중복 착수를 감지하지 못한다' \
   || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $TDD_WORK"
 for f in "$DEV_SETUP"; do
   awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep -q 'svn이면' \
@@ -824,7 +824,14 @@ for spec in ".claude/skills/gx-tdd/SKILL.md:61500" ".claude/skills/gx-tdd/phases
   sz=$(wc -c <"$f" | tr -d ' ')
   [ "$sz" -le "$max" ] || fail "지시문 예산 초과: $f ${sz}B > ${max}B (추출·압축·조건부 로드로 줄일 것)"
 done
-[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B"
+# 조건부 로드 포인터 — phase-setup이 보조 파일을 조건부로만 Read하고, 작업 ID 없음 경로도 닿는지 (최종 리뷰 I1 회귀 방지)
+SETUP=.claude/skills/gx-tdd/phases/phase-setup.md
+grep -qF 'Read("setup-resume.md")' "$SETUP" || fail "setup-resume.md 포인터 누락: phase-setup.md"
+grep -qF 'ARGS[0]이 있고 `--resume`이 없으면' "$SETUP" || fail "setup-resume 조건부 로드 조건 누락: phase-setup.md"
+grep -qF 'Read("setup-work.md")' "$SETUP" || fail "setup-work.md 포인터 누락: phase-setup.md"
+grep -qF '계획이 있으나 작업 ID가 지정되지 않은 경우' "$SETUP" || fail "작업 ID 없음 경로의 setup-work 소절 포인터 누락: phase-setup.md"
+
+[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 4건"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."

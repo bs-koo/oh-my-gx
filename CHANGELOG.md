@@ -6,7 +6,7 @@ gx-tdd 오케스트레이터가 사이클마다 읽는 지시문을 줄인다. �
 
 - **변경 — 유지보수 노트 추출**: SKILL.md의 하네스 적응 표는 `references/harness-adaptation.md`로, 의도적 중복 목록 19항목은 `references/maintenance-notes.md`로 옮겼다. 전자는 Codex 실행 시 포인터를 따라 읽고, 후자는 스킬을 수정할 때만 읽는다.
 - **변경 — 조건부 로드**: phase-setup의 재개 감지(Step 0)와 작업 계획(3.0.5·5.5·되돌림) 절을 `phases/setup-resume.md`·`phases/setup-work.md`로 분리했다. `--resume`·`--work`가 없는 기본 경로에서는 읽히지 않는다.
-- **변경 — 표로 압축**: state.md 스키마 예시, Context Slicing, 작업 경로 기준, Agent 결과 전달 규칙을 표로 바꿨다. 굵은 지시문·판별 키·경로는 원문 그대로다.
+- **변경 — 표·문단으로 압축**: state.md 스키마 예시는 문단 + 확장 예시로, Context Slicing·작업 경로 기준·Agent 결과 전달 규칙은 표로 바꿨다. 굵은 지시문·판별 키·경로는 원문 그대로다.
 - **추가 — 린트 [32] 지시문 바이트 예산**: SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B를 고정한다. 변이 시험으로 검출을 확인했다.
 
 ## v1.26.1 (2026-09-07)

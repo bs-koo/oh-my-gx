@@ -98,7 +98,7 @@ SKILL.md에서 `> **드리프트 주의**:`로 시작하는 인용 블록부터 
 - [ ] **Step 6: 검증**
 
 Run: `grep -c '드리프트 주의' .claude/skills/gx-tdd/SKILL.md; grep -c 'spawn_agent' .claude/skills/gx-tdd/SKILL.md; grep -c 'spawn_agent' .claude/skills/gx-tdd/references/harness-adaptation.md; grep -c '^\(> \)\?- \*\*' .claude/skills/gx-tdd/references/maintenance-notes.md; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: `0`, `0`, `1` 이상, `19`, 그리고 SKILL.md가 **64,000B 이하**.
+Expected: `0`, `0`, `1` 이상, `19`, 그리고 SKILL.md 크기를 기록한다 (중간값은 정보용 — Ruling 1. 실측 66,737B).
 
 Run: `bash scripts/lint-consistency.sh && bash scripts/hook-tests.sh`
 Expected: 31/31 통과 (`[15/31]`이 새 Read 대상 두 파일의 실존을 확인한다), 훅 테스트 통과.
@@ -175,7 +175,7 @@ execution-log:
 - [ ] **Step 3: 검증**
 
 Run: `for k in 'pipeline: gx-tdd' verify-status verify-fingerprint model-profile warnings-baseline work-id test-file-hash test-count fix-round execution-log current-step last-known-head config-setup-attempts auto-stashed; do grep -q "$k" .claude/skills/gx-tdd/SKILL.md || echo "MISSING $k"; done; grep -c '^\*\*갱신 규칙:\*\*' .claude/skills/gx-tdd/SKILL.md; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: `MISSING` 출력 없음, `1`, SKILL.md가 **61,500B 이하**.
+Expected: `MISSING` 출력 없음, `1`, SKILL.md 크기를 기록한다 (중간값은 정보용 — Ruling 1. 실측 66,940B).
 
 Run: `bash scripts/lint-consistency.sh`
 Expected: 31/31 통과.
@@ -262,13 +262,13 @@ ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건�
 ```markdown
 ## Step 5.5: 작업 계획 착수 기록 (`--work` 사용 시)
 
-`work-id`가 확정된 실행이면 `phases/setup-work.md`의 "착수 기록" 절을 수행한다 (3.0.5에서 이미 Read한 파일이다). 없으면 건너뛴다.
+`work-id`가 확정된 실행이면 `setup-work.md`의 "착수 기록" 절을 수행한다 (3.0.5에서 이미 Read한 파일이다). 없으면 건너뛴다.
 ```
 
 Step 7의 되돌림 문단 자리:
 
 ```markdown
-**작업 계획 되돌림**: 덮어쓰기 전의 state.md가 `status: completed`이고 `work-id`가 있으면 `phases/setup-work.md`의 "작업 계획 되돌림" 절을 수행한다. 없으면 아무것도 하지 않는다.
+**작업 계획 되돌림**: 덮어쓰기 전의 state.md가 `status: completed`이고 `work-id`가 있으면 `setup-work.md`의 "작업 계획 되돌림" 절을 수행한다. 없으면 아무것도 하지 않는다.
 ```
 
 - [ ] **Step 5: 바깥 포인터와 린트 대상을 갱신한다**
