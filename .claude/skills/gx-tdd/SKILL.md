@@ -237,12 +237,6 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 - 위 원칙과 Agent 팀 표의 모델은 **표준 프로파일(standard)** 기준이다. 에코 모드(eco)에서는 architect를 제외한 opus 에이전트가 sonnet으로 하향된다 — 공유 규칙 "모델 프로파일" 참조.
 - **최소 강도 + 실패 시 격상**: 각 역할을 감당하는 가장 약한 모델을 쓰되(sonnet이 바닥 — haiku 강등 금지), 격상은 fix loop 라운드 4~5에서만 수행한다.
 
-### Deprecated 에이전트 처리
-
-- `qa-manager`, `coder`는 기존(gx-dev) 호환을 위해 디렉토리에 남아있으나 oh-my-gx:gx-tdd에서는 **호출하지 않는다**.
-- 자기점검은 reviewer가 대체한다.
-- 구현은 red-writer/implementer가 분담한다 (green/refactor-coder는 단독 스킬 전용).
-
 ## Phase 개요 (TDD 강제)
 
 | Phase | 파일 | 주 Agent | TDD 강제 사항 | Q&A Loop |
@@ -415,18 +409,22 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 ## 공유 규칙
 
 ### 작업 경로 기준
-phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
-- `VCS_TYPE`: `.claude/config.json`의 `"vcs"` 값. `"git"`, `"svn"`, 또는 `""` (미설정, `"git"`으로 취급). phase-setup에서 읽어 이후 모든 Phase에서 사용한다. VCS별 명령어 분기의 기준이 된다.
-- `GIT_PREFIX`: `VCS_TYPE`이 `"git"`이면 `git`, `"svn"`이면 `svn`. 소비 프로젝트 루트에서 직접 실행한다.
-- `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
-- `DEV_DIR`: 브랜치별 dev 산출물 디렉토리. `.dev/{branch-slug}/` 형식. branch-slug는 브랜치명의 `/`를 `-`로 치환한 값이다 (예: `feat/login` → `.dev/feat-login/`). phase-setup Step 6.5에서 브랜치 생성/전환 후 결정된다. **SVN은 브랜치가 없으므로 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}/`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk/` 폴백).**
-- `BASE_BRANCH`: phase-setup Step 2에서 결정된 베이스 브랜치 (예: `main`, `develop`). SVN인 경우 미사용.
-- `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `${DEV_DIR}/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
-- `DOMAIN_CONTEXT`: phase-setup 0.3에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
-- `REFERENCES`: phase-setup Step 3.1(병렬 수집)의 외부 규격 참조 항목에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
-- Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
-- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행한다. `PROJECT_ROOT`가 기본값 `./`이면 **bare 명령**으로 실행한다 (예: `npm test`, `./gradlew build`) — `allowed-tools`의 prefix 패턴(`Bash(npm *)` 등)과 매칭되어 권한 프롬프트가 뜨지 않는다. `PROJECT_ROOT`가 `./`가 아닌 경우에만 작업 디렉토리 보존을 위해 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다 — 단 이 서브셸 형태는 `(cd`로 시작하여 prefix 패턴과 매칭되지 않으므로 권한 프롬프트가 뜰 수 있다 (gradle 포함 모든 명령에 적용되는 기존 한계).
-- `MODEL_PROFILE`: 모델 프로파일 (`standard`/`eco`). phase-setup Step 1.5에서 결정하며 state.md의 `model-profile`에 기록된다. 디스패치 적용 규칙은 아래 "모델 프로파일" 섹션 참조.
+phase-setup 결정, 모든 Phase 사용.
+
+| 변수 | 값 | 결정 |
+|---|---|---|
+| `VCS_TYPE` | `.claude/config.json`의 `"vcs"` 값 (`"git"`/`"svn"`) | Step 1 |
+| `GIT_PREFIX` | `VCS_TYPE`과 동일 | Step 1 |
+| `PROJECT_ROOT` | `./`(현재 디렉토리) | — |
+| `DEV_DIR` | `.dev/{branch-slug}/`. **SVN은 브랜치가 없으므로 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}/`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk/` 폴백).** | Step 6.5 |
+| `BASE_BRANCH` | 베이스 브랜치. SVN 미사용 | Step 2 |
+| `DIFF_FILE` | `${DEV_DIR}/diff.txt` | — |
+| `DOMAIN_CONTEXT` | `context/*/PROJECTS.md` 매칭 용어·아키텍처. 미매칭 시 빈 상태 | Step 3.1 |
+| `REFERENCES` | `references/` 규격 문서 목록. 없으면 빈 상태·미포함 | Step 3.1 |
+| `MODEL_PROFILE` | `standard`/`eco`. state.md 기록 | Step 1.5 |
+
+- Agent에 `PROJECT_ROOT`를 전달해 파일 도구(Read/Write/Edit/Glob/Grep) 기준점으로 쓴다.
+- 빌드/테스트 명령은 `PROJECT_ROOT`에서 실행. 기본값 `./`이면 **bare 명령**으로 실행 — `allowed-tools`의 prefix 패턴과 매칭되어 권한 프롬프트가 뜨지 않는다. `./`가 아니면 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다.
 
 ### 모델 프로파일 (MODEL_PROFILE)
 
@@ -459,11 +457,13 @@ Agent prompt 크기를 관리하기 위해:
 - 예: "Q: 세션 기반 vs JWT? → A: JWT 선택. Q: 토큰 만료 시간? → A: 30분"
 
 ### Agent 결과 전달 규칙 (컨텍스트 경량화)
-Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문 표시 여부를 결정한다:
-- **Q&A Phase** (requirements, design): Agent 출력의 첫 표시는 항상 **전문 표시**한다 (사용자가 산출물을 검토할 수 있도록). Phase 파일의 구체적인 표시 규칙이 이 일반 규칙보다 우선한다.
-- **Q&A Phase 완료 보고**: 확정된 산출물을 파일에 저장하고, 사용자에게는 **요약만** 보고한다 ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨" 등).
-- **Q&A 없는 Phase** (implement, review, complete): Agent 출력의 **요약만** 사용자에게 표시한다. 전문은 파일에 저장하거나 변수에 보관한다.
-- **implement Phase의 인계는 report 파일 경로로만 한다**: red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write하고 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)·요약만 반환한다. 오케스트레이터는 다음 에이전트에 파일 경로를 전달하며 전문을 인라인으로 붙이지 않는다.
+
+| 상황 | 사용자에게 보이는 것 |
+|---|---|
+| Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용. Phase 파일 규칙 우선 |
+| Q&A Phase 완료 보고 | 파일에 저장하고 **요약만** ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨") |
+| Q&A 없는 Phase (implement, review, complete) | Agent 출력 **요약만**. 전문은 파일·변수 보관 |
+| implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 |
 
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
@@ -478,25 +478,7 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 ### 진행 상태 추적 (state.md)
 파이프라인 진행 상태를 `${DEV_DIR}/state.md`에 기록하여 세션 재개를 지원한다.
 
-**state.md 필드** (초기화의 정본은 phase-setup Step 7. 태스크 객체의 정본 예시는 phase-implement "state.md 추적" 절):
-
-| 필드 | 값 | 기록·소비 |
-|---|---|---|
-| `phase` / `status` | phase명 / `in_progress`·`completed`·`cancelled` | 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 판별 조건으로 쓴다 |
-| `pipeline` | `gx-tdd` | verify-status와 함께 커밋/PR 게이트의 판별 키 |
-| `verify-status` | `pending`·`passed` | phase-complete Step -1 verify 통과 시 passed. 코드 변경 재진입 시 pending 리셋 |
-| `verify-fingerprint` | `{HEAD단축}:{트리해시12자}` 또는 `""` | passed와 같은 시점에 기록. 게이트 4곳이 현재 지문과 대조해 스테일 passed를 감지 (아래 "verify 지문") |
-| `model-profile` | `standard`·`eco` | phase-setup Step 1.5 결정. 에이전트 디스패치 모델 오버라이드 기준 |
-| `mode` / `intent-source` / `work-id` / `flags` / `args` | 의도 파싱 결과 | phase-setup Step 7. `flags`는 자연어 RALPH도 `--ralph`로 정규화해 기록하며 phase-implement Step 0.7의 판정 키 |
-| `vcs-type` / `branch` / `base` / `project-type` / `project-root` | 환경 감지 | svn은 branch/base 미사용 |
-| `started` / `last-known-head` | 시작 시각 / Phase 완료 시점의 HEAD | 재개 시 외부 커밋 감지 (git 전용) |
-| `auto-stashed` | true/false | phase-setup 2.1 stash 보호 상태 (git 전용) |
-| `config-setup-attempts` | 정수 | phase-setup 3.0 가드의 재시도 카운터. 새 파이프라인 시 0 |
-| `warnings-baseline` | 정수 | phase-implement Step 0.5 기준선 게이트가 기록. gx-verify가 신규 경고 판정 기준으로 사용 |
-| `current-step` | 문자열 | 재개 지점 (예: `"RGR T2: FIX R2"`) |
-| `phases` | setup~complete 각각의 상태 | Phase 진입·완료 시 갱신 |
-| `steps` | phase별 Step 목록 | RGR 태스크는 `"RGR T{N} (AC-N)"` 객체에 `red`·`impl`·`test-file`·`test-file-hash`·`test-count`·`report`·`fix-round`를 중첩 (구 green/refactor 키는 3석 세대 전용 — 신규 기록 금지) |
-| `execution-log` | `phase`·`agent`·`gate`·`result`·`stagnation` 엔트리 배열 | 에이전트 호출·게이트 결과·정체 감지 기록 |
+**state.md 필드**: 초기화 필드의 정본은 phase-setup Step 7, 태스크 객체의 정본 예시는 phase-implement "state.md 추적" 절이다. 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)은 `pipeline: gx-tdd`·`status: in_progress`·`verify-status`·`verify-fingerprint`를 판별 키로 쓴다. `steps`의 RGR 태스크는 `"RGR T{N} (AC-N)"` 객체에 `red`·`impl`·`test-file`·`test-file-hash`·`test-count`·`report`·`fix-round`를 중첩한다 (구 green/refactor 키는 3석 세대 전용 — 신규 기록 금지). `execution-log`는 `phase`·`agent`·`gate`·`result`·`stagnation` 엔트리 배열이다. 아래 예시가 최상위 필드 전체다.
 
 ```yaml
 phase: implement
@@ -505,6 +487,20 @@ pipeline: gx-tdd
 verify-status: pending
 verify-fingerprint: ""
 model-profile: standard
+mode: all
+intent-source: user-selection
+work-id: W01
+flags: ""
+vcs-type: git
+branch: feat/login
+base: main
+project-type: java-spring
+project-root: ./
+args: "로그인 기능 추가"
+started: 2026-02-17T10:30:00
+last-known-head: 7c9e814
+auto-stashed: false
+config-setup-attempts: 0
 warnings-baseline: 12
 current-step: "RGR T2: FIX R2"
 phases: { setup: completed, requirements: completed, design: completed, implement: in_progress }
@@ -548,39 +544,23 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **svn**: git 지문을 계산할 수 없어 대조가 성립하지 않는다. 훅은 이 경우 보수적으로 "재검증 권고"를 안내한다.
 
 ### Context Slicing 규칙
-설계서와 PRD를 Agent에게 전달할 때, 역할에 따라 필요한 섹션만 전달하여 컨텍스트 효율을 높인다.
+설계서·PRD는 역할별 필요 섹션만 전달하고 모든 디스패치에 프로젝트 루트 경로를 포함한다. `contextLimits`(config.json) 초과 시 우선순위 낮은 섹션부터 요약·생략.
 
-#### PRODUCT
-- **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + **"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** 지시
-- **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
-
-#### PLANNING
-- **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + REFERENCES (있으면) + **"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** 지시
-- **design-critic (설계 비판)**: 설계서 초안 + PRD + 코드 맵 + 프로젝트 루트 경로
-- **test-architect (testability 평가)** ← 신규: 설계서 + PRD의 "수용 기준" + 코드 맵 + 프로젝트 루트 경로 + **"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** 지시
-
-#### EXECUTION (RED → IMPLEMENT 순차; red-writer만 코드 격리)
-- **red-writer (RED)** ← 신규: AC (Given-When-Then 시나리오 — 핵심 모드이면 ac.md의 AC) + 설계서의 testability 섹션 (핵심 모드는 없음 — 기존 테스트 스타일만 근거) + 기존 테스트 스타일 + 프로젝트 루트 경로. **기존 프로덕션 코드는 절대 포함하지 않는다** (격리 — 위반 여부는 verify_red가 "참조한 파일" 자기신고로 검증). "테스트만 작성. 프로덕션 코드 작성 금지" 지시. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`)를 추가 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.
-- **implementer (IMPLEMENT)**: RED report 경로 (reports/t{N}-red.md) + 설계서 인터페이스(대상 시그니처만) + focused 테스트 명령 + report 파일 경로 + 프로젝트 루트 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** (입력 범위 제한 — red-writer 수준의 코드 차단이 아니다. implementer는 구현을 위해 기존 코드를 Read할 수 있다). "최소 코드로 통과 후 GREEN 유지 정리. 테스트 수정 금지. focused만 실행" 지시.
-
-#### Deprecated (oh-my-gx:gx-tdd에서 절대 호출 안 함)
-- ~~coder (구현/배치/수정)~~ → red-writer/implementer로 재편됨
-- ~~qa-manager (리뷰/자기점검)~~ → spec-reviewer/quality-reviewer 분해를 거쳐 reviewer로 통합됨
-- 위 에이전트의 Context Slicing 정의는 기존(gx-dev) 호환을 위해 디렉토리에 파일은 남아있으나 gx-tdd 파이프라인에서는 참조하지 않는다.
-
-#### REVIEW (reviewer 통합 — Part 1→Part 2 내부 순서)
-- **reviewer (통합 리뷰)**: PRD의 "요구사항"+"수용 기준" + 설계서의 "변경 범위" + diff 파일 경로(DIFF_FILE) + 코드 맵 + 프로젝트 컨벤션 + 테스트 품질 기준 파일 경로. **"Part 1 verdict 선행. 테스트 재실행 금지"** 지시.
-- **security-auditor (통합 감사, reviewer와 병렬)**: PRD 전체 + 설계서 전체 + diff 파일 경로 (`DIFF_FILE`) + 코드 맵 + REFERENCES (있으면)
-
-#### VERIFICATION
-- **gx-verify (스킬, 완료 게이트)**: phase-complete Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출. config.json의 projectTypes 기반으로 테스트/빌드 명령을 직접 실행. 캐시 결과 사용 금지, 0 failures 확인. 에이전트 Task가 아니므로 Context Slicing(입력 전달) 대상이 아니다.
-
-#### ANALYSIS / RECOVERY
-- **researcher (독립 조사)**: 조사 요청 + 코드 맵 (있으면) + 프로젝트 루트 경로
-- **hacker (제약 우회)**: 정체 상황 설명 (에러 메시지, 시도한 접근) + 코드 맵 + 프로젝트 루트 경로
-- **simplifier (복잡도 제거)**: 정체 상황 설명 + 설계서 + PRD + 코드 맵
-
-각 에이전트에 전달하는 입력 크기가 `.claude/config.json`의 `contextLimits`를 초과하면, 우선순위가 낮은 섹션부터 요약 또는 생략한다.
+| 에이전트 | 전달 입력 |
+|---|---|
+| product-owner (PRD 작성) | ARGS[0]+코드 맵+프로젝트 타입/구조+DOMAIN_CONTEXT(있으면)+**"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** |
+| product-owner (인수 검증) | PRD 요구사항+수용기준+`DIFF_FILE`+코드 맵 |
+| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES(있으면)+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
+| design-critic | 설계초안+PRD+코드 맵 |
+| test-architect | 설계서+PRD 수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
+| red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
+| implementer | RED report(reports/t{N}-red.md)+인터페이스+focused 테스트 명령+report 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** |
+| reviewer | PRD 요구사항+수용기준+설계서 변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
+| security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES(있으면) |
+| gx-verify (스킬) | 위 VERIFICATION 참조 |
+| researcher | 조사+코드 맵(있으면) |
+| hacker | 정체+코드 맵 |
+| simplifier | 정체+설계서+PRD+코드 맵 |
 
 ### 병렬 실행 규칙
 읽기 전용 Agent(product-owner, architect, test-architect, design-critic, reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
