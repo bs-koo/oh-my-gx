@@ -478,68 +478,43 @@ Agent 출력을 사용자에게 전달할 때, **Phase 상태에 따라** 전문
 ### 진행 상태 추적 (state.md)
 파이프라인 진행 상태를 `${DEV_DIR}/state.md`에 기록하여 세션 재개를 지원한다.
 
-**state.md 구조 (RGR 사이클 반영)**:
+**state.md 필드** (초기화의 정본은 phase-setup Step 7. 태스크 객체의 정본 예시는 phase-implement "state.md 추적" 절):
+
+| 필드 | 값 | 기록·소비 |
+|---|---|---|
+| `phase` / `status` | phase명 / `in_progress`·`completed`·`cancelled` | 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 판별 조건으로 쓴다 |
+| `pipeline` | `gx-tdd` | verify-status와 함께 커밋/PR 게이트의 판별 키 |
+| `verify-status` | `pending`·`passed` | phase-complete Step -1 verify 통과 시 passed. 코드 변경 재진입 시 pending 리셋 |
+| `verify-fingerprint` | `{HEAD단축}:{트리해시12자}` 또는 `""` | passed와 같은 시점에 기록. 게이트 4곳이 현재 지문과 대조해 스테일 passed를 감지 (아래 "verify 지문") |
+| `model-profile` | `standard`·`eco` | phase-setup Step 1.5 결정. 에이전트 디스패치 모델 오버라이드 기준 |
+| `mode` / `intent-source` / `work-id` / `flags` / `args` | 의도 파싱 결과 | phase-setup Step 7. `flags`는 자연어 RALPH도 `--ralph`로 정규화해 기록하며 phase-implement Step 0.7의 판정 키 |
+| `vcs-type` / `branch` / `base` / `project-type` / `project-root` | 환경 감지 | svn은 branch/base 미사용 |
+| `started` / `last-known-head` | 시작 시각 / Phase 완료 시점의 HEAD | 재개 시 외부 커밋 감지 (git 전용) |
+| `auto-stashed` | true/false | phase-setup 2.1 stash 보호 상태 (git 전용) |
+| `config-setup-attempts` | 정수 | phase-setup 3.0 가드의 재시도 카운터. 새 파이프라인 시 0 |
+| `warnings-baseline` | 정수 | phase-implement Step 0.5 기준선 게이트가 기록. gx-verify가 신규 경고 판정 기준으로 사용 |
+| `current-step` | 문자열 | 재개 지점 (예: `"RGR T2: FIX R2"`) |
+| `phases` | setup~complete 각각의 상태 | Phase 진입·완료 시 갱신 |
+| `steps` | phase별 Step 목록 | RGR 태스크는 `"RGR T{N} (AC-N)"` 객체에 `red`·`impl`·`test-file`·`test-file-hash`·`test-count`·`report`·`fix-round`를 중첩 (구 green/refactor 키는 3석 세대 전용 — 신규 기록 금지) |
+| `execution-log` | `phase`·`agent`·`gate`·`result`·`stagnation` 엔트리 배열 | 에이전트 호출·게이트 결과·정체 감지 기록 |
+
 ```yaml
 phase: implement
 status: in_progress
-pipeline: gx-tdd           # 파이프라인 식별자 — verify-status와 함께 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)의 판별 키
-verify-status: pending     # pending | passed. phase-complete Step -1 verify 통과 시 passed 전이, 코드 변경 재진입 시 pending 리셋
-verify-fingerprint: ""     # verify 통과 시점의 코드 지문. 게이트 4곳이 현재 지문과 대조해 "스테일 passed"를 감지한다 (아래 "verify 지문" 참조)
-model-profile: standard    # standard | eco — 에이전트 디스패치 모델 오버라이드 기준 (phase-setup Step 1.5 결정)
-vcs-type: git
-branch: JIRA-123
-base: main
-project-type: java-spring
-project-root: ./
-args: "[JIRA-123] 로그인 기능 추가"
-flags: --core              # 의도 파싱 플래그. 자연어 RALPH 추출도 --ralph로 정규화해 기록 (phase-setup Step 7) — phase-implement Step 0.7의 판정 키
-started: 2026-02-17T10:30:00
-last-known-head: 7c9e814abc...
-config-setup-attempts: 1   # phase-setup 3.0 가드의 재시도 카운터
-warnings-baseline: 12      # phase-implement Step 0.5 기준선 게이트가 기록. gx-verify가 신규 경고 판정 기준으로 사용
+pipeline: gx-tdd
+verify-status: pending
+verify-fingerprint: ""
+model-profile: standard
+warnings-baseline: 12
 current-step: "RGR T2: FIX R2"
-phases:
-  setup: completed
-  requirements: completed       # G-W-T 게이트 통과
-  design: completed             # testability score 8/10 통과
-  implement: in_progress
+phases: { setup: completed, requirements: completed, design: completed, implement: in_progress }
 steps:
   implement:
-    - 태스크 분해 승인: completed
-    - "RGR T1 (AC-1)":
-        red: completed
-        test-file: src/test/.../PasswordValidatorTest.java   # verify_red 기록 — focused 집합 조립에 사용
-        test-file-hash: 3ca970cc...   # verify_red 기록 — verify_implement 무결성 비교 기준선
-        test-count: 47                # verify_implement 기록 — focused 직접 실행 결과 (테스트 삭제 감지 기준선)
-        report: reports/t1-impl.md
-        impl: completed
-    - "RGR T2 (AC-2)":
-        red: completed
-        impl: in_progress
-        fix-round: 2/5
-    - 변경사항 수집: pending
-  review:
-    - mechanical-gate: pending
-    - unified-review + security (병렬): pending
-  complete:
-    - verify-gate: pending
-    - 인수검증: pending
+    - "RGR T1 (AC-1)": { red: completed, test-file: src/test/.../PasswordValidatorTest.java, test-file-hash: 3ca970cc..., test-count: 47, report: reports/t1-impl.md, impl: completed }
+    - "RGR T2 (AC-2)": { red: completed, impl: in_progress, fix-round: 2/5 }
 execution-log:
-  - phase: requirements
-    gate: G-W-T
-    result: "PASS — 모든 AC가 Given-When-Then 형식"
-  - phase: design
-    agent: test-architect
-    result: "testability score 8/10 PASS"
-  - phase: implement
-    agent: red-writer (T1)
-    result: "PasswordValidatorTest.shouldReject401 작성 + 실패 확인"
-  - phase: implement
-    agent: implementer (T1)
-    result: "최소 구현 + focused 3/3 pass + 매직 넘버 상수화"
-  - phase: implement
-    agent: implementer (T2)
-    result: "fix round 2/5 진행 중"
+  - { phase: design, agent: test-architect, result: "testability score 8/10 PASS" }
+  - { phase: implement, agent: implementer (T2), result: "fix round 2/5 진행 중" }
 ```
 
 **갱신 규칙:**
