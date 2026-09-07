@@ -415,16 +415,16 @@ phase-setup 결정, 모든 Phase 사용.
 |---|---|---|
 | `VCS_TYPE` | `.claude/config.json`의 `"vcs"` 값 (`"git"`/`"svn"`) | Step 1 |
 | `GIT_PREFIX` | `VCS_TYPE`과 동일 | Step 1 |
-| `PROJECT_ROOT` | `./`(현재 디렉토리) | — |
+| `PROJECT_ROOT` | `./` | — |
 | `DEV_DIR` | `.dev/{branch-slug}/`. **SVN은 브랜치가 없으므로 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}/`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk/` 폴백).** | Step 6.5 |
-| `BASE_BRANCH` | 베이스 브랜치. SVN 미사용 | Step 2 |
+| `BASE_BRANCH` | SVN 미사용 | Step 2 |
 | `DIFF_FILE` | `${DEV_DIR}/diff.txt` | — |
-| `DOMAIN_CONTEXT` | `context/*/PROJECTS.md` 매칭 용어·아키텍처. 미매칭 시 빈 상태 | Step 3.1 |
-| `REFERENCES` | `references/` 규격 문서 목록. 없으면 빈 상태·미포함 | Step 3.1 |
-| `MODEL_PROFILE` | `standard`/`eco`. state.md 기록 | Step 1.5 |
+| `DOMAIN_CONTEXT` | `context/*/PROJECTS.md` 매칭. 없으면 빈 상태 | Step 3.1 |
+| `REFERENCES` | `references/` 문서 목록. 없으면 빈 상태·미포함 | Step 3.1 |
+| `MODEL_PROFILE` | `standard`/`eco` | Step 1.5 |
 
-- Agent에 `PROJECT_ROOT`를 전달해 파일 도구(Read/Write/Edit/Glob/Grep) 기준점으로 쓴다.
-- 빌드/테스트 명령은 `PROJECT_ROOT`에서 실행. 기본값 `./`이면 **bare 명령**으로 실행 — `allowed-tools`의 prefix 패턴과 매칭되어 권한 프롬프트가 뜨지 않는다. `./`가 아니면 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다.
+- Agent에 `PROJECT_ROOT`를 전달해 파일 도구 기준점으로 쓴다.
+- 빌드/테스트 명령은 `PROJECT_ROOT`에서 실행. 기본값 `./`이면 **bare 명령**으로 실행(`allowed-tools` prefix 매칭 — 권한 프롬프트 없음), 아니면 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다.
 
 ### 모델 프로파일 (MODEL_PROFILE)
 
@@ -460,7 +460,7 @@ Agent prompt 크기를 관리하기 위해:
 
 | 상황 | 사용자에게 보이는 것 |
 |---|---|
-| Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용. Phase 파일 규칙 우선 |
+| Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용 |
 | Q&A Phase 완료 보고 | 파일에 저장하고 **요약만** ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨") |
 | Q&A 없는 Phase (implement, review, complete) | Agent 출력 **요약만**. 전문은 파일·변수 보관 |
 | implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 |
@@ -544,23 +544,23 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **svn**: git 지문을 계산할 수 없어 대조가 성립하지 않는다. 훅은 이 경우 보수적으로 "재검증 권고"를 안내한다.
 
 ### Context Slicing 규칙
-설계서·PRD는 역할별 필요 섹션만 전달하고 모든 디스패치에 프로젝트 루트 경로를 포함한다. `contextLimits`(config.json) 초과 시 우선순위 낮은 섹션부터 요약·생략.
+설계서·PRD는 역할별 필요 섹션만 전달한다. `contextLimits`(config.json) 초과 시 우선순위 낮은 섹션부터 요약·생략.
 
 | 에이전트 | 전달 입력 |
 |---|---|
 | product-owner (PRD 작성) | ARGS[0]+코드 맵+프로젝트 타입/구조+DOMAIN_CONTEXT(있으면)+**"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** |
-| product-owner (인수 검증) | PRD 요구사항+수용기준+`DIFF_FILE`+코드 맵 |
-| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES(있으면)+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
-| design-critic | 설계초안+PRD+코드 맵 |
-| test-architect | 설계서+PRD 수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
+| product-owner (인수 검증) | PRD요구사항+수용기준+`DIFF_FILE`+코드 맵 |
+| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
+| design-critic | 설계초안+PRD+코드맵 |
+| test-architect | 설계서+PRD수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
 | red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
 | implementer | RED report(reports/t{N}-red.md)+인터페이스+focused 테스트 명령+report 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** |
-| reviewer | PRD 요구사항+수용기준+설계서 변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
-| security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES(있으면) |
-| gx-verify (스킬) | 위 VERIFICATION 참조 |
-| researcher | 조사+코드 맵(있으면) |
-| hacker | 정체+코드 맵 |
-| simplifier | 정체+설계서+PRD+코드 맵 |
+| reviewer | PRD요구사항+수용기준+설계서변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
+| security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES |
+| gx-verify (스킬, 완료 게이트) | phase-complete Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출. config.json의 projectTypes 기반으로 테스트/빌드 명령을 직접 실행. 캐시 결과 사용 금지, 0 failures 확인. 에이전트 Task가 아니므로 Context Slicing(입력 전달) 대상이 아니다. |
+| researcher | 조사+코드맵(있으면) |
+| hacker | 정체+코드맵 |
+| simplifier | 정체+설계서+PRD+코드맵 |
 
 ### 병렬 실행 규칙
 읽기 전용 Agent(product-owner, architect, test-architect, design-critic, reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
