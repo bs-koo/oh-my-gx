@@ -460,7 +460,7 @@ Agent prompt 크기를 관리하기 위해:
 
 | 상황 | 사용자에게 보이는 것 |
 |---|---|
-| Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용 |
+| Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용. Phase 파일의 구체적인 표시 규칙이 이 일반 규칙보다 우선한다 |
 | Q&A Phase 완료 보고 | 파일에 저장하고 **요약만** ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨") |
 | Q&A 없는 Phase (implement, review, complete) | Agent 출력 **요약만**. 전문은 파일·변수 보관 |
 | implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 |
@@ -550,13 +550,13 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 |---|---|
 | product-owner (PRD 작성) | ARGS[0]+코드 맵+프로젝트 타입/구조+DOMAIN_CONTEXT(있으면)+**"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** |
 | product-owner (인수 검증) | PRD요구사항+수용기준+`DIFF_FILE`+코드 맵 |
-| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
+| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES(있으면)+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
 | design-critic | 설계초안+PRD+코드맵 |
 | test-architect | 설계서+PRD수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
 | red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
 | implementer | RED report(reports/t{N}-red.md)+인터페이스+focused 테스트 명령+report 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** |
 | reviewer | PRD요구사항+수용기준+설계서변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
-| security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES |
+| security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES(있으면) |
 | gx-verify (스킬, 완료 게이트) | phase-complete Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출. config.json의 projectTypes 기반으로 테스트/빌드 명령을 직접 실행. 캐시 결과 사용 금지, 0 failures 확인. 에이전트 Task가 아니므로 Context Slicing(입력 전달) 대상이 아니다. |
 | researcher | 조사+코드맵(있으면) |
 | hacker | 정체+코드맵 |
