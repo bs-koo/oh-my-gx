@@ -103,7 +103,7 @@ Read("../references/report-guide.md")                  # 같은 스킬의 다른
 Read("../../gx-setup/references/project-type-hints.md")  # 형제 스킬
 ```
 
-파일 사이의 상대 위치는 설치 위치와 무관하게 같으므로 두 하네스 모두에서 해석된다. `lint-consistency.sh`의 `[15/31]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
+파일 사이의 상대 위치는 설치 위치와 무관하게 같으므로 두 하네스 모두에서 해석된다. `lint-consistency.sh`의 `[15/32]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
 
 **예외 하나가 남았다.** `gx-setup`이 읽는 config.json 템플릿은 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있다. Claude Code에서는 `../../config.json`이 맞지만, 스킬 디렉토리만 배포되는 Codex에서는 그 위치에 파일이 없다. 스킬은 Read 실패 시 사용자에게 수동 복사를 안내하고 다음 단계로 넘어가도록 되어 있다.
 
@@ -119,7 +119,7 @@ Codex `plugin.json`이 지원하는 컴포넌트 필드는 `skills`·`hooks`·`m
 
 Codex는 작업 디렉토리의 `AGENTS.md`를 세션 프롬프트에 자동으로 싣는다(실측 확인 — `AGENTS.md instructions for <경로>` 형태로 주입된다). 다만 기준이 **작업 디렉토리**라, 이 저장소에서 작업할 때는 우리 `AGENTS.md`가 실리지만 플러그인을 설치해 다른 프로젝트에서 쓸 때는 그 프로젝트의 `AGENTS.md`가 실린다.
 
-따라서 하네스 매핑을 이 문서에만 두면 설치 사용자에게 닿지 않는다. `gx-dev`·`gx-tdd`의 SKILL.md에 "하네스 적응" 표를 직접 넣어둔 것은 그 때문이다. 스킬 파일은 어느 경로로 설치되든 항상 함께 배포된다.
+따라서 하네스 매핑을 이 문서에만 두면 설치 사용자에게 닿지 않는다. `gx-dev`는 SKILL.md에 "하네스 적응" 표를 직접 두고, `gx-tdd`는 `references/harness-adaptation.md`에 두고 SKILL.md가 실행 진입 시 가리킨다. 스킬 디렉토리는 어느 경로로 설치되든 항상 함께 배포된다.
 
 ### 스킬 상호 호출
 

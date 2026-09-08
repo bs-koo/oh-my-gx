@@ -34,6 +34,7 @@
 # 29. 헤드리스 조기 종료 방지 철칙 (마지막 문단 점검·컨텍스트 사유 중단 금지)
 # 30. Codex 훅 배치·실측 계약 (수동 배치 절차·미검증 항목 체크리스트)
 # 31. 린트 번호 크로스레퍼런스 정합 (문서가 인용하는 [N/M]의 M이 실제 분모와 일치)
+# 32. gx-tdd 지시문 바이트 예산 (SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -42,7 +43,7 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-echo "[1/31] 버전 4중 일치"
+echo "[1/32] 버전 4중 일치"
 # Codex 매니페스트(.codex-plugin/plugin.json)도 같은 버전을 싣는다 — 어긋나면 Codex UI에 옛 버전이 뜬다
 V_PLUGIN=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 V_MARKET=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' .claude-plugin/marketplace.json | head -1)
@@ -54,7 +55,7 @@ else
   fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET codex-plugin=$V_CODEX CHANGELOG=$V_CHANGE"
 fi
 
-echo "[2/31] 서브에이전트 도구명 통일 (Task)"
+echo "[2/32] 서브에이전트 도구명 통일 (Task)"
 if grep -rn 'Agent(subagent_type' .claude/skills >/dev/null 2>&1; then
   fail "Agent(subagent_type 호출 문법 잔존: $(grep -rl 'Agent(subagent_type' .claude/skills | tr '\n' ' ')"
 else
@@ -66,7 +67,7 @@ else
   ok "allowed-tools Agent 선언 없음"
 fi
 
-echo "[3/31] RGR 드리프트 키워드"
+echo "[3/32] RGR 드리프트 키워드"
 REFACTOR_FILES="agents/refactor-coder.md agents/implementer.md .claude/skills/gx-tdd/phases/phase-implement.md .claude/skills/gx-refactor/SKILL.md"
 for item in "동작 변경" "새 기능 추가" "에러 핸들링" "성능 최적화" "인터페이스 시그니처 변경"; do
   for f in $REFACTOR_FILES; do
@@ -94,7 +95,7 @@ grep -q "security_verdict" .claude/skills/gx-tdd/phases/phase-review.md \
   || fail "security_verdict 계약(Task B 프롬프트 producer + 파싱 consumer) 누락: phase-review.md"
 [ "$FAIL" -eq 0 ] && ok "금지 목록 5항목×3파일, 재호출 상한, 프로젝트 루트 전달, spec_verdict 쌍"
 
-echo "[4/31] verify 게이트 판별식 키 존재"
+echo "[4/32] verify 게이트 판별식 키 존재"
 for f in .claude/rules/skill-routing.md .claude/rules/git-workflow.md \
          .claude/skills/gx-commit/SKILL.md .claude/skills/gx-pull-request/SKILL.md \
          .claude/skills/gx-tdd/SKILL.md; do
@@ -124,7 +125,7 @@ for f in .claude/hooks/pre-tool-guard.sh .claude/skills/gx-verify/SKILL.md scrip
 done
 [ "$FAIL" -eq 0 ] && ok "판별식 키 5개 문서 + 훅 통합 정규식 + 지문 계약 6곳·계산 규약 3곳 확인"
 
-echo "[5/31] 디스패치 이름 ↔ agents/ 대조"
+echo "[5/32] 디스패치 이름 ↔ agents/ 대조"
 BUILTIN="Explore general-purpose"
 NAMES=$(grep -rhoE 'subagent_type="[^"]+"' .claude/skills 2>/dev/null | sed 's/subagent_type="//; s/"$//' | sort -u)
 for n in $NAMES; do
@@ -135,7 +136,7 @@ for n in $NAMES; do
 done
 ok "디스패치 이름 전수 확인"
 
-echo "[6/31] 셸 스크립트 CRLF 금지"
+echo "[6/32] 셸 스크립트 CRLF 금지"
 # 이식성 주의: grep -P는 macOS(BSD grep)에서 미지원이고, $'\r' 인자는 Git Bash(MSYS2)에서
 # 변환되어 빈 패턴이 되므로 모든 줄에 매칭(오탐)된다. tr|cmp 비교는 세 환경 모두에서 동작한다.
 CRLF=""
@@ -150,14 +151,14 @@ else
   fail "CRLF 포함 스크립트:$CRLF"
 fi
 
-echo "[7/31] 훅 스크립트 문법"
+echo "[7/32] 훅 스크립트 문법"
 if bash -n .claude/hooks/pre-tool-guard.sh 2>/dev/null; then
   ok "bash -n 통과"
 else
   fail "pre-tool-guard.sh 문법 오류"
 fi
 
-echo "[8/31] Skill 체이닝 스킬의 Skill 선언"
+echo "[8/32] Skill 체이닝 스킬의 Skill 선언"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
          .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md \
          .claude/skills/gx-ralph-iterate/SKILL.md; do
@@ -166,14 +167,14 @@ for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
 done
 [ "$FAIL" -eq 0 ] && ok "Skill 체이닝 5스킬 선언 확인"
 
-echo "[9/31] gx-humanizer 에이전트 접두사"
+echo "[9/32] gx-humanizer 에이전트 접두사"
 if grep -qF '`humanizer-' .claude/skills/gx-humanizer/SKILL.md 2>/dev/null; then
   fail "gx-humanizer에 접두사 없는 에이전트 이름 잔존 (→ oh-my-gx:humanizer-*)"
 else
   ok "humanizer 디스패치 접두사 정상"
 fi
 
-echo "[10/31] force-push deny 패턴 (bare 형태 커버)"
+echo "[10/32] force-push deny 패턴 (bare 형태 커버)"
 grep -qF 'Bash(*git push*--force*)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push*--force*)' 패턴 누락"
 grep -qF 'Bash(*git push* -f)' .claude/settings.json \
@@ -182,7 +183,7 @@ grep -qF 'Bash(*git push* -f *)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push* -f *)' (중간 -f) 패턴 누락"
 [ "$FAIL" -eq 0 ] && ok "deny 패턴 bare 형태 커버 확인"
 
-echo "[11/31] gx-ralph 상태 계약 정합"
+echo "[11/32] gx-ralph 상태 계약 정합"
 RALPH_ENTRY=.claude/skills/gx-ralph/SKILL.md
 RALPH_ITER=.claude/skills/gx-ralph-iterate/SKILL.md
 RALPH_RUNNER=scripts/gx-ralph.sh
@@ -245,7 +246,7 @@ grep -q 'origin:' "$RALPH_RUNNER" \
   || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
 [ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿·러너 allowedTools 동기 확인"
 
-echo "[12/31] gx-dev CORE 모드 계약 정합"
+echo "[12/32] gx-dev CORE 모드 계약 정합"
 GXDEV=.claude/skills/gx-dev/SKILL.md
 CORE_PHASE=.claude/skills/gx-dev/phases/phase-core.md
 # CORE 경로 등록 + Gate 필수 (core의 게이트 공백 회귀 방지)
@@ -271,7 +272,7 @@ grep -q "HOTFIX 모드" "$GXDEV" && fail "폐지된 HOTFIX 모드 잔존: $GXDEV
 grep -q "경량 구현" "$GXDEV" && fail "폐지된 경량 구현 모드 잔존: $GXDEV"
 [ "$FAIL" -eq 0 ] && ok "CORE 경로·Gate 필수·산출물 계약·구 버전 방어·폐지 모드 부재 확인"
 
-echo "[13/31] gx-tdd CORE 모드 계약 정합"
+echo "[13/32] gx-tdd CORE 모드 계약 정합"
 GXTDD=.claude/skills/gx-tdd/SKILL.md
 TDD_REQ=.claude/skills/gx-tdd/phases/phase-requirements.md
 TDD_IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
@@ -290,15 +291,15 @@ grep -q "핵심 모드 전용 긴급 보안 감사" "$TDD_IMPL" || fail "core �
 grep -q "AC 자가 검증" .claude/skills/gx-tdd/phases/phase-complete.md \
   || fail "phase-complete core AC 자가 검증 분기 누락"
 # 구 버전 세션 방어 (v1.18.0: 레거시 모드 호환 제거)
-grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/phase-setup.md \
-  || fail "구 버전 세션 방어 규칙 누락: gx-tdd phase-setup.md"
+grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/setup-resume.md \
+  || fail "구 버전 세션 방어 규칙 누락: gx-tdd setup-resume.md"
 # 레거시·폐지 모드 잔존 금지 (v1.18.0: --hotfix 플래그·구 명칭 hotfix/light 완전 제거 — 자연어 '핫픽스'는 한글이라 무관)
 grep -rqi "hotfix" .claude/skills/gx-tdd && fail "레거시 hotfix 잔존: gx-tdd"
 grep -rqiE "\blight\b" .claude/skills/gx-tdd && fail "구 명칭 light 잔존: gx-tdd"
 grep -q "HOTFIX 모드" "$GXTDD" && fail "폐지된 HOTFIX 모드 잔존: $GXTDD"
 [ "$FAIL" -eq 0 ] && ok "tdd core 경로·RGR/G-W-T 유지·긴급 감사·구 버전 방어·폐지 모드 부재 확인"
 
-echo "[14/31] 모델 프로파일(standard/eco) 계약 정합"
+echo "[14/32] 모델 프로파일(standard/eco) 계약 정합"
 grep -q '"modelProfile"' .claude/config.json || fail "config.json modelProfile 키 누락"
 for f in "$GXDEV" "$GXTDD"; do
   grep -q "model-profile: standard | eco" "$f" || fail "model-profile 기록 규칙 누락: $f"
@@ -321,7 +322,7 @@ for a in agents/*.md; do
 done
 [ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
-echo "[15/31] 번들 경로 규약(상대경로) + config 부트스트랩"
+echo "[15/32] 번들 경로 규약(상대경로) + config 부트스트랩"
 # 하네스 중립 규약: 번들 파일은 그 지시가 적힌 파일 기준 상대경로로 읽는다.
 # ${CLAUDE_PLUGIN_ROOT} 기반 절대경로 조립은 Codex 설치 구조에서 깨진다 —
 # Codex 스킬 루트에는 .claude/skills/ 중간 경로가 없고 변수 설정도 보장되지 않는다.
@@ -348,7 +349,7 @@ done < <(grep -rHoE 'Read\(["`]?[A-Za-z0-9_./-]+\.(md|json)["`]?\)' .claude/skil
          | sed -E 's/:Read\(["`]?/:/; s/["`]?\)$//')
 [ "$FAIL" -eq 0 ] && ok "상대경로 규약·참조 실존·config 부트스트랩 확인"
 
-echo "[16/31] phase-complete context 커밋 예외 대칭 + 레거시 Read 제거"
+echo "[16/32] phase-complete context 커밋 예외 대칭 + 레거시 Read 제거"
 grep -q "유일한 예외" .claude/skills/gx-dev/phases/phase-complete.md \
   || fail "phase-complete 헤더 context 커밋 예외 누락"
 grep -q "context 변경사항 자동 커밋" .claude/rules/skill-routing.md \
@@ -357,12 +358,12 @@ grep -q "다른 스킬의 프로세스를 실행할 때 아래 경로에서 Read
   && fail "gx-dev 레거시 'Read한다' 형제 스킬 지시 잔존"
 [ "$FAIL" -eq 0 ] && ok "context 커밋 예외 헤더·라우팅 + 레거시 Read 제거 확인"
 
-echo "[17/31] force-push 훅 가드 G4"
+echo "[17/32] force-push 훅 가드 G4"
 grep -q "force-push 차단" .claude/hooks/pre-tool-guard.sh || fail "훅 force-push 가드(G4) 주석 누락"
 grep -qF '*"--force"*' .claude/hooks/pre-tool-guard.sh || fail "훅 force-push 패턴(--force) 누락"
 [ "$FAIL" -eq 0 ] && ok "force-push 훅 가드 확인"
 
-echo "[18/31] SVN .dev/.active 포인터 계약"
+echo "[18/32] SVN .dev/.active 포인터 계약"
 for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phases/phase-setup.md; do
   grep -qF '.dev/.active' "$f" || fail "svn .dev/.active producer 누락: $f"
 done
@@ -372,7 +373,7 @@ done
 grep -q 'ACTIVE_SLUG' .claude/hooks/pre-tool-guard.sh || fail "훅 ACTIVE_SLUG 해석 누락"
 [ "$FAIL" -eq 0 ] && ok "SVN .dev/.active producer·consumer·폴백 확인"
 
-echo "[19/31] cross-review fallback 3원 조건 + humanizer P1 커버리지"
+echo "[19/32] cross-review fallback 3원 조건 + humanizer P1 커버리지"
 if grep -qF 'prd.md/design.md 둘 다 없으면' .claude/skills/gx-cross-review/SKILL.md; then
   fail "cross-review fallback 구 조건(prd/design 둘 다) 잔존"
 fi
@@ -384,7 +385,7 @@ for code in E2 E5 E6; do
 done
 [ "$FAIL" -eq 0 ] && ok "cross-review fallback 3원 + humanizer P1(E2/E5/E6) 확인"
 
-echo "[20/31] 언어 중립화(projectTypes SSOT) 계약 정합"
+echo "[20/32] 언어 중립화(projectTypes SSOT) 계약 정합"
 # --- PR1: config 신규 필드 + gx-verify 일반화 + 카탈로그 + gx-setup 등록 단계 ---
 grep -q '"warningPattern"' .claude/config.json || fail "config 템플릿에 warningPattern 필드 누락"
 grep -q '"artifacts"' .claude/config.json || fail "config 템플릿에 artifacts 필드 누락"
@@ -412,7 +413,7 @@ for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md .claude/s
 done
 [ "$FAIL" -eq 0 ] && ok "projectTypes SSOT(코어+파이프라인)·카탈로그·등록 단계·JDK 조건화·하네스 감지·allowed-tools 확인"
 
-echo "[21/31] .dev 협업 공유 계약"
+echo "[21/32] .dev 협업 공유 계약"
 for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
   grep -q '패턴도 이 단계에서 함께 추가한다' "$f" && fail ".dev ignore 추가 로직 잔존: $f"
   grep -q '협업 공유 대상' "$f" || fail ".dev 공유 문구 누락: $f"
@@ -423,7 +424,7 @@ for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
 done
 [ "$FAIL" -eq 0 ] && ok ".dev 공유 문구·ignore 로직 제거 확인"
 
-echo "[22/31] 리뷰 후속(v1.21.1) 계약 정합"
+echo "[22/32] 리뷰 후속(v1.21.1) 계약 정합"
 # C2: guide.md 등록 예시 — test 필드 존재 + collect-only 플래그 금지 (복사 사용자가 verify에 차단되는 결함)
 grep -qF '"test": "pytest"' docs/guide.md || fail "guide.md 등록 예시에 test 필드 누락"
 grep -qF 'pytest --co' docs/guide.md && fail "guide.md 예시에 collect-only 플래그 잔존"
@@ -453,7 +454,7 @@ for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
 done
 [ "$FAIL" -eq 0 ] && ok "guide/Pages 문서·.gitignore·gx-commit·svn add·.active·지문 트리 대조·diff 제외 확인"
 
-echo "[23/31] 프론트엔드 테스트 규약 계약"
+echo "[23/32] 프론트엔드 테스트 규약 계약"
 FE_REF=.claude/skills/gx-tdd/references/frontend-testing.md
 [ -f "$FE_REF" ] || fail "프론트 테스트 규약 참조 파일 누락: $FE_REF"
 # 셀렉터 규약 3중 동기 (red-writer 자기완결성 ↔ 파이프라인 프롬프트 ↔ 단독 스킬)
@@ -473,7 +474,7 @@ grep -q 'Anti-Pattern 6' .claude/skills/gx-tdd/references/testing-anti-patterns.
 # 낡은 표기 금지 — 태스크는 순차 실행이므로 "배치 병렬 조건"은 사실과 다름
 grep -qF '배치 병렬 조건' .claude/skills/gx-tdd/phases/phase-implement.md   && fail "사실과 다른 표기(배치 병렬 조건) 잔존: gx-tdd phase-implement.md — 태스크는 순차 실행"
 [ "$FAIL" -eq 0 ] && ok "참조 파일·셀렉터 3중 동기·하네스 게이트·표현 속성 배제·UI 안티패턴·순차 표기 확인"
-echo "[24/31] 하네스·복수 타입 검증 계약"
+echo "[24/32] 하네스·복수 타입 검증 계약"
 GXSETUP=.claude/skills/gx-setup/SKILL.md
 CATALOG2=.claude/skills/gx-setup/references/project-type-hints.md
 # G1: 등록한 명령을 실제 실행해 하네스 상태를 확인 (기존 등록 유지 경로 포함)
@@ -503,7 +504,7 @@ grep -q 'vitest' docs/test-harness-guide.md || fail "test-harness-guide.md JS/TS
 grep -q '프론트' docs/guide.md || fail "guide.md 프론트엔드 지원 서술 누락"
 [ "$FAIL" -eq 0 ] && ok "등록 검증·복합 타입·프론트 힌트·복수 타입 실행·core 판별·헤드리스·구축 가이드·사용자 문서 확인"
 echo
-echo "[25/31] 작업 계획(plan.md) 계약"
+echo "[25/32] 작업 계획(plan.md) 계약"
 # --work 플래그·읽기 절차·갱신 Step·커밋 규칙이 dev/tdd 양쪽과 라우팅 규칙에 대칭으로 존재하는지 대조한다.
 # plan.md 자체는 소비 프로젝트의 런타임 파일이라 이 저장소에 없다 — 문구 존재만 검사하고,
 # 표 파싱·의존 그래프 검증은 Phase C의 scripts/plan-lint.py가 담당한다.
@@ -522,7 +523,7 @@ grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복
 grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
 grep -q '\.dev/plan\.md' .claude/skills/gx-context/SKILL.md || fail "gx-context에 plan.md 생성 절 누락"
 grep -q '예약 도메인' .claude/skills/gx-context/SKILL.md || fail "gx-context에 예약 도메인 규칙 누락"
-# 소비 프로젝트의 cwd에는 scripts/가 없어 plan-lint를 실행할 수 없고, 번들 경로 규약([15/31])이
+# 소비 프로젝트의 cwd에는 scripts/가 없어 plan-lint를 실행할 수 없고, 번들 경로 규약([15/32])이
 # ${CLAUDE_PLUGIN_ROOT} 조립을 금지한다 — 그래서 무결성 확인은 스킬이 직접 수행해야 한다.
 # 이 항목들이 빠지면 잘못된 계획이 아무 검증 없이 의존 확인의 근거가 된다.
 grep -q '이 시점이 유일한 검증 지점' .claude/skills/gx-context/SKILL.md \
@@ -605,28 +606,42 @@ grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 �
 # S9: 온보딩 — 계획을 만든 뒤 어떻게 쓰는지, 계획이 있는데 그냥 요청했을 때
 # 무엇을 안내하는지가 없으면 사용자가 기능의 존재를 모른 채 지나간다.
 grep -q '판정 기준을 함께 안내' .claude/skills/gx-context/SKILL.md   || fail "gx-context 저장 안내에 판정 기준 설명 누락"
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
-  grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$f"     || fail "계획 존재 시 요청 대조 안내 누락: $f"
-  grep -q '진행할 작업 확인' "$f" || fail "작업 확정 후 사용자 표시 누락: $f"
-done
+# gx-tdd는 이번 분리로 3.0.5/Step 5.5/되돌림 본문이 setup-work.md·setup-resume.md로
+# 옮겨갔다 — 아래 S9~S13·자기 재개·svn 분기 검사는 gx-tdd만 새 파일을 보고, gx-dev는
+# phase-setup.md를 그대로 본다 (검사 의미는 동일, 대상 파일·절 범위만 다르다).
+TDD_SETUP=.claude/skills/gx-tdd/phases/phase-setup.md
+TDD_RESUME=.claude/skills/gx-tdd/phases/setup-resume.md
+TDD_WORK=.claude/skills/gx-tdd/phases/setup-work.md
+DEV_SETUP=.claude/skills/gx-dev/phases/phase-setup.md
+grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$TDD_WORK"     || fail "계획 존재 시 요청 대조 안내 누락: $TDD_WORK"
+grep -q '진행할 작업 확인' "$TDD_WORK" || fail "작업 확정 후 사용자 표시 누락: $TDD_WORK"
+grep -q '계획이 있으나 작업 ID가 지정되지 않은 경우' "$DEV_SETUP"     || fail "계획 존재 시 요청 대조 안내 누락: $DEV_SETUP"
+grep -q '진행할 작업 확인' "$DEV_SETUP" || fail "작업 확정 후 사용자 표시 누락: $DEV_SETUP"
 # S10~S13: 착수 기록의 실행 시점. 3.0.5 시점의 현재 브랜치는 아직 베이스 브랜치이므로
 # (Step 2.2가 checkout한다) 여기서 커밋하면 훅 G1이 deny한다 — 기입·커밋은 작업 브랜치를
 # 만든 뒤 Step 5.5의 몫이고, 그 사이 공백은 원격 브랜치 조회로 메운다.
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
-  SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$f")
-  printf '%s' "$SEC" | grep -q '메시지로 커밋' \
-    && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $f"
-  printf '%s' "$SEC" | grep -q 'ls-remote' \
-    || fail "3.0.5에 원격 브랜치 중복 감지 누락: $f"
+TDD_305_SEC=$(awk '/^## 작업 계획 참조$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK")
+DEV_305_SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$DEV_SETUP")
+printf '%s' "$TDD_305_SEC" | grep -q '메시지로 커밋' \
+  && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $TDD_WORK"
+printf '%s' "$TDD_305_SEC" | grep -q 'ls-remote' \
+  || fail "3.0.5에 원격 브랜치 중복 감지 누락: $TDD_WORK"
+printf '%s' "$DEV_305_SEC" | grep -q '메시지로 커밋' \
+  && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $DEV_SETUP"
+printf '%s' "$DEV_305_SEC" | grep -q 'ls-remote' \
+  || fail "3.0.5에 원격 브랜치 중복 감지 누락: $DEV_SETUP"
+for f in "$TDD_SETUP" "$DEV_SETUP"; do
   S5=$(grep -n '^## Step 5:' "$f" | head -1 | cut -d: -f1)
   S55=$(grep -n '^## Step 5\.5:' "$f" | head -1 | cut -d: -f1)
   S6=$(grep -n '^## Step 6:' "$f" | head -1 | cut -d: -f1)
   if [ -z "$S5" ] || [ -z "$S55" ] || [ -z "$S6" ] || [ "$S55" -lt "$S5" ] || [ "$S55" -gt "$S6" ]; then
     fail "Step 5.5(착수 기록)가 Step 5와 Step 6 사이에 없음: $f"
   fi
-  grep -q '베이스 브랜치로 보내지 않는다' "$f" \
-    || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $f"
 done
+grep -q '베이스 브랜치로 보내지 않는다' "$TDD_WORK" \
+  || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $TDD_WORK"
+grep -q '베이스 브랜치로 보내지 않는다' "$DEV_SETUP" \
+  || fail "착수 커밋의 push 대상(작업 브랜치) 명시 누락: $DEV_SETUP"
 # 착수·완료가 같은 층위여야 한다 — 한쪽만 베이스로 보내면 가시성이 어긋난다
 for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/phases/phase-complete.md; do
   grep -q '현재 작업 브랜치로' "$f" || fail "완료 커밋의 push 대상 명시 누락: $f"
@@ -641,20 +656,30 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
   grep -q '되돌림은 여기서 하지 않는다' "$f" || fail "phase-complete에 되돌림 위치 포인터 누락: $f"
 done
 # 자기 재개를 타인의 착수로 오인하지 않아야 한다 (--resume·재실행에서 매번 경고가 뜬다)
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+# gx-tdd: 자기 재개·폐기 경고·브랜치명 규칙은 setup-work.md, 착수 기록 보정은 setup-resume.md.
+grep -q '자기 재개' "$TDD_WORK" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $TDD_WORK"
+# 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
+# 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
+# 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
+awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -qF 'git push -u origin' \
+  || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $TDD_WORK"
+awk '/^### 착수 기록 보정/{f=1} f{print}' "$TDD_RESUME" | grep -qF 'git push -u origin' \
+  || fail "착수 기록 보정의 push에 -u 누락: $TDD_RESUME"
+# 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
+grep -q '폐기된 작업입니다' "$TDD_WORK" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $TDD_WORK"
+# 재개 경로는 Step 5를 거치지 않는다 — 보정이 없으면 중단된 세션의 착수가 영영 안 남는다
+grep -q '착수 기록 보정' "$TDD_RESUME" || fail "재개 시 착수 기록 보정 절 누락: $TDD_RESUME"
+# --work 유무로 브랜치 명명 규칙이 갈리지 않아야 한다
+grep -q '한국어→영어로 번역하고 최대 40자' "$TDD_WORK" || fail "--work 브랜치명 번역·길이 규칙 누락: $TDD_WORK"
+
+for f in "$DEV_SETUP"; do
   grep -q '자기 재개' "$f" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $f"
-  # 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
-  # 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
-  # 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
   awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -qF 'git push -u origin' \
     || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $f"
   awk '/^### 착수 기록 보정/,/^## Step 1:/' "$f" | grep -qF 'git push -u origin' \
     || fail "착수 기록 보정의 push에 -u 누락: $f"
-  # 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
   grep -q '폐기된 작업입니다' "$f" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $f"
-  # 재개 경로는 Step 5를 거치지 않는다 — 보정이 없으면 중단된 세션의 착수가 영영 안 남는다
   grep -q '착수 기록 보정' "$f" || fail "재개 시 착수 기록 보정 절 누락: $f"
-  # --work 유무로 브랜치 명명 규칙이 갈리지 않아야 한다
   grep -q '한국어→영어로 번역하고 최대 40자' "$f" || fail "--work 브랜치명 번역·길이 규칙 누락: $f"
 done
 # 폐기를 완료로 덮으면 요구사항이 왜 사라졌는지가 지워진다
@@ -662,10 +687,15 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
   grep -q '폐기된 작업이 완료 처리 대상입니다' "$f" || fail "완료 갱신에 폐기 가드 누락: $f"
 done
 # svn에서는 Claude의 커밋이 훅에 차단된다 — plan.md를 커밋하는 지점마다 svn 분기가 필요하다
-for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
+# gx-tdd: 되돌림·Step 5.5 세부 문구 모두 setup-work.md로 이동했다.
+awk '/^## 작업 계획 되돌림$/{f=1} f{print}' "$TDD_WORK" | grep -q 'svn이면' \
+  || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $TDD_WORK"
+# svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
+awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -q '중복 착수를 감지하지 못한다' \
+  || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $TDD_WORK"
+for f in "$DEV_SETUP"; do
   awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep -q 'svn이면' \
     || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $f"
-  # svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
   awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -q '중복 착수를 감지하지 못한다' \
     || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $f"
 done
@@ -685,7 +715,7 @@ grep -rn 'feat/[가-힣]' .claude/skills README.md >/dev/null 2>&1 \
   && fail "한글 브랜치 예시 잔존: $(grep -rl 'feat/[가-힣]' .claude/skills README.md | tr '\n' ' ')"
 [ "$FAIL" -eq 0 ] && ok "작업 계획 계약 확인"
 
-echo "[26/31] implement report 계약"
+echo "[26/32] implement report 계약"
 grep -qF 'reports/t{N}-impl.md' .claude/skills/gx-tdd/phases/phase-implement.md \
   || fail "report 파일 경로 계약 누락: phase-implement.md"
 grep -qF 'reports/t{N}-red.md' .claude/skills/gx-tdd/phases/phase-implement.md \
@@ -698,7 +728,7 @@ grep -q "oh-my-gx:implementer" .claude/skills/gx-ralph-iterate/SKILL.md \
   || fail "ralph 2석 디스패치(implementer) 누락: gx-ralph-iterate/SKILL.md"
 [ "$FAIL" -eq 0 ] && ok "report 경로·4-status·ralph 2석 디스패치 확인"
 
-echo "[27/31] security_verdict fail-closed 계약"
+echo "[27/32] security_verdict fail-closed 계약"
 # security_verdict에는 verdict 필드가 없어 "판정 실패"가 겉으로 드러나지 않는다.
 # 집계를 확보하지 못한 상태를 0건과 구분하지 않으면 감사 없이 통과하는 경로가 열린다.
 REVIEW_MD=.claude/skills/gx-tdd/phases/phase-review.md
@@ -710,7 +740,7 @@ grep -qF 'security 감사 미확보' "$REVIEW_MD" \
   || fail "trust-ledger 기록 문구 누락: $REVIEW_MD"
 [ "$FAIL" -eq 0 ] && ok "security fail-closed 3계층 확인"
 
-echo "[28/31] 리뷰 발견 단계 커버리지 계약"
+echo "[28/32] 리뷰 발견 단계 커버리지 계약"
 # Sonnet 5는 "사소한 것은 생략" 류 지시를 이전 모델보다 충실히 따라 재현율이 떨어진다.
 # 필터링은 오케스트레이터의 라우팅·게이트가 담당하므로 발견 단계는 커버리지가 목표다.
 # 커버리지 지시는 두 리뷰 에이전트 모두에 있어야 한다 — 한쪽만 고치면 다른 파이프라인이 옛 동작을 유지한다.
@@ -741,7 +771,7 @@ for f in .claude/skills/gx-tdd/phases/phase-review.md .claude/skills/gx-dev/phas
 done
 [ "$FAIL" -eq 0 ] && ok "커버리지 지시 2석 + 억제 문구 부재 + 보안 보고 의무 + 디스패치 전달 확인"
 
-echo "[29/31] 헤드리스 조기 종료 방지 철칙"
+echo "[29/32] 헤드리스 조기 종료 방지 철칙"
 # 헤드리스 반복에서 도구 호출 없이 의도만 말하고 턴을 끝내면 종료 계약 미출력(종료 코드 3)이거나
 # attempts만 소모된다. 사람이 "계속하세요"라고 답할 수 없는 세션이므로 철칙으로 고정한다.
 ITERATE_MD=.claude/skills/gx-ralph-iterate/SKILL.md
@@ -751,7 +781,7 @@ grep -qF '컨텍스트가 길어졌다는 이유로 멈추지 않는다' "$ITERA
   || fail "컨텍스트 사유 중단 금지 문구 누락: $ITERATE_MD"
 [ "$FAIL" -eq 0 ] && ok "헤드리스 조기 종료 방지 철칙 확인"
 
-echo "[30/31] Codex 훅 배치·실측 계약"
+echo "[30/32] Codex 훅 배치·실측 계약"
 # hooks.json의 ${CLAUDE_PLUGIN_ROOT} 폴백은 Codex에서 조용히 실패할 수 있고,
 # hook-tests.sh는 스크립트를 직접 호출하므로 이 층을 검증하지 못한다.
 # 절차가 문서에 없으면 사용자는 G3가 안 도는 것을 알 방법이 없다.
@@ -770,7 +800,7 @@ awk '/^## 실측 체크리스트/,0' "$CODEX_MD" | grep -qF 'agent_type' \
   || fail "실측 체크리스트에 agent_type 확인 항목 누락: $CODEX_MD"
 [ "$FAIL" -eq 0 ] && ok "Codex 훅 배치·실측 계약 확인"
 
-echo "[31/31] 린트 번호 크로스레퍼런스 정합"
+echo "[31/32] 린트 번호 크로스레퍼런스 정합"
 # 분모가 오를 때마다 문서가 인용하는 [N/M]이 뒤처진다. 26→29 전환에서 7곳이 드리프트해
 # 전용 커밋으로 고친 이력이 있고(6fc3e96), 29→30에서 또 재발했다. 기계로 고정한다.
 # 대상은 살아있는 문서만 — docs/·CHANGELOG는 과거 릴리스의 역사 기록이라 그때의 분모가 맞다.
@@ -785,6 +815,23 @@ if [ -n "$XREF_BAD" ]; then
   printf '%s\n' "$XREF_BAD" | sed 's/^/         /'
 fi
 [ "$FAIL" -eq 0 ] && ok "린트 번호 크로스레퍼런스 ${LINT_TOTAL}건 정합 확인"
+
+echo "[32/32] gx-tdd 지시문 바이트 예산"
+# 오케스트레이터가 사이클마다 읽는 파일의 상한. 설계: docs/specs/2026-09-07-tdd-density-rhythm-design.md D3
+for spec in ".claude/skills/gx-tdd/SKILL.md:61500" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
+  f=${spec%%:*}; max=${spec##*:}
+  [ -f "$f" ] || { fail "예산 대상 파일 부재: $f"; continue; }
+  sz=$(wc -c <"$f" | tr -d ' ')
+  [ "$sz" -le "$max" ] || fail "지시문 예산 초과: $f ${sz}B > ${max}B (추출·압축·조건부 로드로 줄일 것)"
+done
+# 조건부 로드 포인터 — phase-setup이 보조 파일을 조건부로만 Read하고, 작업 ID 없음 경로도 닿는지 (최종 리뷰 I1 회귀 방지)
+SETUP=.claude/skills/gx-tdd/phases/phase-setup.md
+grep -qF 'Read("setup-resume.md")' "$SETUP" || fail "setup-resume.md 포인터 누락: phase-setup.md"
+grep -qF 'ARGS[0]이 있고 `--resume`이 없으면' "$SETUP" || fail "setup-resume 조건부 로드 조건 누락: phase-setup.md"
+grep -qF 'Read("setup-work.md")' "$SETUP" || fail "setup-work.md 포인터 누락: phase-setup.md"
+grep -qF '계획이 있으나 작업 ID가 지정되지 않은 경우' "$SETUP" || fail "작업 ID 없음 경로의 setup-work 소절 포인터 누락: phase-setup.md"
+
+[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 4건"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."
