@@ -16,7 +16,7 @@
 - **언어**: 문서·커밋 메시지 모두 한국어. 이모지 사용 금지.
 - **브랜치**: `main`/`master`/`develop`에서 커밋 불가 (훅 G1). 작업 시작 전 `feat/tdd-session-implement` 브랜치를 생성한다.
 - **커밋**: 메시지는 `feat: …`/`docs: …` 한 줄 제목 (`.claude/config.json` `conventions.commitFormat`). gx-commit 규칙에 따라 `Co-Authored-By` 등 트레일러를 **붙이지 않는다**. 서브에이전트는 gx-commit의 확인 게이트에 응답할 수 없으므로 직접 `git commit`을 허용한다 (이전 계획과 같은 ruling). grep 패턴 인자에 `git commit` 문자열을 넣지 않는다 (훅 G1 오탐).
-- **검증**: 모든 태스크는 `bash scripts/lint-consistency.sh`와 `bash scripts/hook-tests.sh`가 둘 다 통과한 상태로 끝난다. 린트 `[32/32]` 예산(SKILL.md ≤ 61,500B)이 살아 있으므로 SKILL.md에 문장을 **더할 때는 같은 절에서 같은 양을 줄인다**.
+- **검증**: 모든 태스크는 `bash scripts/lint-consistency.sh`와 `bash scripts/hook-tests.sh`가 둘 다 통과한 상태로 끝난다. 린트 `[32/32]` 예산(SKILL.md ≤ 62,500B, 측정은 LF 기준 `tr -d '\r' | wc -c`)이 살아 있으므로 SKILL.md에 문장을 **더할 때는 같은 절에서 같은 양을 줄인다**.
 - **린트 번호 체계**: 현재 `[N/32]`. Task 6이 검사 1개를 추가하며 분모를 33으로 올린다. `.claude/`·`README.md`의 인용도 함께 치환한다 (`[31]`이 검사). `docs/`·`CHANGELOG.md`는 치환하지 않는다.
 - **린트가 고정하는 문구 (phase-implement.md)**: `[3]` — 금지 5항목 `동작 변경`·`새 기능 추가`·`에러 핸들링`·`성능 최적화`·`인터페이스 시그니처 변경`과 `라운드 5`. `[11]` — `## Step 0.7: gx-ralph 전환 (--ralph 전용)` 제목과 "`--resume` 재진입은 방어 조건이 **아니다**". `[26]` — `reports/t{N}-impl.md`·`reports/t{N}-red.md`·`DONE_WITH_CONCERNS`·`NEEDS_CONTEXT`·`BLOCKED`. 이 문구들은 새 텍스트와 보존되는 격리 경로 블록 양쪽에 남는다.
 - **gx-ralph-iterate는 손대지 않는다**: 무인 루프는 항상 2석 격리 경로다 (`[26]`이 `oh-my-gx:implementer` 언급을 검사한다).
@@ -171,6 +171,22 @@ verify_red 2번 행을 교체한다. 현재 `2. **실패 확인** (통과 시 �
 2. **실패 확인 (집합 전체)**: report의 실패 확인 명령을 직접 실행해 신규 케이스가 **모두** 실패하는지 본다 (실패 건수 = report의 케이스 수). 통과하는 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출.
 ```
 
+`[작업]` 1번·`[report 파일]`·`[반환 형식]`의 "실패 확인" 항목도 단수 케이스 전제에서 집합 전제로 함께 바꾼다. 실제로 반영된 문구:
+
+```
+[작업]
+1. 이 태스크에 매핑된 AC의 시나리오마다 테스트 케이스 1건씩 작성 ([작성 범위] 참조). 각 케이스는 테스트 품질 3기준 준수:
+```
+
+```
+[report 파일]
+{reports/t{N}-red.md} — 테스트 코드 전문·케이스 목록(케이스 수 명시)·실패 확인 명령·케이스별 실패 메시지·참조한 파일 전체 목록을 이 파일에 Write하십시오
+```
+
+```
+- 실패 확인: {1줄 — 명령 + 케이스 수 + 실패 유형 (NoSuchMethod / assertion / etc)}
+```
+
 - [ ] **Step 4: Step 2-I를 재작성한다**
 
 `### Step 2-I: IMPLEMENT (implementer 디스패치 — GREEN+REFACTOR 통합)` 제목부터 `**focused 테스트 명령 조립**:` 문단 **직전**까지(제목 + Task 디스패치 코드 블록)를 아래로 교체한다. 기존 Task 블록은 "격리 경로" 아래로 **글자 그대로** 옮긴다.
@@ -213,7 +229,7 @@ verify_red 2번 행을 교체한다. 현재 `2. **실패 확인** (통과 시 �
 
 - [ ] **Step 5: verify_implement 1·3·6번과 fix loop 표를 두 경로에 맞춘다**
 
-verify_implement 1번 행의 앞머리 `1. **Status 분기**:`를 `1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`이 비어 있지 않으면 DONE_WITH_CONCERNS로 취급한다):`로 바꾸고 나머지는 그대로 둔다.
+verify_implement 1번 행의 앞머리 `1. **Status 분기**:`를 `1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`에 "없음" 외의 내용이 있으면 DONE_WITH_CONCERNS로 취급한다):`로 바꾸고 나머지는 그대로 둔다.
 
 3번 행에서 `해당 테스트를 RED 산출물로 원복하고 implementer 재호출 1회 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트)`를 `해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트)`로 바꾼다.
 
@@ -246,7 +262,7 @@ Step 3 표의 세 행에서 `implementer가`를 `구현 주체(세션 또는 imp
 
 ```markdown
 - `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
-- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙으로 이어받는다. 재개 시 `test-file-hash`·`test-count`·porcelain 스냅샷 기준선을 그대로 사용한다
+- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-file-hash`·porcelain 스냅샷은 구 state에 기록이 있으면 그대로 대조하고 없을 때만 생략한다. `test-count`는 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
 ```
 
 - [ ] **Step 7: 검증**
@@ -324,13 +340,13 @@ phase-setup Step 7의 `flags` 기록 불릿 끝에 문장을 더한다: ` `--iso
 `references/maintenance-notes.md`의 `**디스패치 프롬프트**(red-writer/implementer — …)` 항목 뒤에 항목을 추가한다:
 
 ```markdown
-- **세션 IMPLEMENT 계약**(절대 규칙 5항·수행 불가능한 정리 5항·report 형식 5절): phase-implement.md Step 2-I "세션 IMPLEMENT 절차" ↔ `agents/implementer.md`(절대 규칙·REFACTOR 범위·report 파일 형식)에 중복. 린트 [3/33]이 금지 5항목을 양쪽에서 검사하고, [33/33]이 절차 블록 존재를 검사한다.
+- **세션 IMPLEMENT 계약**(절대 규칙 5항·수행 불가능한 정리 5항·report 형식 5절): phase-implement.md Step 2-I "세션 IMPLEMENT 절차" ↔ `agents/implementer.md`(`--isolated`·fix 4~5·ralph 경로에서 디스패치되는 절대 규칙·REFACTOR 범위·report 파일 형식)에 중복. 린트 [3/32]이 금지 5항목을 양쪽에서 검사하고, [33/32]이 절차 블록 존재를 검사한다.
 ```
 
 - [ ] **Step 5: 검증**
 
 Run: `grep -c -- '--isolated' .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-tdd/references/maintenance-notes.md; grep -c '2에이전트 순차\|2 에이전트 순차' .claude/skills/gx-tdd/SKILL.md; wc -c .claude/skills/gx-tdd/SKILL.md`
-Expected: SKILL.md 4 이상, phase-setup 1 이상, maintenance-notes 1 이상; `0`; SKILL.md ≤ 61,500B (초과하면 Agent 팀 표의 deprecated 행 두 개를 한 줄로 합쳐 상쇄한다).
+Expected: SKILL.md 4 이상, phase-setup 1 이상, maintenance-notes 1 이상; `0`; SKILL.md ≤ 62,500B (예산 상향 후) (초과하면 Agent 팀 표의 deprecated 행 두 개를 한 줄로 합쳐 상쇄한다).
 
 Run: `bash scripts/lint-consistency.sh && bash scripts/hook-tests.sh`
 Expected: 32/32 통과 (`[14]` 모델 프로파일 문구·`[25]` --work·`[32]` 예산 유지), 훅 테스트 통과.
@@ -399,7 +415,7 @@ MSG
 
 - [ ] **Step 1: 대상 문장을 나열한다**
 
-Run: `grep -rnE 'implementer' agents/implementer.md agents/coder.md .claude/rules/skill-routing.md README.md docs/tdd-guide.md docs/onboarding-guide.md docs/guide.md | grep -vE 'green-coder|refactor-coder|humanizer' | cut -c1-140`
+Run: `grep -rnE 'implementer' agents/implementer.md agents/coder.md .claude/rules/skill-routing.md README.md docs/tdd-guide.md docs/onboarding-guide.md docs/guide.md docs/tdd-presentation.md docs/tdd-presentation-script.md .claude/skills/gx-red/SKILL.md | grep -vE 'green-coder|refactor-coder|humanizer' | cut -c1-140`
 Expected: 아래 Step 2~4의 행이 포함된다. 목록에 있으나 아래에 없는 행은 "기본 경로가 implementer 디스패치"라고 읽히는지 판단해, 그렇게 읽히면 같은 방식으로 고치고 커밋 메시지 본문에 행을 적는다.
 
 - [ ] **Step 2: 에이전트 정의 두 개**
@@ -470,19 +486,19 @@ grep -q '세션 IMPLEMENT' .claude/skills/gx-tdd/phases/phase-review.md || fail 
 
 스크립트 헤더의 검사 항목 주석 목록에 `[33/32] gx-tdd 세션 IMPLEMENT 계약`을 `[32/32]` 항목 아래 같은 형식으로 추가한다.
 
-- [ ] **Step 2: 변이 시험 (RED)**
+- [ ] **Step 2: 변이 시험 (RED)** — Step 3(분모 32→33 치환)이 끝난 뒤에 실행한다. 변이는 앵커 없는 전역 치환이다 (`세션 IMPLEMENT 절차` 3곳 전부를 깨서 검사 문자열 의존을 확인).
 
-Run: `sed -i 's|^\*\*세션 IMPLEMENT 절차\*\*|**세션 임플리먼트 절차**|' .claude/skills/gx-tdd/phases/phase-implement.md && bash scripts/lint-consistency.sh; echo "exit=$?"`
+Run: `sed -i 's|세션 IMPLEMENT 절차|세션 임플리먼트 절차|g' .claude/skills/gx-tdd/phases/phase-implement.md && bash scripts/lint-consistency.sh; echo "exit=$?"`
 Expected: `세션 IMPLEMENT 절차 블록 누락`으로 FAIL, exit 1.
 
-Run: `git checkout -- .claude/skills/gx-tdd/phases/phase-implement.md && grep -c '^\*\*세션 IMPLEMENT 절차\*\*' .claude/skills/gx-tdd/phases/phase-implement.md`
-Expected: `1`.
+Run: `git checkout -- .claude/skills/gx-tdd/phases/phase-implement.md && grep -c '세션 IMPLEMENT 절차' .claude/skills/gx-tdd/phases/phase-implement.md`
+Expected: `3`.
 
 - [ ] **Step 3: 분모를 33으로 올린다**
 
 ```bash
 sed -i 's|/32\]|/33]|g' scripts/lint-consistency.sh
-grep -rlE '\[[0-9]+/32\]' .claude README.md --include=*.md | xargs -r sed -i 's|/32\]|/33]|g'
+grep -rlE '\[[0-9]+/32\]' .claude README.md --include=*.md --exclude-dir=worktrees | xargs -r sed -i 's|/32\]|/33]|g'
 grep -rnE '\[[0-9]+/32\]' .claude README.md scripts --include=*.md --include=*.sh | grep -v worktrees
 ```
 Expected: 마지막 grep 출력 없음.
@@ -492,8 +508,8 @@ Expected: 마지막 grep 출력 없음.
 S37 행 아래에 추가하고, 기록 절의 `N/37`을 `N/39`로 바꾼다.
 
 ```markdown
-| S38 ★ | AC 2개(각 시나리오 2~3건)짜리 전체 모드 gx-tdd 실행, `--isolated` 없음 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크 2개로 분해된다. 태스크마다 red-writer **1회**만 디스패치되고 implementer 디스패치는 없다. 세션이 실패 케이스를 하나씩 통과시키며 `reports/t{N}-impl.md`를 직접 Write한다. state.md 태스크 객체에 `test-file-hash`·`test-count`가 기록되고 execution-log에 `session-implement (T{N})`가 남는다 |
-| S39 | 같은 요청에 `--isolated` | `/gx-tdd --isolated 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크마다 red-writer → implementer **2회** 디스패치. state.md `flags`에 `--isolated`. 나머지 검증(해시·focused 직접 실행)은 S38과 동일 |
+| S38 ★ | AC 2개(각 시나리오 2~3건)짜리 전체 모드 gx-tdd 실행, `--isolated` 없음 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크 2개로 분해된다. 태스크마다 red-writer **1회**만 디스패치되고 implementer 디스패치는 없다. 세션이 실패 케이스를 하나씩 통과시키며 `reports/t{N}-impl.md`를 직접 Write한다. state.md 태스크 객체에 `test-file-hash`·`test-count`가 기록되고 execution-log에 `session-implement (T{N})`가 남는다 | phase-implement Step 2-I 세션 IMPLEMENT 절차 + 린트 [33/33] |
+| S39 | 같은 요청에 `--isolated` | `/gx-tdd --isolated 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크마다 red-writer → implementer **2회** 디스패치. state.md `flags`에 `--isolated`. 나머지 검증(해시·focused 직접 실행)은 S38과 동일 | phase-setup Step 7 flags 기록 + phase-implement Step 2-I 격리 경로 |
 ```
 
 - [ ] **Step 5: CHANGELOG와 버전**
@@ -501,7 +517,7 @@ S37 행 아래에 추가하고, 기록 절의 `N/37`을 `N/39`로 바꾼다.
 CHANGELOG 상단에 추가한다:
 
 ```markdown
-## v1.27.0 (2026-09-07)
+## v1.27.0 (2026-09-08)
 
 gx-tdd 구현 단계의 리듬을 바꾼다. 태스크당 콜드 스타트가 2회에서 1회로 줄고, 태스크 단위가 테스트 1건에서 AC 1건으로 올라간다. red-writer 격리·테스트 해시·focused 직접 실행·verify 지문은 그대로다. 설계: `docs/specs/2026-09-07-tdd-density-rhythm-design.md`.
 
@@ -510,6 +526,7 @@ gx-tdd 구현 단계의 리듬을 바꾼다. 태스크당 콜드 스타트가 2�
 - **변경 — 태스크 = AC 1건**: red-writer가 AC의 G-W-T 시나리오 전부를 테스트 집합으로 한 번에 쓰고, verify_red는 집합 전체의 실패를 확인한다. 세션은 실패 케이스를 하나씩 통과시키는 내부 루프를 돈다. 같은 컴포넌트·같은 패턴의 AC는 묶는 것이 기본이다.
 - **추가 — 태스크 수 가드**: 분해가 8개를 넘으면 승인 전에 "AC 묶어 재분해 / 작업 계획으로 분할 / 무인 루프 전환 / 그대로 진행"을 먼저 묻는다.
 - **추가 — 린트 [33] 세션 IMPLEMENT 계약**, 골든 시나리오 S38·S39.
+- **변경 — 린트 [32] 예산**: SKILL.md 예산 61,500 → 62,500B(`--isolated` 플래그 도입분). 측정을 LF 기준으로 고쳐 autocrlf 체크아웃에서 거짓 FAIL하지 않는다.
 ```
 
 ```bash
@@ -536,7 +553,7 @@ MSG
 
 ## 완료 기준
 
-- 린트 33/33·훅 테스트 통과. `[32]` 예산이 유지된다 (SKILL.md ≤ 61,500B).
+- 린트 33/33·훅 테스트 통과. `[32]` 예산이 유지된다 (SKILL.md ≤ 62,500B).
 - phase-implement의 기본 경로에 `Task(subagent_type="oh-my-gx:implementer")`가 **격리 경로 블록과 fix 라운드 4~5에만** 남는다.
 - 골든 시나리오 S38을 실제로 한 번 돌려 red-writer 디스패치 1회·implementer 0회·`reports/t{N}-impl.md` 세션 작성·`test-file-hash` 기록을 눈으로 확인한다 (PR 체크박스).
 - 남는 후속: SKILL.md 인자 절 재작성(45KB 목표), 게이트를 설계 시점으로 모으기, gx-dev 쌍둥이 정리 — 설계 문서 D4.
