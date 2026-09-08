@@ -52,7 +52,7 @@ gx-tdd가 superpowers보다 나은 점은 "먼저 실패했다"와 "테스트를
 - **추출**: SKILL.md의 하네스 적응 표는 `references/harness-adaptation.md`로, 드리프트 주의 19항목은 `references/maintenance-notes.md`로 옮긴다. 둘 다 실행 중에는 읽히지 않는다. 하네스 표는 Codex 실행 시 포인터를 따라 읽는다(스킬 디렉토리는 어느 하네스에도 함께 배포된다).
 - **압축**: state.md 스키마의 60줄 YAML 예시를 필드 표로, Context Slicing 불릿을 표로, 작업 경로 기준 불릿을 표로 바꾼다. 갱신 규칙·판별 키·지시 문구는 원문 그대로 보존한다.
 - **조건부 로드**: phase-setup의 재개 감지(Step 0 전체)는 `phases/setup-resume.md`로, 작업 계획 참조(3.0.5·5.5·되돌림)는 `phases/setup-work.md`로 옮기고, 플래그가 있을 때만 Read한다.
-- **예산 린트**: SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B를 정합성 린트로 고정한다. 45KB 목표는 인자 절(의도 파싱 6K자) 재작성이 필요해 후속으로 남긴다.
+- **예산 린트**: SKILL.md ≤ 61,500B, phase-setup.md ≤ 22,000B를 정합성 린트로 고정한다. 45KB 목표는 인자 절(의도 파싱 6K자) 재작성이 필요해 후속으로 남긴다. (`--isolated` 플래그 도입으로 v1.27.0에서 61,500 → 62,500 상향)
 
 ### D4. 범위 밖
 

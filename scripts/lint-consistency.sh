@@ -34,7 +34,7 @@
 # 29. 헤드리스 조기 종료 방지 철칙 (마지막 문단 점검·컨텍스트 사유 중단 금지)
 # 30. Codex 훅 배치·실측 계약 (수동 배치 절차·미검증 항목 체크리스트)
 # 31. 린트 번호 크로스레퍼런스 정합 (문서가 인용하는 [N/M]의 M이 실제 분모와 일치)
-# 32. gx-tdd 지시문 바이트 예산 (SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B)
+# 32. gx-tdd 지시문 바이트 예산 (SKILL.md ≤ 62500B · phase-setup.md ≤ 22000B)
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -818,7 +818,7 @@ fi
 
 echo "[32/32] gx-tdd 지시문 바이트 예산"
 # 오케스트레이터가 사이클마다 읽는 파일의 상한. 설계: docs/specs/2026-09-07-tdd-density-rhythm-design.md D3
-for spec in ".claude/skills/gx-tdd/SKILL.md:61500" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
+for spec in ".claude/skills/gx-tdd/SKILL.md:62500" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
   f=${spec%%:*}; max=${spec##*:}
   [ -f "$f" ] || { fail "예산 대상 파일 부재: $f"; continue; }
   sz=$(tr -d '\r' <"$f" | wc -c | tr -d ' ')
@@ -831,7 +831,7 @@ grep -qF 'ARGS[0]이 있고 `--resume`이 없으면' "$SETUP" || fail "setup-res
 grep -qF 'Read("setup-work.md")' "$SETUP" || fail "setup-work.md 포인터 누락: phase-setup.md"
 grep -qF '계획이 있으나 작업 ID가 지정되지 않은 경우' "$SETUP" || fail "작업 ID 없음 경로의 setup-work 소절 포인터 누락: phase-setup.md"
 
-[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 61500B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 4건"
+[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 62500B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 4건"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."
