@@ -6,13 +6,13 @@
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
-이 Phase는 **2 에이전트가 순차 사이클로 동작**한다:
-- **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님)
-- **implementer** → 통과 최소 코드(GREEN) + 안전한 정리(REFACTOR — 동작 변경 금지). 입력은 RED report+시그니처로 한정하되, 구현을 위한 기존 코드 Read는 허용 — red-writer 수준의 차단 아님. 테스트 실행은 focused 집합만
+이 Phase는 **RED 격리 디스패치 → IMPLEMENT 세션 직접 수행**으로 동작한다:
+- **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님). 태스크의 AC 시나리오 전부를 테스트 집합으로 한 번에 쓴다
+- **IMPLEMENT** → 통과 최소 코드(GREEN) + 안전한 정리(REFACTOR — 동작 변경 금지). 기본 경로에서는 **오케스트레이터가 직접 수행**한다 (Step 2-I "세션 IMPLEMENT 절차"). `--isolated`면 implementer를 디스패치한다 — 입력은 RED report+시그니처로 한정하되 기존 코드 Read는 허용, 테스트 실행은 focused 집합만. 어느 경로든 verify_implement의 해시·focused 직접 실행 검증은 같다
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.
 
-> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor) 전용. gx-ralph 루프도 red-writer→implementer 2석을 쓴다.
+> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor) 전용. gx-ralph 루프는 항상 red-writer→implementer 2석(격리 경로)을 쓴다.
 
 ---
 
@@ -190,8 +190,11 @@ for task in tasks:
     verify_red(red_result)                   # 실패 확인 필수 (오케스트레이터 직접 실행)
 
     # 2-I: IMPLEMENT (GREEN + REFACTOR 통합)
-    impl_result = dispatch_implementer(task, red_report_path)   # report: reports/t{N}-impl.md
-    verify_implement(impl_result)            # focused 집합 직접 실행 + 무결성 검증
+    if "--isolated" in state.flags:
+        impl_result = dispatch_implementer(task, red_report_path)   # 격리 경로. report: reports/t{N}-impl.md
+    else:
+        impl_result = session_implement(task, red_report_path)      # 기본 경로. 세션이 직접 구현하고 같은 report를 Write
+    verify_implement(impl_result)            # focused 집합 직접 실행 + 무결성 검증 (경로 무관 동일)
 
     record_to_state(task, results)
 ```
@@ -249,6 +252,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
     2. 테스트 명령 실행으로 실패 확인 (에러 메시지 캡처)
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
 
+    [작성 범위 — 테스트 집합]
+    이 태스크에 매핑된 AC의 G-W-T 시나리오 **전부**를 각각 테스트 케이스로 작성합니다 (시나리오 1건 = 케이스 1건). 컴포넌트당 테스트 파일 하나에 모읍니다. 케이스마다 실패 확인 명령을 실행해 전부 실패하는지 확인하고, 통과하는 케이스가 있으면 기존 동작을 검증하는 잘못된 케이스이므로 다시 씁니다.
+
     [report 파일]
     {reports/t{N}-red.md} — 테스트 코드 전문·실패 확인 명령·실패 메시지·참조한 파일 전체 목록을 이 파일에 Write하십시오
 
@@ -262,7 +268,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
 **verify_red**: 오케스트레이터가 직접 검증.
 1. report 파일(`reports/t{N}-red.md`)에서 테스트 명령을 읽어 직접 실행.
-2. **실패 확인** (통과 시 잘못된 테스트 → red-writer 재호출).
+2. **실패 확인 (집합 전체)**: report의 실패 확인 명령을 직접 실행해 신규 케이스가 **모두** 실패하는지 본다 (실패 건수 = report의 케이스 수). 통과하는 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출.
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
 5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
@@ -274,7 +280,35 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
 ---
 
-### Step 2-I: IMPLEMENT (implementer 디스패치 — GREEN+REFACTOR 통합)
+### Step 2-I: IMPLEMENT (세션 직접 수행 — GREEN+REFACTOR 통합. `--isolated`면 implementer 디스패치)
+
+기본 경로에서는 **오케스트레이터가 이 단계를 직접 수행**한다 — 태스크당 콜드 스타트를 red-writer 1회로 줄이기 위해서다. verify_implement의 검증은 파일 상태 대조(해시·porcelain·focused 직접 실행)라 수행 주체와 무관하게 같은 강도로 동작한다. state.md `flags`에 `--isolated`가 있으면 아래 "격리 경로"의 implementer 디스패치를 대신 쓴다. gx-ralph 루프는 항상 격리 경로다.
+
+**세션 IMPLEMENT 절차** (`agents/implementer.md`의 절대 규칙·REFACTOR 범위·report 형식과 같은 계약이다 — 한쪽을 고치면 함께 갱신. `references/maintenance-notes.md` 참조):
+
+[절대 규칙]
+1. 테스트 파일을 수정하지 않는다. 테스트가 실패하면 코드를 고친다. 테스트 자체 결함이 의심되면 고치지 말고 report `## 우려사항`에 "테스트 결함 의심"으로 적고 verify_implement 2번을 따른다.
+2. GREEN: 실패 테스트를 통과시키는 최소 코드만 작성한다 (YAGNI — 추가 기능/에러 핸들링/검증/로깅 금지).
+3. REFACTOR: 동작 변경 금지. 매 정리 후 focused 테스트로 GREEN 유지 확인, 깨지면 즉시 롤백.
+4. 테스트 실행은 focused 명령만 사용한다. 전체 스위트는 사이클 경계(Step 3.5 / phase-review Step 0)에서만 실행한다.
+5. report 작성 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정한다.
+
+[수행 불가능한 정리]
+- 동작 변경
+- 새 기능 추가
+- 에러 핸들링 추가
+- 성능 최적화
+- 인터페이스 시그니처 변경
+
+[절차 — 내부 RGR 루프]
+1. `reports/t{N}-red.md`를 Read해 이 태스크의 실패 테스트 집합(파일·케이스·실패 메시지)을 파악한다. 설계서 인터페이스(대상 시그니처)를 확인한다. 구현에 필요한 기존 코드는 Read한다 (세션은 red-writer와 달리 코드 차단 대상이 아니다).
+2. focused 명령을 실행해 현재 실패 케이스 목록을 얻는다.
+3. 실패 케이스 **하나**를 고른다 → 그 케이스만 통과시키는 최소 코드를 작성한다 → focused를 재실행해 그 케이스가 통과하고 이미 통과한 케이스가 유지되는지 본다. 실패 케이스가 남아 있으면 3을 반복한다. 한 걸음이 15분을 넘기면 케이스를 더 잘게 볼 수 있는지 먼저 의심한다.
+4. 전부 GREEN이면 REFACTOR: 중복 제거·네이밍·구조 정리. 정리 한 단위마다 focused 재실행. 깨지면 그 단위를 롤백한다. 정리할 것이 없으면 "정리 없음"으로 기록한다.
+5. self-review 후 `reports/t{N}-impl.md`를 Write한다. 형식은 `agents/implementer.md`의 report 형식과 같다 — `## 구현 내용` / `## GREEN 증거`(focused 명령 + "N pass / 0 fail" 출력 요약) / `## REFACTOR 내역` / `## self-review 결과` / `## 우려사항`.
+6. verify_implement로 진행한다. 세션 경로에는 NEEDS_CONTEXT·BLOCKED 상태 반환이 없다 — 필요한 파일은 직접 읽고, 막히면 fix loop와 Step 3 정체 감지가 처리한다. 우려가 있으면 report `## 우려사항`에 적고 verify_implement 1번의 DONE_WITH_CONCERNS 처리를 따른다.
+
+**격리 경로 (`--isolated`)** — 아래 implementer 디스패치를 그대로 쓴다. 상태 반환(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)은 이 경로에서만 발생한다.
 
 ```
 Task(subagent_type="oh-my-gx:implementer"):
@@ -324,12 +358,12 @@ Task(subagent_type="oh-my-gx:implementer"):
 **명령 오류 가드**: focused 실행이 테스트 실패가 아니라 **명령 자체 오류**(러너 미설치·옵션 오류 등 — 출력에 테스트 결과 요약이 없음)로 끝나면 fix loop에 넣지 않는다. execution-log에 `"focusedTest 명령 오류 — 전체 실행 폴백"`을 기록하고 이 파이프라인 실행의 남은 구간은 전체 `test` 명령으로 전환하며, 사용자에게 config의 `focusedTest` 값 확인을 안내한다.
 
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
-1. **Status 분기**: `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
+1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`이 비어 있지 않으면 DONE_WITH_CONCERNS로 취급한다): `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (implementer가 테스트를 고치지 않는다).
-3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 implementer 재호출 1회 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
+3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
 5. **과잉 구현 감지**: 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지. YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
-6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 implementer에 롤백 요청).
+6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
 7. ✅ 통과 + 무결성 유지 → 태스크 완료, 다음 태스크로 진행.
 8. ❌ 실패 → **fix loop 진입** (아래).
 
@@ -337,10 +371,10 @@ Task(subagent_type="oh-my-gx:implementer"):
 
 | 라운드 | 방식 | 모델 |
 |--------|------|------|
-| 1~3 | **같은 implementer를 재개** — 하네스가 서브에이전트 재개(후속 메시지)를 지원하면 그 방식으로 미해결 항목을 전달, 지원하지 않으면 report 파일 경로를 실은 fresh 디스패치 (report가 영속 기억) | sonnet |
-| 4~5 | **fresh 디스패치 + 모델 격상** (`model: "opus"` 오버라이드) — 프롬프트에 "이전 구현자가 {r-1}회 시도했다. report 파일에서 시도 내역을 읽어라"를 포함 | opus |
+| 1~3 | **세션이 직접 수정** (기본 경로). 격리 경로는 **같은 implementer를 재개** — 하네스가 서브에이전트 재개(후속 메시지)를 지원하면 그 방식으로 미해결 항목을 전달, 지원하지 않으면 report 파일 경로를 실은 fresh 디스패치 (report가 영속 기억) | 세션 / sonnet |
+| 4~5 | **두 경로 모두 fresh implementer 디스패치 + 모델 격상** (`model: "opus"` 오버라이드) — 세션이 3라운드 실패한 뒤에는 fresh eyes와 역량 격상이 함께 필요하다. 프롬프트에 "이전 구현자가 {r-1}회 시도했다. report 파일에서 시도 내역을 읽어라"를 포함 | opus |
 
-- 매 라운드: implementer가 수정 → focused 재실행 → fix report를 같은 report 파일에 append → 상태 반환 → 오케스트레이터가 verify_implement 재수행. `current-step`을 `"RGR T{N}: FIX R{r}"`로, state.md 해당 태스크에 `fix-round: {r}/5`를 기록한다.
+- 매 라운드: 구현 주체(세션 또는 implementer)가 수정 → focused 재실행 → fix report를 같은 report 파일에 append → 상태 반환 → 오케스트레이터가 verify_implement 재수행. `current-step`을 `"RGR T{N}: FIX R{r}"`로, state.md 해당 태스크에 `fix-round: {r}/5`를 기록한다.
 - 모델 격상은 "실패의 대응"으로 **모델 프로파일과 독립**이다 — eco 세션에서도 라운드 4~5는 opus로 격상한다.
 - **라운드 5 소진 시**: 사이클 중단 + AskUserQuestion — "수동 수정 후 계속" / "태스크 스킵 (위험 수용 — trust-ledger 기록)" / "중단".
 
@@ -354,9 +388,9 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 | 패턴 | RGR 적용 | 대응 |
 |------|---------|------|
-| SPINNING (동일 에러 2회) | implementer가 같은 컴파일 에러 반복 | 1차: hacker 호출 / 2차: researcher 호출 |
-| OSCILLATION (A→B→A) | implementer가 구현 접근법 왕복 | 1차: architect 재검토 / 2차: 사용자 선택 |
-| NO_DRIFT (변경 없음) | implementer의 REFACTOR 결과 diff 없음 | 정리 대상 없음으로 간주, 다음 태스크로 진행 |
+| SPINNING (동일 에러 2회) | 구현 주체(세션 또는 implementer)가 같은 컴파일 에러 반복 | 1차: hacker 호출 / 2차: researcher 호출 |
+| OSCILLATION (A→B→A) | 구현 주체(세션 또는 implementer)가 구현 접근법 왕복 | 1차: architect 재검토 / 2차: 사용자 선택 |
+| NO_DRIFT (변경 없음) | 구현 주체의 REFACTOR 결과 diff 없음 | 정리 대상 없음으로 간주, 다음 태스크로 진행 |
 | DIMINISHING_RETURNS | 재호출 상한 도달 **전**, 시도마다 수정 범위가 줄지 않고 진전 없음 | 1차: simplifier (태스크 분해 단순화) / 2차: 사용자 보고 |
 
 **fix loop 소진 시 아키텍처 격상** (superpowers 패턴):
@@ -462,7 +496,7 @@ steps:
   agent: red-writer (T1)
   result: "실패 테스트 작성 + 실패 확인"
 - phase: implement
-  agent: implementer (T1)
+  agent: session-implement (T1)     # 기본 경로. 격리 경로는 implementer (T1)
   result: "최소 구현 + focused 3/3 pass + 매직 넘버 상수화"
 ```
 
@@ -473,9 +507,9 @@ steps:
 - `"기준선 게이트"` → Step 0.5부터 재실행
 - `"태스크 분해 승인"` → Step 1.1부터 재실행
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
-- `"RGR T{N}: IMPLEMENT"` → 해당 태스크의 implementer 재디스패치 (RED report는 reports/t{N}-red.md에서 복원)
+- `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
-- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 implementer 재디스패치로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "2석 전환 재개 — 인라인 인계"를 기록한다. 추가: 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-count` 기준선도 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다.
+- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙으로 이어받는다. 재개 시 `test-file-hash`·`test-count`·porcelain 스냅샷 기준선을 그대로 사용한다
 - `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
 - `"변경사항 수집"` → Step 5부터 재실행
 
