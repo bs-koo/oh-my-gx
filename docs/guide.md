@@ -669,7 +669,7 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 
 ### 4.9 `/gx-tdd` -- TDD 개발 사이클
 
-`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → IMPLEMENT(implementer — GREEN+REFACTOR 통합)** 사이클로, 리뷰는 **reviewer(AC 충족 → 코드 품질 통합 1석)**로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
+`/gx-dev`와 같은 6-Phase 골격에 TDD를 강제한 파이프라인입니다. 구현은 coder 단일 호출 대신 **RED(red-writer) → IMPLEMENT(세션 직접 — GREEN+REFACTOR 통합. `--isolated`면 implementer)** 사이클로, 리뷰는 **reviewer(AC 충족 → 코드 품질 통합 1석)**로 진행하며, 커밋/PR 전에 **verify 게이트**(`/gx-verify`)를 반드시 통과해야 합니다.
 
 | 항목 | 설명 |
 |------|------|

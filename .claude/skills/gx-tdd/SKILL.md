@@ -20,7 +20,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 |------|--------|----------------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가** |
-| implement | coder 단일 호출 | **RED → IMPLEMENT (2에이전트 순차; red-writer만 코드 격리, implementer가 GREEN+REFACTOR 수행)** |
+| implement | coder 단일 호출 | **RED 격리 디스패치 → IMPLEMENT 세션 직접 (기본. `--isolated`면 implementer 디스패치). 태스크 = AC 1건** |
 | review | qa+security 병렬 | **reviewer 통합 1석 (spec verdict 선행)** |
 | complete | qa 통과 → commit | **verify 게이트 → commit** |
 
@@ -42,7 +42,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
 
-> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`/`implementer` 에이전트를 **직접 `Task`로 디스패치**하며(green-coder/refactor-coder는 단독 스킬 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
+> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`를 **직접 `Task`로 디스패치**하고 IMPLEMENT는 오케스트레이터가 직접 수행하며(`--isolated`면 `implementer` 디스패치. green-coder/refactor-coder는 단독 스킬 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
 >
 > **의도적 중복 목록**: 이 스킬의 정의 여러 개가 에이전트 자기완결성·라우팅 강제력을 위해 여러 파일에 중복돼 있다. 어느 정의가 어디에 중복돼 있고 무엇이 SSOT인지는 `Read("references/maintenance-notes.md")`에 있다 — 이 스킬이나 에이전트 정의를 **수정할 때** 읽고, 실행 중에는 읽지 않는다.
 
@@ -57,6 +57,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - **`--work {ID}`는 다른 플래그보다 먼저 추출한다.** 아래 모드 플래그 분기에서 파싱이 종료되기 전에 소비해야 `--work --core`처럼 조합된 경우에도 작업 계획 참조가 유실되지 않는다. 추출 후 남은 인자로 아래 분기를 계속 판정한다.
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
+- `--isolated`가 포함되면 **격리 구현 플래그**로 기록한다 — phase-implement Step 2-I가 세션 직접 수행 대신 implementer 디스패치(현행 2석) 경로를 택한다. 모드 판정과 독립이므로 나머지 파싱을 계속한다.
 - `--eco` 또는 `--standard`가 포함되면 **모델 프로파일 오버라이드**로 기록한다 (공유 규칙 "모델 프로파일" 참조). 프로파일 플래그는 모드 판정과 독립이므로, 나머지 플래그·자연어 파싱을 계속 진행한다.
 - `--ralph`가 포함되면 **gx-ralph 전환 플래그**로 기록한다 (Step 2 "RALPH 우선순위 규칙"·Step 3 "모드 질문 생략 규칙" 참조). 전환 플래그는 모드 판정과 독립이므로 나머지 플래그·자연어 파싱을 계속 진행한다.
 - `--work {ID}`가 포함되면 **작업 계획 참조 플래그**로 기록한다 — `.dev/plan.md`의 해당 행에서 도메인·요구사항·브랜치명을 확정한다 (phase-setup "작업 계획 참조" 절). ID는 `W` + 두 자리 숫자 형식이다(예: `W01`). 하이픈을 쓰지 않는 이유는 `config.json`의 `issueKey.pattern`(`^[A-Z]+-[0-9]+$`)에 매칭되면 브랜치명이 이슈 키로 오염되어 gx-commit의 타입 파싱이 깨지기 때문이다. 작업 계획 플래그는 모드 판정과 독립이므로 나머지 플래그·자연어 파싱을 계속 진행한다.
@@ -158,6 +159,7 @@ intent-source: flag | natural-language | user-selection
 - `--status`: 현재 파이프라인 진행 상태 조회
 - `--resume`: 이전 파이프라인 재개
 - `--ralph`: 전체 모드 implement 진입 시 gx-ralph(무인 루프)로 전환 — 자연어 `랄프로`와 동일. `--core`·`--phase`·`--resume`·`--status`와 동시 사용 불가(에러), 자연어 모드 트리거(`긴급`·`구현만` 등)와 충돌해도 에러. svn 프로젝트에서는 무시하고 안내 (RALPH 우선순위 규칙)
+- `--isolated`: 구현 단계를 red-writer→implementer 2석 디스패치로 실행 (기본은 red-writer 디스패치 + 세션 직접 구현). 모든 모드와 호환. `--ralph`와 함께 쓰면 무인 루프가 원래 2석이라 중복 지정일 뿐이다
 
 ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 "구현할 기능이나 수정할 버그를 설명해주세요. 예: `/gx-tdd 로그인 기능 추가해줘`"
@@ -206,13 +208,12 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer·quality-reviewer로 분해 후 reviewer로 통합) | — | — |
 
-### EXECUTION (RED → IMPLEMENT 순차; red-writer만 코드 격리)
+### EXECUTION (RED 디스패치 → IMPLEMENT 세션 직접; `--isolated`·fix 4~5·ralph는 implementer)
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | **red-writer** | **실패 테스트 작성 전담 (신규)** | **"테스트만 작성" — 프로덕션 코드 안 봄** | **sonnet** |
-| **implementer** | **GREEN+REFACTOR 통합 (신설)** | **"최소 통과 후 안전한 정리" — 테스트 수정 금지, focused만 실행** | **sonnet** |
-| green-coder / refactor-coder | (파이프라인 미호출 — 단독 스킬 전용) | — | sonnet |
-| ~~coder~~ | (deprecated — red-writer/implementer로 재편. 구 3석: green/refactor-coder) | — | — |
+| **implementer** | **GREEN+REFACTOR 통합 — `--isolated`·fix 라운드 4~5 격상·gx-ralph 루프에서 디스패치. 기본 경로는 세션이 같은 계약으로 직접 수행** | **"최소 통과 후 안전한 정리" — 테스트 수정 금지, focused만 실행** | **sonnet** |
+| green-coder / refactor-coder / ~~coder~~ | (파이프라인 미호출 — 단독 스킬 전용; coder deprecated → red-writer/implementer로 재편) | — | sonnet |
 
 ### VERIFICATION
 완료 검증은 **에이전트가 아니라 `oh-my-gx:gx-verify` 스킬**이 담당한다. phase-complete의 Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출되어 테스트/빌드를 직접 실행하고 0 failures를 확인한다.
@@ -244,13 +245,13 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 오케스트레이터 직접 ac.md) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer → implementer (순차; red-writer만 코드 격리)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: Part 1(spec) verdict 확정 전 Part 2 판정 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
 **핵심 차별점 (gx-dev 대비)**:
 - requirements/design에 **사전 게이트** (G-W-T, testability)
-- implement는 단일 coder가 아니라 **RED 격리 + IMPLEMENT의 2 에이전트 순차 사이클** (red-writer만 기존 코드 격리; implementer는 입력 범위만 제한)
+- implement는 **RED 격리 디스패치 + 세션 IMPLEMENT** (red-writer만 기존 코드 격리. `--isolated`로 implementer 디스패치 복원)
 - review는 **reviewer 1석의 Part 1(spec) → Part 2(quality) 내부 순서 강제** (spec verdict 선행) + security 병렬
 - complete는 **gx-verify 스킬 우선 호출** (verify 통과 없이 commit 진입 금지)
 
@@ -263,7 +264,7 @@ all:  setup → requirements → design → implement (RGR) → review (spec+qua
 ```
 - **requirements (core 분기)**: 오케스트레이터가 `${DEV_DIR}/ac.md`(배경 + 요구사항: G-W-T 형식 AC 3~5개)를 직접 작성한다 — product-owner 디스패치 없음. **G-W-T 검증 게이트는 동일하게 통과 필수** (RGR의 입력 계약이므로), 사용자 확인 1회.
 - **design**: 건너뛴다. RGR 사이클이 ac.md + 코드 맵을 기반으로 진행 (testability 평가 없이).
-- **implement**: 전체 모드와 동일하게 RGR 사이클 수행. 단, design.md 부재로 red-writer/implementer에 ac.md의 AC만 전달. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
+- **implement**: 전체 모드와 동일하게 RGR 사이클 수행. 단, design.md 부재로 red-writer에 ac.md의 AC만 전달하고 세션이 그 AC로 구현. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
 - **review**: 건너뛴다 (긴급 보안 감사가 H1~H4에서 대체).
 - **complete**: verify 게이트 → **AC 자가 검증**(오케스트레이터가 ac.md의 AC별 충족을 체크리스트로 판정 — product-owner 디스패치 없음. verify가 테스트 증거를 이미 강제한다) → commit → PR.
 - 긴급 버그 수정 요청("긴급/핫픽스" 키워드)도 이 경로다 — AC를 재현 조건 관점의 G-W-T로 작성한다.
@@ -463,7 +464,7 @@ Agent prompt 크기를 관리하기 위해:
 | Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용. Phase 파일의 구체적인 표시 규칙이 이 일반 규칙보다 우선한다 |
 | Q&A Phase 완료 보고 | 파일에 저장하고 **요약만** ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨") |
 | Q&A 없는 Phase (implement, review, complete) | Agent 출력 **요약만**. 전문은 파일·변수 보관 |
-| implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 |
+| implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 (상태 반환은 격리 경로. 세션 경로는 report 파일이 인계 단위) |
 
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
@@ -510,7 +511,7 @@ steps:
     - "RGR T2 (AC-2)": { red: completed, impl: in_progress, fix-round: 2/5 }
 execution-log:
   - { phase: design, agent: test-architect, result: "testability score 8/10 PASS" }
-  - { phase: implement, agent: implementer (T2), result: "fix round 2/5 진행 중" }
+  - { phase: implement, agent: session-implement (T2), result: "fix round 2/5 진행 중" }
 ```
 
 **갱신 규칙:**
@@ -554,6 +555,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 | design-critic | 설계초안+PRD+코드맵 |
 | test-architect | 설계서+PRD수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
 | red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
+| 세션 IMPLEMENT (기본 경로) | 디스패치 없음 — 오케스트레이터가 RED report·설계서 인터페이스·focused 명령을 직접 읽고 phase-implement "세션 IMPLEMENT 절차"를 수행 |
 | implementer | RED report(reports/t{N}-red.md)+인터페이스+focused 테스트 명령+report 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** |
 | reviewer | PRD요구사항+수용기준+설계서변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
 | security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES(있으면) |
@@ -566,9 +568,9 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 읽기 전용 Agent(product-owner, architect, test-architect, design-critic, reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
 1. 하나의 메시지에서 여러 `Task()` 호출을 동시에 발행한다.
 2. 모든 병렬 Task가 완료된 후 결과를 합산한다 (Gate 로직).
-3. 쓰기 Agent(red-writer, implementer)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
-4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → implementer는 **반드시 순차** 실행한다. 병렬 금지.
-   - 이유: red-writer 산출물(실패 테스트 — RED report)이 implementer의 입력.
+3. 쓰기 주체(red-writer, 세션 IMPLEMENT, implementer)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
+4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → IMPLEMENT(세션 또는 implementer)는 **반드시 순차** 실행한다. 병렬 금지.
+   - 이유: red-writer 산출물(실패 테스트 — RED report)이 IMPLEMENT의 입력.
    - 위반 시: 격리가 깨져 Iron Law 1 위반.
 5. **review 통합 순서 강제 (Iron Law)**: reviewer 1석이 Part 1 → Part 2를 내부 순서로 수행한다 (개별 2석 디스패치 금지).
    - security-auditor는 reviewer와 **병렬 가능** (서로 독립).
@@ -704,6 +706,7 @@ AskUserQuestion(
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 - `--ralph`와 `--core`, `--phase`, `--resume`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--ralph`는 전체 모드 전용입니다 — `--core`/`--phase`/`--resume`/`--status`와 함께 쓸 수 없습니다." 에러 후 중단.
 - `--work`와 `--resume`은 **동시 사용 불가**. 함께 있으면: "`--work`와 `--resume`은 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `work-id`에서 작업 문맥을 복원하므로 ID를 다시 받을 이유가 없다).
+- `--isolated`는 어떤 플래그와도 충돌하지 않는다. `--status`에서는 무시한다. `--resume`과 함께 주면 state.md `flags`의 기록이 우선한다.
 
 ## Phase 선택 (--phase 플래그)
 

@@ -61,7 +61,7 @@ Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skill
 
 ### 알려진 제약
 
-**번들 파일 경로는 해결했다.** 예전에는 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...` 형태로 조립해 읽었고(27곳), Codex 설치 구조에는 그 중간 경로가 없어 파이프라인이 첫 단계에서 멈췄다. 지금은 `humanizer`와 같은 방식으로 **그 지시가 적힌 파일을 기준으로 한 상대경로**(`phases/phase-setup.md`)를 쓴다. 설치 위치와 무관하게 해석되므로 두 하네스 모두에서 동작하며, `lint-consistency.sh`의 `[15/32]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
+**번들 파일 경로는 해결했다.** 예전에는 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...` 형태로 조립해 읽었고(27곳), Codex 설치 구조에는 그 중간 경로가 없어 파이프라인이 첫 단계에서 멈췄다. 지금은 `humanizer`와 같은 방식으로 **그 지시가 적힌 파일을 기준으로 한 상대경로**(`phases/phase-setup.md`)를 쓴다. 설치 위치와 무관하게 해석되므로 두 하네스 모두에서 동작하며, `lint-consistency.sh`의 `[15/33]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
 
 다만 `setup`의 config.json 템플릿 하나는 예외다. 이 파일만 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포되는 Codex에서는 읽지 못한다. Read가 실패하면 사용자에게 저장소의 `.claude/config.json`을 수동 복사하도록 안내하게 해두었다.
 
@@ -252,7 +252,7 @@ references/
 
 - **requirements**: 수용 기준(AC)을 Given-When-Then 형식으로 강제 (자동 테스트로 변환 가능)
 - **design**: `test-architect`가 testability 점수(1-10)를 매기고, 7 미만이면 재설계
-- **implement**: `red-writer`(실패 테스트) → `implementer`(통과 최소 코드 + 정리)의 격리 순차 사이클. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 바로 사이클에 들어갑니다. `--ralph`나 "랄프로 …"로 명시한 실행만 그 시점에 무인 루프로 전환되며, 루프 안에서도 RGR 사이클이 AC 1건 단위로 유지됩니다
+- **implement**: `red-writer`(실패 테스트, 격리 디스패치) → 세션이 직접 통과 최소 코드 + 정리(`--isolated`면 `implementer` 디스패치). 태스크는 AC 1건 단위이며 8개를 넘으면 분할을 먼저 묻는다. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 바로 사이클에 들어갑니다. `--ralph`나 "랄프로 …"로 명시한 실행만 그 시점에 무인 루프로 전환되며, 루프 안에서도 RGR 사이클이 AC 1건 단위로 유지됩니다
 - **review**: `reviewer`(AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + `security-auditor` 병렬
 - **complete**: `verify` 게이트(신선한 테스트 실행 증거)를 통과해야만 commit/PR
 
