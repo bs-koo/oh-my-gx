@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.27.0 (2026-09-08)
+
+gx-tdd 구현 단계의 리듬을 바꾼다. 태스크당 콜드 스타트가 2회에서 1회로 줄고, 태스크 단위가 테스트 1건에서 AC 1건으로 올라간다. red-writer 격리·테스트 해시·focused 직접 실행·verify 지문은 그대로다. 설계: `docs/specs/2026-09-07-tdd-density-rhythm-design.md`.
+
+- **변경 — IMPLEMENT를 세션이 직접 수행**: GREEN+REFACTOR를 오케스트레이터가 `agents/implementer.md`와 같은 계약(테스트 수정 금지·YAGNI·REFACTOR 금지 5항목·focused만 실행·self-review·report Write)으로 직접 수행한다. verify_implement의 해시·porcelain·focused 직접 실행 검증은 주체와 무관하게 같다. fix 라운드 1~3은 세션이 고치고 4~5는 종전대로 fresh implementer + opus 격상이다. 리뷰 정리 모드도 같은 경로다.
+- **추가 — `--isolated`**: 현행 red-writer→implementer 2석 디스패치를 되돌린다. gx-ralph 무인 루프는 항상 2석이다.
+- **변경 — 태스크 = AC 1건**: red-writer가 AC의 G-W-T 시나리오 전부를 테스트 집합으로 한 번에 쓰고, verify_red는 집합 전체의 실패를 확인한다. 세션은 실패 케이스를 하나씩 통과시키는 내부 루프를 돈다. 같은 컴포넌트·같은 패턴의 AC는 묶는 것이 기본이다.
+- **추가 — 태스크 수 가드**: 분해가 8개를 넘으면 승인 전에 "AC 묶어 재분해 / 작업 계획으로 분할 / 무인 루프 전환 / 그대로 진행"을 먼저 묻는다.
+- **추가 — 린트 [33] 세션 IMPLEMENT 계약**, 골든 시나리오 S38·S39.
+- **변경 — 린트 [32] 예산**: SKILL.md 예산 61,500 → 62,500B(`--isolated` 플래그 도입분). 측정을 LF 기준으로 고쳐 autocrlf 체크아웃에서 거짓 FAIL하지 않는다.
+
 ## v1.26.2 (2026-09-07)
 
 gx-tdd 오케스트레이터가 사이클마다 읽는 지시문을 줄인다. 실행 규칙·판별 키·지시 문구는 그대로이며, 실행 중 읽히지 않던 텍스트를 옮기고 산문을 표로 바꿨을 뿐이다. 설계: `docs/specs/2026-09-07-tdd-density-rhythm-design.md`.

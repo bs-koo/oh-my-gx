@@ -54,7 +54,9 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S35 | 구현에 확신이 낮은 품질 관찰이 여러 건 있는 diff | `/gx-tdd --phase review` | reviewer가 저확신 항목을 **Minor로 강등하되 보고에는 남긴다**. 확신이 낮다는 이유로 항목이 사라지면 회귀. Minor는 비차단이므로 `quality_verdict`는 PASS를 유지한다 — 저확신 관찰이 전부 Important로 올라와 fix loop가 요동쳐도 회귀 | agents/reviewer.md Part 2 커버리지 문단 |
 | S36 ★ | gx-ralph 루프 반복 중, 모델이 "다음으로 …하겠습니다"로 턴을 끝내려는 상황 | 러너 `bash scripts/gx-ralph.sh` 실행 | 반복 세션이 설명 대신 도구를 호출해 그 일을 수행하고, 마지막 줄에 종료 계약(`COMPLETE`/`CONTINUE`/`BLOCKED`)을 출력한다. **러너가 종료 코드 3(계약 미출력)으로 끝나면 회귀.** 단 Step 0 가드 실패·Step 3 verify 차단·하네스 부재는 예외이며, 그 경우 즉시 해당 종료 계약을 내는 것이 정상이다 | gx-ralph-iterate 철칙 6번 + 예외 절 |
 | S37 | 새 요청(ARGS 있음)이며 `--resume`·`--work`·W-토큰이 없는 gx-tdd 실행 | `/gx-tdd 알림 임계값 검증 TDD로 구현해줘` | phase-setup이 `phases/setup-resume.md`·`phases/setup-work.md`를 **Read하지 않고** Step 1로 진입한다 (도구 호출 기록에 두 파일이 없음). `--resume`으로 재실행하면 `setup-resume.md`만 Read한다 | phase-setup Step 0 조건부 Read + Step 3.0.5 작업 계획 참조 |
+| S38 ★ | AC 2개(각 시나리오 2~3건)짜리 전체 모드 gx-tdd 실행, `--isolated` 없음 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크 2개로 분해된다. 태스크마다 red-writer **1회**만 디스패치되고 implementer 디스패치는 없다. 세션이 실패 케이스를 하나씩 통과시키며 `reports/t{N}-impl.md`를 직접 Write한다. state.md 태스크 객체에 `test-file-hash`·`test-count`가 기록되고 execution-log에 `session-implement (T{N})`가 남는다 | phase-implement Step 2-I 세션 IMPLEMENT 절차 + 린트 [33/33] |
+| S39 | 같은 요청에 `--isolated` | `/gx-tdd --isolated 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크마다 red-writer → implementer **2회** 디스패치. state.md `flags`에 `--isolated`. 나머지 검증(해시·focused 직접 실행)은 S38과 동일 | phase-setup Step 7 flags 기록 + phase-implement Step 2-I 격리 경로 |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/37 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/39 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
