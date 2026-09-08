@@ -284,15 +284,14 @@ if behavior_defects:
       - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
     did_fix = true (RGR 선택 시)
 
-# 4b: 동작 불변 품질 결함 → implementer 정리 모드 (새 RED 없음)
-#  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → implementer 정리 모드의 GREEN 선행 조건 충족
+# 4b: 동작 불변 품질 결함 → 정리 모드 (새 RED 없음. 기본은 세션 직접, --isolated는 implementer)
+#  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → 정리 모드의 GREEN 선행 조건 충족
 if refactor_only:
     해당 항목 사용자에게 표시
     AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → Task(subagent_type="oh-my-gx:implementer"):
-               정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + PROJECT_ROOT + report 파일 경로(reports/review-cleanup.md — 반복 시 append).
-               GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 전체 테스트다.
-               → 정리 후 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인
+      - "예" → 기본 경로: 오케스트레이터가 직접 정리한다 — phase-implement Step 2-I "세션 IMPLEMENT 절차"의 절대 규칙과 수행 불가능한 정리 목록을 그대로 지키고, 입력은 refactor_only 항목들의 {파일:라인 + 권고}("정리 대상")이며, 정리 한 단위마다 대상 파일 관련 테스트로 조립한 focused 검증을 실행한다. 결과를 `${DEV_DIR}/reports/review-cleanup.md`에 append한다 (리뷰 반복 시 누적).
+               state.md flags에 `--isolated`가 있으면 Task(subagent_type="oh-my-gx:implementer") 정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + report 경로 `${DEV_DIR}/reports/review-cleanup.md`. GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 전체 테스트다
+               → 어느 경로든 정리 후 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인
       - "건너뛰기" → Trust Ledger/메모에 기록
     did_fix = true (수행 시)
 
