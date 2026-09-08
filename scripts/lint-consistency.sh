@@ -821,7 +821,7 @@ echo "[32/32] gx-tdd 지시문 바이트 예산"
 for spec in ".claude/skills/gx-tdd/SKILL.md:61500" ".claude/skills/gx-tdd/phases/phase-setup.md:22000"; do
   f=${spec%%:*}; max=${spec##*:}
   [ -f "$f" ] || { fail "예산 대상 파일 부재: $f"; continue; }
-  sz=$(wc -c <"$f" | tr -d ' ')
+  sz=$(tr -d '\r' <"$f" | wc -c | tr -d ' ')
   [ "$sz" -le "$max" ] || fail "지시문 예산 초과: $f ${sz}B > ${max}B (추출·압축·조건부 로드로 줄일 것)"
 done
 # 조건부 로드 포인터 — phase-setup이 보조 파일을 조건부로만 Read하고, 작업 ID 없음 경로도 닿는지 (최종 리뷰 I1 회귀 방지)
