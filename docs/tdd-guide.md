@@ -424,7 +424,7 @@ for 태스크:
 |------|--------|--------|
 | requirements | 자연어 AC | **Given-When-Then 강제** |
 | design | 비판 검토 | **testability 평가 추가 (score ≥ 7)** |
-| implement | coder 단일 호출 | **red-writer → implementer 순차** |
+| implement | coder 단일 호출 | **red-writer 격리 디스패치 → 세션 IMPLEMENT (`--isolated`: implementer)** |
 | review | qa + security 병렬 | **reviewer 통합 1석 (spec verdict 선행)** |
 | complete | qa 통과 후 커밋 | **verify 게이트 통과 후 커밋** |
 
@@ -461,7 +461,7 @@ requirements ─ PRD 작성 (product-owner)
 design ─────── 설계 (architect) + 비판 검토 (design-critic)
    ↓          [게이트 2] testability score ≥ 7 (test-architect)
 implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록
-   ↓          RGR 사이클: red-writer → implementer (태스크별 순차)
+   ↓          RGR 사이클: red-writer → 세션 IMPLEMENT (AC 단위 태스크, 순차)
 review ─────── [게이트 4] Mechanical Gate (build + test)
    ↓          reviewer (AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + security-auditor 병렬
 complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify)
@@ -477,7 +477,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 | 단계 | 에이전트 | 무엇을 보는가 | 무엇이 금지되는가 |
 |------|---------|-------------|-----------------|
 | RED | `red-writer` | AC(G-W-T) + 설계서 testability 섹션 + 기존 테스트 스타일 | **기존 프로덕션 코드 참조**, 프로덕션 코드 작성 |
-| IMPLEMENT | `implementer` | 실패 테스트 + 대상 시그니처 + 정리 대상 파일 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반), 동작 변경 |
+| IMPLEMENT | 세션 (`--isolated`: `implementer`) | 실패 테스트 + 대상 시그니처 + 정리 대상 파일 | **테스트 파일 수정**, 과잉 구현(YAGNI 위반), 동작 변경 |
 | 리뷰 | `reviewer` | PRD의 AC + diff + 컨벤션 (Part 1: AC 충족 → Part 2: 코드 품질) | Part 1 verdict 확정 전 품질 판정 |
 | testability | `test-architect` | 설계서 + AC | — |
 
@@ -495,7 +495,7 @@ TDD의 각 단계를 **다른 에이전트가 맡는다.** 한 에이전트가 �
 
 **verify_implement (IMPLEMENT 직후 — GREEN+REFACTOR 통합)**
 
-1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (implementer가 테스트를 고치지 않는다)
+1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (구현 주체가 테스트를 고치지 않는다)
 2. 테스트 파일 해시 재계산 → **RED 시점과 다르면 무단 수정**. 원복 후 재호출, 재차 위반 시 사이클 중단
 3. focused 테스트 집합을 오케스트레이터가 직접 실행 → 통과 확인 + 테스트 수 기록 (전체 회귀는 사이클 경계에서 별도 확인)
 4. 테스트에서 쓰이지 않는 메서드·필드가 추가됐으면 과잉 구현으로 보고
@@ -653,16 +653,16 @@ RED    red-writer가 UserTest.shouldRejectChargeOverLimit 작성
        → 실행 → ChargeLimitExceededException 미존재로 컴파일 실패 확인
        → 테스트 파일 해시 기록
 
-GREEN  implementer가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
+GREEN  구현 주체가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
        → 대상 테스트 통과, 전체 회귀 0건
        → 테스트 파일 해시 재확인 (변조 없음)
 
-REFACTOR implementer가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
+REFACTOR 구현 주체가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
        → 테스트 재실행 → 통과 유지
        → 테스트 수 감소 없음 확인
 ```
 
-여기서 implementer가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
+여기서 구현 주체가 "이왕 하는 김에" 일일 누적 한도까지 구현하려 하면 과잉 구현으로 감지되어 다음 RED로 미뤄진다. AC-3에는 1회 한도만 있기 때문이다.
 
 ### 7.5 review → complete
 
