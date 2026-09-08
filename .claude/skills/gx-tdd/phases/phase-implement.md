@@ -98,8 +98,8 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 
 설계서의 "구현 순서"와 PRD의 AC를 결합하여 **RGR 사이클 단위 태스크**로 분해한다. 각 태스크는 다음을 만족한다:
 
-1. **단일 AC 또는 단일 컴포넌트**에 매핑된다. 단, **같은 패턴의 소형 변경으로 환산되는 AC들**(동일 검증 로직의 필드별 반복, 동일 형태의 매핑 추가 등)은 하나의 태스크로 배칭할 수 있다 — RED는 테이블 드리븐 또는 케이스별 테스트를 한 파일에 작성하고, 한 번의 R→I 사이클로 처리하며, 태스크 표의 AC 매핑에 `AC-2~AC-4 (배칭)` 형태로 표기해 승인 게이트에서 확인받는다. 분리 기준: 독자적 판단·독자적 테스트 전략·독자적 리뷰 표면이 필요한 작업만 태스크를 분리한다.
-2. **2-15분 단위**로 RED→IMPLEMENT 완료 가능한 크기.
+1. **태스크 = AC 1건**이 기본이다. AC 하나의 G-W-T 시나리오 전부가 그 태스크의 테스트 집합이 된다. **같은 컴포넌트를 건드리는 AC들**과 **같은 패턴의 소형 변경으로 환산되는 AC들**(동일 검증 로직의 필드별 반복, 동일 형태의 매핑 추가 등)은 하나의 태스크로 **묶는 것이 기본**이다. 한 AC가 컴포넌트 둘 이상에 걸칠 때만 컴포넌트 단위로 나눈다 — 이때만 AC보다 작은 태스크가 생긴다.
+2. **2~15분**은 태스크의 크기가 아니라 태스크 안에서 **테스트 하나를 통과시키는 한 걸음**의 크기다 (Step 2-I 내부 루프). 태스크는 리뷰어가 이웃 태스크를 승인하면서 이 태스크만 거절할 수 있을 만큼 독립적이면 충분하다.
 3. 다른 태스크와 **파일이 겹치지 않는다** (사이클 간 간섭 방지 — 태스크는 순차 실행된다). 겹치면 앞 태스크의 `test-file-hash`·porcelain 스냅샷 기준선이 뒤 태스크의 변경으로 오염되어 무결성 검증이 오탐한다.
 
 ### 1.1 태스크 표 생성
@@ -111,14 +111,41 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 
 | # | AC 매핑 | 컴포넌트 | RED (테스트 작성) | IMPLEMENT (구현+정리) |
 |---|---------|---------|-------------------|------------------------|
-| 1 | AC-1 | PaymentLimit | PaymentLimitTest.shouldRejectExceededLimit | PaymentLimit.kt: data class + validate() → 매직 넘버 상수화 |
-| 2 | AC-2, AC-3 (배칭) | PaymentService | PaymentServiceTest (케이스 2건) | PaymentService.processPayment() 한도 검증 추가 → 중복 검증 로직 추출 |
-| 3 | AC-4 | PaymentController | PaymentControllerE2ETest | PaymentController.updateLimit() 엔드포인트 |
+| 1 | AC-1 | PaymentLimit | PaymentLimitTest (케이스 3건: 초과 거부·경계값·기본 한도) | PaymentLimit.kt: data class + validate() → 매직 넘버 상수화 |
+| 2 | AC-2, AC-3 (묶음) | PaymentService | PaymentServiceTest (케이스 4건) | PaymentService.processPayment() 한도 검증 추가 → 중복 검증 로직 추출 |
+| 3 | AC-4 | PaymentController | PaymentControllerE2ETest (케이스 2건) | PaymentController.updateLimit() 엔드포인트 |
 
 ### 의존성 (실행 순서)
 - T1 (PaymentLimit) → T2 (PaymentService가 PaymentLimit 참조) → T3 (Controller가 Service 참조)
 - T1, T2, T3은 **순차 실행** (의존성 체인).
 ```
+
+### 1.15 태스크 수 가드
+
+태스크가 **8개를 넘으면** 승인 게이트 전에 아래를 먼저 묻는다. 태스크마다 red-writer 콜드 스타트와 verify 6단계가 붙으므로 30개짜리 분해는 한 세션에서 끝나지 않는다 — 분해가 잘못됐거나 실행 단위가 잘못된 것이다.
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "태스크가 {N}개로 분해됐습니다. 8개를 넘으면 한 세션에서 완주하기 어렵습니다. 어떻게 할까요?",
+    header: "태스크 수",
+    options: [
+      { label: "AC 묶어서 재분해 (추천)", description: "같은 컴포넌트·같은 패턴의 AC를 한 태스크로 묶어 8개 이하로 줄입니다. 태스크당 테스트 케이스가 늘어날 뿐 RGR 강도는 같습니다" },
+      { label: "작업 계획으로 분할", description: "이번 실행은 앞 8개까지만 진행하고 나머지 AC는 `.dev/plan.md`의 후속 작업(W행)으로 등록합니다. 다음 실행에서 `W0N 시작해줘`로 이어집니다" },
+      { label: "무인 루프로 전환", description: "이 파이프라인을 중단하고 `--ralph`로 재실행해 외부 러너가 AC를 1건씩 반복합니다 (svn 미지원)" },
+      { label: "그대로 진행", description: "{N}개 전부 이 세션에서 진행합니다. 컨텍스트 압축이 일어날 수 있으며 `--resume`으로 이어갈 수 있습니다" }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+- **AC 묶어서 재분해** → 조건 1의 묶기 규칙을 적용해 재분해하고 1.1 표를 다시 제시한다. 여전히 8개를 넘으면 이 가드를 한 번 더 거친다 (최대 2회).
+- **작업 계획으로 분할** → `.dev/plan.md`가 없으면 이 선택지를 **제외**하고 제시한다. 있으면 앞 8개 태스크에 대응하는 AC로 범위를 줄이고, 나머지 AC를 `.dev/plan.md`에 `대기` 상태의 새 W행으로 추가한다 (도메인·브랜치명은 현재 실행과 같은 규칙, 선행은 현재 `work-id`). `.dev/plan.md`만 스테이징해 `docs: [plan] 후속 작업 등록` 메시지로 커밋한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
+- **무인 루프로 전환** → `status: cancelled`로 종료하고 `/gx-tdd --ralph {원 요청}` 재실행을 안내한다. svn이면 이 선택지를 제외한다.
+- **그대로 진행** → 1.2로 진행한다. execution-log에 `"태스크 수 가드 통과(사용자 선택): {N}개"`를 남긴다.
+
+핵심 모드는 Step 1을 건너뛰므로 이 가드도 타지 않는다 (AC 3~5개 = 태스크 3~5개).
 
 ### 1.2 사용자 승인 게이트
 
