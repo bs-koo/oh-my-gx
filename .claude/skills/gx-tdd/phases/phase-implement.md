@@ -24,7 +24,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 - Step 1(태스크 분해)과 Step 1.2(승인 게이트)도 건너뛴다.
 - **RGR 사이클은 유지**한다 (핵심 모드여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: ac.md의 AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
-  - implementer 입력: RED report 경로 + 기존 코드 인터페이스 (설계서 없음) + focused 테스트 명령.
+  - IMPLEMENT 입력(세션 또는 implementer): RED report 경로 + 기존 코드 인터페이스 (설계서 없음) + focused 테스트 명령.
 - Step H1~H4 (긴급 보안 감사)는 사이클 완료 후 동일하게 실행한다.
 
 핵심 모드가 아닌 경우 아래 전체 모드 플로우를 따른다.
@@ -203,7 +203,7 @@ for task in tasks:
 
 ```
 Task(subagent_type="oh-my-gx:red-writer"):
-  description: "RED: Write failing test for {AC-N}"
+  description: "RED: Write failing tests for {AC-N}"
   prompt: |
     당신은 RED 단계 테스트 작성 전담자입니다.
 
@@ -291,7 +291,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 2. GREEN: 실패 테스트를 통과시키는 최소 코드만 작성한다 (YAGNI — 추가 기능/에러 핸들링/검증/로깅 금지).
 3. REFACTOR: 동작 변경 금지. 매 정리 후 focused 테스트로 GREEN 유지 확인, 깨지면 즉시 롤백.
 4. 테스트 실행은 focused 명령만 사용한다. 전체 스위트는 사이클 경계(Step 3.5 / phase-review Step 0)에서만 실행한다.
-5. report 작성 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정한다.
+5. report 작성 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정한다. 이 절차를 다른 에이전트에 재위임하지 않는다 (fix 라운드 4~5의 격상 디스패치만 예외).
 
 [수행 불가능한 정리]
 - 동작 변경
@@ -302,7 +302,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
 [절차 — 내부 RGR 루프]
 1. `reports/t{N}-red.md`를 Read해 이 태스크의 실패 테스트 집합(파일·케이스·실패 메시지)을 파악한다. 설계서 인터페이스(대상 시그니처)를 확인한다. 구현에 필요한 기존 코드는 Read한다 (세션은 red-writer와 달리 코드 차단 대상이 아니다).
-2. focused 명령을 실행해 현재 실패 케이스 목록을 얻는다.
+2. focused 명령(조립 규칙은 아래 **focused 테스트 명령 조립** 참조)을 실행해 현재 실패 케이스 목록을 얻는다.
 3. 실패 케이스 **하나**를 고른다 → 그 케이스만 통과시키는 최소 코드를 작성한다 → focused를 재실행해 그 케이스가 통과하고 이미 통과한 케이스가 유지되는지 본다. 실패 케이스가 남아 있으면 3을 반복한다. 한 걸음이 15분을 넘기면 케이스를 더 잘게 볼 수 있는지 먼저 의심한다.
 4. 전부 GREEN이면 REFACTOR: 중복 제거·네이밍·구조 정리. 정리 한 단위마다 focused 재실행. 깨지면 그 단위를 롤백한다. 정리할 것이 없으면 "정리 없음"으로 기록한다.
 5. self-review 후 `reports/t{N}-impl.md`를 Write한다. 형식은 `agents/implementer.md`의 report 형식과 같다 — `## 구현 내용` / `## GREEN 증거`(focused 명령 + "N pass / 0 fail" 출력 요약) / `## REFACTOR 내역` / `## self-review 결과` / `## 우려사항`.
@@ -459,7 +459,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 **Step H3**: 결과 분기:
 - CRITICAL/HIGH 0건 → "핵심 모드 긴급 감사 통과" 보고 후 phase-complete로 진행.
 - CRITICAL/HIGH 1건 이상 → AskUserQuestion:
-  - "자동 수정 시도" → **RGR 사이클 재진입**: 보안 항목을 새 AC로 정의하여 red-writer(새 실패 테스트) → implementer 순서로 수정한다 (Step 2-R/2-I 재실행). implementer를 RED 없이 직접 호출하지 않는다.
+  - "자동 수정 시도" → **RGR 사이클 재진입**: 보안 항목을 새 AC로 정의하여 red-writer(새 실패 테스트) → IMPLEMENT(세션 또는 implementer) 순서로 수정한다 (Step 2-R/2-I 재실행). implementer를 RED 없이 직접 호출하지 않는다.
   - "이대로 진행" → 위험 수용 기록
   - "중단" → state.md에 `status: cancelled`
 
@@ -509,7 +509,7 @@ steps:
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
-- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-file-hash`·`test-count`·porcelain 스냅샷 기준선도 없거나 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
+- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-file-hash`·porcelain 스냅샷은 구 state에 기록이 있으면 그대로 대조하고 없을 때만 생략한다. `test-count`는 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
 - `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
 - `"변경사항 수집"` → Step 5부터 재실행
 

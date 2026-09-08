@@ -260,7 +260,7 @@ findings = {
 
 > 결함을 **동작 결함**과 **동작 불변 품질 결함**으로 분류하여 수정 경로를 달리한다 (reviewer의 `[동작결함]`/`[동작불변]` 표기 사용).
 > - **동작 결함** → RGR 사이클(RED 선행). 결함을 재현하는 실패 테스트가 먼저 있어야 한다 (Iron Law 1).
-> - **동작 불변 품질 결함**(DRY/네이밍/매직넘버/추상화 정리) → implementer 정리 모드. 기존 테스트 GREEN 유지하며 정리하므로 새 RED 불필요 (= RGR의 REFACTOR 단계).
+> - **동작 불변 품질 결함**(DRY/네이밍/매직넘버/추상화 정리) → 정리 모드(기본은 세션 직접, `--isolated`면 implementer). 기존 테스트 GREEN 유지하며 정리하므로 새 RED 불필요 (= RGR의 REFACTOR 단계).
 
 ```
 did_fix = false
@@ -303,8 +303,8 @@ else:
     if Minor(quality) 또는 MEDIUM(security) 항목 있음:
         항목 목록 표시 + "수정할까요?" 확인
         if 수정 선택:
-            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → implementer 정리 모드,
-            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 implementer 정리 모드)
+            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → 정리 모드(기본은 세션 직접, `--isolated`면 implementer),
+            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 정리 모드(기본은 세션 직접, `--isolated`면 implementer))
             → 단발성 확인 리뷰 (반복 카운트 미포함)
         else:
             → phase-complete
@@ -360,6 +360,6 @@ execution-log:
 - ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지
 
-**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 `implementer` **정리 모드**로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
+**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 정리 모드(기본은 세션 직접, `--isolated`면 implementer)로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 전체 테스트 GREEN을 반드시 재확인한다.
 
 위반 감지 시 즉시 중단하고 reviewer부터 재시작한다.

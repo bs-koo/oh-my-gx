@@ -36,6 +36,7 @@ gx-tdd가 superpowers보다 나은 점은 "먼저 실패했다"와 "테스트를
 - 태스크당 콜드 스타트를 2회에서 1회로 줄인다. red-writer 디스패치는 그대로이고, GREEN+REFACTOR는 오케스트레이터가 `agents/implementer.md`와 같은 계약(테스트 수정 금지, YAGNI, REFACTOR 금지 목록 5항목, focused만 실행, self-review, report 작성)으로 직접 수행한다.
 - verify_implement의 검사(해시·porcelain·focused 직접 실행·test-count·과잉 구현·시그니처)는 파일 상태 대조라 수행 주체와 무관하게 같은 강도로 동작한다. implementer 격리는 원래 "입력 범위 제한"이었지 코드 차단이 아니었으므로(phase-implement Iron Law 절), 세션 수행으로 잃는 검증은 없다.
 - 잃는 것은 implementer의 fresh eyes다. phase-review의 reviewer 1석과 fix 라운드 4~5의 fresh+opus 디스패치가 그 역할을 맡는다.
+- 단서 하나: verify_implement 3번(테스트 결함 의심 확인)은 세션 경로에서 검사자와 피검사자가 같아진다. 남는 방어는 다음 태스크의 이전 해시 재검증, phase-review의 diff 리뷰, 훅 G3다.
 - `--isolated` 플래그로 현행 2석 디스패치를 되돌린다. gx-ralph 무인 루프는 항상 2석이다(반복 세션에는 사용자도 없고 재개도 없어 현행 구조가 맞다).
 - 격리를 둘 다 없애는 안(superpowers executing-plans 방식)은 택하지 않는다. red-writer 격리는 해시로 대체할 수 없는 유일한 층이다.
 

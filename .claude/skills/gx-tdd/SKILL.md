@@ -42,7 +42,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
 
-> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`/`implementer` 에이전트를 **직접 `Task`로 디스패치**하며(green-coder/refactor-coder는 단독 스킬 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
+> **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`를 **직접 `Task`로 디스패치**하고 IMPLEMENT는 오케스트레이터가 직접 수행하며(`--isolated`면 `implementer` 디스패치. green-coder/refactor-coder는 단독 스킬 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
 >
 > **의도적 중복 목록**: 이 스킬의 정의 여러 개가 에이전트 자기완결성·라우팅 강제력을 위해 여러 파일에 중복돼 있다. 어느 정의가 어디에 중복돼 있고 무엇이 SSOT인지는 `Read("references/maintenance-notes.md")`에 있다 — 이 스킬이나 에이전트 정의를 **수정할 때** 읽고, 실행 중에는 읽지 않는다.
 
@@ -464,7 +464,7 @@ Agent prompt 크기를 관리하기 위해:
 | Q&A Phase (requirements, design) 첫 표시 | Agent 출력 **전문** — 산출물 검토용. Phase 파일의 구체적인 표시 규칙이 이 일반 규칙보다 우선한다 |
 | Q&A Phase 완료 보고 | 파일에 저장하고 **요약만** ("PRD 확정. ${DEV_DIR}/prd.md에 저장됨") |
 | Q&A 없는 Phase (implement, review, complete) | Agent 출력 **요약만**. 전문은 파일·변수 보관 |
-| implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 |
+| implement Phase의 인계 | **report 파일 경로로만 한다** — red-writer·implementer는 전문을 ${DEV_DIR}/reports/t{N}-*.md에 Write, 상태(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)와 15줄 이내 요약만 반환 (상태 반환은 격리 경로. 세션 경로는 report 파일이 인계 단위) |
 
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
@@ -511,7 +511,7 @@ steps:
     - "RGR T2 (AC-2)": { red: completed, impl: in_progress, fix-round: 2/5 }
 execution-log:
   - { phase: design, agent: test-architect, result: "testability score 8/10 PASS" }
-  - { phase: implement, agent: implementer (T2), result: "fix round 2/5 진행 중" }
+  - { phase: implement, agent: session-implement (T2), result: "fix round 2/5 진행 중" }
 ```
 
 **갱신 규칙:**
@@ -568,7 +568,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 읽기 전용 Agent(product-owner, architect, test-architect, design-critic, reviewer, security-auditor, researcher, hacker, simplifier)는 서로 병렬 실행이 가능하다. 병렬 실행 시:
 1. 하나의 메시지에서 여러 `Task()` 호출을 동시에 발행한다.
 2. 모든 병렬 Task가 완료된 후 결과를 합산한다 (Gate 로직).
-3. 쓰기 Agent(red-writer, implementer)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
+3. 쓰기 주체(red-writer, 세션 IMPLEMENT, implementer)는 다른 쓰기 Agent와 병렬 실행하지 **않는다**.
 4. **RGR 사이클 내 순차 강제 (Iron Law)**: red-writer → IMPLEMENT(세션 또는 implementer)는 **반드시 순차** 실행한다. 병렬 금지.
    - 이유: red-writer 산출물(실패 테스트 — RED report)이 IMPLEMENT의 입력.
    - 위반 시: 격리가 깨져 Iron Law 1 위반.
@@ -706,7 +706,7 @@ AskUserQuestion(
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 - `--ralph`와 `--core`, `--phase`, `--resume`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--ralph`는 전체 모드 전용입니다 — `--core`/`--phase`/`--resume`/`--status`와 함께 쓸 수 없습니다." 에러 후 중단.
 - `--work`와 `--resume`은 **동시 사용 불가**. 함께 있으면: "`--work`와 `--resume`은 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `work-id`에서 작업 문맥을 복원하므로 ID를 다시 받을 이유가 없다).
-- `--isolated`는 어떤 플래그와도 충돌하지 않는다. `--status`에서는 무시한다.
+- `--isolated`는 어떤 플래그와도 충돌하지 않는다. `--status`에서는 무시한다. `--resume`과 함께 주면 state.md `flags`의 기록이 우선한다.
 
 ## Phase 선택 (--phase 플래그)
 
