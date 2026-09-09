@@ -891,7 +891,7 @@ grep -qF '## Rulings' .claude/skills/gx-pull-request/SKILL.md || fail "PR 본문
 echo "[36/36] 도메인 컨텍스트 주입 계약"
 # 설계: docs/specs/2026-09-09-superpowers-gap-design.md D3 — tdd/dev 쌍둥이를 함께 검사한다
 for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phases/phase-setup.md; do
-  SEC=$(awk '/도메인 컨텍스트 탐색/{f=1} /외부 규격 참조 탐색/{f=0} f' "$f")
+  SEC=$(awk '/^[0-9]+\. \*\*도메인 컨텍스트 탐색\*\*/{f=1} /^[0-9]+\. \*\*외부 규격 참조 탐색\*\*/{f=0} f' "$f")
   [ -n "$SEC" ] || fail "도메인 컨텍스트 탐색 절 누락: $f"
   for s in 'README.md' 'status.md' '미반영' '우선순위' '4요소'; do
     printf '%s' "$SEC" | grep -qF "$s" || fail "도메인 컨텍스트 구성 요소($s) 누락: $f"
