@@ -9,6 +9,8 @@ NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED
 이 Phase는 **reviewer 1석**이 Part 1(spec)과 Part 2(quality)를 한 패스로 수행한다 — Part 1 verdict가 먼저 확정된다 (에이전트 내부 순서 강제). Part 1이 FAIL이어도 Part 2는 수행되어 재구현 라운드에 품질 지적이 함께 전달된다.
 security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
+이 Phase는 **전체 브랜치 리뷰**다. phase-implement Step 2-V가 태스크 범위 리뷰를 조건부로 먼저 수행했을 수 있으며, 거기서 유예된 Minor는 Task A가 받아 머지 전 수정 필요 여부만 판정한다 — 태스크 리뷰를 다시 하지 않는다.
+
 위반 시 즉시 중단하고 reviewer부터 재시작한다.
 
 ---
@@ -136,9 +138,12 @@ Task(subagent_type="oh-my-gx:reviewer"):
     {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read
     {FRONTEND_TESTING_PATH} — diff에 UI 테스트가 포함된 경우에만 Read. 스타일 결합 셀렉터·스타일 값 assert·전체 스냅샷·내부 상태 접근을 [동작불변] Important로 지적
 
+    [태스크 리뷰 유예 Minor — 있을 때만]
+    {state.md 태스크 객체의 deferred-minors > 0인 태스크의 reports/t{N}-review.md 경로 목록} — 각 파일의 Minor 항목을 Read하여, 머지 전 수정이 필요한 항목만 Part 2에 Important [동작불변]로 승격하고 나머지는 Minor로 유지합니다. 유예 목록 자체를 다시 리뷰하지 않습니다.
+
     [작업]
     1. Part 1: 각 AC 충족도 평가(✅/⚠️/❌) + 설계 범위 이탈 → SPEC 판정 + spec_verdict
-    2. Part 2: Critical/Important/Minor 분류 + [동작결함|동작불변] 마커 → QUALITY 판정 + quality_verdict
+    2. Part 2: Critical/Important/Minor 분류 + [동작결함|동작불변] 마커 → QUALITY 판정 + quality_verdict (유예 Minor가 전달됐으면 승격 판정 포함)
 
     [출력 형식]
     agents/reviewer.md의 출력 형식을 그대로 따릅니다 — Part 1 매트릭스·판정, Part 2 분류·판정, 맨 마지막에 spec_verdict → quality_verdict 두 YAML 블록 순서 고정.
