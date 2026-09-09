@@ -165,8 +165,8 @@ pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background +
 
 1. Step 0 인수 검증 결과에서 **통과한 AC 목록**을 추출한다 (예: AC-1, AC-4, AC-7).
 2. 매칭된 도메인의 `context/{domain}/status.md`를 Read한다.
-3. 통과한 AC와 일치하는 행의 상태를 `⬜`→`✅`로, PR 열에 생성된 PR 링크를 기입한다. PRD가 `FR-N (status.md 미반영)` 형식으로 FR ID를 인용한 AC는 그 FR 행을 대상으로 한다 (행의 AC 열이 비어 있어도 매칭되며, AC 열에 이번 AC ID를 기입한다).
-4. AC가 `-`인 행은 변경하지 않는다 (PR 머지 시 수동 판정).
+3. 통과한 AC와 일치하는 행의 상태를 `⬜`→`✅`로, PR 열에 생성된 PR 링크를 기입한다. PRD가 `FR-N (status.md 미반영)` 형식으로 FR ID를 인용한 AC는 그 FR 행을 대상으로 한다 (행의 AC 열이 비어 있거나 `-`여도 매칭되며, AC 열에 이번 AC ID를 기입한다).
+4. AC가 `-`인 행은 변경하지 않는다 (PR 머지 시 수동 판정). 단, 항목 3의 `FR-N (status.md 미반영)` 인용으로 매칭된 행은 예외다.
 5. Edit으로 status.md를 갱신한다.
 6. 갱신 결과를 사용자에게 보고한다:
    ```
