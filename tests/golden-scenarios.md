@@ -56,7 +56,9 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S37 | 새 요청(ARGS 있음)이며 `--resume`·`--work`·W-토큰이 없는 gx-tdd 실행 | `/gx-tdd 알림 임계값 검증 TDD로 구현해줘` | phase-setup이 `phases/setup-resume.md`·`phases/setup-work.md`를 **Read하지 않고** Step 1로 진입한다 (도구 호출 기록에 두 파일이 없음). `--resume`으로 재실행하면 `setup-resume.md`만 Read한다 | phase-setup Step 0 조건부 Read + Step 3.0.5 작업 계획 참조 |
 | S38 ★ | AC 2개(각 시나리오 2~3건)짜리 전체 모드 gx-tdd 실행, `--isolated` 없음 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크 2개로 분해된다. 태스크마다 red-writer **1회**만 디스패치되고 implementer 디스패치는 없다. 세션이 실패 케이스를 하나씩 통과시키며 `reports/t{N}-impl.md`를 직접 Write한다. state.md 태스크 객체에 `test-file-hash`·`test-count`가 기록되고 execution-log에 `session-implement (T{N})`가 남는다 | phase-implement Step 2-I 세션 IMPLEMENT 절차 + 린트 [33/33] |
 | S39 | 같은 요청에 `--isolated` | `/gx-tdd --isolated 포인트 충전 한도 검증 TDD로 구현해줘` | 태스크마다 red-writer → implementer **2회** 디스패치. state.md `flags`에 `--isolated`. 나머지 검증(해시·focused 직접 실행)은 S38과 동일 | phase-setup Step 7 flags 기록 + phase-implement Step 2-I 격리 경로 |
+| S40 ★ | AC 1건이 프로덕션 파일 2개(서비스+리포지토리)에 걸치는 태스크, 전체 모드 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | verify_implement 통과 직후 `reports/t{N}-diff.txt`가 만들어지고 reviewer가 `model: "sonnet"`으로 1회 디스패치된다. 출력이 `reports/t{N}-review.md`에 저장되고 state.md 태스크 객체에 `review: completed`가 남는다. Important [동작결함]이 나오면 fix 라운드가 오르고 재리뷰가 `## 재리뷰 판정` 표를 낸다. 실제 인덱스는 스테이징되지 않는다(`git diff --cached`가 비어 있다) | phase-implement Step 2-V + 린트 [34/34] |
+| S41 | 프로덕션 파일 1개만 바꾸고 fix 라운드 없이 통과한 태스크 | 같은 요청 | reviewer 디스패치 없이 state.md에 `review: skipped`가 기록되고 다음 태스크로 진행한다. phase-review는 그대로 1회 수행된다 | phase-implement Step 2-V 발동 조건 |
 
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/39 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/41 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.

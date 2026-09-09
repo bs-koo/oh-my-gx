@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.28.0 (2026-09-09)
+
+세션 IMPLEMENT의 자기 검증 편향을 상쇄하는 조건부 태스크 리뷰를 넣는다. superpowers subagent-driven-development의 태스크 리뷰 층을 가져오되, 태스크마다 붙이지 않고 편향이 커지는 태스크에만 붙인다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D1.
+
+- **추가 — phase-implement Step 2-V 태스크 리뷰**: verify_implement 통과 직후, 프로덕션 파일을 2개 이상 바꿨거나 fix 라운드를 거친 태스크에만 `reviewer`를 태스크 범위 모드(`model: "sonnet"`)로 디스패치한다. 변경 파일은 verify_red porcelain 스냅샷과의 차이로 기계 판정하고, 태스크 diff는 임시 인덱스로 `reports/t{N}-diff.txt`에 쓴다(실제 인덱스·스냅샷 대조 무영향). findings는 기존 fix loop(라운드 5 공유)로, Minor는 phase-review Task A에 유예 목록으로 넘긴다. 재리뷰는 findings + 수정 diff만 보는 scoped 재리뷰다
+- **추가 — reviewer 태스크 범위 모드**: 전달된 AC만 Part 1 대상, `## 재리뷰 판정`(ADDRESSED/NOT ADDRESSED) 표. Iron Law·판정 블록·금지 사항은 동일
+- **변경 — phase-review는 전체 브랜치 리뷰**: 유예 Minor를 받아 머지 전 수정 필요 여부만 판정한다
+- **검증 — 린트 [34] 태스크 리뷰 계약**, 골든 S40·S41. `[32]` SKILL.md 예산 62,500 → 63,000B(2-V 참조 3곳 도입분)
+
 ## v1.27.0 (2026-09-08)
 
 gx-tdd 구현 단계의 리듬을 바꾼다. 태스크당 콜드 스타트가 2회에서 1회로 줄고, 태스크 단위가 테스트 1건에서 AC 1건으로 올라간다. red-writer 격리·테스트 해시·focused 직접 실행·verify 지문은 그대로다. 설계: `docs/specs/2026-09-07-tdd-density-rhythm-design.md`.
