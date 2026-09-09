@@ -252,7 +252,7 @@ references/
 
 - **requirements**: 수용 기준(AC)을 Given-When-Then 형식으로 강제 (자동 테스트로 변환 가능)
 - **design**: `test-architect`가 testability 점수(1-10)를 매기고, 7 미만이면 재설계
-- **implement**: `red-writer`(실패 테스트, 격리 디스패치) → 세션이 직접 통과 최소 코드 + 정리(`--isolated`면 `implementer` 디스패치). 태스크는 AC 1건 단위이며 8개를 넘으면 분할을 먼저 묻는다. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 바로 사이클에 들어갑니다. `--ralph`나 "랄프로 …"로 명시한 실행만 그 시점에 무인 루프로 전환되며, 루프 안에서도 RGR 사이클이 AC 1건 단위로 유지됩니다
+- **implement**: `red-writer`(실패 테스트, 격리 디스패치) → 세션이 직접 통과 최소 코드 + 정리(`--isolated`면 `implementer` 디스패치). 태스크는 AC 1건 단위이며 8개를 넘으면 분할을 먼저 묻는다. 프로덕션 파일을 2개 이상 바꿨거나 fix 라운드를 거친 태스크는 완료 전에 `reviewer`가 태스크 범위로 한 번 더 본다(sonnet). 나머지는 기계 검증(해시·focused 직접 실행)으로 닫는다. 기준선 게이트(기존 테스트 GREEN 확인) 통과 후 바로 사이클에 들어갑니다. `--ralph`나 "랄프로 …"로 명시한 실행만 그 시점에 무인 루프로 전환되며, 루프 안에서도 RGR 사이클이 AC 1건 단위로 유지됩니다
 - **review**: `reviewer`(AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + `security-auditor` 병렬
 - **complete**: `verify` 게이트(신선한 테스트 실행 증거)를 통과해야만 commit/PR
 
