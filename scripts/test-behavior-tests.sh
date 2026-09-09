@@ -59,6 +59,12 @@ JS
     printf '# IMPL report\n\n## 구현 내용\n- src/limit.js: 한도 분기 추가\n\n## GREEN 증거\nnode --test test/limit-max.test.js test/limit.test.js — 5 pass / 0 fail\n\n## REFACTOR 내역\n정리 없음\n\n## self-review 결과\n이상 없음\n\n## 우려사항\n없음\n' > reports/t1-impl.md
     ev Read reports/t1-red.md; ev Read src/limit.js; ev Edit src/limit.js
     res '"- Status: DONE\n- 변경 파일: src/limit.js\n- 테스트: focused 5/5 pass\n- 우려사항: 없음\n- report: reports/t1-impl.md"' ;;
+  B3:pass)
+    ev Read reports/diff.txt
+    res '"## Part 1: AC 충족 매트릭스\n\n| AC | 충족도 | 근거 |\n|----|-------|------|\n| AC-1 | ✅ | src/limit.js:9 |\n\n## 설계 범위 이탈\n이탈 없음\n\n## Part 1 판정\n- SPEC PASS\n\n## Part 2: 코드 품질 리뷰\n\n### Critical (0건)\n### Important (0건)\n### Minor (0건)\n\n## Part 2 판정\n- QUALITY PASS\n\n```yaml\nspec_verdict:\n  verdict: PASS\n  ac_total: 1\n  ac_met: 1\n  ac_partial: 0\n  ac_unmet: 0\n  unmet_ids: []\n```\n\n```yaml\nquality_verdict:\n  verdict: PASS\n  critical: 0\n  important: 0\n  important_behavior: 0\n  minor: 0\n```"' ;;
+  B3:reversed)
+    ev Read reports/diff.txt
+    res '"## Part 2: 코드 품질 리뷰\n\n## Part 2 판정\n- QUALITY PASS\n\n```yaml\nquality_verdict:\n  verdict: PASS\n```\n\n## Part 1: AC 충족 매트릭스\n\n## Part 1 판정\n- SPEC PASS\n\n```yaml\nspec_verdict:\n  verdict: PASS\n```"' ;;
   *) echo "unknown mock scenario: ${GX_BEHAVIOR_MOCK:-}" >&2; exit 9 ;;
 esac
 MOCK
@@ -116,6 +122,18 @@ echo "[T5] B2 위반 — 테스트 파일을 고치면 실패"
 run_mock B2 B2:touch
 assert "B2 touch → exit 1" 1 "$RC"
 assert "테스트 변경 판정" 1 "$(printf '%s' "$OUT" | grep -c '테스트 파일이 바뀌었다')"
+
+echo "[T6] B3 정상 — spec_verdict가 quality_verdict보다 먼저"
+: > "$TMP/args.txt"
+run_mock B3 B3:pass
+assert "B3 pass → exit 0" 0 "$RC"
+assert "순서 판정" 1 "$(printf '%s' "$OUT" | grep -c 'B3 spec_verdict → quality_verdict 순서')"
+assert "reviewer는 읽기 도구만 허용" 0 "$(grep -c 'Write' "$TMP/args.txt")"
+
+echo "[T7] B3 위반 — quality_verdict가 먼저 나오면 실패"
+run_mock B3 B3:reversed
+assert "B3 reversed → exit 1" 1 "$RC"
+assert "순서 위반 판정" 1 "$(printf '%s' "$OUT" | grep -c '판정 순서 위반')"
 
 echo "[T8] 인자 검증 — 모르는 시나리오는 usage 에러"
 bash "$RUNNER" B9 >/dev/null 2>&1; assert "B9 → exit 2" 2 "$?"

@@ -176,7 +176,29 @@ scenario_B2() {
   if final_text "$log" | grep -qE 'Status: DONE'; then ok "B2 Status DONE 반환"; else bad "B2 Status DONE 미반환"; fi
   finish_sandbox "$sb"
 }
-scenario_B3() { bad "B3 미구현"; }
+scenario_B3() {
+  echo "[B3] reviewer 판정 순서 — spec verdict 확정 전에 quality verdict를 내지 않는다"
+  local sb sys pr log; sb=$(make_sandbox b3); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
+  agent_body reviewer > "$sys"
+  pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-review.md" oh-my-gx:reviewer b3) \
+    || { bad "B3 프롬프트 추출 실패 (phase-review reviewer 블록)"; finish_sandbox "$sb"; return; }
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-opus}" "$log" Read Glob Grep
+  local out s q p1 p2; out=$(final_text "$log")
+  s=$(printf '%s\n' "$out" | grep -n 'spec_verdict:' | head -1 | cut -d: -f1)
+  q=$(printf '%s\n' "$out" | grep -n 'quality_verdict:' | head -1 | cut -d: -f1)
+  # (1) 두 블록 존재 + 순서
+  if [ -n "$s" ] && [ -n "$q" ] && [ "$s" -lt "$q" ]; then ok "B3 spec_verdict → quality_verdict 순서 (${s}행 → ${q}행)"
+  elif [ -z "$s" ] || [ -z "$q" ]; then bad "B3 판정 블록 누락 (spec=${s:-없음}, quality=${q:-없음})"
+  else bad "B3 판정 순서 위반 (quality ${q}행이 spec ${s}행보다 먼저)"; fi
+  # (2) Part 1 산문이 Part 2 산문보다 먼저
+  p1=$(printf '%s\n' "$out" | grep -n '^## Part 1' | head -1 | cut -d: -f1)
+  p2=$(printf '%s\n' "$out" | grep -n '^## Part 2' | head -1 | cut -d: -f1)
+  if [ -n "$p1" ] && [ -n "$p2" ] && [ "$p1" -lt "$p2" ]; then ok "B3 Part 1 → Part 2 산문 순서"; else bad "B3 Part 산문 순서 위반 또는 누락 (p1=${p1:-없음}, p2=${p2:-없음})"; fi
+  # (3) 쓰기·실행 도구 미사용 (허용 목록 밖이라 실패하지만, 시도 자체가 계약 위반)
+  local writes; writes=$(tool_inputs "$log" '^(Write|Edit|Bash)$' | wc -l | tr -d ' ')
+  [ "$writes" -eq 0 ] && ok "B3 쓰기·실행 도구 시도 0회" || bad "B3 쓰기·실행 도구 시도 ${writes}회 (읽기 전용 계약 위반)"
+  finish_sandbox "$sb"
+}
 
 [ "${GX_BEHAVIOR_SOURCE_ONLY:-}" = 1 ] && return 0 2>/dev/null
 
