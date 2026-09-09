@@ -26,9 +26,9 @@
 
 - verify_implement 통과 직후, 태스크 완료 처리 전에 reviewer를 **태스크 범위 모드**로 디스패치한다. 입력은 그 태스크의 AC·태스크 diff·RED/IMPL report·설계서 인터페이스뿐이다. phase-review는 전체 브랜치 리뷰로 남는다.
 - **발동 조건**은 둘 중 하나다. (a) 태스크가 바꾼 프로덕션 파일이 2개 이상. (b) 그 태스크에 fix 라운드가 1회 이상 있었다. 둘 다 아니면 기계 검증으로 충분하다고 보고 `review: skipped`만 남긴다. 변경 파일은 verify_red의 porcelain 스냅샷과 현재 porcelain의 차이로 기계적으로 구한다.
-- 태스크 diff는 실제 인덱스를 건드리지 않는 **임시 인덱스**(훅의 지문 계산과 같은 관용구)로 `reports/t{N}-diff.txt`에 쓴다. 실제 인덱스를 스테이징하면 porcelain 스냅샷 대조가 오탐한다.
+- 태스크 diff는 실제 인덱스를 건드리지 않는 **임시 인덱스**(훅의 지문 계산과 같은 관용구)로 `reports/t{N}-diff.txt`에 쓴다. 실제 인덱스를 스테이징하면 porcelain 스냅샷 대조가 오탐한다. 수집은 한 Bash 호출로 하고 add 실패를 감지해 중단한다 — add가 실패해도 diff는 0으로 끝나며 HEAD 파일 전부를 삭제로 낸다. 경로 인용은 `core.quotePath=false`로 끈다. 스냅샷이 없는 구 세대 재개는 (a)를 판정하지 않는다.
 - reviewer는 Write 도구가 없으므로 출력을 오케스트레이터가 `reports/t{N}-review.md`에 저장한다. 두 YAML 판정 블록의 파싱·상충 처리는 phase-review Step 4.0과 같다.
-- 라우팅: spec FAIL·Critical·Important[동작결함] → 기존 fix loop(라운드 카운터·상한 5 공유). Important[동작불변] → 세션 정리. Minor → 유예하고 phase-review Task A가 머지 전 수정 필요 여부를 판정한다. 재리뷰는 findings 목록 + 수정 diff만 보는 scoped 재리뷰다(superpowers re-review-prompt).
+- 라우팅: spec FAIL·Critical·Important[동작결함] → **red-writer가 결함을 재현하는 실패 테스트를 먼저 추가**(RED 재호출 — verify_red 재적용, 해시·스냅샷·test-count 기준선 갱신)한 뒤 기존 fix loop(라운드 카운터·상한 5 공유, 라운드 4~5는 fresh implementer + opus). 기존 fix loop는 테스트 해시를 고정해 그 안에서 테스트를 추가할 수 없으므로, RED 없이 보내면 동작 결함을 테스트 없이 고치는 자동 경로가 된다(Iron Law 1 위반 — 최종 리뷰 C1). Important[동작불변] → 세션 정리(그것만 있어도 라운드 1 소모). Minor → 유예하고 phase-review Task A가 머지 전 수정 필요 여부를 판정한다. 재리뷰는 findings 목록 + 수정 diff만 보는 scoped 재리뷰다(superpowers re-review-prompt).
 - 모델은 프로파일과 무관하게 sonnet이다. 태스크 diff는 작고, superpowers도 scoped 재리뷰는 저·중급 모델을 쓴다.
 - 검증: 린트 `[34]`(Step 2-V 절·발동 조건·경로·sonnet·재리뷰·유예 전달), 골든 S40(발동)·S41(스킵).
 

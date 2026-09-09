@@ -806,11 +806,12 @@ echo "[31/34] 린트 번호 크로스레퍼런스 정합"
 # 분모가 오를 때마다 문서가 인용하는 [N/M]이 뒤처진다. 26→29 전환에서 7곳이 드리프트해
 # 전용 커밋으로 고친 이력이 있고(6fc3e96), 29→30에서 또 재발했다. 기계로 고정한다.
 # 대상은 살아있는 문서만 — docs/·CHANGELOG는 과거 릴리스의 역사 기록이라 그때의 분모가 맞다.
+# tests/golden-scenarios.md는 릴리스마다 다시 도는 살아있는 문서라 대상에 넣는다.
 LINT_TOTAL=$(grep -cE '^echo "\[[0-9]+/[0-9]+\]' scripts/lint-consistency.sh)
 # --exclude-dir=worktrees: .claude/worktrees/는 별도 git 워크트리 체크아웃이 얹히는 자리라
 # 그 안의 docs/superpowers/plans/ 같은 과거 계획 문서까지 .claude 재귀에 딸려 들어온다.
 # docs/·CHANGELOG와 같은 역사 기록이므로 검사 대상에서 제외한다.
-XREF_BAD=$(grep -rnE '\[[0-9]+/[0-9]+\]' --include=*.md --exclude-dir=worktrees .claude README.md 2>/dev/null \
+XREF_BAD=$(grep -rnE '\[[0-9]+/[0-9]+\]' --include=*.md --exclude-dir=worktrees .claude README.md tests 2>/dev/null \
   | grep -vE "/${LINT_TOTAL}\]" || true)
 if [ -n "$XREF_BAD" ]; then
   fail "린트 번호 크로스레퍼런스가 실제 분모(${LINT_TOTAL})와 불일치:"
@@ -855,14 +856,15 @@ echo "[34/34] gx-tdd 태스크 리뷰 계약"
 IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
 SEC=$(awk '/^### Step 2-V: 태스크 리뷰/{f=1} /^## Step 3: 정체 감지/{f=0} f' "$IMPL")
 [ -n "$SEC" ] || fail "Step 2-V 태스크 리뷰 절 누락: phase-implement.md"
-for s in '프로덕션 파일이 2개 이상' 'fix-round' 'reports/t{N}-diff.txt' 'reports/t{N}-review.md' 'reports/t{N}-diff-r{r}.txt' 'model: "sonnet"' 'subagent_type="oh-my-gx:reviewer"' 'deferred-minors' 'NOT ADDRESSED' 'GIT_INDEX_FILE'; do
+awk '/^### Step 2-V: 태스크 리뷰/{f=1} f && /^## Step 3: 정체 감지/{found=1; exit} END{exit !found}' "$IMPL" || fail "Step 2-V 절이 Step 3 앞에 있지 않다 (구간 검사가 파일 끝까지 늘어난다): phase-implement.md"
+for s in '프로덕션 파일이 2개 이상' 'fix-round' 'reports/t{N}-diff.txt' 'reports/t{N}-review.md' 'reports/t{N}-diff-r{r}.txt' 'model: "sonnet"' 'subagent_type="oh-my-gx:reviewer"' 'deferred-minors' 'NOT ADDRESSED' 'GIT_INDEX_FILE' 'NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED' '발견 단계의 목표는 커버리지다' 'RED 재호출' 'TASK_DIFF_FAILED' 'core.quotePath=false'; do
   printf '%s' "$SEC" | grep -qF "$s" || fail "태스크 리뷰 계약 문구 누락($s): phase-implement.md Step 2-V"
 done
 grep -qF '## 태스크 범위 모드' agents/reviewer.md || fail "태스크 범위 모드 절 누락: agents/reviewer.md"
 grep -qF '## 재리뷰 판정' agents/reviewer.md || fail "재리뷰 판정 표 형식 누락: agents/reviewer.md"
 grep -qF '[태스크 리뷰 유예 Minor' .claude/skills/gx-tdd/phases/phase-review.md || fail "유예 Minor 전달 누락: phase-review.md Task A"
 grep -qF '태스크 범위 모드' .claude/skills/gx-tdd/SKILL.md || fail "태스크 범위 모드 언급 누락: gx-tdd SKILL.md"
-[ "$FAIL" -eq 0 ] && ok "Step 2-V 절·발동 조건·diff/report 경로·sonnet 디스패치·재리뷰·유예 Minor 전달 확인"
+[ "$FAIL" -eq 0 ] && ok "Step 2-V 절·순서·발동 조건·diff/report 경로·sonnet 디스패치·RED 재호출·재리뷰·유예 Minor 전달·핵심 문장 확인"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."

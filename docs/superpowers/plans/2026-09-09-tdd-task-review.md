@@ -508,3 +508,7 @@ MSG
 - phase-implement의 `Task(subagent_type="oh-my-gx:reviewer")`는 Step 2-V 블록에만 있고 `model: "sonnet"`이 붙어 있다.
 - 골든 S40을 실제로 한 번 돌려 `reports/t{N}-diff.txt`·`reports/t{N}-review.md` 생성, `git diff --cached` 비어 있음, state.md `review: completed`를 눈으로 확인한다 (PR 체크박스).
 - 후속: D2 판정 규약(`2026-09-09-tdd-rulings.md`)이 이 계획의 findings 라우팅 위에 올라간다.
+
+## 최종 리뷰 반영 (실행 기록)
+
+계획 Task 1의 결과 처리 3번 첫 불릿("… → **fix loop 진입**")은 실행 중 최종 리뷰 C1로 폐기됐다 — 기존 fix loop는 `test-file-hash`를 고정해 테스트를 추가할 수 없으므로 동작 결함을 RED 없이 고치는 경로였다. 반영본은 red-writer 재호출(재현 테스트 추가, verify_red 재적용·기준선 갱신)을 fix loop 앞에 둔다. 함께 반영: diff 수집 실패 감지·`core.quotePath=false`·한 Bash 호출, 스냅샷 부재 시 (b)만 판정, `[동작불변]` 라운드 소모, 라운드 4~5 격상 명시, 린트 [34] 핵심 문장·순서 검사, [31] `tests/` 포함. 스펙 D1도 같은 내용으로 정정했다.
