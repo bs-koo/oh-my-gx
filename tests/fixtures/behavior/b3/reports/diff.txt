@@ -1,0 +1,30 @@
+diff --git a/src/limit.js b/src/limit.js
+--- a/src/limit.js
++++ b/src/limit.js
+@@ -6,6 +6,9 @@ function checkLimit(amount) {
+   if (!Number.isInteger(amount) || amount <= 0) {
+     return { ok: false, reason: 'invalid' };
+   }
++  if (amount > SINGLE_CHARGE_LIMIT) {
++    return { ok: false, reason: 'limit' };
++  }
+   return { ok: true };
+ }
+ 
+diff --git a/test/limit-max.test.js b/test/limit-max.test.js
+new file mode 100644
+--- /dev/null
++++ b/test/limit-max.test.js
+@@ -0,0 +1,12 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { checkLimit } = require('../src/limit');
++
++test('1회 한도를 넘는 금액은 limit 사유로 거부한다', () => {
++  assert.deepEqual(checkLimit(150000), { ok: false, reason: 'limit' });
++});
++
++test('한도보다 1원 많은 금액도 limit 사유로 거부한다', () => {
++  assert.deepEqual(checkLimit(100001), { ok: false, reason: 'limit' });
++});
