@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.30.0 (2026-09-09)
+
+gx-context가 받아낸 도메인 지식이 PRD에 닿게 한다. 그동안 DOMAIN_CONTEXT는 용어와 아키텍처만 실었고, 정량화 수칙으로 애써 받아낸 README의 문제·성공 기준·사용자/규모와 status.md의 미반영 항목은 product-owner가 보지 못했다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D3.
+
+- **변경 — DOMAIN_CONTEXT 4요소**: 용어 > README 핵심(배경·안 하면·사용자/규모·성공 기준) > status.md 미반영 항목 > 아키텍처. `contextLimits` 초과 시 역할별 슬라이스 안에서 뒤 요소부터 요약하고, 요약으로도 넘치면 생략한다. gx-tdd·gx-dev phase-setup 3.1 쌍둥이 동기
+- **변경 — PRD의 FR 인용**: 미반영 항목과 겹치는 요구사항은 새 FR을 만들지 않고 `FR-N (status.md 미반영)`으로 인용한다. 성공 기준 수치는 AC 검증값에 반영한다. phase-complete Step 3은 인용된 FR 행을 갱신한다
+- **수정 — architect 프롬프트**: SKILL.md 표에는 있었지만 phase-design 프롬프트 목록에 빠져 있던 도메인 컨텍스트 항목(용어·아키텍처만)을 명시했다 (tdd·dev). 기존 구조와의 차이는 "의존성 및 영향도" 절 안의 소제목으로 쓰게 했다
+- **검증 — 린트 [36] 주입 계약 (8파일)**, 골든 S43
+
 ## v1.29.0 (2026-09-09)
 
 구현 단계 안의 확인 질문 3곳을 기본값 판정으로 바꾼다. superpowers의 "Rulings, not stalls"를 가져오되 범위는 구현 내부 게이트로 한정한다 — PRD·설계·태스크 분해 승인, SPEC FAIL, Critical, 동작 결함 RGR 여부, 위험 수용은 협업 접점이라 그대로 묻는다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D2.
