@@ -19,7 +19,7 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 ## 핵심 모드 분기 (core)
 
 핵심 모드이면 **오케스트레이터가 ac.md를 직접 작성한다** (product-owner 디스패치 없음):
-- ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면)를 기반으로 `${PROJECT_ROOT}/${DEV_DIR}/ac.md`를 작성한다.
+- ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면 — 미반영 항목과 겹치는 AC는 그 FR ID를 인용한다)를 기반으로 `${PROJECT_ROOT}/${DEV_DIR}/ac.md`를 작성한다.
 - 포함 섹션: `## 배경`(2~3줄) + `## 요구사항 (AC)` — **AC는 Given-When-Then 형식 강제** (core여도 RGR 사이클이 강제되므로. 위 Iron Law의 형식·예시를 그대로 따른다). AC는 3~5개 이내.
 - 긴급 버그 수정 요청이면 AC를 재현 조건 관점으로 구성한다 — AC-1은 재현 조건(Given 현재 상태 / When 트리거 / Then 잘못된 동작이 아닌 **기대 동작**), 필요 시 회귀 방지 AC 추가. 재현 조건 정보가 부족하면 추측하지 말고 사용자에게 확인한다.
 - 저장 전에 **G-W-T 검증 게이트**(아래 섹션)를 정상 플로우와 동일하게 수행한다 (core에서도 RGR이 강제되므로 그 전제인 게이트도 유지).
@@ -37,6 +37,7 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 - 코드 맵 (phase-setup에서 생성한 초기 맵)
 - 프로젝트 타입, 디렉토리 구조
 - 프로젝트 루트 경로
+- 도메인 컨텍스트 (DOMAIN_CONTEXT가 있으면 4요소 전부 — 용어·README 핵심·미반영 항목·아키텍처). **미반영 항목과 겹치는 요구사항은 새 FR을 만들지 않고 그 FR ID를 인용**한다 (`FR-7 (status.md 미반영)` 형식으로 요구사항 제목 끝에 표기). README 성공 기준의 수치는 해당 AC의 Then에 검증값으로 반영한다
 - "PRD 작성"으로 동작할 것
 - 이전 Q&A 히스토리 (사용자 수정 요청이 있었으면: 이전 PRD 초안 + 사용자 답변)
 - **[Iron Law] 수용 기준(AC) 형식 강제**:
