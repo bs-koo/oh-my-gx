@@ -257,6 +257,7 @@ findings = {
 - Quality: Critical N건, Important N건, Minor N건
 - Security: CRITICAL N건, HIGH N건, MEDIUM N건
 - Trust Ledger: ${DEV_DIR}/trust-ledger.md
+- Rulings: {N}건 (decisions.md) · Deferred: {M}건 (reports/review-deferred.md)
 ```
 
 집계를 확보하지 못한 채 위험 수용으로 진행한 경우에는 건수 대신 `Security: 집계 미확보 (위험 수용 — trust-ledger 기록)`을 표시한다.
@@ -293,12 +294,11 @@ if behavior_defects:
 #  전제: Step0 mechanical gate(build+test 통과)로 이미 GREEN 상태가 보장됨 → 정리 모드의 GREEN 선행 조건 충족
 if refactor_only:
     해당 항목 사용자에게 표시
-    AskUserQuestion: "동작 불변 정리를 수행할까요?"
-      - "예" → 기본 경로: 오케스트레이터가 직접 정리한다 — phase-implement Step 2-I "세션 IMPLEMENT 절차"의 절대 규칙과 수행 불가능한 정리 목록을 그대로 지키고, 입력은 refactor_only 항목들의 {파일:라인 + 권고}("정리 대상")이며, 정리 한 단위마다 대상 파일 관련 테스트로 조립한 focused 검증을 실행한다. 결과를 `${DEV_DIR}/reports/review-cleanup.md`에 append한다 (리뷰 반복 시 누적).
+    Ruling(기본값: 수행) → decisions.md에 `Ruling: review 동작 불변 정리 {N}건` 블록 append (phase-implement "판정 기록 (Rulings)" 규약. 항목 목록은 사용자에게 통지만 한다 — 질문이 아니다)
+    기본 경로: 오케스트레이터가 직접 정리한다 — phase-implement Step 2-I "세션 IMPLEMENT 절차"의 절대 규칙과 수행 불가능한 정리 목록을 그대로 지키고, 입력은 refactor_only 항목들의 {파일:라인 + 권고}("정리 대상")이며, 정리 한 단위마다 대상 파일 관련 테스트로 조립한 focused 검증을 실행한다. 결과를 `${DEV_DIR}/reports/review-cleanup.md`에 append한다 (리뷰 반복 시 누적).
                state.md flags에 `--isolated`가 있으면 Task(subagent_type="oh-my-gx:implementer") 정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + report 경로 `${DEV_DIR}/reports/review-cleanup.md`. GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 전체 테스트다
                → 어느 경로든 정리 후 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인
-      - "건너뛰기" → Trust Ledger/메모에 기록
-    did_fix = true (수행 시)
+    did_fix = true
 
 # 4c: 반복 판단
 if did_fix:
@@ -306,13 +306,16 @@ if did_fix:
 else:
     # 동작 결함도 동작 불변 결함도 없는 경우
     if Minor(quality) 또는 MEDIUM(security) 항목 있음:
-        항목 목록 표시 + "수정할까요?" 확인
-        if 수정 선택:
-            # 4a/4b와 동일 분류 적용: Minor(quality)는 전부 동작 불변 → 정리 모드(기본은 세션 직접, `--isolated`면 implementer),
-            #   security MEDIUM은 위 분류 기준(동작 변경 동반이면 RGR, 아니면 정리 모드(기본은 세션 직접, `--isolated`면 implementer))
-            → 단발성 확인 리뷰 (반복 카운트 미포함)
-        else:
-            → phase-complete
+        항목 목록 표시 (판정 결과 통지 — 질문이 아니다)
+        # 기본값 (phase-implement "판정 기록 (Rulings)" 규약):
+        #   quality Minor → 유예. 수정하지 않고 Deferred 목록에 올린다
+        #   security MEDIUM → 동작 불변이 명백하면 정리 모드(기본은 세션 직접, `--isolated`면 implementer)로 수정,
+        #                     동작 변경을 동반하거나 모호하면 유예 (Deferred 목록 — 동작 변경은 RED 없이 손대지 않는다)
+        Ruling → decisions.md에 `Ruling: review Minor {N}건 유예 · MEDIUM {M}건 {정리|유예}` 블록 append
+        Deferred 목록(항목별 [Minor|MEDIUM] 파일:라인 — 요약)을 `${DEV_DIR}/reports/review-deferred.md`에 Write (리뷰 반복 시 덮어쓴다 — 최신 리뷰가 정본)
+        if 정리한 MEDIUM 있음:
+            → 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인 → 단발성 확인 리뷰 (반복 카운트 미포함)
+        → phase-complete (Deferred는 Step 2-1 pr-rulings.md로 전달)
     else:
         → phase-complete (클린 통과)
 ```
