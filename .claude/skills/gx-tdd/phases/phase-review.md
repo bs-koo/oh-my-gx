@@ -257,7 +257,6 @@ findings = {
 - Quality: Critical N건, Important N건, Minor N건
 - Security: CRITICAL N건, HIGH N건, MEDIUM N건
 - Trust Ledger: ${DEV_DIR}/trust-ledger.md
-- Rulings: {N}건 (decisions.md) · Deferred: {M}건 (reports/review-deferred.md)
 ```
 
 집계를 확보하지 못한 채 위험 수용으로 진행한 경우에는 건수 대신 `Security: 집계 미확보 (위험 수용 — trust-ledger 기록)`을 표시한다.
@@ -275,7 +274,7 @@ did_fix = false
 # security 결함은 마커가 없으므로 동작 변경 여부로 분류한다:
 #   동작 변경 동반(인증 우회·입력검증 누락 등) → behavior_defects
 #   동작 불변(하드코딩 시크릿 제거·로그 마스킹·설정 변경) → refactor_only
-#   모호하면 보수적으로 behavior_defects(RED 선행). 이 기준은 4c의 security MEDIUM에도 동일 적용.
+#   모호하면 보수적으로 behavior_defects(RED 선행). 단 4c까지 남은 MEDIUM은 판정 규약을 따른다 — 동작 불변이 명백하면 정리, 그 외(동작 변경·모호)는 유예.
 behavior_defects = quality.Critical + (security 중 동작 변경 동반; CRITICAL/HIGH 기본)
                    + (quality.Important 중 [동작결함] 표기 또는 무표기 항목)
 refactor_only    = (quality.Important 중 [동작불변] 표기 항목)        # DRY/네이밍/매직넘버/추상화
@@ -309,12 +308,15 @@ else:
         항목 목록 표시 (판정 결과 통지 — 질문이 아니다)
         # 기본값 (phase-implement "판정 기록 (Rulings)" 규약):
         #   quality Minor → 유예. 수정하지 않고 Deferred 목록에 올린다
-        #   security MEDIUM → 동작 불변이 명백하면 정리 모드(기본은 세션 직접, `--isolated`면 implementer)로 수정,
-        #                     동작 변경을 동반하거나 모호하면 유예 (Deferred 목록 — 동작 변경은 RED 없이 손대지 않는다)
-        Ruling → decisions.md에 `Ruling: review Minor {N}건 유예 · MEDIUM {M}건 {정리|유예}` 블록 append
-        Deferred 목록(항목별 [Minor|MEDIUM] 파일:라인 — 요약)을 `${DEV_DIR}/reports/review-deferred.md`에 Write (리뷰 반복 시 덮어쓴다 — 최신 리뷰가 정본)
-        if 정리한 MEDIUM 있음:
+        #   security MEDIUM → 동작 불변이 명백하면 정리, 동작 변경을 동반하거나 모호하면 유예 (동작 변경은 RED 없이 손대지 않는다)
+        cleanup_medium = (security MEDIUM 중 동작 불변이 명백한 항목)
+        deferred       = Minor(quality) + (그 외 security MEDIUM)
+        if cleanup_medium:
+            정리 모드로 수정한다 (기본은 세션 직접, `--isolated`면 implementer — 4b와 같은 계약, 같은 report `${DEV_DIR}/reports/review-cleanup.md`)
             → 오케스트레이터가 전체 테스트 1회 직접 실행으로 GREEN 재확인 → 단발성 확인 리뷰 (반복 카운트 미포함)
+        Ruling → decisions.md에 `Ruling: review Minor {N}건 유예 · MEDIUM {M}건 {정리|유예}` 블록 append
+        Deferred 목록(deferred 항목별 [Minor|MEDIUM] 파일:라인 — 요약. 정리한 MEDIUM은 제외)을 `${DEV_DIR}/reports/review-deferred.md`에 Write (리뷰 반복 시 덮어쓴다 — 최신 리뷰가 정본)
+        통지: "Rulings: {N}건 (decisions.md) · Deferred: {M}건 (reports/review-deferred.md)"
         → phase-complete (Deferred는 Step 2-1 pr-rulings.md로 전달)
     else:
         → phase-complete (클린 통과)

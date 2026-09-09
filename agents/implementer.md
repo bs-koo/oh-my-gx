@@ -94,6 +94,8 @@ tools:
 
 fix 라운드에서는 같은 파일에 `## fix 라운드 {r}` 섹션을 **append**한다: 수정 내용 + 재실행한 focused 명령과 출력.
 
+fix 라운드에서 report를 다시 쓸 때, 오케스트레이터가 append한 `## 과잉 구현 정리` 절이 있으면 보존한다.
+
 ## 상태 반환 (최종 메시지 — 15줄 이내)
 
 - **Status**: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED

@@ -873,7 +873,7 @@ IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
 REV=.claude/skills/gx-tdd/phases/phase-review.md
 COMP=.claude/skills/gx-tdd/phases/phase-complete.md
 grep -qF '## 판정 기록 (Rulings)' "$IMPL" || fail "판정 기록 규약 절 누락: phase-implement.md"
-for s in '· Ruling: ' '**판정.**' '**근거.**' '**틀리면.**' '## 과잉 구현 정리' '설계 예약'; do
+for s in '· Ruling: ' '**판정.**' '**근거.**' '**틀리면.**' '## 과잉 구현 정리' '설계 예약' '**기본값 표**' '| phase-review 4c security MEDIUM |' '판정: {N}건' 'pr-rulings.md'; do
   grep -qF "$s" "$IMPL" || fail "판정 규약 문구 누락($s): phase-implement.md"
 done
 grep -qF '정리할까요?' "$IMPL" && fail "폐지된 과잉 구현 질문 잔존: phase-implement.md verify_implement 5"
@@ -885,7 +885,7 @@ grep -qF 'reports/review-deferred.md' "$REV" || fail "Deferred 목록 파일 누
 grep -qF '## Rulings' "$COMP" || fail "pr-rulings Rulings 절 누락: phase-complete.md"
 grep -qF -- '--extra-section ${DEV_DIR}/pr-rulings.md' "$COMP" || fail "extra-section 전달 누락: phase-complete.md Step 2-2"
 grep -qF '## Rulings' .claude/skills/gx-pull-request/SKILL.md || fail "PR 본문 Rulings 무요약 규칙 누락: gx-pull-request SKILL.md"
-[ "$FAIL" -eq 0 ] && ok "판정 규약 절·폐지 질문 3곳 부재·4b/4c 기록 지시·Deferred·PR 노출 확인"
+[ "$FAIL" -eq 0 ] && ok "판정 규약 절·기본값 표·폐지 질문 3곳 부재·4b/4c 기록 지시·Deferred·PR 노출 확인"
 
 if [ "$FAIL" -ne 0 ]; then
   echo "정합성 린트 실패 — 위 FAIL 항목을 수정하세요."

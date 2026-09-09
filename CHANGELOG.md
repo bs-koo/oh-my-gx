@@ -9,6 +9,7 @@
 - **변경 — phase-review 4b·4c**: 동작 불변 정리는 수행, quality Minor는 유예, security MEDIUM은 동작 불변이면 정리·아니면 유예. 유예 목록은 `reports/review-deferred.md` → PR 본문 `## Deferred`
 - **변경 — gx-pull-request**: `--extra-section` 파일의 `## Rulings`·`## Deferred`는 요약 없이 항목 그대로 싣는다
 - **검증 — 린트 [35] 판정 계약**, 골든 S42
+- **리뷰 반영(최종 1라운드)**: 4c를 "분류 → 동작 불변 MEDIUM 정리 → Ruling → 유예만 Deferred Write → 통지" 순으로 재배열(정리한 항목이 Deferred로 새던 순서 결함), 4.4 도입부의 security 분류 포인터를 판정 규약과 정합("모호하면 유예"), Rulings/Deferred 요약 줄을 4.3에서 4c 말미로 이동(4.4 실행 전 0건 오표시), verify_implement 5에 `--isolated` 경로 구분, 재현 RED 예외를 verify_red 2·3번에 걸고 재리뷰는 수정 diff 없이 '재현 불가' 근거만, report 6번째 절(`## 과잉 구현 정리`) 보존 규칙, 린트 [35]에 기본값 표·통지 줄·pr-rulings 검사 추가
 
 ## v1.28.0 (2026-09-09)
 
