@@ -61,6 +61,18 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S42 ★ | 세션 IMPLEMENT가 테스트에 없는 public 헬퍼를 하나 더 만든 태스크 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | verify_implement 5가 사용자에게 **묻지 않고** 헬퍼를 제거하고 focused를 재실행한다. `.dev/{slug}/decisions.md`에 `· Ruling: T{N} 과잉 구현 정리` 블록(판정·근거·틀리면 3줄)이 append되고 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절이 남는다. 사이클 완료 보고의 `판정:` 줄과 PR 본문 `## Rulings`에 제목이 나열된다. AskUserQuestion이 뜨면 회귀 | phase-implement 판정 기록 규약 + 린트 [35/36] |
 | S43 ★ | `context/충전/`이 있고 README `## 성공 기준`에 "1회 한도 100,000원", status.md에 `FR-3 \| 1회 충전 한도 검증 \| - \| ⬜ \|` 행이 있는 저장소 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | product-owner 프롬프트에 README 핵심 네 절과 status.md ⬜ 행이 실린다. PRD 요구사항 제목에 `FR-3 (status.md 미반영)`이 붙고 새 FR 번호가 생기지 않는다. AC의 Then에 `100,000`이 검증값으로 들어간다. phase-complete Step 3이 FR-3 행을 ✅로 바꾸고 AC 열을 채운다 | phase-setup 3.1 4요소 + phase-requirements FR 인용 + 린트 [36/36] |
 
+## 자동 행동 테스트 (scripts/behavior-tests.sh)
+
+위 시나리오는 사람이 세션에서 돌린다. 아래 셋은 **프롬프트로만 금지되는 계약**이라 스크립트가 실제 모델로 실행해 기계 판정한다 — phase 파일의 디스패치 프롬프트를 그대로 추출하므로 프롬프트가 바뀌면 그 프롬프트로 검증된다.
+
+| ID | 계약 | 판정 근거 |
+|----|------|----------|
+| B1 | red-writer가 프로덕션 코드를 보지 않고 실패 테스트를 쓴다 | stream-json의 Read/Grep/Glob input에 `src/` 없음, `src/` 무변경, 새 `test/*.test.js`가 `node --test`에서 실패, report 참조 목록에 `src/` 없음 |
+| B2 | implementer가 테스트를 고치지 않고 통과시킨다 | `test/*.js` 해시 불변·신규 없음, `node --test` 0 fail, report에 `## GREEN 증거`, `Status: DONE` |
+| B3 | reviewer가 spec verdict를 먼저 낸다 | `spec_verdict:`가 `quality_verdict:`보다 먼저, `## Part 1`이 `## Part 2`보다 먼저, Write/Edit/Bash 시도 0회 |
+
+실행: `bash scripts/behavior-tests.sh` (약 5~15분, 토큰 사용). 릴리스 전에는 `GX_BEHAVIOR_REPS=3`으로 돌린다 — 모델 행동은 확률적이라 1회 통과는 증거가 약하다. 실패 분석은 `GX_BEHAVIOR_KEEP=1`로 샌드박스를 남겨 `.run.jsonl`을 본다. 스크립트 자체의 회귀는 CI의 `scripts/test-behavior-tests.sh`(mock)가 잡는다.
+
 ## 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/43 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/43 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다. 행동 테스트는 `행동 테스트: B1~B3 통과 (모델 sonnet/sonnet/opus, 반복 3)` 형식으로 함께 기록한다.
