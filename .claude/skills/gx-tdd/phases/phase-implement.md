@@ -513,7 +513,7 @@ focused 누적: {N pass}, 0 fail (전체 회귀는 경계에서 — 전체 모�
 판정: {N}건 (decisions.md — 제목 나열: T2 과잉 구현 정리, …)
 
 특이사항: (있으면)
-- T2 IMPLEMENT 단계에서 과잉 구현 감지 → 사용자 승인으로 다음 RED로 미룸
+- T2 IMPLEMENT 단계에서 과잉 구현 감지 → 판정으로 제거 (decisions.md: T2 과잉 구현 정리)
 ```
 
 ---
