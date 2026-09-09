@@ -549,9 +549,9 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 
 | 에이전트 | 전달 입력 |
 |---|---|
-| product-owner (PRD 작성) | ARGS[0]+코드 맵+프로젝트 타입/구조+DOMAIN_CONTEXT(있으면)+**"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** |
+| product-owner (PRD 작성) | ARGS[0]+코드 맵+프로젝트 타입/구조+DOMAIN_CONTEXT(있으면 — 용어·README 핵심·미반영·아키텍처 4요소. 미반영과 겹치면 FR ID 인용)+**"AC는 반드시 Given-When-Then 형식. 자동 테스트로 변환 가능해야 함"** |
 | product-owner (인수 검증) | PRD요구사항+수용기준+`DIFF_FILE`+코드 맵 |
-| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면)+REFERENCES(있으면)+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
+| architect | PRD 전체+코드 맵+프로젝트 타입/구조/컨벤션+DOMAIN_CONTEXT(있으면 — 용어·아키텍처만)+REFERENCES(있으면)+**"각 컴포넌트의 테스트 가능성(의존성 주입, 인터페이스 격리)을 고려"** |
 | design-critic | 설계초안+PRD+코드맵 |
 | test-architect | 설계서+PRD수용기준+코드 맵+**"각 컴포넌트별 단위/통합 테스트 전략 명시 + testability score 1-10 산정"** |
 | red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
