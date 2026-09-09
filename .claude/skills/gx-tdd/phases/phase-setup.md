@@ -115,7 +115,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
    - **git**: `git remote get-url origin`으로 레포명을 추출한다 (예: `xx/asset-factory-api`).
    - **svn**: `svn info --show-item url`로 작업 복사본 URL을 추출하고, `trunk`/`branches`/`tags`를 제외한 마지막 경로 세그먼트를 레포명으로 사용한다 (단일 저장소 다중 프로젝트 구조 대응). 추출이 모호하면 로컬 디렉토리명(`basename $(pwd)`)을 폴백으로 사용한다.
    - `context/*/PROJECTS.md`를 Grep하여 해당 레포를 참조하는 도메인을 찾는다.
-   - 매칭되면 해당 도메인의 네 파일을 Read하여 `DOMAIN_CONTEXT`를 **4요소**로 구성한다 (우선순위 순 — `contextLimits` 초과 시 뒤에서부터 요약·생략):
+   - 매칭되면 해당 도메인의 네 파일을 Read하여 `DOMAIN_CONTEXT`를 **4요소**로 구성한다 (우선순위 순 — `contextLimits` 초과 시 역할별 슬라이스 안에서 뒤 요소부터 요약하고, 요약으로도 넘치면 생략한다):
      1. **용어**: `glossary.md` 전체
      2. **README 핵심**: `README.md`의 `## 배경`·`## 안 하면 어떻게 되는가`·`## 사용자와 규모`·`## 성공 기준` 네 절 (없는 절은 건너뛴다)
      3. **미반영 항목**: `status.md`에서 상태 열이 `⬜`인 행 전체 (FR ID·설명·AC 열 포함. 0건이면 "미반영 없음")
