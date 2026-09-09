@@ -129,7 +129,31 @@ node_counts() {
                  "$(printf '%s\n' "$out" | grep -E '^# fail' | grep -oE '[0-9]+' | head -1)"
 }
 
-scenario_B1() { bad "B1 미구현"; }
+scenario_B1() {
+  echo "[B1] red-writer 격리 — 프로덕션 코드를 보지 않고 실패 테스트를 쓴다"
+  local sb sys pr log; sb=$(make_sandbox b1); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
+  agent_body red-writer > "$sys"
+  pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-implement.md" oh-my-gx:red-writer b1) \
+    || { bad "B1 프롬프트 추출 실패 (phase-implement red-writer 블록)"; finish_sandbox "$sb"; return; }
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"
+  # (1) 프로덕션 파일 무변경 — 추적 파일 diff 없음 + src/ 아래 새 파일 없음
+  if ( cd "$sb" && git diff --quiet -- src && [ -z "$(git ls-files --others --exclude-standard -- src)" ] ); then
+    ok "B1 프로덕션 파일 무변경"; else bad "B1 프로덕션 파일이 바뀌었다 (src/)"; fi
+  # (2) 새 테스트 파일
+  local newtests; newtests=$(cd "$sb" && git ls-files --others --exclude-standard -- test | grep -c '\.test\.js$')
+  [ "$newtests" -ge 1 ] && ok "B1 새 테스트 파일 ${newtests}개" || bad "B1 새 테스트 파일 없음"
+  # (3) 실제로 실패하는가
+  local counts fails; counts=$(node_counts "$sb"); fails=${counts##* }
+  [ "${fails:-0}" -ge 1 ] && ok "B1 실패 테스트 ${fails}건" || bad "B1 테스트가 실패하지 않는다 (fail=${fails:-0})"
+  # (4) src/ 열람 0회 — Read/Grep/Glob의 input에 src/ 경로가 없어야 한다
+  local peek; peek=$(tool_inputs "$log" '^(Read|Grep|Glob)$' | grep -c 'src/')
+  [ "$peek" -eq 0 ] && ok "B1 src/ 열람 0회" || bad "B1 src/ 열람 ${peek}회 (격리 위반)"
+  # (5) report의 참조 파일 자기신고
+  if [ -f "$sb/reports/t1-red.md" ]; then
+    if sed -n '/참조한 파일/,$p' "$sb/reports/t1-red.md" | grep -q 'src/'; then bad "B1 report 참조 목록에 src/ (격리 위반)"; else ok "B1 report 참조 목록 클린"; fi
+  else bad "B1 reports/t1-red.md 없음"; fi
+  finish_sandbox "$sb"
+}
 scenario_B2() { bad "B2 미구현"; }
 scenario_B3() { bad "B3 미구현"; }
 
