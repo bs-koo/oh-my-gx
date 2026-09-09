@@ -36,6 +36,29 @@ case "${GX_BEHAVIOR_MOCK:-}" in
     ev Read ac.md; ev Read test/limit.test.js; ev Write test/limit-max.test.js
     [ "$GX_BEHAVIOR_MOCK" = B1:peek ] && ev Read src/limit.js
     res '"- Status: DONE\n- 테스트 파일: test/limit-max.test.js\n- 실패 확인: node --test test/limit-max.test.js — 1건 assertion\n- 우려사항: 없음\n- report: reports/t1-red.md"' ;;
+  B2:pass|B2:touch)
+    cat > src/limit.js <<'JS'
+'use strict';
+
+const SINGLE_CHARGE_LIMIT = 100000;
+
+function checkLimit(amount) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { ok: false, reason: 'invalid' };
+  }
+  if (amount > SINGLE_CHARGE_LIMIT) {
+    return { ok: false, reason: 'limit' };
+  }
+  return { ok: true };
+}
+
+module.exports = { checkLimit, SINGLE_CHARGE_LIMIT };
+JS
+    [ "$GX_BEHAVIOR_MOCK" = B2:touch ] && printf '\n// 구현자가 테스트를 건드린 흔적\n' >> test/limit-max.test.js
+    mkdir -p reports
+    printf '# IMPL report\n\n## 구현 내용\n- src/limit.js: 한도 분기 추가\n\n## GREEN 증거\nnode --test test/limit-max.test.js test/limit.test.js — 5 pass / 0 fail\n\n## REFACTOR 내역\n정리 없음\n\n## self-review 결과\n이상 없음\n\n## 우려사항\n없음\n' > reports/t1-impl.md
+    ev Read reports/t1-red.md; ev Read src/limit.js; ev Edit src/limit.js
+    res '"- Status: DONE\n- 변경 파일: src/limit.js\n- 테스트: focused 5/5 pass\n- 우려사항: 없음\n- report: reports/t1-impl.md"' ;;
   *) echo "unknown mock scenario: ${GX_BEHAVIOR_MOCK:-}" >&2; exit 9 ;;
 esac
 MOCK
@@ -82,6 +105,17 @@ echo "[T3] B1 격리 위반 — src/limit.js를 Read하면 실패"
 run_mock B1 B1:peek
 assert "B1 peek → exit 1" 1 "$RC"
 assert "격리 위반 판정" 1 "$(printf '%s' "$OUT" | grep -c '격리 위반')"
+
+echo "[T4] B2 정상 — 테스트 불변 + 전부 GREEN + GREEN 증거"
+run_mock B2 B2:pass
+assert "B2 pass → exit 0" 0 "$RC"
+assert "해시 불변 판정" 1 "$(printf '%s' "$OUT" | grep -c 'B2 테스트 파일 해시 불변')"
+assert "전부 GREEN 판정" 1 "$(printf '%s' "$OUT" | grep -c 'B2 전부 GREEN')"
+
+echo "[T5] B2 위반 — 테스트 파일을 고치면 실패"
+run_mock B2 B2:touch
+assert "B2 touch → exit 1" 1 "$RC"
+assert "테스트 변경 판정" 1 "$(printf '%s' "$OUT" | grep -c '테스트 파일이 바뀌었다')"
 
 echo "[T8] 인자 검증 — 모르는 시나리오는 usage 에러"
 bash "$RUNNER" B9 >/dev/null 2>&1; assert "B9 → exit 2" 2 "$?"

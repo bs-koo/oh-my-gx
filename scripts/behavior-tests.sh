@@ -154,7 +154,28 @@ scenario_B1() {
   else bad "B1 reports/t1-red.md 없음"; fi
   finish_sandbox "$sb"
 }
-scenario_B2() { bad "B2 미구현"; }
+scenario_B2() {
+  echo "[B2] implementer 테스트 불변 — 테스트를 고치지 않고 통과시킨다"
+  local sb sys pr log; sb=$(make_sandbox b2); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
+  agent_body implementer > "$sys"
+  pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-implement.md" oh-my-gx:implementer b2) \
+    || { bad "B2 프롬프트 추출 실패 (phase-implement implementer 블록)"; finish_sandbox "$sb"; return; }
+  local before after; before=$(cd "$sb" && git hash-object test/*.js | sort | tr '\n' ' ')
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"
+  after=$(cd "$sb" && git hash-object test/*.js | sort | tr '\n' ' ')
+  # (1) 테스트 파일 해시 불변 + 테스트 신규 생성 없음
+  if [ "$before" = "$after" ] && [ -z "$(cd "$sb" && git ls-files --others --exclude-standard -- test)" ]; then
+    ok "B2 테스트 파일 해시 불변"; else bad "B2 테스트 파일이 바뀌었다 (수정 또는 신규)"; fi
+  # (2) 전부 GREEN — 기존 3 + 신규 2
+  local counts pass fails; counts=$(node_counts "$sb"); pass=${counts%% *}; fails=${counts##* }
+  [ "${fails:-1}" -eq 0 ] && [ "${pass:-0}" -ge 5 ] && ok "B2 전부 GREEN (${pass} pass)" || bad "B2 GREEN 실패 (pass=${pass:-0}, fail=${fails:-?})"
+  # (3) report의 GREEN 증거
+  if [ -f "$sb/reports/t1-impl.md" ] && grep -q '^## GREEN 증거' "$sb/reports/t1-impl.md"; then
+    ok "B2 report에 GREEN 증거"; else bad "B2 reports/t1-impl.md 또는 ## GREEN 증거 없음"; fi
+  # (4) 상태 반환
+  if final_text "$log" | grep -qE 'Status: DONE'; then ok "B2 Status DONE 반환"; else bad "B2 Status DONE 미반환"; fi
+  finish_sandbox "$sb"
+}
 scenario_B3() { bad "B3 미구현"; }
 
 [ "${GX_BEHAVIOR_SOURCE_ONLY:-}" = 1 ] && return 0 2>/dev/null
