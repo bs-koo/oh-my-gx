@@ -4,7 +4,7 @@
 
 프롬프트로만 금지되는 계약을 실제 모델 실행으로 검증하는 하네스를 둔다. 린트는 문구를, 골든 시나리오는 사람이 행동을 보지만, "문구가 있다고 모델이 따르는 것은 아니다"(v1.24.0)에 대한 자동 검증은 없었다. superpowers writing-skills의 방식(서브에이전트로 위반을 관찰)을 스크립트로 옮겼다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D4.
 
-- **추가 — `scripts/behavior-tests.sh`**: node 내장 러너 픽스처(의존성 0)를 샌드박스에 복사하고, phase 파일의 디스패치 프롬프트를 **추출**해 에이전트 정의 본문을 system prompt로 붙여 `claude -p --output-format stream-json`으로 실행한다. B1 red-writer 격리(src/ 열람 0회·무변경·실패 테스트), B2 implementer 테스트 불변(해시·0 fail·GREEN 증거), B3 reviewer 판정 순서(spec→quality·읽기 전용). 판정은 해시·러너 출력·tool_use 기록으로만 한다
+- **추가 — `scripts/behavior-tests.sh`**: node 내장 러너 픽스처(의존성 0)를 샌드박스에 복사하고, phase 파일의 디스패치 프롬프트를 **추출**해 에이전트 정의 본문을 system prompt로 붙여 `claude -p --output-format stream-json`으로 실행한다 (`--safe-mode`로 전역 설정을 끄고, `result` 이벤트 부재는 실행 실패로 판정). B1 red-writer 격리(src/ 열람 0회·무변경·실패 테스트), B2 implementer 테스트 불변(해시·0 fail·GREEN 증거), B3 reviewer 판정 순서(spec→quality·읽기 전용). 판정은 해시·러너 출력·tool_use 기록으로만 한다
 - **추가 — `scripts/test-behavior-tests.sh`**: mock claude로 추출·샌드박스·판정 로직을 CI에서 검증한다 (gx-ralph 러너 테스트와 같은 방식). 실제 모델 실행은 릴리스 전 수동이며 결과를 PR 본문에 `행동 테스트: B1~B3 통과 (모델, 반복)` 형식으로 남긴다
 - **추가 — 픽스처** `tests/fixtures/behavior/` (node-minimal + b1/b2/b3 오버레이)
 

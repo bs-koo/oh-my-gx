@@ -107,6 +107,12 @@ assert "system prompt 파일 전달" 1 "$(grep -c -- '--append-system-prompt-fil
 assert "프롬프트가 stdin으로 전달됨" 1 "$(grep -cE 'prompt-bytes=[1-9][0-9]{2,}' "$TMP/args.txt")"
 assert "Bash(node \*)만 허용" 1 "$(grep -c 'Bash(node \*)' "$TMP/args.txt")"
 
+echo "[T2b] 실행 실패 — mock이 stream-json 없이 죽으면 계약 준수로 집계하지 않는다"
+run_mock B1 B1:crash
+assert "B1 crash → exit 1" 1 "$RC"
+assert "실행 실패 판정" 1 "$(printf '%s' "$OUT" | grep -c 'claude 실행 실패')"
+assert "공허한 열람 0회 판정 없음" 0 "$(printf '%s' "$OUT" | grep -c 'B1 src/ 열람 0회')"
+
 echo "[T3] B1 격리 위반 — src/limit.js를 Read하면 실패"
 run_mock B1 B1:peek
 assert "B1 peek → exit 1" 1 "$RC"

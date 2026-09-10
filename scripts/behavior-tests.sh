@@ -13,7 +13,7 @@
 #   GX_BEHAVIOR_SOURCE_ONLY  1이면 함수 정의만 하고 종료 (테스트에서 source)
 # 설계: docs/specs/2026-09-09-superpowers-gap-design.md D4. 판정은 LLM이 아니라 해시·러너 출력·tool_use 기록으로 한다.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT=$(pwd)
 FIX="$ROOT/tests/fixtures/behavior"
 CLAUDE_CMD="${GX_BEHAVIOR_CLAUDE_CMD:-claude}"
@@ -72,17 +72,22 @@ prepare_prompt() {
   [ -s "$raw" ] || return 1
   sed "s|__ROOT__|$WROOT|g" "$FIX/$4/subs.json" > "$subs"
   fill_prompt "$raw" "$subs" > "$out"
+  [ -s "$out" ] || return 1
   printf '%s' "$out"
 }
 
 # run_claude <샌드박스> <system 파일> <프롬프트 파일> <모델> <로그 jsonl> <허용 도구...> — 샌드박스 안에서 헤드리스 실행
+# --safe-mode: 사용자 전역 CLAUDE.md·훅·플러그인·MCP를 끈다 (프롬프트만 검증하기 위해). --permission-prompts none: 허용 목록 밖 도구는 결정적으로 거부
+# 네이티브 claude는 MSYS 경로(/tmp/…)를 현재 드라이브 루트로 풀므로 파일 인자는 wpath로 혼합형 경로를 넘긴다 (리다이렉트는 bash가 열어 그대로 둔다)
 run_claude() {
   local sb="$1" sys="$2" pr="$3" model="$4" log="$5"; shift 5
-  ( cd "$sb" && MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p \
-      --append-system-prompt-file "$sys" --model "$model" \
+  ( cd "$sb" && MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p --safe-mode --permission-prompts none \
+      --append-system-prompt-file "$(wpath "$sys")" --model "$model" \
       --output-format stream-json --verbose --allowedTools "$@" \
       < "$pr" > "$log" 2> "$log.err" )
 }
+# ran_ok <jsonl> — 세션이 실제로 돌았는가 (result 이벤트 존재). 부작용 부재를 근거로 하는 검사가 실행 실패를 통과로 읽지 않도록 모든 시나리오가 먼저 본다
+ran_ok() { grep -q '"type":"result"' "$1" 2>/dev/null; }
 
 # tool_inputs <jsonl> <도구명 정규식> — 일치하는 tool_use의 input을 한 줄 JSON씩 출력
 tool_inputs() {
@@ -134,8 +139,11 @@ scenario_B1() {
   local sb sys pr log; sb=$(make_sandbox b1); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
   agent_body red-writer > "$sys"
   pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-implement.md" oh-my-gx:red-writer b1) \
-    || { bad "B1 프롬프트 추출 실패 (phase-implement red-writer 블록)"; finish_sandbox "$sb"; return; }
-  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"
+    || { bad "B1 프롬프트 추출·치환 실패 (phase-implement red-writer 블록)"; finish_sandbox "$sb"; return; }
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"; local rc=$?
+  if ! ran_ok "$log"; then
+    bad "B1 claude 실행 실패 (rc=$rc, stderr: $(head -c 200 "$log.err" 2>/dev/null | tr '\n' ' '))"; finish_sandbox "$sb"; return
+  fi
   # (1) 프로덕션 파일 무변경 — 추적 파일 diff 없음 + src/ 아래 새 파일 없음
   if ( cd "$sb" && git diff --quiet -- src && [ -z "$(git ls-files --others --exclude-standard -- src)" ] ); then
     ok "B1 프로덕션 파일 무변경"; else bad "B1 프로덕션 파일이 바뀌었다 (src/)"; fi
@@ -145,12 +153,13 @@ scenario_B1() {
   # (3) 실제로 실패하는가
   local counts fails; counts=$(node_counts "$sb"); fails=${counts##* }
   [ "${fails:-0}" -ge 1 ] && ok "B1 실패 테스트 ${fails}건" || bad "B1 테스트가 실패하지 않는다 (fail=${fails:-0})"
-  # (4) src/ 열람 0회 — Read/Grep/Glob의 input에 src/ 경로가 없어야 한다
-  local peek; peek=$(tool_inputs "$log" '^(Read|Grep|Glob)$' | grep -c 'src/')
-  [ "$peek" -eq 0 ] && ok "B1 src/ 열람 0회" || bad "B1 src/ 열람 ${peek}회 (격리 위반)"
+  # (4) src/ 열람 0회 — Read/Grep/Glob/Bash의 input에 src/ 경로가 없고, 프로덕션 본문에만 있는 토큰이 로그에 유입되지 않아야 한다
+  #     (Number.isInteger는 픽스처 node-minimal/src/limit.js에만 있고 프롬프트·에이전트 정의·참조 문서에는 없다 — 픽스처를 바꾸면 이 토큰도 함께 바꾼다)
+  local peek leak; peek=$(tool_inputs "$log" '^(Read|Grep|Glob|Bash)$' | grep -c 'src/'); leak=$(grep -c 'Number\.isInteger' "$log")
+  if [ "$peek" -eq 0 ] && [ "$leak" -eq 0 ]; then ok "B1 src/ 열람 0회"; else bad "B1 src/ 열람 (경로 ${peek}회, 본문 유입 ${leak}회 — 격리 위반)"; fi
   # (5) report의 참조 파일 자기신고
   if [ -f "$sb/reports/t1-red.md" ]; then
-    if sed -n '/참조한 파일/,$p' "$sb/reports/t1-red.md" | grep -q 'src/'; then bad "B1 report 참조 목록에 src/ (격리 위반)"; else ok "B1 report 참조 목록 클린"; fi
+    if awk '/참조한 파일/{f=1;next} f&&/^##[^#]/{exit} f' "$sb/reports/t1-red.md" | grep -q 'src/'; then bad "B1 report 참조 목록에 src/ (격리 위반)"; else ok "B1 report 참조 목록 클린"; fi
   else bad "B1 reports/t1-red.md 없음"; fi
   finish_sandbox "$sb"
 }
@@ -159,9 +168,12 @@ scenario_B2() {
   local sb sys pr log; sb=$(make_sandbox b2); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
   agent_body implementer > "$sys"
   pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-implement.md" oh-my-gx:implementer b2) \
-    || { bad "B2 프롬프트 추출 실패 (phase-implement implementer 블록)"; finish_sandbox "$sb"; return; }
+    || { bad "B2 프롬프트 추출·치환 실패 (phase-implement implementer 블록)"; finish_sandbox "$sb"; return; }
   local before after; before=$(cd "$sb" && git hash-object test/*.js | sort | tr '\n' ' ')
-  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-sonnet}" "$log" Read Write Edit Glob Grep "Bash(node *)"; local rc=$?
+  if ! ran_ok "$log"; then
+    bad "B2 claude 실행 실패 (rc=$rc, stderr: $(head -c 200 "$log.err" 2>/dev/null | tr '\n' ' '))"; finish_sandbox "$sb"; return
+  fi
   after=$(cd "$sb" && git hash-object test/*.js | sort | tr '\n' ' ')
   # (1) 테스트 파일 해시 불변 + 테스트 신규 생성 없음
   if [ "$before" = "$after" ] && [ -z "$(cd "$sb" && git ls-files --others --exclude-standard -- test)" ]; then
@@ -173,7 +185,7 @@ scenario_B2() {
   if [ -f "$sb/reports/t1-impl.md" ] && grep -q '^## GREEN 증거' "$sb/reports/t1-impl.md"; then
     ok "B2 report에 GREEN 증거"; else bad "B2 reports/t1-impl.md 또는 ## GREEN 증거 없음"; fi
   # (4) 상태 반환
-  if final_text "$log" | grep -qE 'Status: DONE'; then ok "B2 Status DONE 반환"; else bad "B2 Status DONE 미반환"; fi
+  if final_text "$log" | grep -qE 'Status:[[:space:]]*DONE(_WITH_CONCERNS)?[[:space:]]*$'; then ok "B2 Status DONE 반환"; else bad "B2 Status DONE 미반환"; fi
   finish_sandbox "$sb"
 }
 scenario_B3() {
@@ -181,11 +193,14 @@ scenario_B3() {
   local sb sys pr log; sb=$(make_sandbox b3); sys="$sb/.sys.md"; log="$sb/.run.jsonl"
   agent_body reviewer > "$sys"
   pr=$(prepare_prompt "$sb" "$ROOT/.claude/skills/gx-tdd/phases/phase-review.md" oh-my-gx:reviewer b3) \
-    || { bad "B3 프롬프트 추출 실패 (phase-review reviewer 블록)"; finish_sandbox "$sb"; return; }
-  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-opus}" "$log" Read Glob Grep
+    || { bad "B3 프롬프트 추출·치환 실패 (phase-review reviewer 블록)"; finish_sandbox "$sb"; return; }
+  run_claude "$sb" "$sys" "$pr" "${GX_BEHAVIOR_MODEL:-opus}" "$log" Read Glob Grep; local rc=$?
+  if ! ran_ok "$log"; then
+    bad "B3 claude 실행 실패 (rc=$rc, stderr: $(head -c 200 "$log.err" 2>/dev/null | tr '\n' ' '))"; finish_sandbox "$sb"; return
+  fi
   local out s q p1 p2; out=$(final_text "$log")
-  s=$(printf '%s\n' "$out" | grep -n 'spec_verdict:' | head -1 | cut -d: -f1)
-  q=$(printf '%s\n' "$out" | grep -n 'quality_verdict:' | head -1 | cut -d: -f1)
+  s=$(printf '%s\n' "$out" | grep -n '^spec_verdict:' | head -1 | cut -d: -f1)
+  q=$(printf '%s\n' "$out" | grep -n '^quality_verdict:' | head -1 | cut -d: -f1)
   # (1) 두 블록 존재 + 순서
   if [ -n "$s" ] && [ -n "$q" ] && [ "$s" -lt "$q" ]; then ok "B3 spec_verdict → quality_verdict 순서 (${s}행 → ${q}행)"
   elif [ -z "$s" ] || [ -z "$q" ]; then bad "B3 판정 블록 누락 (spec=${s:-없음}, quality=${q:-없음})"

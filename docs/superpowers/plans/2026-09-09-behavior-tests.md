@@ -962,3 +962,15 @@ MSG
 - 린트 36/36·훅 테스트·`scripts/test-behavior-tests.sh` 27건 통과. CI에 mock 테스트 step이 있다.
 - PR 올리기 전에 **실제 모델로 1회** `bash scripts/behavior-tests.sh`를 돌려 B1~B3 판정을 확인하고 결과를 PR 본문에 적는다 (PR 체크박스). 실패하면 원인을 프롬프트 회귀/모델 행동/하네스 결함으로 구분해 이슈로 남긴다 — 계획 실행 중에는 고치지 않는다.
 - 후속: B2에 "테스트 결함 의심" 보고 경로(테스트가 틀린 픽스처), B1에 UI 태스크 변형(frontend-testing 규약)을 시나리오로 추가할지는 실제 실행 결과를 본 뒤 정한다.
+
+## 최종 리뷰 반영 (실행 기록)
+
+계획 실행 중 발견된 결함과 판정. 계획 본문은 수정하지 않고 여기에 남긴다.
+
+- **Task 2·3 run_mock**: `OUT=$(run_mock …)`가 함수 전체를 서브셸에서 실행해 함수 안의 `RC=$?`가 부모에 남지 않았다(`set -u` 크래시) → run_mock이 OUT·RC를 전역으로 설정하고 호출부 6곳은 캡처 없이 부른다.
+- **Task 6 유지보수 노트**: `Task(subagent_type="…"):` 예시가 린트 [5] 디스패치 이름 대조에 걸림 → `oh-my-gx:{name}` 표기.
+- **run_claude 경로(Critical)**: 네이티브 claude가 `--append-system-prompt-file`의 MSYS 경로 `/tmp/…`를 현재 드라이브 루트로 풀어 이 개발 머신(`/tmp → D:/Temp`)에서만 우연히 동작했다 → `wpath` 적용.
+- **실행 성립 게이트**: 실행 실패(빈 로그)가 "무변경·열람 0회"로 통과하던 공백 → `ran_ok`(result 이벤트) 게이트, prepare_prompt의 치환 결과 검사, 자체 테스트 T2b.
+- **전역 설정 격리**: 사용자 CLAUDE.md·훅(rtk 접두 규칙 등)이 세션에 실려 판정이 환경에 좌우 → `--safe-mode --permission-prompts none`.
+- **B1 판정 보강**: 참조 목록 검사 범위를 다음 `##` 전까지로(위양성), Bash 경로·본문 유출 토큰 검사(위음성). B2 Status 검사 템플릿 줄 제외. B3 verdict grep 행 고정. `BASH_SOURCE`로 source 위치 독립. CI setup-node 20.
+- **유예**: `--add-dir`는 붙이지 않았다(저장소 전체 접근이 B1 src/ 판정과 얽힌다). B3의 참조 문서 Read 거부 여부와 "확인 필요" 4건은 실제 모델 1회 실행에서 본다.

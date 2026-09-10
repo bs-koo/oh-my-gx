@@ -67,11 +67,11 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 
 | ID | 계약 | 판정 근거 |
 |----|------|----------|
-| B1 | red-writer가 프로덕션 코드를 보지 않고 실패 테스트를 쓴다 | stream-json의 Read/Grep/Glob input에 `src/` 없음, `src/` 무변경, 새 `test/*.test.js`가 `node --test`에서 실패, report 참조 목록에 `src/` 없음 |
+| B1 | red-writer가 프로덕션 코드를 보지 않고 실패 테스트를 쓴다 | stream-json의 Read/Grep/Glob input에 `src/` 없음, `src/` 무변경, 새 `test/*.test.js`가 `node --test`에서 실패, report 참조 목록에 `src/` 없음, src/limit.js 본문 토큰(`Number.isInteger`) 로그 유입 0회 |
 | B2 | implementer가 테스트를 고치지 않고 통과시킨다 | `test/*.js` 해시 불변·신규 없음, `node --test` 0 fail, report에 `## GREEN 증거`, `Status: DONE` |
 | B3 | reviewer가 spec verdict를 먼저 낸다 | `spec_verdict:`가 `quality_verdict:`보다 먼저, `## Part 1`이 `## Part 2`보다 먼저, Write/Edit/Bash 시도 0회 |
 
-실행: `bash scripts/behavior-tests.sh` (약 5~15분, 토큰 사용). 릴리스 전에는 `GX_BEHAVIOR_REPS=3`으로 돌린다 — 모델 행동은 확률적이라 1회 통과는 증거가 약하다. 실패 분석은 `GX_BEHAVIOR_KEEP=1`로 샌드박스를 남겨 `.run.jsonl`을 본다. 스크립트 자체의 회귀는 CI의 `scripts/test-behavior-tests.sh`(mock)가 잡는다.
+실행: `bash scripts/behavior-tests.sh` (약 5~15분, 토큰 사용). 릴리스 전에는 `GX_BEHAVIOR_REPS=3`으로 돌린다 — 모델 행동은 확률적이라 1회 통과는 증거가 약하다. 실패 분석은 `GX_BEHAVIOR_KEEP=1`로 샌드박스를 남겨 `.run.jsonl`을 본다. 스크립트 자체의 회귀는 CI의 `scripts/test-behavior-tests.sh`(mock)가 잡는다. 실행은 `--safe-mode --permission-prompts none`으로 전역 CLAUDE.md·훅·플러그인·MCP를 끈 채 돌리고, stream-json에 `result` 이벤트가 없으면 실행 실패로 판정한다(부작용 부재를 근거로 하는 검사가 공허하게 통과하지 않도록). UI 가드 절은 비-UI 시나리오에서도 프롬프트에 실린다 — 추출 방식의 한계이며 판정에는 영향이 없다.
 
 ## 기록
 
