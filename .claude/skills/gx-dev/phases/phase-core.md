@@ -7,7 +7,7 @@
 
 ## Step 0: AC 작성 (오케스트레이터 직접, 에이전트 디스패치 없음)
 
-ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면)를 기반으로 `${DEV_DIR}/ac.md`를 직접 작성한다.
+ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면 — 미반영 항목과 겹치는 AC는 그 FR ID를 `FR-N (status.md 미반영)` 형식으로 인용한다)를 기반으로 `${DEV_DIR}/ac.md`를 직접 작성한다.
 
 **형식** (초경량 PRD — gx-pull-request `--background`가 "배경"과 "요구사항"을 파싱하므로 섹션명을 유지한다):
 

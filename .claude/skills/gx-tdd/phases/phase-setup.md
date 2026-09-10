@@ -115,10 +115,14 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
    - **git**: `git remote get-url origin`으로 레포명을 추출한다 (예: `xx/asset-factory-api`).
    - **svn**: `svn info --show-item url`로 작업 복사본 URL을 추출하고, `trunk`/`branches`/`tags`를 제외한 마지막 경로 세그먼트를 레포명으로 사용한다 (단일 저장소 다중 프로젝트 구조 대응). 추출이 모호하면 로컬 디렉토리명(`basename $(pwd)`)을 폴백으로 사용한다.
    - `context/*/PROJECTS.md`를 Grep하여 해당 레포를 참조하는 도메인을 찾는다.
-   - 매칭되면 해당 도메인의 `glossary.md`, `architecture.md`를 Read하여 `DOMAIN_CONTEXT`에 저장한다.
+   - 매칭되면 해당 도메인의 네 파일을 Read하여 `DOMAIN_CONTEXT`를 **4요소**로 구성한다 (우선순위 순 — `contextLimits` 초과 시 역할별 슬라이스 안에서 뒤 요소부터 요약하되 architect 슬라이스는 용어부터 요약하고, 요약으로도 넘치면 생략한다):
+     1. **용어**: `glossary.md` 전체
+     2. **README 핵심**: `README.md`의 `## 배경`·`## 안 하면 어떻게 되는가`·`## 사용자와 규모`·`## 성공 기준` 네 절 (없는 절은 건너뛴다)
+     3. **미반영 항목**: `status.md`에서 상태 열이 `⬜`인 행 전체 (FR ID·설명·AC 열 포함. 0건이면 "미반영 없음")
+     4. **아키텍처**: `architecture.md` 전체
    - `context/` 디렉토리가 없거나 매칭되지 않으면 `DOMAIN_CONTEXT`는 빈 상태로 진행한다.
      사용자에게 안내: "도메인 컨텍스트가 없습니다. `context/` 디렉토리를 생성하고 `/oh-my-gx:gx-context`로 도메인을 등록하면 이후 작업에서 용어/아키텍처를 참조할 수 있습니다."
-   - `DOMAIN_CONTEXT`는 이후 agent 프롬프트에 "도메인 컨텍스트"로 포함한다.
+   - `DOMAIN_CONTEXT`는 이후 agent 프롬프트에 "도메인 컨텍스트"로 포함한다 — product-owner는 4요소 전부, architect는 용어·아키텍처만 (SKILL.md Context Slicing 표).
 5. **외부 규격 참조 탐색**: 프로젝트 루트에 `references/` 디렉토리가 있는지 확인한다.
    - `references/` 디렉토리가 존재하면:
      a. 디렉토리 내 파일 목록을 수집한다 (하위 디렉토리 포함).

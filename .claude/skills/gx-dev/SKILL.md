@@ -385,7 +385,7 @@ phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `DEV_DIR`: 브랜치별 산출물 디렉토리. `.dev/{branch-slug}` 형식. branch-slug는 브랜치명에서 `/`를 `-`로 치환한 값 (예: `feat/login` → `.dev/feat-login`). phase-setup Step 5에서 브랜치 결정 후 설정한다. **SVN은 브랜치가 없어 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk` 폴백).** 이후 모든 Phase에서 산출물 Read/Write 경로의 기준이 된다.
 - `BASE_BRANCH`: phase-setup Step 2에서 결정된 베이스 브랜치 (예: `main`, `develop`). state.md의 `base` 필드에 기록된다. SVN인 경우 미사용. phase-setup Step 3-0(context 최신화), phase-complete Step 3(경로 B 커밋 로그 비교), Step 4(diff 기반 환류)에서 사용한다.
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `${DEV_DIR}/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
-- `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 도메인 용어(glossary)와 아키텍처 정보. 매칭되지 않으면 빈 상태.
+- `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 4요소 — 용어(glossary)·README 핵심(배경·안 하면·사용자/규모·성공 기준)·status.md 미반영 항목·아키텍처. 매칭되지 않으면 빈 상태.
 - `REFERENCES`: phase-setup Step 3(외부 규격 참조 탐색)에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - `MODEL_PROFILE`: 모델 프로파일 (`standard`/`eco`). phase-setup Step 1.5에서 결정하며 state.md의 `model-profile`에 기록된다. 디스패치 적용 규칙은 아래 "모델 프로파일" 섹션 참조.
 - Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
@@ -526,9 +526,9 @@ execution-log:
 
 ### Context Slicing 규칙
 설계서와 PRD를 Agent에게 전달할 때, 역할에 따라 필요한 섹션만 전달하여 컨텍스트 효율을 높인다:
-- **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면)
+- **product-owner (PRD 작성)**: ARGS[0] + 코드 맵 + 프로젝트 타입/구조 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면 — 4요소 전부. 미반영과 겹치면 FR ID 인용)
 - **product-owner (인수 검증)**: PRD의 "요구사항" + "수용 기준" + diff 파일 경로 (`DIFF_FILE`) + 코드 맵
-- **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면) + REFERENCES (있으면)
+- **architect (설계)**: PRD 전체 + 코드 맵 + 프로젝트 타입/구조/컨벤션 + 프로젝트 루트 경로 + DOMAIN_CONTEXT (있으면 — 용어·아키텍처만) + REFERENCES (있으면)
 - **coder (구현)**: 설계서 전체 + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). 핵심 모드이면 설계서 대신 ac.md 전체 + 코드 맵 (phase-core Step 1의 규모 판정에서 coder 디스패치가 결정된 경우).
 - **coder (배치 모드 구현)**: 담당 단계의 설계서 섹션 + 담당 파일 목록 + 이전 배치 결과 요약 (있으면) + 병렬 실행 안내 (병렬 배치인 경우) + 코드 맵 + 프로젝트 루트 경로 + REFERENCES (있으면). 설계서 전체 대신 담당 단계만 전달하므로 전체 모드보다 컨텍스트가 작다.
 - **coder (수정)**: 수정 항목 목록 + 수정 방안 + 코드 맵 + 프로젝트 루트 경로

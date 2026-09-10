@@ -335,3 +335,15 @@ MSG
 - 린트 36/36·훅 테스트 통과. `[32]` 예산(SKILL.md 63,000B·phase-setup 22,000B) 이내.
 - 골든 S43을 실제로 한 번 돌려 PRD에 `FR-3 (status.md 미반영)` 인용과 Then의 성공 기준 수치를 눈으로 확인한다 (PR 체크박스).
 - 후속: D4(`2026-09-09-behavior-tests.md`).
+
+## 최종 리뷰 반영 (실행 기록)
+
+계획 실행 중 발견된 결함과 판정. 계획 본문은 수정하지 않고 여기에 남긴다.
+
+- **Task 1 슬라이스 문장**: "architect·design-critic·test-architect는 용어·아키텍처만"은 SKILL.md 표·스펙(architect만)과 다르고 gx-dev에는 test-architect가 없다 → "architect는 용어·아키텍처만"으로 축소.
+- **Task 1 절단 규칙**: "뒤에서부터 생략" → 리뷰 판정으로 "역할별 슬라이스 안에서 뒤 요소부터 요약, 요약으로도 넘치면 생략" → 최종 리뷰 재고로 "architect 슬라이스는 용어부터 요약" 추가 (architect [용어, 아키텍처]에서 아키텍처가 먼저 잘리는 역효과).
+- **Task 2 architect 차이 절**: agents/architect.md 출력 포맷에 새 절을 만들지 않고 "의존성 및 영향도" 절 안 소제목으로.
+- **Task 2 핵심 모드 인용**: gx-tdd phase-requirements 핵심 모드 분기와 gx-dev phase-core에 `FR-N (status.md 미반영)` 형식을 명시 (소비자 phase-complete Step 3의 매칭 형식).
+- **Task 4 phase-complete 항목 3·4 충돌**: 미반영 행은 AC 열이 `-`라 항목 4가 항목 3을 무효화 → 항목 3 "비어 있거나 `-`여도", 항목 4에 인용 매칭 행 예외.
+- **Task 5 린트 [36] 앵커**: awk 구간 앵커가 gx-dev phase-setup 산문(56·58행)에 먼저 매치되어 변이 시험이 통과 → `^[0-9]+\. \*\*…\*\*` 제목에만 앵커. 검사 문자열에 `glossary.md`·`architecture.md` 추가.
+- **Task 5 분모 치환**: 린트 [31] 대상이 `.claude`·`README.md`·`tests`라 세 곳 모두 치환.
