@@ -196,6 +196,9 @@ for task in tasks:
         impl_result = session_implement(task, red_report_path)      # 기본 경로. 세션이 직접 구현하고 같은 report를 Write
     verify_implement(impl_result)            # focused 집합 직접 실행 + 무결성 검증 (경로 무관 동일)
 
+    # 2-V: 태스크 리뷰 (조건부 — 프로덕션 파일 2개 이상 또는 fix 라운드 있음)
+    if task_review_required(task):
+        review_task(task)                    # reviewer 태스크 범위 모드 (sonnet). report: reports/t{N}-review.md
     record_to_state(task, results)
 ```
 
@@ -272,7 +275,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
 4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
 5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
-6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
+6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
 7. **report 저장 확인**: `reports/t{N}-red.md`가 존재하고 테스트 코드·실패 메시지를 담고 있는지 확인한다. 다음 단계(2-I) 인계는 이 파일 경로로만 한다.
 8. ✅ 실패 정상 → IMPLEMENT(2-I)로 진행.
 
@@ -360,11 +363,11 @@ Task(subagent_type="oh-my-gx:implementer"):
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
 1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`에 "없음" 외의 내용이 있으면 DONE_WITH_CONCERNS로 취급한다): `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (구현 주체가 테스트를 고치지 않는다).
-3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
+3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
 5. **과잉 구현 감지**: 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지. YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
 6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
-7. ✅ 통과 + 무결성 유지 → 태스크 완료, 다음 태스크로 진행.
+7. ✅ 통과 + 무결성 유지 → **Step 2-V 태스크 리뷰 판정**으로 진행한다 (발동 조건 미충족이면 `review: skipped` 기록 후 태스크 완료).
 8. ❌ 실패 → **fix loop 진입** (아래).
 
 **fix loop (실패 시 — 태스크당 최대 5라운드)**:
@@ -374,11 +377,100 @@ Task(subagent_type="oh-my-gx:implementer"):
 | 1~3 | **세션이 직접 수정** (기본 경로). 격리 경로는 **같은 implementer를 재개** — 하네스가 서브에이전트 재개(후속 메시지)를 지원하면 그 방식으로 미해결 항목을 전달, 지원하지 않으면 report 파일 경로를 실은 fresh 디스패치 (report가 영속 기억) | 세션 / sonnet |
 | 4~5 | **두 경로 모두 fresh implementer 디스패치 + 모델 격상** (`model: "opus"` 오버라이드) — 세션이 3라운드 실패한 뒤에는 fresh eyes와 역량 격상이 함께 필요하다. 프롬프트에 "이전 구현자가 {r-1}회 시도했다. report 파일에서 시도 내역을 읽어라"를 포함 | opus |
 
-- 매 라운드: 구현 주체(세션 또는 implementer)가 수정 → focused 재실행 → fix report를 같은 report 파일에 append → 상태 반환(격리 경로만) → 오케스트레이터가 verify_implement 재수행. `current-step`을 `"RGR T{N}: FIX R{r}"`로, state.md 해당 태스크에 `fix-round: {r}/5`를 기록한다.
+- 매 라운드: 구현 주체(세션 또는 implementer)가 수정 → focused 재실행 → fix report를 같은 report 파일에 append → 상태 반환(격리 경로만) → 오케스트레이터가 verify_implement 재수행. Step 2-V 태스크 리뷰의 findings 수정도 **이 라운드 카운터와 상한 5를 공유**한다 — 리뷰가 연 라운드는 verify_implement 재수행 뒤 재리뷰(2-V)로 닫힌다. `current-step`을 `"RGR T{N}: FIX R{r}"`로, state.md 해당 태스크에 `fix-round: {r}/5`를 기록한다.
 - 모델 격상은 "실패의 대응"으로 **모델 프로파일과 독립**이다 — eco 세션에서도 라운드 4~5는 opus로 격상한다.
 - **라운드 5 소진 시**: 사이클 중단 + AskUserQuestion — "수동 수정 후 계속" / "태스크 스킵 (위험 수용 — trust-ledger 기록)" / "중단".
 
 `current-step`을 `"RGR T{N}: IMPLEMENT"`로 갱신.
+
+### Step 2-V: 태스크 리뷰 (조건부 — reviewer 태스크 범위 모드)
+
+verify_implement 7번 직후, 태스크를 완료 처리하기 **전에** 판정한다. 세션 IMPLEMENT는 검사자와 피검사자가 같으므로, 자기 검증 편향이 커지는 태스크에만 fresh eyes를 한 번 붙인다. phase-review는 **전체 브랜치 리뷰**로 그대로 남는다.
+
+**발동 조건** (하나라도 해당하면 리뷰, 아니면 state.md 태스크에 `review: skipped` 기록 후 태스크 완료):
+- (a) 이 태스크가 바꾼 **프로덕션 파일이 2개 이상**이다. 변경 파일 목록은 verify_red 스냅샷과 현재 porcelain의 차이로 구한다 (`.dev/` 제외. 스냅샷에 없거나 상태가 달라진 줄의 경로. `reports/t{N}-impl.md` `## 구현 내용`의 변경 파일과 합집합). 프로덕션 파일은 그중 테스트 파일 글롭(Step 0.5 4항의 `**/*test*`·`**/*Test*`·`**/*spec*`)에 해당하지 않는 파일이다.
+  ```bash
+  git -c core.quotePath=false status --porcelain -- . ':(exclude).dev' | sort > ${DEV_DIR}/rgr-t{N}-porcelain.now.txt
+  comm -13 <(grep -v ' \.dev/' ${DEV_DIR}/rgr-t{N}-porcelain.txt | sort) ${DEV_DIR}/rgr-t{N}-porcelain.now.txt | cut -c4-
+  ```
+  (svn은 `svn status`로 같은 대조를 한다. 경로 열은 8열부터다.) **verify_red 스냅샷 파일이 없으면**(구 세대 재개) (a)를 판정하지 않고 (b)만 본다 — 왼쪽이 비면 워킹트리 전체가 이 태스크의 변경으로 잡힌다.
+- (b) 이 태스크의 state.md에 `fix-round`가 기록되어 있다 (fix loop를 1회 이상 돌았다).
+
+**태스크 diff 수집**: 실제 인덱스와 porcelain 스냅샷을 건드리지 않도록 **임시 인덱스**를 쓴다 (훅 `compute_fingerprint`와 같은 관용구 — mktemp가 만든 빈 파일은 git이 거부하므로 경로만 쓴다). 대상은 (a)의 변경 파일 전부 + 이 태스크의 `test-file`이다.
+```bash
+# 한 번의 Bash 호출로 실행한다 — 호출이 갈리면 $$가 달라져 빈 인덱스로 diff가 나온다
+IDX="${TMPDIR:-/tmp}/.gxtr.$$"; rm -f "$IDX"
+GIT_INDEX_FILE="$IDX" git add -A -- {변경 파일 목록} "{test-file}" \
+  && GIT_INDEX_FILE="$IDX" git diff --cached HEAD -- {변경 파일 목록} "{test-file}" > ${DEV_DIR}/reports/t{N}-diff.txt \
+  || echo "TASK_DIFF_FAILED"
+rm -f "$IDX"
+```
+
+`TASK_DIFF_FAILED`가 출력되거나 diff 파일이 비어 있거나 `deleted file mode`만 있고 추가 hunk가 없으면 **Step 2-V를 중단하고 사용자에게 보고**한다 — add가 실패해도 이어지는 diff는 종료 코드 0으로 HEAD 파일을 전부 삭제로 출력하므로, 오류 신호 없이 reviewer에게 가짜 삭제 diff가 간다. 실패 원인은 대개 경로 인용이다 (그래서 porcelain 수집에 `-c core.quotePath=false`를 쓴다).
+
+svn: 버전 관리 중인 파일은 `svn diff -- {파일들}`, 미등록 신규 파일은 `diff -u /dev/null {파일}`을 같은 파일에 이어 붙인다. 500줄 초과 시 Diff 수집 규칙의 `--stat` 강등을 그대로 적용한다.
+
+**디스패치** (`model: "sonnet"` — 프로파일·격상과 무관하게 고정. 태스크 diff는 작고 재리뷰는 scoped다):
+
+```
+Task(subagent_type="oh-my-gx:reviewer", model: "sonnet"):
+  description: "Task review T{N} (scoped)"
+  prompt: |
+    당신은 통합 리뷰 전담자입니다. **태스크 범위 모드**로 동작합니다 — 전달된 AC와 태스크 diff만 봅니다. 전체 브랜치 리뷰는 phase-review가 별도로 수행하므로 범위를 넓히지 않습니다.
+
+    [Iron Law]
+    NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED — Part 1 verdict를 먼저 확정한 뒤 Part 2를 냅니다.
+
+    [발견 단계 커버리지]
+    발견 단계의 목표는 커버리지다. 확신이 서지 않거나 심각도가 낮다고 판단한 항목도 빠짐없이 보고합니다. 확신이 낮은 항목은 Minor로 분류하되 보고에서 빼지 않습니다.
+
+    [구현자 보고 불신뢰]
+    RED/IMPL report의 산문 정당화는 미검증 주장입니다 — diff로 검증하고, 테스트를 재실행하지 않습니다 (증거는 verify_implement가 확보).
+
+    [태스크 AC (Given-When-Then)]
+    {이 태스크에 매핑된 AC 시나리오 — Part 1은 이것만 평가}
+
+    [설계서 인터페이스]
+    {대상 컴포넌트의 시그니처 — 핵심 모드는 "없음 (핵심 모드)"}
+
+    [태스크 diff]
+    - {reports/t{N}-diff.txt} — Read하여 확인
+
+    [구현 report]
+    - {reports/t{N}-red.md}, {reports/t{N}-impl.md}
+
+    [코드 맵]
+    {코드 맵}
+
+    [프로젝트 컨벤션]
+    {CLAUDE.md 컨벤션 또는 기존 코드 스타일}
+
+    [테스트 품질 기준 파일]
+    {ANTI_PATTERNS_PATH} — 테스트 코드 품질 판정 시 Read
+    {FRONTEND_TESTING_PATH} — UI 태스크에서만 전달
+
+    [재리뷰 — fix 라운드 후에만 포함]
+    이전 findings: {항목 목록}. 각 항목을 ADDRESSED / NOT ADDRESSED로 판정하고(파일:라인 근거. "시도함"은 NOT ADDRESSED), 수정 diff {reports/t{N}-diff-r{r}.txt}의 새 결함만 추가로 보고합니다. 범위 밖 관찰은 Minor로 둡니다.
+
+    [출력 형식]
+    agents/reviewer.md의 출력 형식 — Part 1 매트릭스(전달된 AC만)·판정, Part 2 분류·판정, 맨 마지막에 spec_verdict → quality_verdict 두 YAML 블록 순서 고정. 재리뷰면 Part 2 앞에 `## 재리뷰 판정` 표(항목 | ADDRESSED/NOT ADDRESSED | 근거)를 둡니다.
+```
+
+**결과 처리** (오케스트레이터 직접):
+1. reviewer 출력 전문을 `${DEV_DIR}/reports/t{N}-review.md`에 Write한다 (reviewer는 Write 도구가 없다). 재리뷰는 `## 재리뷰 R{r}` 제목으로 같은 파일에 append한다. state.md 태스크에 `review: in_progress`·`review-report: reports/t{N}-review.md`를 기록한다.
+2. `spec_verdict`·`quality_verdict` 블록을 phase-review Step 4.0과 같은 규칙으로 파싱한다 — 블록 우선, 산문 판정과 상충하면 FAIL로 간주하고 reviewer를 1회 재호출, 재호출도 상충이면 사용자에게 보고. `[검증 필요]` 항목은 해당 focused 테스트를 1회 직접 실행해 반영한다.
+3. 라우팅 (사용자에게 묻지 않는다 — Step 2-I fix loop와 같은 자동 경로):
+   - `spec_verdict: FAIL`, Critical, Important `[동작결함]`(무표기 포함) → **RED 재호출 후 fix loop 진입** (Iron Law 1 — 동작 결함은 그것을 재현하는 실패 테스트가 먼저 있어야 고친다. 기존 fix loop는 verify_red 기준선의 테스트를 통과시키는 루프라 그 안에서는 테스트를 추가할 수 없으므로 RED를 먼저 연다):
+     1. **RED 재호출**: red-writer를 Step 2-R 프롬프트로 재디스패치한다. `[AC (Given-When-Then)]`에는 미충족 AC(spec FAIL) 또는 finding을 재현 조건으로 옮긴 시나리오(Critical·`[동작결함]`: Given 현재 상태 / When 트리거 / Then 기대 동작)를 넣고, `[작성 범위 — 테스트 집합]` 뒤에 "이 태스크의 기존 테스트 파일에 케이스를 **추가**합니다 (기존 케이스 수정·삭제 금지)"를 덧붙인다. verify_red 1~7을 그대로 재적용한다 — 새 케이스만 실패해야 하고 기존 케이스는 통과를 유지하며, `test-file-hash`·`rgr-t{N}-porcelain.txt`·`test-count` 기준선을 **갱신**한다. report는 `reports/t{N}-red.md`에 `## 재현 RED R{r}` 절로 append한다.
+     2. **fix loop**: 구현 주체(세션. `--isolated`면 같은 implementer 재개. **라운드 4~5는 Step 2-I fix loop 표대로 두 경로 모두 fresh implementer + `model: "opus"` 격상**)가 새 실패 케이스를 통과시키며 findings를 수정 → focused 재실행 → fix report를 `reports/t{N}-impl.md`에 append → verify_implement 재수행(갱신된 기준선 기준) → 수정 diff를 위 임시 인덱스 관용구로 `reports/t{N}-diff-r{r}.txt`에 수집 → **재리뷰** 디스패치(위 프롬프트의 `[재리뷰]` 절 포함).
+     3. NOT ADDRESSED 또는 새 Critical/Important가 남으면 다음 라운드 — 새 동작 결함이면 1번(RED)부터, `[동작불변]`만 남았으면 정리만. `current-step`은 `"RGR T{N}: REVIEW R{r}"`, 태스크에 `fix-round: {r}/5`.
+   - Important `[동작불변]` → 세션 정리 (세션 IMPLEMENT 절차의 REFACTOR 규칙·금지 목록. `--isolated`면 implementer 정리 모드) → focused 재실행 → 재리뷰. `[동작불변]`만 있어도 **라운드를 1 올린다** (`fix-round: {r}/5` — 정리·재리뷰 왕복도 상한 5를 공유한다). 동작 결함과 함께 나왔으면 같은 라운드의 재리뷰에 포함한다.
+   - Minor → **유예**. 수정하지 않고 태스크에 `deferred-minors: {건수}`를 기록한다. phase-review Task A가 유예 목록을 받아 머지 전 수정 필요 여부를 판정한다.
+   - spec PASS·Critical 0·Important 0 → `review: completed` 기록, 태스크 완료.
+   - 라운드 5 소진 → Step 2-I의 소진 처리(AskUserQuestion: 수동 수정 후 계속 / 태스크 스킵 / 중단)를 그대로 따른다. 태스크 스킵 시 미해결 findings를 trust-ledger `### 위험 수용`에 `- [태스크 리뷰 미해결] T{N}: {findings 요약} (implement/Step 2-V)`로 기록한다.
+4. execution-log에 `agent: reviewer (T{N}, task-scoped)`와 결과 요약(SPEC 판정·Critical/Important/Minor 건수·처리)을 남긴다.
+
+`current-step`을 `"RGR T{N}: REVIEW"`로 갱신.
 
 ---
 
@@ -412,9 +504,9 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 ```
 RGR 사이클 완료: {N}개 태스크
 
-- T1 (AC-1): RED ✅ → IMPLEMENT ✅
-- T2 (AC-2, AC-3 배칭): RED ✅ → IMPLEMENT ✅ (fix 라운드 1회)
-- T3 (AC-4): RED ✅ → IMPLEMENT ✅ (정리 대상 없음)
+- T1 (AC-1): RED ✅ → IMPLEMENT ✅ → REVIEW skip (파일 1개)
+- T2 (AC-2, AC-3 배칭): RED ✅ → IMPLEMENT ✅ (fix 라운드 1회) → REVIEW ✅ (Important 1건 정리, Minor 2건 유예)
+- T3 (AC-4): RED ✅ → IMPLEMENT ✅ (정리 대상 없음) → REVIEW ✅
 
 focused 누적: {N pass}, 0 fail (전체 회귀는 경계에서 — 전체 모드: review Step 0 / 핵심 모드·단독: Step 3.5)
 변경 파일: {N}개
@@ -480,10 +572,14 @@ steps:
         test-count: 47                # verify_implement 기록 — focused 직접 실행 결과 (테스트 삭제 감지 기준선)
         report: reports/t1-impl.md
         impl: completed
+        review: completed             # Step 2-V 결과 — skipped | in_progress | completed
+        review-report: reports/t1-review.md
+        deferred-minors: 2            # phase-review Task A에 유예 목록으로 전달
     - "RGR T2 (AC-2)":
         red: completed
         impl: in_progress
         fix-round: 2/5
+        review: in_progress
     - "RGR T3 (AC-3)":
         red: pending
         impl: pending
@@ -498,6 +594,9 @@ steps:
 - phase: implement
   agent: session-implement (T1)     # 기본 경로. 격리 경로는 implementer (T1)
   result: "최소 구현 + focused 3/3 pass + 매직 넘버 상수화"
+- phase: implement
+  agent: reviewer (T1, task-scoped)
+  result: "SPEC PASS · Critical 0, Important 1[동작불변] 정리, Minor 2 유예"
 ```
 
 ---
@@ -509,6 +608,8 @@ steps:
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
+- `"RGR T{N}: REVIEW"` → Step 2-V 판정부터 재실행 (변경 파일·태스크 diff 재수집 후 디스패치)
+- `"RGR T{N}: REVIEW R{r}"` → 라운드 {r}의 수정 diff 재수집 후 재리뷰부터 재개 (`reports/t{N}-review.md`가 이전 findings의 영속 기억)
 - 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-file-hash`·porcelain 스냅샷은 구 state에 기록이 있으면 그대로 대조하고 없을 때만 생략한다. `test-count`는 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
 - `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
 - `"변경사항 수집"` → Step 5부터 재실행
@@ -526,5 +627,7 @@ steps:
 - ❌ RGR 사이클 병렬 실행 — 격리 깨짐
 - ❌ "이번 한 번만" 코드 우선 작성 — 첫 예외가 규칙이 됨
 - ❌ 검증 명령 생략 (verify_red/verify_implement) — Iron Law 3 위반
+- ❌ 발동 조건(프로덕션 파일 2개 이상 또는 fix 라운드)을 충족한 태스크의 리뷰 생략 — "diff가 작아 보여서"는 사유가 아니다. 조건은 기계 판정이다 (gx-ralph 반복 세션은 Step 2-R/2-I 프롬프트만 빌려 쓰므로 이 불릿의 대상이 아니다)
+- ❌ 태스크 리뷰의 동작 결함·spec FAIL을 재현 테스트 없이 fix loop로 수정 — Iron Law 1 위반. RED 재호출이 먼저다
 
 위반 감지 시 즉시 중단하고 RED 단계부터 재시작한다.

@@ -204,7 +204,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | design-critic | 설계 비판 검토 | "이 가정이 맞나" / "더 단순하게 안 되나" | opus |
-| **reviewer** | **spec Part 1 + quality Part 2 통합 (신설)** | **"스펙대로인가 → 잘 짜였나" — Part 1 verdict 선행** | **opus** |
+| **reviewer** | **spec Part 1 + quality Part 2 통합. phase-implement 2-V 태스크 범위 모드는 sonnet** | **"스펙대로인가 → 잘 짜였나" — Part 1 verdict 선행** | **opus** |
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer·quality-reviewer로 분해 후 reviewer로 통합) | — | — |
 
@@ -245,7 +245,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 오케스트레이터 직접 ac.md) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer) → 조건부 태스크 리뷰(reviewer)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: Part 1(spec) verdict 확정 전 Part 2 판정 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 
@@ -557,7 +557,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 | red-writer | AC(G-W-T)+testability 섹션+테스트 스타일. **기존 프로덕션 코드는 절대 포함하지 않는다**. **UI 태스크에만** `FRONTEND_TESTING_PATH`(`references/frontend-testing.md`) |
 | 세션 IMPLEMENT (기본 경로) | 디스패치 없음 — 오케스트레이터가 RED report·설계서 인터페이스·focused 명령을 직접 읽고 phase-implement "세션 IMPLEMENT 절차"를 수행 |
 | implementer | RED report(reports/t{N}-red.md)+인터페이스+focused 테스트 명령+report 경로. **PRD 전체나 설계서 전체는 전달하지 않는다** |
-| reviewer | PRD요구사항+수용기준+설계서변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"** |
+| reviewer | PRD요구사항+수용기준+설계서변경범위+`DIFF_FILE`+코드 맵+컨벤션+품질기준. **"Part 1 verdict 선행. 테스트 재실행 금지"**. **태스크 범위 모드**(phase-implement 2-V): 태스크 AC+`reports/t{N}-diff.txt`+RED/IMPL report+인터페이스만, `model: "sonnet"` |
 | security-auditor | PRD 전체+설계서 전체+`DIFF_FILE`+코드 맵+REFERENCES(있으면) |
 | gx-verify (스킬, 완료 게이트) | phase-complete Step -1에서 `Skill("oh-my-gx:gx-verify")`로 호출. config.json의 projectTypes 기반으로 테스트/빌드 명령을 직접 실행. 캐시 결과 사용 금지, 0 failures 확인. 에이전트 Task가 아니므로 Context Slicing(입력 전달) 대상이 아니다. |
 | researcher | 조사+코드맵(있으면) |
