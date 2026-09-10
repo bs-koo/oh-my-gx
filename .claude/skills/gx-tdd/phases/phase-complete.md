@@ -118,9 +118,9 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 **git인 경우:**
 `Skill("oh-my-gx:gx-pull-request")`를 호출하여 PR을 생성한다. pull-request은 독립 스킬이므로 dev 컨텍스트를 알지 못하며, **dev 산출물을 자동 감지하지도 않는다**. 오케스트레이터가 **스킬 호출 전에** `${DEV_DIR}/pr-context.md`를 조립하고 `--background` 인자로 명시 전달한다.
 
-### Step 2-1: `${DEV_DIR}/pr-context.md` 조립 (Skill 호출 전)
+### Step 2-1: `${DEV_DIR}/pr-context.md`·`pr-rulings.md` 조립 (Skill 호출 전)
 
-오케스트레이터가 아래 내용을 `${DEV_DIR}/pr-context.md`에 Write한다:
+오케스트레이터가 아래 1·2를 `${DEV_DIR}/pr-context.md`에, 3을 `${DEV_DIR}/pr-rulings.md`에 Write한다:
 
 1. **비즈니스 맥락**: PRD의 "배경"과 "요구사항", 설계서의 "배경 및 목적". 핵심 모드이면 ac.md의 "배경"과 "요구사항 (AC)"를 사용 (레거시 재개로 ac.md가 없으면 prd.md, 그것도 없으면 ARGS[0]).
 2. **Trust Ledger 요약**: `${DEV_DIR}/trust-ledger.md`가 존재하면 Read하여 아래 형식으로 포함한다:
@@ -133,13 +133,24 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
    **핵심 모드 긴급 감사 병기**: Trust Ledger에 `### 핵심 모드 긴급 감사` 섹션이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- 핵심 모드 긴급 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. 전체·핵심 모드 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
 
+3. **Rulings·Deferred**: `${DEV_DIR}/decisions.md`에 `· Ruling: ` 블록이 하나라도 있거나 `${DEV_DIR}/reports/review-deferred.md`가 있으면 `${DEV_DIR}/pr-rulings.md`를 Write한다. 둘 다 없으면 만들지 않는다.
+   ```
+   ## Rulings
+   - {Ruling 블록 제목} — {**판정.** 줄 요약} (틀리면: {**틀리면.** 줄 요약})
+
+   ## Deferred
+   - [Minor] {파일:라인} — {요약}
+   - [MEDIUM] {파일:라인} — {요약}
+   ```
+   Rulings는 decisions.md의 블록 순서대로 전부 나열한다 — 사용자가 되돌릴 판정을 고르는 목록이므로 요약으로 줄이지 않는다.
+
 ### Step 2-2: `Skill("oh-my-gx:gx-pull-request")` 호출
 
 `${DEV_DIR}/pr-context.md` 조립이 완료된 후 **args로 파일을 명시 전달**하여 호출한다:
 
-`Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/pr-context.md")`
+`Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/pr-context.md --extra-section ${DEV_DIR}/pr-rulings.md")` — `pr-rulings.md`를 만들지 않았으면 `--extra-section` 인자를 뺀다.
 
-pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다 — 자동 감지는 없다 (gx-dev phase-complete와 동일한 명시 전달 방식).
+pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다 — 자동 감지는 없다 (gx-dev phase-complete와 동일한 명시 전달 방식). `--extra-section`의 `## Rulings`·`## Deferred`는 요약 없이 같은 제목으로 실린다.
 
 ### Step 2-3: 후속 처리
 

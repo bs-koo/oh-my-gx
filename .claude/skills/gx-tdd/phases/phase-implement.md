@@ -271,8 +271,8 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
 **verify_red**: 오케스트레이터가 직접 검증.
 1. report 파일(`reports/t{N}-red.md`)에서 테스트 파일 경로·케이스 목록·실패 확인 명령을 읽는다.
-2. **실패 확인 (집합 전체)**: report의 실패 확인 명령을 직접 실행해 신규 케이스가 **모두** 실패하는지 본다 (실패 건수 = report의 케이스 수). 통과하는 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출.
-3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단.
+2. **실패 확인 (집합 전체)**: report의 실패 확인 명령을 직접 실행해 신규 케이스가 **모두** 실패하는지 본다 (실패 건수 = report의 케이스 수). 통과하는 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출. **재현 RED**(Step 2-V RED 재호출)에서는 통과하는 케이스가 finding의 오탐을 뜻하므로 재호출하지 않는다 — 3번의 재현 RED 예외를 따른다.
+3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단. **재현 RED 예외**: Step 2-V RED 재호출에서는 이 통과가 finding이 실제 결함이 아니라는 뜻이다 — 사용자에게 묻지 않고 그 finding을 '재현 불가' 근거(통과한 케이스와 실행 출력)와 함께 재리뷰에 넘기며 라운드를 1 소모한다. 이 재리뷰는 수정 diff 없이 진행한다 — `reports/t{N}-diff-r{r}.txt` 대신 '재현 불가' 근거만 `[재리뷰]` 절에 싣는다.
 4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
 5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
 6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
@@ -308,7 +308,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 2. focused 명령(조립 규칙은 아래 **focused 테스트 명령 조립** 참조)을 실행해 현재 실패 케이스 목록을 얻는다.
 3. 실패 케이스 **하나**를 고른다 → 그 케이스만 통과시키는 최소 코드를 작성한다 → focused를 재실행해 그 케이스가 통과하고 이미 통과한 케이스가 유지되는지 본다. 실패 케이스가 남아 있으면 3을 반복한다. 한 걸음이 15분을 넘기면 케이스를 더 잘게 볼 수 있는지 먼저 의심한다.
 4. 전부 GREEN이면 REFACTOR: 중복 제거·네이밍·구조 정리. 정리 한 단위마다 focused 재실행. 깨지면 그 단위를 롤백한다. 정리할 것이 없으면 "정리 없음"으로 기록한다.
-5. self-review 후 `reports/t{N}-impl.md`를 Write한다. 형식은 `agents/implementer.md`의 report 형식과 같다 — `## 구현 내용` / `## GREEN 증거`(focused 명령 + "N pass / 0 fail" 출력 요약) / `## REFACTOR 내역` / `## self-review 결과` / `## 우려사항`.
+5. self-review 후 `reports/t{N}-impl.md`를 Write한다. 형식은 `agents/implementer.md`의 report 형식과 같다 — `## 구현 내용` / `## GREEN 증거`(focused 명령 + "N pass / 0 fail" 출력 요약) / `## REFACTOR 내역` / `## self-review 결과` / `## 우려사항`. verify_implement 5가 append하는 `## 과잉 구현 정리`는 6번째 절이며, fix 라운드에서 report를 다시 쓸 때 보존한다.
 6. verify_implement로 진행한다. 세션 경로에는 NEEDS_CONTEXT·BLOCKED 상태 반환이 없다 — 필요한 파일은 직접 읽고, 막히면 fix loop와 Step 3 정체 감지가 처리한다. 우려가 있으면 report `## 우려사항`에 적고 verify_implement 1번의 DONE_WITH_CONCERNS 처리를 따른다.
 
 **격리 경로 (`--isolated`)** — 아래 implementer 디스패치를 그대로 쓴다. 상태 반환(DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED)은 이 경로에서만 발생한다.
@@ -365,7 +365,7 @@ Task(subagent_type="oh-my-gx:implementer"):
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (구현 주체가 테스트를 고치지 않는다).
 3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
-5. **과잉 구현 감지**: 추가된 메서드/필드 중 테스트에서 안 쓰는 것 → 사용자에게 보고: "과잉 구현 감지. YAGNI 권고로 다음 RED 단계로 미루는 것이 좋습니다. 정리할까요?"
+5. **과잉 구현 판정**: 추가된 public 메서드/필드 중 focused 테스트 집합이 참조하지 않는 것을 찾는다. 있으면 **묻지 않고 판정한다** — "판정 기록 (Rulings)" 절의 기본값대로 설계서 인터페이스가 명시한 멤버는 "설계 예약"으로 유지하고, 그 외는 제거한 뒤 focused를 재실행한다 (제거는 기본 경로에서 세션이 직접, `--isolated`면 implementer에 요청한다 — 4b와 같은 경로 구분. 제거로 깨지면 복원하고 `## 우려사항`에 기록하되, 이것은 관찰이므로 1번의 DONE_WITH_CONCERNS 판정에는 넣지 않는다). 제거·유지 목록을 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절로 append하고, decisions.md에 `Ruling: T{N} 과잉 구현 정리` 블록을 append한다. 판정할 것이 없으면 아무것도 기록하지 않는다.
 6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
 7. ✅ 통과 + 무결성 유지 → **Step 2-V 태스크 리뷰 판정**으로 진행한다 (발동 조건 미충족이면 `review: skipped` 기록 후 태스크 완료).
 8. ❌ 실패 → **fix loop 진입** (아래).
@@ -461,7 +461,7 @@ Task(subagent_type="oh-my-gx:reviewer", model: "sonnet"):
 2. `spec_verdict`·`quality_verdict` 블록을 phase-review Step 4.0과 같은 규칙으로 파싱한다 — 블록 우선, 산문 판정과 상충하면 FAIL로 간주하고 reviewer를 1회 재호출, 재호출도 상충이면 사용자에게 보고. `[검증 필요]` 항목은 해당 focused 테스트를 1회 직접 실행해 반영한다.
 3. 라우팅 (사용자에게 묻지 않는다 — Step 2-I fix loop와 같은 자동 경로):
    - `spec_verdict: FAIL`, Critical, Important `[동작결함]`(무표기 포함) → **RED 재호출 후 fix loop 진입** (Iron Law 1 — 동작 결함은 그것을 재현하는 실패 테스트가 먼저 있어야 고친다. 기존 fix loop는 verify_red 기준선의 테스트를 통과시키는 루프라 그 안에서는 테스트를 추가할 수 없으므로 RED를 먼저 연다):
-     1. **RED 재호출**: red-writer를 Step 2-R 프롬프트로 재디스패치한다. `[AC (Given-When-Then)]`에는 미충족 AC(spec FAIL) 또는 finding을 재현 조건으로 옮긴 시나리오(Critical·`[동작결함]`: Given 현재 상태 / When 트리거 / Then 기대 동작)를 넣고, `[작성 범위 — 테스트 집합]` 뒤에 "이 태스크의 기존 테스트 파일에 케이스를 **추가**합니다 (기존 케이스 수정·삭제 금지)"를 덧붙인다. verify_red 1~7을 그대로 재적용한다 — 새 케이스만 실패해야 하고 기존 케이스는 통과를 유지하며, `test-file-hash`·`rgr-t{N}-porcelain.txt`·`test-count` 기준선을 **갱신**한다. report는 `reports/t{N}-red.md`에 `## 재현 RED R{r}` 절로 append한다.
+     1. **RED 재호출**: red-writer를 Step 2-R 프롬프트로 재디스패치한다. `[AC (Given-When-Then)]`에는 미충족 AC(spec FAIL) 또는 finding을 재현 조건으로 옮긴 시나리오(Critical·`[동작결함]`: Given 현재 상태 / When 트리거 / Then 기대 동작)를 넣고, `[작성 범위 — 테스트 집합]` 뒤에 "이 태스크의 기존 테스트 파일에 케이스를 **추가**합니다 (기존 케이스 수정·삭제 금지)"를 덧붙인다. verify_red 1~7을 그대로 재적용한다 (2·3번의 재현 RED 예외 — "이미 구현이 있어서 통과"는 finding의 오탐이므로 '재현 불가' 근거만으로 재리뷰에 넘긴다) — 새 케이스만 실패해야 하고 기존 케이스는 통과를 유지하며, `test-file-hash`·`rgr-t{N}-porcelain.txt`·`test-count` 기준선을 **갱신**한다. report는 `reports/t{N}-red.md`에 `## 재현 RED R{r}` 절로 append한다.
      2. **fix loop**: 구현 주체(세션. `--isolated`면 같은 implementer 재개. **라운드 4~5는 Step 2-I fix loop 표대로 두 경로 모두 fresh implementer + `model: "opus"` 격상**)가 새 실패 케이스를 통과시키며 findings를 수정 → focused 재실행 → fix report를 `reports/t{N}-impl.md`에 append → verify_implement 재수행(갱신된 기준선 기준) → 수정 diff를 위 임시 인덱스 관용구로 `reports/t{N}-diff-r{r}.txt`에 수집 → **재리뷰** 디스패치(위 프롬프트의 `[재리뷰]` 절 포함).
      3. NOT ADDRESSED 또는 새 Critical/Important가 남으면 다음 라운드 — 새 동작 결함이면 1번(RED)부터, `[동작불변]`만 남았으면 정리만. `current-step`은 `"RGR T{N}: REVIEW R{r}"`, 태스크에 `fix-round: {r}/5`.
    - Important `[동작불변]` → 세션 정리 (세션 IMPLEMENT 절차의 REFACTOR 규칙·금지 목록. `--isolated`면 implementer 정리 모드) → focused 재실행 → 재리뷰. `[동작불변]`만 있어도 **라운드를 1 올린다** (`fix-round: {r}/5` — 정리·재리뷰 왕복도 상한 5를 공유한다). 동작 결함과 함께 나왔으면 같은 라운드의 재리뷰에 포함한다.
@@ -510,9 +510,10 @@ RGR 사이클 완료: {N}개 태스크
 
 focused 누적: {N pass}, 0 fail (전체 회귀는 경계에서 — 전체 모드: review Step 0 / 핵심 모드·단독: Step 3.5)
 변경 파일: {N}개
+판정: {N}건 (decisions.md — 제목 나열: T2 과잉 구현 정리, …)
 
 특이사항: (있으면)
-- T2 IMPLEMENT 단계에서 과잉 구현 감지 → 사용자 승인으로 다음 RED로 미룸
+- T2 IMPLEMENT 단계에서 과잉 구현 감지 → 판정으로 제거 (decisions.md: T2 과잉 구현 정리)
 ```
 
 ---
@@ -613,6 +614,39 @@ steps:
 - 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에는 `test-file` 기록이 없어 focused 집합을 복원할 수 없으므로, 이 태스크의 focused 실행은 전체 `test` 명령으로 폴백하고 execution-log에 기록한다. `test-file-hash`·porcelain 스냅샷은 구 state에 기록이 있으면 그대로 대조하고 없을 때만 생략한다. `test-count`는 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
 - `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
 - `"변경사항 수집"` → Step 5부터 재실행
+
+## 판정 기록 (Rulings)
+
+구현 내부 게이트 3곳 — verify_implement 5번(과잉 구현), phase-review 4b(동작 불변 정리), 4c(Minor·MEDIUM) — 는 사용자에게 묻지 않고 **기본값으로 판정**하고 근거를 남긴다. 답이 거의 항상 기본값인 질문에 사람을 세우지 않기 위해서다. 산출물 승인(PRD·설계·태스크 분해), SPEC FAIL, Critical, 동작 결함의 RGR 여부, 위험 수용은 이 규약의 대상이 **아니며** 계속 AskUserQuestion으로 확인한다.
+
+**기록 위치**: `${DEV_DIR}/decisions.md` — AskUserQuestion 훅(capture-decision)이 쓰는 파일에 오케스트레이터가 append한다. 파일이 없으면 훅과 같은 헤더로 만든다:
+
+```
+# 의사결정 기록
+
+AskUserQuestion으로 오간 질문과 선택을 자동 기록한다. 고른 것뿐 아니라 버린 선택지도 남으므로 왜 그렇게 정했는지가 추적된다.
+```
+
+**블록 형식** (한 판정 = 한 블록. 시각은 `date "+%Y-%m-%d %H:%M"`):
+
+```
+## {YYYY-MM-DD HH:MM} · Ruling: {제목}
+
+**판정.** {무엇을 어떻게 했는가 — 파일·항목을 명시}
+**근거.** {왜 그 기본값인가}
+**틀리면.** {되돌리는 방법과 비용 — 예: reports/t2-impl.md "## 과잉 구현 정리" 목록으로 복원}
+```
+
+**기본값 표**:
+
+| 게이트 | 기본 판정 | 예외 |
+|---|---|---|
+| verify_implement 5 과잉 구현 | focused 테스트 집합이 참조하지 않는 신규 public 멤버를 **제거**하고 focused를 재실행한다 (기본은 세션 직접, `--isolated`면 implementer). 제거로 focused가 깨지면(간접 사용) 복원하고 `## 우려사항`에 기록한다 | 설계서 인터페이스가 명시한 멤버는 제거하지 않고 "설계 예약"으로 판정만 기록한다 |
+| phase-review 4b 동작 불변 정리 | **수행**한다 (정리 모드 — 기본은 세션 직접, `--isolated`면 implementer) | 없음 |
+| phase-review 4c quality Minor | **유예** — 수정하지 않고 Deferred 목록에 올린다 | 없음 |
+| phase-review 4c security MEDIUM | 동작 불변이 명백하면 **정리 모드로 수정**, 동작 변경을 동반하거나 모호하면 **유예** | 없음 |
+
+**노출**: 판정은 사용자가 되돌릴 수 있어야 하므로 워크스페이스 안에만 두지 않는다. Step 4 사이클 완료 보고, phase-review 4c 말미의 통지, phase-complete Step 2-1의 `pr-rulings.md`(`## Rulings` 제목 나열 + `## Deferred` 유예 목록)에 옮긴다.
 
 ---
 

@@ -66,7 +66,7 @@ Arguments:
      - Other로 입력된 브랜치명 → 해당 브랜치를 베이스로 사용.
      - "취소" → "베이스 브랜치 미확정으로 PR 생성을 중단합니다." 출력 후 **즉시 종료**.
 - `--background <파일경로>` (optional): Background 섹션에 반영할 비즈니스 맥락 파일. 지정 시 해당 파일을 Read하여 "배경"과 "요구사항"을 Background 섹션에 포함한다. git log 기반 배경과 함께 병합하여 작성.
-- `--extra-section <파일경로>` (optional): Checklist 앞에 삽입할 추가 섹션 파일. 지정 시 해당 파일을 Read하여 요약본을 Checklist 직전에 삽입한다. (예: Trust Ledger → `## Audit Summary` 섹션 생성)
+- `--extra-section <파일경로>` (optional): Checklist 앞에 삽입할 추가 섹션 파일. 지정 시 해당 파일을 Read하여 요약본을 Checklist 직전에 삽입한다. 파일에 `## Rulings`·`## Deferred` 절이 있으면 요약하지 않고 같은 제목의 절로 항목을 **그대로** 옮긴다 — 판정 목록은 사용자가 되돌릴 근거라 항목이 빠지면 안 된다. (예: Trust Ledger → `## Audit Summary` 섹션 생성)
 
 ## 사전 확인 (반드시 순차 실행)
 
@@ -146,7 +146,7 @@ git diff <base-branch>...HEAD --stat
 구체적으로 무엇이 바뀌었는지를 기능 단위로 설명한다. 파일 단위가 아니라
 "무엇을 왜 그렇게 바꿨는지"를 문장으로 풀어쓴다.
 
-(--extra-section 파일이 있으면 여기에 해당 파일을 Read하여 요약 섹션을 삽입한다. 예: Trust Ledger → ## Audit Summary)
+(--extra-section 파일이 있으면 여기에 해당 파일을 Read하여 요약 섹션을 삽입한다. 예: Trust Ledger → ## Audit Summary. 단 ## Rulings·## Deferred 절은 요약 없이 항목 그대로)
 
 ## Checklist
 - [ ] 주요 기능이 로컬에서 정상 동작하는지 확인
@@ -156,7 +156,7 @@ git diff <base-branch>...HEAD --stat
 ```
 
 **작성 규칙**:
-1. **문장형 서술**: 모든 섹션은 `-` bullet이 아닌 자연스러운 한국어 문장으로 쓴다. 단, Checklist는 체크박스 형태.
+1. **문장형 서술**: 모든 섹션은 `-` bullet이 아닌 자연스러운 한국어 문장으로 쓴다. 단, Checklist는 체크박스 형태. `--extra-section` 파일의 `## Rulings`·`## Deferred`도 예외 — 항목 불릿을 그대로 옮긴다.
 2. **Background ≠ Summary**: Background는 "왜(문제/맥락)", Summary는 "무엇을(해결책)". 둘을 혼합하지 않는다.
 3. **Changes는 기능 단위**: 파일명 나열이 아니라 기능 관점에서 "무엇이 어떻게 바뀌었고, 왜 그 방식을 선택했는지".
 4. **Checklist는 동적 생성**: 변경 내용에 따라 항목을 조정한다. 테스트가 없는 변경이면 테스트 항목 생략. 마이그레이션이 없으면 마이그레이션 항목 생략.

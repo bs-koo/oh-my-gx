@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.29.0 (2026-09-09)
+
+구현 단계 안의 확인 질문 3곳을 기본값 판정으로 바꾼다. superpowers의 "Rulings, not stalls"를 가져오되 범위는 구현 내부 게이트로 한정한다 — PRD·설계·태스크 분해 승인, SPEC FAIL, Critical, 동작 결함 RGR 여부, 위험 수용은 협업 접점이라 그대로 묻는다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D2.
+
+- **변경 — 판정 기록 규약**: phase-implement `## 판정 기록 (Rulings)` 절이 SSOT. 판정은 `decisions.md`(AskUserQuestion 훅과 같은 파일)에 `Ruling: 제목` 블록(판정·근거·틀리면)으로 append하고, 사이클 완료 보고와 PR 본문 `## Rulings`에 제목을 나열한다
+- **변경 — 과잉 구현(verify_implement 5)**: 테스트가 참조하지 않는 신규 public 멤버를 묻지 않고 제거한다(설계서 인터페이스 멤버는 "설계 예약"으로 유지). 제거 목록은 report `## 과잉 구현 정리`에 남긴다
+- **변경 — phase-review 4b·4c**: 동작 불변 정리는 수행, quality Minor는 유예, security MEDIUM은 동작 불변이면 정리·아니면 유예. 유예 목록은 `reports/review-deferred.md` → PR 본문 `## Deferred`
+- **변경 — gx-pull-request**: `--extra-section` 파일의 `## Rulings`·`## Deferred`는 요약 없이 항목 그대로 싣는다
+- **검증 — 린트 [35] 판정 계약**, 골든 S42
+- **리뷰 반영(최종 1라운드)**: 4c를 "분류 → 동작 불변 MEDIUM 정리 → Ruling → 유예만 Deferred Write → 통지" 순으로 재배열(정리한 항목이 Deferred로 새던 순서 결함), 4.4 도입부의 security 분류 포인터를 판정 규약과 정합("모호하면 유예"), Rulings/Deferred 요약 줄을 4.3에서 4c 말미로 이동(4.4 실행 전 0건 오표시), verify_implement 5에 `--isolated` 경로 구분, 재현 RED 예외를 verify_red 2·3번에 걸고 재리뷰는 수정 diff 없이 '재현 불가' 근거만, report 6번째 절(`## 과잉 구현 정리`) 보존 규칙, 린트 [35]에 기본값 표·통지 줄·pr-rulings 검사 추가
+
 ## v1.28.0 (2026-09-09)
 
 세션 IMPLEMENT의 자기 검증 편향을 상쇄하는 조건부 태스크 리뷰를 넣는다. superpowers subagent-driven-development의 태스크 리뷰 층을 가져오되, 태스크마다 붙이지 않고 편향이 커지는 태스크에만 붙인다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D1.

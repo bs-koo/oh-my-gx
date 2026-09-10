@@ -396,3 +396,7 @@ MSG
 - 린트 35/35·훅 테스트 통과. phase-implement·phase-review에 폐지된 질문 문구 3개가 없다.
 - 골든 S42를 실제로 한 번 돌려 AskUserQuestion 없이 헬퍼가 제거되고 decisions.md에 Ruling 블록이 append되는 것을 눈으로 확인한다 (PR 체크박스).
 - 후속: D3(`2026-09-09-context-injection.md`).
+
+## 최종 리뷰 반영 (실행 기록)
+
+Task 2 Step 3의 "Step 4.3에 Rulings/Deferred 줄 추가"는 실행 중 최종 리뷰 I2로 폐기됐다 — 4.3은 4.4보다 먼저 실행되어 항상 0건을 찍는다. 반영본은 그 줄을 4c 말미의 통지로 옮겼다. 함께 반영: 4c 순서 재배열(정리 → Ruling → 유예만 Write), 4.4 도입부 security 분류 포인터 정합, verify_implement 5의 `--isolated` 구분, 재현 RED 예외의 verify_red 2·3번 적용과 수정 diff 없는 재리뷰, report 6번째 절 보존, gx-pull-request 작성 규칙 예외, 린트 [35] 검사 강화. 골든 4b·4c 시나리오는 유예했다(S42 픽스처로 수동 확인 가능).
