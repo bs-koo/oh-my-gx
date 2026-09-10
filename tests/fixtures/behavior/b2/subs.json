@@ -1,0 +1,7 @@
+{
+  "{reports/t{N}-red.md}": "reports/t1-red.md",
+  "{대상 컴포넌트의 시그니처만}": "src/limit.js: checkLimit(amount: number): { ok: boolean, reason?: 'invalid' | 'limit' } ; SINGLE_CHARGE_LIMIT = 100000",
+  "{오케스트레이터가 조립한 명령 — 대상 테스트 + 이번 파이프라인 실행의 신규 테스트 전부}": "node --test test/limit-max.test.js test/limit.test.js",
+  "{reports/t{N}-impl.md}": "reports/t1-impl.md",
+  "{PROJECT_ROOT}": "."
+}

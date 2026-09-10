@@ -16,3 +16,8 @@ jobs:
         run: bash scripts/hook-tests.sh
       - name: gx-ralph 러너 테스트
         run: bash scripts/test-gx-ralph.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 행동 테스트 러너 (mock)
+        run: bash scripts/test-behavior-tests.sh

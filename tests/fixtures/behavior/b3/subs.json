@@ -1,0 +1,11 @@
+{
+  "{PRD \"요구사항\" 섹션}": "FR-1: 1회 충전 금액이 SINGLE_CHARGE_LIMIT(100,000원)를 넘으면 거부한다.",
+  "{PRD \"수용 기준\" 섹션}": "AC-1: 1회 충전 한도 검증\n  시나리오 1 — Given: 1회 충전 한도가 100,000원이다 / When: checkLimit(150000)을 호출한다 / Then: { ok: false, reason: 'limit' }가 반환된다\n  시나리오 2 — Given: 1회 충전 한도가 100,000원이다 / When: checkLimit(100001)을 호출한다 / Then: { ok: false, reason: 'limit' }가 반환된다",
+  "{design \"변경 범위\" 섹션}": "src/limit.js checkLimit에 한도 분기 추가, test/limit-max.test.js 신규. 다른 파일 변경 없음.",
+  "{DIFF_FILE}": "reports/diff.txt",
+  "{코드 맵}": "- src/limit.js → 충전 한도 검증 (checkLimit)\n- test/limit.test.js → 기존 테스트",
+  "{CLAUDE.md 컨벤션 또는 기존 코드 스타일}": "CommonJS, 'use strict', node:test + node:assert/strict",
+  "{ANTI_PATTERNS_PATH}": "__ROOT__/.claude/skills/gx-tdd/references/testing-anti-patterns.md",
+  "{FRONTEND_TESTING_PATH}": "(UI 없음 — 해당 없음)",
+  "{state.md 태스크 객체의 deferred-minors > 0인 태스크의 reports/t{N}-review.md 경로 목록}": "없음"
+}

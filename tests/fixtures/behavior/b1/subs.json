@@ -1,0 +1,9 @@
+{
+  "{ANTI_PATTERNS_PATH}": "__ROOT__/.claude/skills/gx-tdd/references/testing-anti-patterns.md",
+  "{FRONTEND_TESTING_PATH}": "(UI 태스크 아님 — 해당 없음)",
+  "{태스크가 매핑된 AC 시나리오}": "AC-1: 1회 충전 한도 검증\n  시나리오 1 — Given: 1회 충전 한도가 100,000원이다 / When: checkLimit(150000)을 호출한다 / Then: { ok: false, reason: 'limit' }가 반환된다\n  시나리오 2 — Given: 1회 충전 한도가 100,000원이다 / When: checkLimit(100001)을 호출한다 / Then: { ok: false, reason: 'limit' }가 반환된다",
+  "{대상 컴포넌트의 인터페이스 + 모의 전략}": "src/limit.js가 { checkLimit(amount: number): { ok: boolean, reason?: 'invalid' | 'limit' }, SINGLE_CHARGE_LIMIT: number }를 export한다. 순수 함수 — 모의 없음.",
+  "{프로젝트의 테스트 컨벤션 (네이밍, assertion 라이브러리)}": "node:test + node:assert/strict, CommonJS require, 파일명 test/*.test.js, 테스트 이름은 한국어 서술문 (기존: test/limit.test.js)",
+  "{PROJECT_ROOT}": ".",
+  "{reports/t{N}-red.md}": "reports/t1-red.md"
+}

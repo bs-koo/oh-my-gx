@@ -1,0 +1,13 @@
+{
+  "vcs": "git",
+  "projectTypes": {
+    "node": {
+      "detect": ["package.json"],
+      "build": "",
+      "test": "node --test",
+      "focusedTest": "node --test {files}",
+      "warningPattern": "warn",
+      "artifacts": ["node_modules/"]
+    }
+  }
+}
