@@ -62,9 +62,12 @@ allowed-tools:
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
+Codex에서는 먼저 `Read("references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
 | 이 문서의 표기 | Codex 대응 |
 |----------------|-----------|
-| `Task(subagent_type="oh-my-gx:{name}")` | `spawn_agent` — 격리가 필요하면 `fork_turns: "none"`, `model`과 `reasoning_effort`를 함께 지정한다. Codex는 `agents/` 역할 파일을 로드하지 않으므로 호출에 딸린 `prompt` 블록만으로 역할이 전달된다. 그 블록을 줄이거나 생략하지 않는다 |
+| `Task(subagent_type="oh-my-gx:{name}")` | 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다 |
 | `AskUserQuestion` | `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다 |
 | `Skill(skill: "oh-my-gx:{name}")` | 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다 |
 
@@ -75,7 +78,7 @@ allowed-tools:
 - 커밋: `Skill("oh-my-gx:gx-commit")`
 - PR 생성: `Skill("oh-my-gx:gx-pull-request")`
 
-`Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
+`Skill` 도구가 있는 하네스에서는 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다 — `Skill` 도구를 거쳐야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다. `Skill` 도구가 없는 하네스에서는 위 하네스 적응표대로 해당 `SKILL.md`를 읽어 절차를 수행하고, 그 스킬의 게이트·확인 단계를 그대로 지킨다.
 
 ## 인자
 

@@ -34,13 +34,15 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 
 **하네스 적응**: 이 문서는 Claude Code 도구명(`Task`·`AskUserQuestion`·`Skill`)으로 서술한다. Codex 등 다른 하네스에서 실행 중이면 먼저 `Read("references/harness-adaptation.md")`로 도구 대응표를 읽고 그대로 옮겨 수행한다. 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다.
 
+Codex Windows: read files as UTF-8 (`Get-Content -Encoding UTF8`).
+
 
 다른 스킬의 프로세스를 실행할 때 **반드시 `Skill` 도구로 호출**한다:
 - 테스트(완료 게이트): `Skill("oh-my-gx:gx-verify")`
 - 커밋: `Skill("oh-my-gx:gx-commit")`
 - PR 생성: `Skill("oh-my-gx:gx-pull-request")`
 
-`Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다. `Skill` 도구를 사용해야 스킬의 `allowed-tools` 제한이 시스템 레벨에서 강제된다.
+`Skill` 도구가 있는 하네스에서는 `Read()`로 스킬 파일을 읽어 인라인 실행하지 않는다 — 그 도구를 거쳐야 `allowed-tools` 제한이 시스템 레벨에서 강제된다. 없는 하네스는 하네스 적응표를 따르되 그 스킬의 게이트를 빼지 않는다.
 
 > **RGR 보조 스킬(gx-red/gx-green/gx-refactor)은 파이프라인에서 호출하지 않는다.** phase-implement는 이 스킬들을 거치지 않고 `red-writer`를 **직접 `Task`로 디스패치**하고 IMPLEMENT는 오케스트레이터가 직접 수행하며(`--isolated`면 `implementer` 디스패치. green-coder/refactor-coder는 단독 스킬 전용), 사이클 제어·검증은 오케스트레이터가 직접 수행한다. gx-red/gx-green/gx-refactor는 사용자가 단계를 단독 실행하거나 보조 스킬끼리 체이닝하는 경로 전용이다.
 >

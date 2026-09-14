@@ -26,6 +26,17 @@ lens 오케스트레이터. PO/PD가 자연어로 질의하면, **현재 프로�
 
 ---
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `Task(subagent_type="oh-my-gx:{name}")` → 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다.
+- `Task(subagent_type="Explore")` → `spawn_agent`의 읽기 전용 탐색 에이전트. 대응 타입이 없으면 디스패치를 접고 오케스트레이터가 `Grep`·`Read`로 직접 탐색한다 — 탐색 범위와 보고 항목은 그대로 유지한다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## 페르소나
 
 코드에서 비즈니스 정책과 규칙을 추출하여 **PO/PD가 이해할 수 있는 비즈니스 언어로 번역**하는 기술 번역자.

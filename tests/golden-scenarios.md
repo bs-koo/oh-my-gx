@@ -73,6 +73,12 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 
 실행: `bash scripts/behavior-tests.sh` (약 5~15분, 토큰 사용). 릴리스 전에는 `GX_BEHAVIOR_REPS=3`으로 돌린다 — 모델 행동은 확률적이라 1회 통과는 증거가 약하다. 실패 분석은 `GX_BEHAVIOR_KEEP=1`로 샌드박스를 남겨 `.run.jsonl`을 본다. 스크립트 자체의 회귀는 CI의 `scripts/test-behavior-tests.sh`(mock)가 잡는다. 실행은 `--safe-mode --permission-prompts none`으로 전역 CLAUDE.md·훅·플러그인·MCP를 끈 채 돌리고, stream-json에 `result` 이벤트가 없으면 실행 실패로 판정한다(부작용 부재를 근거로 하는 검사가 공허하게 통과하지 않도록). UI 가드 절은 비-UI 시나리오에서도 프롬프트에 실린다 — 추출 방식의 한계이며 판정에는 영향이 없다.
 
-## 기록
+## Codex 설치·행동 검증
+
+위 Claude Code 시나리오 및 `scripts/behavior-tests.sh`의 Claude CLI 결과와 별도로, [codex-smoke.md](codex-smoke.md)의 H/R/Q/S 시나리오와 네이티브 실행 검증을 수행한다. Codex의 훅 판정·도구 API·역할 전달은 Claude와 다르므로 Claude mock 통과만으로 Codex 지원을 판정하지 않는다.
+
+실제 설치 캐시에서 스킬 17개와 역할 리소스를 확인하고, setup→TDD→교차 리뷰→verify→커밋 준비를 새 소비 프로젝트에서 3회 실행한다. 하네스 버전, 운영체제, 훅 신뢰, 실제 모델과 에이전트 실행 증거를 기록하며, 미실행 항목은 NOT_RUN으로 남긴다. 보호 브랜치, verify 미통과 및 stale fingerprint 차단은 실제 훅 결과와 HEAD/index 불변으로 확인한다.
+
+## 결과 기록
 
 점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/43 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다. 행동 테스트는 `행동 테스트: B1~B3 통과 (모델 sonnet/sonnet/opus, 반복 3)` 형식으로 함께 기록한다.

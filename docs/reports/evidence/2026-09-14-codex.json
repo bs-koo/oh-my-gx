@@ -1,0 +1,769 @@
+{
+  "date": "2026-09-14",
+  "cli": "0.154.0",
+  "raw_root": "D:\\Temp\\gx-codex-e2e-20260914",
+  "statuses": {
+    "S1": "PASS (2회차)",
+    "S2": "PASS (누락 시 중단)",
+    "S3": "수정 후 PASS (final-3)",
+    "R1": "PASS",
+    "R2": "PARTIAL (src 미열람 미확인)",
+    "R3": "역할 분리 확인 / strict 재작성 필요",
+    "Q1": "수정 후 PASS",
+    "H1": "PASS",
+    "H2": "PASS (deny)",
+    "H3": "PASS (일반 1회 승인)",
+    "H4": "PASS (stale deny)"
+  },
+  "workflow_verdicts": {
+    "workflow-run-1": "FAIL",
+    "workflow-run-2": "PASS",
+    "workflow-run-3": "FUNCTIONAL_PASS_S3_FAIL"
+  },
+  "ralph": {
+    "model_cache": "validation-final-3",
+    "verdict": "BLOCKED",
+    "exit_code": 2,
+    "fingerprint": "98b9ab3:19c67e2086d6",
+    "commit_completed": false
+  },
+  "limits": [
+    "Child source read trace unavailable",
+    "Linux authenticated model and macOS NOT_MEASURED",
+    "Git source release NOT_MEASURED",
+    "Cost and full child aggregate tokens NOT_MEASURED"
+  ],
+  "session_summaries": {
+    "h1-retry": {
+      "thread_id": "01a09e11-3a44-7252-ac50-8fe183a92093",
+      "usage": {
+        "input_tokens": 168283,
+        "cached_input_tokens": 141056,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1227,
+        "reasoning_output_tokens": 225
+      },
+      "errors": [],
+      "roles": [],
+      "result": {
+        "exit_code": 0,
+        "seconds": 60.89,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/h1-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/h1-project",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\h1-retry\\final.txt",
+          "--disable",
+          "hooks",
+          "-"
+        ]
+      }
+    },
+    "q1-recapture": {
+      "thread_id": "01a09e13-0ae9-7753-8b3e-a0596fb46e7c",
+      "usage": {
+        "input_tokens": 1370079,
+        "cached_input_tokens": 1225984,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 5677,
+        "reasoning_output_tokens": 1609
+      },
+      "errors": [],
+      "roles": [],
+      "result": {
+        "exit_code": 0,
+        "seconds": 146.48,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/questions-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "resume",
+          "--json",
+          "--model",
+          "gpt-5.6-sol",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\q1-recapture\\final.txt",
+          "01a09e13-0ae9-7753-8b3e-a0596fb46e7c",
+          "-"
+        ]
+      }
+    },
+    "r1-reviewer": {
+      "thread_id": "01a09e23-8b3e-7a21-8c0f-e7228cc3ea73",
+      "usage": {
+        "input_tokens": 454688,
+        "cached_input_tokens": 415872,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4221,
+        "reasoning_output_tokens": 445
+      },
+      "errors": [],
+      "roles": [
+        {
+          "task_name": "reviewer_negative",
+          "fork_turns": "none",
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high"
+        }
+      ],
+      "result": {
+        "exit_code": 0,
+        "seconds": 188.74,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/reviewer-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/reviewer-project",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\r1-reviewer\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "r3-humanizer": {
+      "thread_id": "01a09e1a-0562-7330-bcb4-1f68ce61b472",
+      "usage": {
+        "input_tokens": 1986688,
+        "cached_input_tokens": 1922560,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11938,
+        "reasoning_output_tokens": 2270
+      },
+      "errors": [],
+      "roles": [
+        {
+          "task_name": "humanizer_fidelity",
+          "fork_turns": "none",
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high"
+        },
+        {
+          "task_name": "humanizer_naturalness",
+          "fork_turns": "none",
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high"
+        }
+      ],
+      "result": {
+        "exit_code": 0,
+        "seconds": 632.27,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/humanizer-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/humanizer-project",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\r3-humanizer\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "s2-missing-template": {
+      "thread_id": "01a09e15-9361-7c13-991d-82811162f267",
+      "usage": {
+        "input_tokens": 252392,
+        "cached_input_tokens": 220416,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1551,
+        "reasoning_output_tokens": 150
+      },
+      "errors": [],
+      "roles": [],
+      "result": {
+        "exit_code": 0,
+        "seconds": 156.59,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/missing-template-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/missing-template-project",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\s2-missing-template\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "s3-final": {
+      "thread_id": "01a09e30-a628-76f2-89c1-29f1e513c1d3",
+      "usage": null,
+      "errors": [],
+      "roles": [],
+      "result": {
+        "exit_code": 0,
+        "seconds": 167.22,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/settings-final-project",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/settings-final-project",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\s3-final\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "workflow-run-1": {
+      "thread_id": "01a09e0f-30ac-7cf0-8fe7-ca4a61d057ae",
+      "usage": {
+        "input_tokens": 3633470,
+        "cached_input_tokens": 3493760,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 16850,
+        "reasoning_output_tokens": 2630
+      },
+      "errors": [],
+      "roles": [
+        {
+          "task_name": "red_writer_t1",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "security_auditor_core",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        }
+      ],
+      "result": {
+        "exit_code": 0,
+        "seconds": 831.8,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/workflow-1",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/workflow-1",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\workflow-run-1\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "workflow-run-2": {
+      "thread_id": "01a09e1f-6d58-74a0-9956-4262139efbba",
+      "usage": {
+        "input_tokens": 4337689,
+        "cached_input_tokens": 4204672,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 16148,
+        "reasoning_output_tokens": 2851
+      },
+      "errors": [],
+      "roles": [
+        {
+          "task_name": "red_writer_clamp_upper",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "core_security_audit",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "cross_review_qa",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "cross_review_security",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        }
+      ],
+      "result": {
+        "exit_code": 0,
+        "seconds": 977.8,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/workflow-2",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/workflow-2",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\workflow-run-2\\final.txt",
+          "-"
+        ]
+      }
+    },
+    "workflow-run-3": {
+      "thread_id": "01a09e1f-902b-7191-a61b-fc8b33798574",
+      "usage": {
+        "input_tokens": 5102048,
+        "cached_input_tokens": 4948864,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 16978,
+        "reasoning_output_tokens": 2303
+      },
+      "errors": [],
+      "roles": [
+        {
+          "task_name": "red_writer_t1",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "core_security_audit",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "cross_qa_native",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        },
+        {
+          "task_name": "cross_security_native",
+          "fork_turns": "none",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium"
+        }
+      ],
+      "result": {
+        "exit_code": 0,
+        "seconds": 1011.45,
+        "cwd": "D:/Temp/gx-codex-e2e-20260914/workflow-3",
+        "argv": [
+          "C:/Users/SQI/AppData/Roaming/npm/codex.cmd",
+          "exec",
+          "--cd",
+          "D:/Temp/gx-codex-e2e-20260914/workflow-3",
+          "--sandbox",
+          "workspace-write",
+          "--model",
+          "gpt-5.6-sol",
+          "--json",
+          "--output-last-message",
+          "D:\\Temp\\gx-codex-e2e-20260914\\workflow-run-3\\final.txt",
+          "-"
+        ]
+      }
+    }
+  },
+  "raw_artifacts": [
+    {
+      "path": "export-validation-final-3-hashes.json",
+      "bytes": 10344,
+      "sha256": "df970e1681d3f51ddb4f6c4ca290a4daba72ab47abb11ebffab70f6cc829ac04"
+    },
+    {
+      "path": "h1-retry/events.jsonl",
+      "bytes": 26534,
+      "sha256": "8f3031823046fe7bbde3c7845fcacf3bcca84dcf5520759d89e6c56584de8071"
+    },
+    {
+      "path": "h1-retry/result.json",
+      "bytes": 467,
+      "sha256": "604c54fbafb00c62b5019b88ad83eaca76d9dee0998e7c884c4735361ed206c9"
+    },
+    {
+      "path": "h1-retry/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "h2/verified-hook-denials.json",
+      "bytes": 2135,
+      "sha256": "d3636520e8c9b0ec1f9bb7bd17161cfba7a4080411a027d72e486dfab96ccc78"
+    },
+    {
+      "path": "h3-evidence.json",
+      "bytes": 6840,
+      "sha256": "57c0ddeac7a857a1e03c8c6ff4d763b4cee1e7b44db94e150c5f631e2ab12925"
+    },
+    {
+      "path": "h4-stale/verified-hook-denials.json",
+      "bytes": 674,
+      "sha256": "1b817bb0f6e86bd8b12100549a4bf8a30132cc5d1f2ac4af4e35705bdb96212c"
+    },
+    {
+      "path": "host-review-events.jsonl",
+      "bytes": 75926,
+      "sha256": "f675199ba3d3c1ac8af4b55ccef03e5fe1b6a236899c8670affff8e173bcf97d"
+    },
+    {
+      "path": "host-review-final.md",
+      "bytes": 4034,
+      "sha256": "6532d3bd689c40f9c2c05ac2572ed07fc578c372665ae4a28201a53e0818b3d2"
+    },
+    {
+      "path": "linux-release-tests.log",
+      "bytes": 28222,
+      "sha256": "96c2339d70e95df6763aff1c406b23714186dd1395ef5e7c2141b6b90046fbe4"
+    },
+    {
+      "path": "q1-answer/events.jsonl",
+      "bytes": 7975,
+      "sha256": "f7ac62dffb85824c087500e957aa264938847337df6d510e73202e2413efc3d1"
+    },
+    {
+      "path": "q1-answer/result.json",
+      "bytes": 400,
+      "sha256": "19eaf523d88ba541dbf141d579f1cf67143f449efa83b852f89a2d0a9de6025b"
+    },
+    {
+      "path": "q1-answer/stderr.log",
+      "bytes": 207,
+      "sha256": "881315eae489d87b11ac13174e89b1d276e73a66277a625858a5d411efc48e3c"
+    },
+    {
+      "path": "q1-question/events.jsonl",
+      "bytes": 123533,
+      "sha256": "548cd016104af02ab56443b5d46e29e41198dfcc21586c754a196fa33b627497"
+    },
+    {
+      "path": "q1-question/result.json",
+      "bytes": 452,
+      "sha256": "73c8e15867991de544762f41251c016533203051849cadc825892d301a286904"
+    },
+    {
+      "path": "q1-question/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "q1-recapture/events.jsonl",
+      "bytes": 96189,
+      "sha256": "b5ba8ed25eda600d780d3f232c1cabfd78cc12e9e1b6ee922d50216e256203e0"
+    },
+    {
+      "path": "q1-recapture/result.json",
+      "bytes": 403,
+      "sha256": "6fb4e9e1b6d39e98646baeb1899cce172da46cef204d128a18c18ef169ca4a62"
+    },
+    {
+      "path": "q1-recapture/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "r1-reviewer/events.jsonl",
+      "bytes": 74124,
+      "sha256": "c0c68115cd4606b30acc3e8b12ed7d2f7e2d277dfb5e8a830646397a849e6ffb"
+    },
+    {
+      "path": "r1-reviewer/result.json",
+      "bytes": 451,
+      "sha256": "b12b22aabafc88a97c7f09a2bb01f93a545d6dc4d2af03f2654fde94154d2b49"
+    },
+    {
+      "path": "r1-reviewer/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "r3-humanizer/events.jsonl",
+      "bytes": 126830,
+      "sha256": "0c5499185f8a0385444d7d41c29d29e17311365f62f88b9289c465c5a893e2a5"
+    },
+    {
+      "path": "r3-humanizer/result.json",
+      "bytes": 454,
+      "sha256": "8b33a3cdad45989855c6060ecbb1b02953fbf22e7ee505ede38b1cc0abf7cc72"
+    },
+    {
+      "path": "r3-humanizer/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ralph-final-project/.dev/feat-ralph-final-project/iter-1.events.jsonl",
+      "bytes": 165489,
+      "sha256": "f5b6ab866af2622789687bb37fb35cb168600c31b48888f08973e6a9d0621063"
+    },
+    {
+      "path": "ralph-final-project/.dev/feat-ralph-final-project/iter-1.events.jsonl.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ralph-final-project/.dev/feat-ralph-final-project/iter-1.final.md",
+      "bytes": 78,
+      "sha256": "e33932f90d801b1787e271b3eab4fa7cda30ac8719dbd590160fadcfe7393ea0"
+    },
+    {
+      "path": "ralph-final-project/.dev/feat-ralph-final-project/iter-1.log",
+      "bytes": 78,
+      "sha256": "e33932f90d801b1787e271b3eab4fa7cda30ac8719dbd590160fadcfe7393ea0"
+    },
+    {
+      "path": "ralph-final-project/.dev/feat-ralph-final-project/iter-1.prompt.md",
+      "bytes": 887,
+      "sha256": "c80b0df24e3fd6133ff645abd440f9c1d5842b8545df2b37b6e18a987dba3103"
+    },
+    {
+      "path": "ralph-final-real-exit.txt",
+      "bytes": 6,
+      "sha256": "24c813cb6f9bade379034e39a4665bf3be056293a53543502481e4f3db7e9291"
+    },
+    {
+      "path": "ralph-final-real.log",
+      "bytes": 1336,
+      "sha256": "b40430d31fbebb84e15be2ead461a31e4d37b05214c80868d43fef706b4fab2c"
+    },
+    {
+      "path": "s2-missing-template/events.jsonl",
+      "bytes": 70080,
+      "sha256": "77c5a180b304f3f133c5b176b91c6e787a214ccafbffe0b800778a4e6ce2fe05"
+    },
+    {
+      "path": "s2-missing-template/result.json",
+      "bytes": 475,
+      "sha256": "a63afa688111159073a19175a21c412435c72b827c0a5780e17f1b387116ef10"
+    },
+    {
+      "path": "s2-missing-template/stderr.log",
+      "bytes": 207,
+      "sha256": "64f866880e300e574b1a7a65d5bbd81c5e322fc6ad5348330fce63294b1b62f8"
+    },
+    {
+      "path": "s3-final/events.jsonl",
+      "bytes": 73020,
+      "sha256": "126279332286bc2f7e978316cfecf7a37ea4e2d20d4d281e9e97d7b7bad1a6b0"
+    },
+    {
+      "path": "s3-final/result.json",
+      "bytes": 460,
+      "sha256": "1723843ad45178325304cbd5c83e06bfa309f243c61d98108d0bb6376f69511d"
+    },
+    {
+      "path": "s3-final/stderr.log",
+      "bytes": 993,
+      "sha256": "e10f6c6415b934590611deeb34a41ce005272da191c24259def068d6a5fb2fbf"
+    },
+    {
+      "path": "windows-release-tests.log",
+      "bytes": 19948,
+      "sha256": "9bcbed8f2f7567879625f4f4ab33d3b2711b95846c1d11b87114ae68765e3289"
+    },
+    {
+      "path": "workflow-run-1/events.jsonl",
+      "bytes": 481348,
+      "sha256": "c72fdc2c8d7443015ec867bb8f36844b7dbc32604b2bba4bcc9f530391d59b2d"
+    },
+    {
+      "path": "workflow-run-1/result.json",
+      "bytes": 441,
+      "sha256": "562b33471970aa4f96c44daf75fbb276cf5f353f6a6bbe5528e6e07b7eff33fe"
+    },
+    {
+      "path": "workflow-run-1/stderr.log",
+      "bytes": 992,
+      "sha256": "029ced522d90f17a918b6a58493efd4a14d6cc7d3bb9310d8a888af66e8f5cfb"
+    },
+    {
+      "path": "workflow-run-2/events.jsonl",
+      "bytes": 755912,
+      "sha256": "92c3168543d6420d77be1c6a9a59a8f3a19a06c5ab87527c1b3b59c8c3b28f32"
+    },
+    {
+      "path": "workflow-run-2/result.json",
+      "bytes": 441,
+      "sha256": "1a4ffb351279b42810c73ff510c9afc953ba8af1e8341555d639761a24b4cf8c"
+    },
+    {
+      "path": "workflow-run-2/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "workflow-run-3/events.jsonl",
+      "bytes": 668542,
+      "sha256": "cfc9ccb0485fd5de5fc98ad6d01dc3e1cd21be7d9188b6f04d98780e1c6363a9"
+    },
+    {
+      "path": "workflow-run-3/result.json",
+      "bytes": 443,
+      "sha256": "fb6e4f60299d5face2352a95d796361798ae00f6a2c9e8cf32ccf9448a2bd7cc"
+    },
+    {
+      "path": "workflow-run-3/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "h1-retry/final.txt",
+      "bytes": 529,
+      "sha256": "66d82f0f51e3876a43dcb784ea7ce0b0e82bbf7b0fdc8ca74ef3f2efdbc72d75"
+    },
+    {
+      "path": "h2/final.txt",
+      "bytes": 309,
+      "sha256": "4e1680853760a041233b6ae3a1a575f7f65c070489e02a7e9af577566ebc30f7"
+    },
+    {
+      "path": "h4-stale/final.txt",
+      "bytes": 661,
+      "sha256": "419b6ae53c7981f4549130c618602e2890c121721408a41a4af9ec391e819d54"
+    },
+    {
+      "path": "q1-answer/final.txt",
+      "bytes": 334,
+      "sha256": "248b51be5b7727bad8055ac9d1e0fce4e0c20747541f85a40c16a7a0554d66dc"
+    },
+    {
+      "path": "q1-question/final.txt",
+      "bytes": 253,
+      "sha256": "1169a87d3f3f003bb11de922d171963e63a3ddf947327ca2749ad42d9f1c7643"
+    },
+    {
+      "path": "q1-recapture/final.txt",
+      "bytes": 440,
+      "sha256": "6144d850f91b6d1172861d9555481c77f312f3faaaad47e92cbbfbfcd9fe01df"
+    },
+    {
+      "path": "r1-reviewer/final.txt",
+      "bytes": 401,
+      "sha256": "a653d5047049eaabe3569a32abe63397625213c615cfa5f25f55ac218f392def"
+    },
+    {
+      "path": "r3-humanizer/final.txt",
+      "bytes": 933,
+      "sha256": "49227366265020b09d529c94712bfdf4602192b2098d515c2fd51ba604c937d5"
+    },
+    {
+      "path": "s2-missing-template/final.txt",
+      "bytes": 703,
+      "sha256": "2b03c54deef22e5d55b21ab0f03281c56c1a1258912c0537b74b066827d7ea35"
+    },
+    {
+      "path": "s3-final/final.txt",
+      "bytes": 935,
+      "sha256": "43d66cbfbff93cd11d4ae993f13dbcd89badc9978037872e4f1ea9108d3bd89b"
+    },
+    {
+      "path": "workflow-run-1/final.txt",
+      "bytes": 2334,
+      "sha256": "0722af8a17e7b6abe365665fb2f9771f56394e5fff0b692654a49d3da0040caf"
+    },
+    {
+      "path": "workflow-run-2/final.txt",
+      "bytes": 2106,
+      "sha256": "5e6ccc3c0ca39d7bc398b8585553eee1eca1ab086510d3834334e72e69a77000"
+    },
+    {
+      "path": "workflow-run-3/final.txt",
+      "bytes": 2341,
+      "sha256": "3ff400b5d8a823d369e2ada69190da3afe880d3f381d154acc3b25edcba885a6"
+    },
+    {
+      "path": "review-final-stage.json",
+      "bytes": 575,
+      "sha256": "e8a96f486d80bc7b3f02d40aeb77450e64365253e5f2c8b29b03905a1beaeb66"
+    },
+    {
+      "path": "review-final-stage.py",
+      "bytes": 2050,
+      "sha256": "a1ae2f959d05524a5e7fb5ff214855607dc428ae416893aed12e09e79c5dc7d6"
+    },
+    {
+      "path": "install-final-4.json",
+      "bytes": 431,
+      "sha256": "5d8215693f36ea156f7d5b96f18b39de0688f79d363fcb8a9aa70032d4e355b6"
+    },
+    {
+      "path": "hooks-final-4.json",
+      "bytes": 2738,
+      "sha256": "099bcf8cfad0288f367ec3085c3c8deb3103bfa5e07ae9bcd7ee91254ce5391d"
+    },
+    {
+      "path": "export-validation-final-4-hashes.json",
+      "bytes": 10344,
+      "sha256": "d2e09cc206c2fc037c76c1d57771a3a869bf3985040b48de481f4db196241a03"
+    },
+    {
+      "path": "windows-final-lint.log",
+      "bytes": 5714,
+      "sha256": "7cc6f767f085ccdbea604ab10420535e44576310e2054a42b95d3ac8df04ab9f"
+    },
+    {
+      "path": "linux-final-lint.log",
+      "bytes": 6630,
+      "sha256": "6e1cfdf580caa669fd9dcd34b22bd71c7c7234b412dfb77dc25b7d6155585833"
+    }
+  ],
+  "final_install": {
+    "version": "1.32.0+codex.validation-final-4",
+    "cache": "C:\\Users\\SQI\\.codex\\gx-validation-20260914\\plugins\\cache\\gx-final-validation\\oh-my-gx\\1.32.0+codex.validation-final-4",
+    "verified_files": 88,
+    "skills": 17,
+    "trusted_hooks": 2,
+    "changed_since_last_authenticated_ralph": [
+      ".claude/skills/gx-ralph-iterate/SKILL.md"
+    ],
+    "model_rerun_after_staging_fix": false
+  },
+  "staging_review": {
+    "fixture": "D:\\Temp\\gx-review-stage-fixed-spha0xv6",
+    "patterns": [
+      ".dev/*/ralph.lock",
+      ".dev/*/iter-*.log",
+      ".dev/*/iter-*.prompt.md",
+      ".dev/*/iter-*.final.md",
+      ".dev/*/iter-*.events.jsonl",
+      ".dev/*/iter-*.events.jsonl.stderr",
+      ".dev/*/logs-*"
+    ],
+    "staged": [
+      ".dev/feat-review/ac-status.json",
+      ".dev/feat-review/prd.md",
+      ".dev/feat-review/progress.txt",
+      ".dev/feat-review/state.md",
+      "src/feature.js"
+    ],
+    "excluded_artifact_count": 11,
+    "staged_artifact_residue": [],
+    "result": "PASS"
+  }
+}

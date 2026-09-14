@@ -25,6 +25,18 @@ Ralph Wiggum 루프 패턴의 진입 스킬. PRD의 수용 기준(AC)을 기계 
 
 **이 스킬은 구현·검증·커밋을 하지 않는다** — 그것은 반복 세션(`oh-my-gx:gx-ralph-iterate`)의 몫이다. 이 스킬은 준비와 관제만 담당한다.
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-iterate/SKILL.md`의 절대경로인 `GX_RALPH_ITERATE_SKILL`을 전달한다. `GX_RALPH_CODEX_CMD`는 Codex 실행 파일을 별도 지정할 때만 쓴다. 기본 하네스는 Claude다. Codex에서는 네이티브 `scripts/codex-run.py`가 prompt를 stdin으로 보내고 최종 응답 파일만 종료 계약으로 판정한다. 그 파일에는 앞선 요약이 있어도 되지만 **정확한 계약 줄 하나만 마지막 비공백 줄**이어야 한다. 계약 줄이 중복되면 실패다. 이벤트 로그의 가짜 COMPLETE는 판정하지 않으며 nonzero/timeout은 종료 계약보다 우선해 실패한다. COMPLETE라도 원장 `acs` 전 항목의 `passes: true` 확인이 필요하다.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## 파이프라인 위치
 
 ```
@@ -189,9 +201,9 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
 
      bash {러너 절대 경로}
 
-   - 러너는 반복마다 새 claude 세션을 기동해 AC 1건씩 처리합니다 (최대 {max-iterations}회)
+   - 기본 러너는 반복마다 새 Claude 세션을 기동합니다. Codex는 `GX_RALPH_HARNESS=codex`와 설치된 `GX_RALPH_ITERATE_SKILL` 절대경로를 지정해 실행합니다 (최대 {max-iterations}회)
    - 러너 종료 코드: 0 COMPLETE · 2 BLOCKED(반복 세션이 사유와 함께 중단 선언) · 3 종료 계약 미출력(세션 크래시·타임아웃 의심) · 4 NO_DRIFT(CONTINUE인데 원장·HEAD 무변화 2회 연속) · 5 반복 상한 소진 · 6 사전 조건 실패 · 7 NO_PROGRESS(커밋도 AC 완료도 없는 반복 4회 연속 — 단일 AC 3회 실패의 BLOCKED는 그대로 나오고, 미완료 AC가 여럿이면 전부 소진되기 전에 먼저 중단하며 원장 요약을 출력). 반복 세션 오케스트레이터 모델은 GX_RALPH_MODEL 환경변수로 지정할 수 있습니다 (기본 CLI 기본 모델). 러너는 config.json projectTypes의 test/build 명령 첫 토큰에서 --allowedTools prefix를 파생합니다
-   - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세)
+   - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세). Codex는 iter-{N}.final.md 최종 응답과 iter-{N}.events.jsonl도 보존합니다
    - 중간 상태 확인: /oh-my-gx:gx-ralph --status
    - 루프 종료 후: {origin이 gx-tdd면 /gx-tdd --phase review, 그 외 /gx-dev --phase review} 로 리뷰 → --phase complete 로 인수·PR
      (gx-tdd 출발 루프는 reviewer 통합 리뷰(spec+quality 1석)가 정본 — gx-dev 리뷰(qa-manager)로 유도하지 않는다)

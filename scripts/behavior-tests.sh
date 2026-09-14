@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Claude Code 전용 실행기다. Codex 설치·행동 검증은 tests/codex-smoke.md를 따른다.
 # 프롬프트 계약 행동 테스트 — phase 파일의 디스패치 프롬프트를 그대로 추출해 실제 모델로 실행하고 결과를 기계 판정한다.
 # 사용: bash scripts/behavior-tests.sh [B1|B2|B3|all]   (기본 all)
 #   B1 red-writer 격리     — src/를 열람하지 않고, 프로덕션 파일을 건드리지 않고, 실패하는 테스트를 쓴다
@@ -33,7 +34,9 @@ agent_body() { sed '1,/^---$/d' "$ROOT/agents/$1.md"; }
 # extract_prompt <phase 파일> <subagent_type> — 그 Task 블록의 `prompt: |` 본문을 4칸 들여쓰기 벗겨 출력
 extract_prompt() {
   awk -v who="subagent_type=\"$2\"" '
-    index($0, who) { f=1; next }
+    # Windows 작업 트리의 CRLF도 닫는 Markdown fence와 같은 블록 경계로 판정한다.
+    { sub(/\r$/, "") }
+    /^Task\(/ && index($0, who) { f=1; next }
     f && /^```$/ { exit }
     f && p { sub(/^    /, ""); print }
     f && /^  prompt: \|/ { p=1 }

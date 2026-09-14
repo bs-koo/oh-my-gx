@@ -2,12 +2,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "exec_command|local_shell|shell",
+        "matcher": "^Bash$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT:-.}/.claude/hooks/pre-tool-guard.sh",
-            "shell": "bash"
+            "command": "python3 \"${PLUGIN_ROOT}/.claude/hooks/codex_hook.py\" guard",
+            "commandWindows": "python \"${PLUGIN_ROOT}/.claude/hooks/codex_hook.py\" guard",
+            "timeout": 35
           }
         ]
       }
@@ -18,8 +19,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT:-.}/.claude/hooks/capture-decision.sh",
-            "shell": "bash"
+            "command": "python3 \"${PLUGIN_ROOT}/.claude/hooks/codex_hook.py\" capture",
+            "commandWindows": "python \"${PLUGIN_ROOT}/.claude/hooks/codex_hook.py\" capture",
+            "timeout": 35
           }
         ]
       }

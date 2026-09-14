@@ -25,6 +25,16 @@ allowed-tools:
 
 현재 브랜치의 커밋 히스토리를 분석하여 PR을 자동 생성한다.
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex 지문 helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-fingerprint.py](../../../scripts/codex-fingerprint.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-fingerprint.py')).Path`. 아래 지문 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## VCS 가드
 
 `.claude/config.json`의 `"vcs"` 필드를 확인한다.
@@ -89,6 +99,7 @@ Arguments:
 - 베이스 브랜치 대비 커밋이 있는지 확인 — 없으면: "PR을 생성할 커밋이 없습니다."
 - 미커밋 변경사항이 있으면 경고하고, 커밋 먼저 할지 진행할지 확인
 - **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 PR을 우선 안내한다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
+- **Codex 지문 계산·중단**: 위 게이트에서 현재 코드 지문이 필요하면 설치된 GX 플러그인 루트의 `scripts/codex-fingerprint.py`를 확인하고, `git rev-parse --show-toplevel`로 확인한 소비 프로젝트 절대경로로 `--cwd`를 지정한다. Windows는 확인된 Python 3.10+로 `python "<GX_PLUGIN_ROOT>/scripts/codex-fingerprint.py" --cwd "<PROJECT_ROOT>"`, Linux는 `python3 "$GX_PLUGIN_ROOT/scripts/codex-fingerprint.py" --cwd "$PROJECT_ROOT"`를 실행한다. **exit 0과 stdout의 정확한 한 줄 `^[0-9a-f]+:[0-9a-f]{12}$`**을 확인한 뒤 **트리 성분만** state.md와 대조한다. helper 부재·실패·빈/잘못된 출력이면 Codex에서 PR 실행을 중단한다. Codex에서는 `verify-status` 미통과나 트리 성분 불일치도 gx-verify를 안내하고 PR 실행 전에 중단하며, 사용자 위험 수용만으로 넘기지 않는다. 임시 인덱스 직접 Git 명령은 `.git/objects` 쓰기를 일으키므로 Codex에서 사용하지 않는다. Claude Code는 위 기존 계산·위험 수용 분기를 유지한다.
 
 ## GH_HOST 감지
 

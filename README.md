@@ -40,38 +40,35 @@
 
 ### Codex
 
-```bash
-# Codex CLI에서 실행 — 저장소 루트가 마켓플레이스 루트가 된다
-codex plugin marketplace add bs-koo/oh-my-gx
+```powershell
+# Windows PowerShell, Codex CLI 0.154.0 검증 기준
+codex.cmd plugin marketplace add bs-koo/oh-my-gx
+codex.cmd plugin add oh-my-gx@oh-my-gx
+codex.cmd plugin list --json
 ```
 
-`codex plugin`에는 설치 서브커맨드가 없다. 마켓플레이스 등록까지만 CLI로 하고, 플러그인 활성화는 Codex TUI에서 한다. 훅 게이트를 쓰려면 `hooks.json`을 직접 배치해야 한다 (아래 참조).
+Codex 입력창의 `/skills`에서 GX 스킬 17개를 확인하고 `/hooks`에서 GX 훅 정의와 신뢰 상태를 확인합니다. Git source의 `source:url,url:./`와 임시 개발 marketplace의 `source:local,path:./`는 서로 다릅니다. 설치 cache는 `plugin list --json`으로 확인하세요. 사용자 홈과 subprocess 홈 경로가 다를 수 있습니다.
 
 ## 하네스 지원
 
-Claude Code와 Codex에서 동작한다. 스킬 파일은 한 벌(`.claude/skills/`)만 유지하며 하네스별로 복제하지 않는다. Codex는 Claude Code의 스킬·훅 규격을 상당 부분 그대로 채택했기 때문에, 매니페스트 파일만 분리하면 같은 소스가 양쪽에서 읽힌다.
+Claude Code의 기존 스킬 원본을 유지하고 Codex용 역할·설정 리소스를 함께 배포합니다. 2026-09-14에 Windows의 Codex CLI 0.154.0과 개발용 local export로 실제 소비 프로젝트를 검증했습니다. 상세 결과와 실패·수정 이력은 [구현·실측 보고](docs/reports/2026-09-14-codex-validation.md)에 있습니다.
 
 | 기능 | Claude Code | Codex |
 |------|-------------|-------|
-| 스킬 인식·로드 | 지원 | 지원 — 17개 전부 로드 확인 |
-| 단일 파일 스킬 13개 | 지원 | 지원 — commit·pull-request·humanizer·research·tech-debt·context·cross-review·verify·red·green·refactor·ralph |
-| 번들 파일 스킬 4개 (dev·tdd·lens·setup) | 지원 | 경로 해결됨 — 서브에이전트·스킬 호출 표기는 남아 있다 |
-| 서브에이전트 17개 (`agents/`) | 자동 로드 | 미지원 — 역할 파일 로드 기능이 개발 중이라 수동 배치도 통하지 않는다 |
-| 훅 게이트 (verify·강제푸시 차단) | 자동 적용 | 수동 배치 — Codex의 `plugin_hooks`가 개발 중 |
+| 스킬 인식·로드 | 지원 | 실제 설치에서 GX 스킬 17개 발견 확인 |
+| 역할 정의 | `agents/*.md` 자동 로드 | 스킬 번들의 `codex-roles/` 17개 본문·index tools/tier를 자식 message에 주입 |
+| 설정 템플릿 | 플러그인 `.claude/config.json` | 번들 템플릿과 config 병합 helper 사용; 기존 사용자 설정 보존 실측 |
+| 훅 게이트 | 플러그인 적용 | `hooks.json`의 Bash matcher와 Python 어댑터; `/hooks`의 사용자 신뢰 확인 필요 |
+| 역할·도구 대응 | Claude Task/Skill | 배포된 `gx-dev/references/codex-runtime.md`가 실제 스키마·allowlist 확인 후 매핑 |
+| TDD·검증·리뷰 | 기존 파이프라인 | 실제 RED/GREEN, 코드 지문, native 교차 리뷰 실행 확인 |
 
 ### 알려진 제약
 
-**번들 파일 경로는 해결했다.** 예전에는 `${CLAUDE_PLUGIN_ROOT:-.}/.claude/skills/{스킬}/...` 형태로 조립해 읽었고(27곳), Codex 설치 구조에는 그 중간 경로가 없어 파이프라인이 첫 단계에서 멈췄다. 지금은 `humanizer`와 같은 방식으로 **그 지시가 적힌 파일을 기준으로 한 상대경로**(`phases/phase-setup.md`)를 쓴다. 설치 위치와 무관하게 해석되므로 두 하네스 모두에서 동작하며, `lint-consistency.sh`의 `[15/36]`이 절대경로 조립의 재발과 참조 대상 부재를 함께 검사한다.
+Codex의 일반 승인 흐름을 거친 로컬 커밋과 보호 훅의 차단을 확인했습니다. 무인 세션에서는 `.git` 쓰기 승인이 필요하면 진행할 수 없습니다. 부모 샌드박스 안의 별도 `codex exec`도 `CODEX_HOME` 쓰기 제한으로 막힐 수 있으므로, 이 환경에서는 `gx-cross-review --advisor native`를 선택하세요. 권한을 자동 우회하지 않습니다.
 
-다만 `setup`의 config.json 템플릿 하나는 예외다. 이 파일만 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포되는 Codex에서는 읽지 못한다. Read가 실패하면 사용자에게 저장소의 `.claude/config.json`을 수동 복사하도록 안내하게 해두었다.
+역할 도구 목록은 프롬프트 지침이며 강제 권한 경계가 아닙니다. RED 자식의 상세 열람 trace, Linux의 실제 모델 세션, macOS 및 릴리스 Git source 설치는 이번 실측 범위에 포함되지 않았습니다. 환경별 재검증 절차는 [Codex smoke 계약](tests/codex-smoke.md), 도구·경로 매핑은 [하네스 어댑터](.claude/rules/harness-codex.md)를 참고하세요.
 
-**서브에이전트를 배포할 수 없다.** Codex `plugin.json`이 지원하는 필드는 `skills`·`hooks`·`mcpServers`·`apps`뿐이라 `agents/`를 실을 자리가 없고, `~/.codex/agents/`에 수동으로 넣어도 로드되지 않는다(0.130 실측). 역할 파일에 대응하는 `child_agents_md`가 아직 개발 중이다. 그동안은 `dev`·`tdd`가 서브에이전트를 부를 때 딸려 보내는 `prompt` 블록이 역할 정의를 대신한다.
-
-**스킬 상호 호출 방식이 다르다.** Claude Code는 `Skill()` 도구로 다른 스킬을 부르지만, Codex는 스킬 파일을 읽어 그 지시를 따르는 방식이다. `dev`·`tdd`가 `commit`·`pull-request`를 부르는 44곳이 여기 해당한다.
-
-**`allowed-tools`가 모델에 전달되지 않는다.** Codex는 이 필드를 프롬프트에 넣지 않는다. `Task`·`AskUserQuestion` 같은 없는 도구명이 오류를 내지 않는다는 뜻이지만, Claude Code에서 얻던 권한 사전 승인 효과도 없어 승인 프롬프트가 잦아질 수 있다.
-
-도구 매핑(`Task` → `spawn_agent`, `AskUserQuestion` → `request_user_input` 등)과 나머지 제약은 `.claude/rules/harness-codex.md`에 정리되어 있다. 측정 환경은 Codex CLI 0.130.0이며, 하네스가 갱신되면 그 문서보다 실제 도구 목록을 우선한다.
+설치 후 Codex 입력창에서 `oh-my-gx:gx-setup 스킬로 설정해줘`, `oh-my-gx:gx-tdd --core로 이 기능을 구현해줘`처럼 사용할 스킬을 명시하면 됩니다. `/skills`에서 설치된 스킬을 선택할 수도 있습니다.
 
 ## 언어/프레임워크 지원
 
@@ -348,14 +345,15 @@ bash scripts/gx-ralph.sh      ← 터미널에서 러너 실행 (무인 반복)
 `dev`·`tdd`를 끝낸 뒤 한 번만 부르는 전용 스킬입니다. PRD/설계서/Trust Ledger 같은 산출물을 컨텍스트로 넣어 "약속한 대로 만들었는가"를 교차 검증합니다. 일반 코드 품질 리뷰가 아니라 **AC 충족, 설계 범위 이탈, 신규 위험만** 짚어 보고합니다.
 
 ```
-"교차 리뷰 해줘"                                   ← 호출 시 advisor 선택 (codex / claude)
-"/gx-cross-review --advisor codex"                ← codex 강제 (다른 모델 관점)
-"/gx-cross-review --advisor claude"               ← qa-manager + security-auditor를 cross 미션으로 호출
+"교차 리뷰 해줘"                                   ← 호출 시 advisor 선택 (codex / native / claude)
+"/gx-cross-review --advisor codex"                ← Codex CLI read-only 리뷰
+"/gx-cross-review --advisor native"               ← 현재 하네스의 역할 에이전트 리뷰
+"/gx-cross-review --advisor claude"               ← Claude Code 호스트에서 기존 역할 리뷰
 ```
 
 결과는 advisor 종류와 무관하게 `${DEV_DIR}/cross-review.md`에 저장됩니다. 발견된 항목은 자동으로 고치지 않고, 사용자 승인(전부/일부/직접 입력/건너뛰기)을 거쳐 수정에 들어갑니다.
 
-> **별도 codex 플러그인 필요**: codex advisor를 쓰려면 `openai/codex-plugin-cc`가 따로 설치되어 있어야 합니다.
+Codex advisor는 설치된 GX의 `scripts/codex-run.py`와 Codex CLI를 사용합니다. 별도 Claude companion 설치는 필요하지 않습니다. Codex 호스트에서 `--advisor claude`를 선택하면 미지원으로 종료합니다.
 
 ### humanizer
 
@@ -480,9 +478,11 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 <details>
 <summary><b>Codex에서도 쓸 수 있나요?</b></summary>
 
-**스킬은 그대로 동작합니다.** 스킬 파일을 하나도 고치지 않은 상태에서 Codex가 17개를 모두 인식하는 것을 확인했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`이며, `codex plugin`에 설치 서브커맨드가 없어 활성화는 Codex TUI에서 합니다.
+Windows Codex CLI 0.154.0에서 설치된 스킬 17개를 확인하고 `setup → TDD → native 교차 리뷰 → verify`를 실제 실행했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`, `codex plugin add oh-my-gx@oh-my-gx` 순서이며, Windows PowerShell에서는 `codex.cmd`를 사용합니다.
 
-`dev`·`tdd`·`lens`·`setup`의 번들 파일 경로 문제는 해결됐습니다. 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 읽었는데, 지금은 상대경로로 바꿔 설치 위치와 무관하게 동작합니다. 다만 서브에이전트(`agents/`)는 Codex 매니페스트에 실을 자리가 없어 수동 배치가 필요하고, `Skill()` 상호 호출과 `setup`의 config 템플릿은 아직 남은 과제입니다. 자세한 내용은 [하네스 지원](#하네스-지원)의 '알려진 제약'을 참고하세요.
+`dev`·`tdd`·`lens`·`setup`의 번들 파일 경로 문제는 해결됐습니다. 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 읽었는데, 지금은 상대경로로 바꿔 설치 위치와 무관하게 동작합니다. 스킬 본문의 도구 이름이 Claude Code 기준이라는 문제는 **스킬 17개 전부에 "하네스 적응" 노트를 넣어** 해결했습니다 — `Task`는 `spawn_agent`로, `AskUserQuestion`은 `request_user_input`으로, `Skill()`은 해당 `SKILL.md`를 읽는 것으로 옮기라고 각 스킬이 직접 안내합니다.
+
+역할 본문·tools/tier 인덱스와 setup 템플릿을 스킬에 동봉합니다. `/hooks`에서 훅 정의와 신뢰를 확인하세요. 중첩 외부 CLI와 무인 커밋은 Codex 권한 정책에 따라 막힐 수 있으며, 역할의 소스 미열람은 아직 독립 trace로 입증하지 못했습니다. 구체적인 결과와 제한은 [실측 보고서](docs/reports/2026-09-14-codex-validation.md)와 [하네스 지원](#하네스-지원)을 참고하세요.
 </details>
 
 <details>

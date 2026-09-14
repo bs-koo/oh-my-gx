@@ -24,7 +24,7 @@ check() { # check <이름> <파일명> <기대판정>
 SVN_C="svn"" commit -m t"          # 리터럴 분리 조립
 FORCE="git push --""force origin main"
 
-echo "[1/5] 명령 가드"
+echo "[1/6] 명령 가드"
 payload svn1 "$SVN_C";            check "svn 커밋 차단" svn1 deny
 payload svn2 "svn"" ci";          check "svn ci 차단" svn2 deny
 payload fp1 "$FORCE";             check "force push 차단" fp1 deny
@@ -79,7 +79,7 @@ else
   echo "  FAIL: Other 자유 입력에 선택 표식 없음"; FAIL=1
 fi
 
-echo "[2/5] 추출 견고성 (오탐 방어)"
+echo "[2/6] 추출 견고성 (오탐 방어)"
 printf '{"tool_input":{"command":"echo hello","description":"%s 관련 안내"}}' "$SVN_C" > "$TMP/fp3.json"
 check "description 오탐 없음" fp3 PASS
 # 여러 줄(pretty-print) JSON — 행 단위 sed가 무력화되면 전체 입력 폴백으로 오탐한다
@@ -89,7 +89,7 @@ check "여러 줄 JSON 오탐 없음" multi PASS
 printf '{"tool_input":{"command":"echo C:\\\\\\\\","description":"%s 안내"}}' "$SVN_C" > "$TMP/bslash.json"
 check "백슬래시 종료 값 오탐 없음" bslash PASS
 
-echo "[3/5] G3 verify 게이트 (샌드박스)"
+echo "[3/6] G3 verify 게이트 (샌드박스)"
 SB="$TMP/repo"; mkdir -p "$SB/.dev/feat-x" && (cd "$SB" && git init -q . && git checkout -q -b feat/x)
 payload commit1 "git commit -m wip"
 payload chain1 "git commit -m wip && $FORCE"
@@ -107,7 +107,7 @@ assert_repo "verify 통과 후 무개입" commit1 PASS
 printf 'pipeline: gx-dev\nstatus: in_progress\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "타 파이프라인 무개입" commit1 PASS
 
-echo "[4/5] verify 지문 (스테일 passed 감지)"
+echo "[4/6] verify 지문 (스테일 passed 감지)"
 fp_of() { local h idx tree; h=$(git -C "$SB" rev-parse --short HEAD 2>/dev/null || echo nohead)
   idx="${TMPDIR:-/tmp}/.gxfptest.$$"; rm -f "$idx"; tree=""
   if GIT_INDEX_FILE="$idx" git -C "$SB" add -A >/dev/null 2>&1; then
@@ -148,13 +148,59 @@ AFTER=$(git -C "$SB" rev-parse HEAD)
 [ "$BEFORE" != "$AFTER" ] || { echo "  FAIL: 커밋이 HEAD를 전진시키지 못함"; FAIL=1; }
 assert_repo "커밋 후 HEAD 전진·트리 동일 → 무개입" commit1 PASS
 
-echo "[5/5] detached HEAD"
+echo "[5/6] detached HEAD"
 # 리베이스·bisect 중에는 브랜치 슬러그를 만들 수 없다 — 게이트를 통째로 건너뛰면 무검증 커밋이 통과한다
 (cd "$SB" && git checkout -q --detach HEAD)
 printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "detached HEAD에서도 게이트 평가" commit1 ask
 printf 'pipeline: gx-tdd\nstatus: completed\nverify-status: passed\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "detached + 완료 상태는 무개입" commit1 PASS
+
+echo "[6/6] Codex 배치·프로브 스크립트"
+# hooks.json의 경로 렌더링과 페이로드 캡처는 가드 로직 밖의 층이다. 이 두 스크립트가
+# 깨지면 Codex에서 훅이 조용히 안 돌고, 사용자는 verify 게이트가 증발한 것을 모른다.
+INSTALL="scripts/codex-install-hooks.sh"
+PROBE="scripts/codex-probe-hook.sh"
+
+if [ ! -f "$INSTALL" ]; then
+  echo "  FAIL: $INSTALL 없음"; FAIL=1
+else
+  RENDER=$(bash "$INSTALL" 2>/dev/null)
+  if [ -z "$RENDER" ]; then
+    echo "  FAIL: 렌더링 출력이 비었다 (자체 검증에서 멈췄을 수 있다)"; FAIL=1
+  elif printf '%s' "$RENDER" | grep -q '\${'; then
+    echo "  FAIL: 렌더링 결과에 미치환 변수가 남았다 — Codex에서 경로 해석이 깨진다"; FAIL=1
+  elif ! printf '%s' "$RENDER" | python3 -c 'import json,sys; d=json.load(sys.stdin); g=d["hooks"]["PreToolUse"][0]; assert g["matcher"] == "^Bash$"; assert "codex_hook.py" in g["hooks"][0]["command"]; assert "commandWindows" in g["hooks"][0]' 2>/dev/null; then
+    echo "  FAIL: 렌더링 결과의 JSON·Codex 훅 매칭·어댑터 명령이 유효하지 않다"; FAIL=1
+  else
+    echo "  ok: hooks.json 렌더링 → 유효 JSON·Bash 매칭·어댑터 명령"
+  fi
+fi
+
+if [ ! -f "$PROBE" ]; then
+  echo "  FAIL: $PROBE 없음"; FAIL=1
+else
+  # 프로브는 투명 래퍼다 — 캡처하는 동안 가드 판정이 그대로 나와야 한다.
+  export GX_PROBE_LOG="$TMP/probe.jsonl"
+  PD=$(bash "$PROBE" < "$TMP/fp1.json" | grep -oE '"permissionDecision": "[a-z]+"' | sed 's/.*"\([a-z]*\)"$/\1/' || true)
+  if [ "$PD" = "deny" ]; then
+    echo "  ok: 프로브 경유 강제푸시 차단 유지"
+  else
+    echo "  FAIL: 프로브 경유 판정이 deny가 아니다 (${PD:-없음}) — 캡처 중 보호가 사라진다"; FAIL=1
+  fi
+  PD2=$(bash "$PROBE" < "$TMP/ok1.json" | grep -oE '"permissionDecision": "[a-z]+"' || true)
+  if [ -z "$PD2" ]; then
+    echo "  ok: 프로브 경유 정상 push 통과"
+  else
+    echo "  FAIL: 프로브가 정상 push를 막았다 ($PD2)"; FAIL=1
+  fi
+  if [ -s "$GX_PROBE_LOG" ] && [ "$(wc -l < "$GX_PROBE_LOG" | tr -d ' ')" -ge 2 ]; then
+    echo "  ok: 페이로드 2건 캡처"
+  else
+    echo "  FAIL: 캡처 로그가 비었다 — 실측에 쓸 수 없다"; FAIL=1
+  fi
+  unset GX_PROBE_LOG
+fi
 
 echo
 if [ "$FAIL" -ne 0 ]; then echo "훅 회귀 테스트 실패"; exit 1; fi

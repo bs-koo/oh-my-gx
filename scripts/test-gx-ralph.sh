@@ -29,7 +29,18 @@ case "$step" in
     n=$(grep -o '"attempts":[0-9]*' "$f" | grep -o '[0-9]*$' | head -1)
     sed "s/\"attempts\":$n/\"attempts\":$((n+1))/" "$f" > "$f.tmp" && mv "$f.tmp" "$f"
     echo "<ralph>CONTINUE</ralph>" ;;
-  COMPLETE)      echo "<ralph>COMPLETE</ralph>" ;;
+  COMPLETE)
+    # COMPLETE is valid only after the fixture has completed its AC ledger.
+    f=.dev/feat-t/ac-status.json
+    sed 's/"passes":false/"passes":true/g' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    echo "구현 완료"
+    echo "<ralph>COMPLETE</ralph>" ;;
+  DUPLICATE)
+    f=.dev/feat-t/ac-status.json
+    sed 's/"passes":false/"passes":true/g' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    echo "구현 완료"
+    echo "<ralph>CONTINUE</ralph>"
+    echo "<ralph>COMPLETE</ralph>" ;;
   BLOCKED)       echo "<ralph>BLOCKED: mock 사유</ralph>" ;;
   NOTHING)       echo "종료 계약 없이 끝나는 출력" ;;
   *)             echo "<ralph>BLOCKED: 시나리오 소진</ralph>" ;;
@@ -203,6 +214,14 @@ case "$OUT" in
   *"passes=true: 3건"*) assert "COMPLETE 메시지 passes=true: 3건" 1 1 ;;
   *)                    assert "COMPLETE 메시지 passes=true: 3건" 1 0 ;;
 esac
+rm -rf "$SB"
+
+echo "[T15] 요약 본문 뒤 마지막 계약은 허용하되 중복 계약은 거부한다"
+SB=$(make_sandbox)
+assert "요약 + COMPLETE exit=0" 0 "$(run_runner "$SB" "COMPLETE")"
+rm -rf "$SB"
+SB=$(make_sandbox)
+assert "중복 계약 exit=3" 3 "$(run_runner "$SB" "DUPLICATE")"
 rm -rf "$SB"
 
 echo

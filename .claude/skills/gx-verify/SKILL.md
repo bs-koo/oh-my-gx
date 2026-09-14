@@ -21,6 +21,17 @@ allowed-tools:
 
 ---
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex 지문 helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-fingerprint.py](../../../scripts/codex-fingerprint.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-fingerprint.py')).Path`. 아래 지문 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## Iron Law
 
 ```
@@ -150,6 +161,10 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 통과 시 **코드 지문을 함께 계산해 보고에 싣는다**. 이 스킬은 Write 권한이 없으므로 state.md 기록은 호출한 오케스트레이터가 수행한다.
 
 지문 계산 (git 저장소인 경우만 — svn은 "해당 없음"으로 보고):
+
+**Codex 경로**: 이 설치된 스킬의 GX 플러그인 루트에서 `scripts/codex-fingerprint.py`가 실제로 존재하는지 확인한다. 소비 프로젝트 절대경로는 `git rev-parse --show-toplevel`로 확인한다. Windows PowerShell은 확인된 Python 3.10+ 실행 파일로 `python "<GX_PLUGIN_ROOT>/scripts/codex-fingerprint.py" --cwd "<PROJECT_ROOT>"`, Linux Bash는 `python3 "$GX_PLUGIN_ROOT/scripts/codex-fingerprint.py" --cwd "$PROJECT_ROOT"`를 실행한다. **종료 코드 0, 비어 있지 않은 stdout의 정확한 한 줄, `^[0-9a-f]+:[0-9a-f]{12}$` 형식**을 모두 확인한 뒤에만 신선한 지문으로 사용한다. 예를 들어 `8c235d4:notree`는 형식 오류다. helper 부재·실패·빈/잘못된 출력이면 테스트·빌드가 통과했어도 verify 게이트는 실패다. `verify-status: passed`를 기록하거나 이전 passed를 유지하지 말고, 호출한 오케스트레이터가 state.md를 `pending`으로 두고 잘못된/기존 `verify-fingerprint`를 제거한 뒤 차단 사유를 보고한다. 아래 직접 Git 명령은 Codex에서 실행하지 않는다. 임시 인덱스만 바꿔도 `git add`/`write-tree`가 소비 저장소 `.git/objects`에 쓰려 하기 때문이다.
+
+**Claude Code 경로**는 기존 규약을 그대로 실행한다:
 ```bash
 # 임시 인덱스를 써서 실제 인덱스는 건드리지 않는다 (mktemp 빈 파일은 git이 거부하므로 경로만 사용)
 IDX="${TMPDIR:-/tmp}/.gxfp.$$"; rm -f "$IDX"
@@ -213,7 +228,7 @@ commit/PR 진입은 차단됩니다.
 | "실행할 테스트가 없으니 통과" | 명령 미감지는 통과가 아니라 차단 사유. 직접 입력 또는 중단 |
 | "명령이 성공했고 실패도 없으니 통과" | 0개 실행은 검증이 아니다. 최소 1건 실행을 확인하라 |
 
-자세한 격파 표는 `.claude/skills/gx-tdd/references/tdd-iron-law.md` 참조.
+자세한 격파 표는 이 SKILL.md 기준 `../gx-tdd/references/tdd-iron-law.md` 참조.
 
 ---
 

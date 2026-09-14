@@ -1,0 +1,173 @@
+{
+  "architect": {
+    "file": "architect.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "coder": {
+    "file": "coder.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "design-critic": {
+    "file": "design-critic.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "green-coder": {
+    "file": "green-coder.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "hacker": {
+    "file": "hacker.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "humanizer-fidelity": {
+    "file": "humanizer-fidelity.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write"
+    ]
+  },
+  "humanizer-naturalness": {
+    "file": "humanizer-naturalness.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write"
+    ]
+  },
+  "implementer": {
+    "file": "implementer.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "product-owner": {
+    "file": "product-owner.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "qa-manager": {
+    "file": "qa-manager.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "red-writer": {
+    "file": "red-writer.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "refactor-coder": {
+    "file": "refactor-coder.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "researcher": {
+    "file": "researcher.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash"
+    ]
+  },
+  "reviewer": {
+    "file": "reviewer.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "security-auditor": {
+    "file": "security-auditor.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "simplifier": {
+    "file": "simplifier.md",
+    "tier": "mid",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  },
+  "test-architect": {
+    "file": "test-architect.md",
+    "tier": "high",
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  }
+}

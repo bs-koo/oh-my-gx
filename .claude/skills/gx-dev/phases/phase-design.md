@@ -1,5 +1,7 @@
 # phase-design: 설계 Q&A 사이클
 
+Codex에서는 이 phase 파일 기준 `../references/codex-runtime.md`를 먼저 읽고, architect·design-critic 역할 본문과 도구 제약을 각 태스크 prompt 전문 앞에 전달한다. Claude Code의 기존 Task 타입은 그대로 사용한다.
+
 **사용자가 "승인"할 때까지 반복한다.** 반복 횟수 제한 없음.
 
 ## 각 반복

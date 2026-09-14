@@ -44,6 +44,20 @@ allowed-tools:
 
 상태 계약(ac-status.json 스키마·state.md 필드·종료 계약·회귀 정책)의 정본은 `gx-ralph/SKILL.md`의 "상태 계약 (SSOT)" 섹션이다. 이 파일의 계약 표기는 그 사본이다 (드리프트 주의 — 함께 갱신).
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `Task(subagent_type="oh-my-gx:{name}")` → 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다.
+- `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
+- 이 스킬은 헤드리스다. 질문 도구가 대응되더라도 쓰지 않는다 — 판단 불가는 `<ralph>BLOCKED: 사유</ralph>`로 종료한다.
+
+Codex 러너는 `GX_RALPH_HARNESS=codex`와 이 **설치된 SKILL.md 절대경로**를 `GX_RALPH_ITERATE_SKILL`로 받아 네이티브 helper를 실행한다. 최종 응답 파일에는 앞선 요약이 있어도 되지만, `<ralph>COMPLETE</ralph>`·`<ralph>CONTINUE</ralph>`·`<ralph>BLOCKED: 사유</ralph>` 중 **정확한 계약 줄 하나만 마지막 비공백 줄**이어야 한다. 중복 계약 줄은 실패다. 이벤트 로그나 중간 출력에 나타난 문자열은 계약이 아니다. 프로세스 nonzero/timeout은 계약보다 우선해 실패하며, COMPLETE는 `ac-status.json`의 모든 AC가 `passes: true`일 때만 유효하다. 질문이 필요한 경우 최종 응답에서 BLOCKED를 출력한다.
+Codex 반복 프롬프트에 러너가 전달한 **설치된 GX 루트와 `scripts/codex-fingerprint.py`의 절대경로**를 그대로 사용한다. `rg --files`로 helper를 다시 찾거나 소비 프로젝트 `.claude`에서 플러그인 루트를 추정하지 않는다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## 철칙 (Iron Law)
 
 1. **루프당 AC 1건만.** 여러 AC를 한 번에 처리하지 않는다. "간단하니까 두 개"도 금지.
@@ -116,7 +130,7 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 ### Step 4: verify-status + 지문 선기록 → 커밋 (통과 시)
 
 1. **커밋보다 먼저** state.md에 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값**을 함께 기록한다 (훅 G3가 커밋 시점에 passed와 지문 일치를 함께 요구한다 — 순서 위반 시 헤드리스에서 자기 차단). verify가 지문을 보고하지 않았으면(svn 등) `passed`만 기록한다 — 훅은 지문 없는 세션을 구 세션과 동일하게 판정한다. 이후 커밋까지 코드를 수정하지 않는다 (state.md 갱신은 `.dev/` 제외 규약, `git add -A` 스테이징은 트리 해시 규약 덕분에 지문에 영향이 없다).
-2. 스테이징: `git add -A` 후 런타임 파일을 unstage하고(`git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' 2>/dev/null` — 락·반복 로그는 커밋 금지) `git status --porcelain`으로 스테이징 목록을 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
+2. 스테이징: `git add -A` 후 실행 산출물만 unstage한다: `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/*/iter-*.prompt.md' '.dev/*/iter-*.final.md' '.dev/*/iter-*.events.jsonl' '.dev/*/iter-*.events.jsonl.stderr' '.dev/*/logs-*' 2>/dev/null`. `logs-*`는 재실행 시 이전 산출물을 옮긴 보관 디렉터리까지 포함한다. 같은 pathspec으로 `git diff --cached --name-only -- ...`를 확인해 실행 산출물이 하나라도 남았으면 커밋을 중단한다. `git status --porcelain`으로 기능 코드·AC 원장·state.md·progress.txt 등 필요한 파일의 스테이징 목록도 검사한다. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조 — gx-commit과 동일한 SSOT)이 매치되면 해당 파일을 unstage하고 progress.txt에 경고 1줄을 append한다.
 3. 커밋: `git commit -m "{type}: {AC title} ({id})"` — id는 원장 표기 그대로(예: `AC-1` → `(AC-1)`), type은 AC 성격으로 판단(기능 추가 feat, 버그 수정 fix, 그 외 chore). **Co-Authored-By 등 트레일러를 추가하지 않는다** (gx-commit 컨벤션과 동일). 이 커밋은 `oh-my-gx:gx-commit` 스킬을 경유하지 않고 gx-ralph만 사용하는 non-interactive 경로다 (`.claude/rules/skill-routing.md`에 명문화된 예외).
 4. 커밋이 훅에 의해 거부되면 → `<ralph>BLOCKED: 커밋 차단 — {훅 사유}</ralph>` 출력 후 종료.
 
