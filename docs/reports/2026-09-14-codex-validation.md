@@ -2,7 +2,7 @@
 
 검증일: 2026-09-14. Windows Codex CLI 0.154.0에서 **설치된 플러그인으로 setup → TDD → native 교차 리뷰 → verify를 실제 수행했다.** 보호 훅, 질문 기록, 설정 보존도 확인했다. Claude와 모든 동작이 동일하거나 모든 작업이 무인 완료된다는 판정은 내리지 않는다.
 
-기존 미커밋 작업을 포함한 기준을 별도 worktree에 보존해 구현했다. 이 실측 단계에서는 사용자 소스의 커밋·스테이징·push·PR·릴리스를 하지 않았고 커밋 검증에는 외부 임시 프로젝트만 사용했다. 이후 사용자의 PR 요청에 따라 `feat/codex-native-validation` 브랜치에 이번 구현과 필요한 Codex 기반 파일만 모았다. 기존 버전/CHANGELOG 갱신 작업은 포함하지 않아 PR의 매니페스트 버전은 main의 1.31.0을 유지한다. 실측 export의 1.32.0 표기는 당시 검증 설치본의 식별자다.
+기존 미커밋 작업을 포함한 기준을 별도 worktree에 보존해 구현했다. 이 실측 단계에서는 사용자 소스의 커밋·스테이징·push·PR·릴리스를 하지 않았고 커밋 검증에는 외부 임시 프로젝트만 사용했다. 이후 사용자의 PR 요청에 따라 `feat/codex-native-validation` 브랜치에 이번 구현과 필요한 Codex 기반 파일을 모았고, 버전 갱신 요청에 따라 매니페스트·마켓플레이스를 1.32.0으로 맞추고 최종 구현 기준의 CHANGELOG를 추가했다. 실측 export의 1.32.0+codex 표기는 당시 검증 설치본의 식별자이며, 릴리스 태그 설치를 검증했다는 뜻은 아니다.
 
 ## 환경과 증거
 
@@ -11,7 +11,7 @@
 | Windows | Windows 11, PowerShell 5.1, Git Bash, Python 3.10, Node 22.14 |
 | Codex | CLI 0.154.0, ChatGPT 인증, 부모 모델 `gpt-5.6-sol` / low |
 | 설치 | 별도 CODEX_HOME, local source marketplace의 실제 `plugin/install`, GX 스킬 17개 |
-| 실제 모델 검증 설치본 | 검증 export `1.32.0+codex.validation-final-3`; 제품 버전은 올리지 않음 |
+| 실제 모델 검증 설치본 | 검증 export `1.32.0+codex.validation-final-3`; 실측 당시 제품 버전은 올리지 않았으며 이후 PR에서 1.32.0으로 갱신 |
 | 훅 | 실제 `/hooks` 화면에서 신뢰; `hooks/list`로 두 훅의 신뢰와 Windows 명령 확인 |
 | 소비 프로젝트 | 외부 Node fixture; 이 저장소의 AGENTS.md·개발 역할 디렉터리는 복사하지 않음 |
 | Linux | Docker Alpine 3.20, Python 3.11, Node 22, Bash/Git에서 오프라인 계약·프로세스 회귀 |
