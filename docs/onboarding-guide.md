@@ -8,6 +8,8 @@ GX 사업본부 개발자를 위한 배포용 가이드. 설치부터 첫 PR까�
 
 > 이 문서는 "설치하고 쓰기 시작하는 것"이 목적입니다. 내부 동작 원리(에이전트 디스패치 방식, Phase 실행 루프, 상태 계약)는 `docs/guide.md`를, 상황별 프롬프트 모음은 `docs/prompt-examples.md`를 참고하세요.
 
+> **Codex 사용자 안내 (2026-09-14):** 아래 본문의 설치 명령과 요금제 예시는 Claude Code 기준입니다. Codex 설치·프로젝트 준비·스킬 호출·업데이트는 [Codex 사용 가이드](codex-guide.md)를 따르세요. Windows CLI 0.154.0에서 설치된 GX로 setup → TDD → native 리뷰 → verify를 실측했습니다.
+
 ---
 
 ## 목차

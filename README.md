@@ -13,6 +13,7 @@
 ---
 
 - [설치와 시작](#설치와-시작)
+- [Codex 사용 가이드](docs/codex-guide.md)
 - [하네스 지원](#하네스-지원)
 - [언어/프레임워크 지원](#언어프레임워크-지원)
 - [사용법](#사용법)
@@ -42,12 +43,24 @@
 
 ```powershell
 # Windows PowerShell, Codex CLI 0.154.0 검증 기준
-codex.cmd plugin marketplace add bs-koo/oh-my-gx
+# PR #89 수정본을 지금 처음 설치할 때
+codex.cmd plugin marketplace add bs-koo/oh-my-gx --ref feat/codex-native-validation
 codex.cmd plugin add oh-my-gx@oh-my-gx
 codex.cmd plugin list --json
 ```
 
-Codex 입력창의 `/skills`에서 GX 스킬 17개를 확인하고 `/hooks`에서 GX 훅 정의와 신뢰 상태를 확인합니다. Git source의 `source:url,url:./`와 임시 개발 marketplace의 `source:local,path:./`는 서로 다릅니다. 설치 cache는 `plugin list --json`으로 확인하세요. 사용자 홈과 subprocess 홈 경로가 다를 수 있습니다.
+PR이 main에 반영된 뒤 기본 브랜치를 처음 설치할 때는 `--ref feat/codex-native-validation`을 생략합니다. 설치 후 작업할 프로젝트 폴더에서 새 Codex 세션을 열고 `/skills`로 GX 스킬 17개를, `/hooks`로 GX 훅 정의와 신뢰 상태를 확인합니다.
+
+아래는 터미널 명령이 아니라 **Codex 채팅창에 단계별로 입력할 요청**입니다.
+
+```text
+oh-my-gx:gx-setup 스킬로 이 프로젝트를 준비해줘.
+oh-my-gx:gx-tdd --core로 이 기능을 테스트 먼저 구현해줘.
+oh-my-gx:gx-cross-review --advisor native로 변경사항을 검토해줘.
+oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.
+```
+
+설치 갱신·커밋·PR·Superpowers 병행 사용은 [Codex 사용 가이드](docs/codex-guide.md)를 참고하세요. Linux Bash에서는 `codex.cmd` 대신 `codex`를 사용합니다.
 
 ## 하네스 지원
 
@@ -478,7 +491,7 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 <details>
 <summary><b>Codex에서도 쓸 수 있나요?</b></summary>
 
-Windows Codex CLI 0.154.0에서 설치된 스킬 17개를 확인하고 `setup → TDD → native 교차 리뷰 → verify`를 실제 실행했습니다. 설치는 `codex plugin marketplace add bs-koo/oh-my-gx`, `codex plugin add oh-my-gx@oh-my-gx` 순서이며, Windows PowerShell에서는 `codex.cmd`를 사용합니다.
+Windows Codex CLI 0.154.0에서 설치된 스킬 17개를 확인하고 `setup → TDD → native 교차 리뷰 → verify`를 실제 실행했습니다. 수정 브랜치 설치 명령과 채팅 예시는 [Codex 사용 가이드](docs/codex-guide.md)에 있습니다.
 
 `dev`·`tdd`·`lens`·`setup`의 번들 파일 경로 문제는 해결됐습니다. 이 넷은 자기 `phases/`·`references/` 파일을 플러그인 루트 기준 절대경로로 읽었는데, 지금은 상대경로로 바꿔 설치 위치와 무관하게 동작합니다. 스킬 본문의 도구 이름이 Claude Code 기준이라는 문제는 **스킬 17개 전부에 "하네스 적응" 노트를 넣어** 해결했습니다 — `Task`는 `spawn_agent`로, `AskUserQuestion`은 `request_user_input`으로, `Skill()`은 해당 `SKILL.md`를 읽는 것으로 옮기라고 각 스킬이 직접 안내합니다.
 

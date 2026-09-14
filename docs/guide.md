@@ -44,6 +44,10 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
 
 ### 2.1 설치
 
+**Codex 사용자:** [Codex 사용 가이드](codex-guide.md)의 설치 → `/skills`·`/hooks` 확인 → 채팅 예시를 따릅니다. 아래 슬래시 명령 예시는 Claude Code 기준이며 Codex에서는 `oh-my-gx:gx-setup 스킬로 준비해줘`처럼 이름을 명시해 요청합니다. Codex 실제 모델 검증 범위는 Windows CLI 0.154.0이며 Linux·macOS와 전체 기능의 동등성은 아직 확인하지 않았습니다.
+
+**Claude Code:**
+
 ```
 /plugin marketplace add bs-koo/oh-my-gx
 /plugin install oh-my-gx@oh-my-gx
