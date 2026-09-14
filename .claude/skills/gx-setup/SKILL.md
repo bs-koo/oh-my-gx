@@ -28,6 +28,19 @@ allowed-tools:
 
 플러그인 초기 설정을 단계별로 수행한다.
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex config helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-project-config.py](../../../scripts/codex-project-config.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-project-config.py')).Path`. 아래 config 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
+**Codex config 기록 규칙 (이 스킬 전체에 우선)**: 소비 프로젝트 `.claude/config.json`의 최초 생성과 이후 모든 값 변경은 설치된 GX 플러그인 루트의 `scripts/codex-project-config.py`만 사용한다. 이 SKILL.md 기준 `references/config.template.json`의 **실제 설치 절대경로**, 소비 프로젝트 루트 절대경로, 이번 단계에서 사용자가 확정한 필드만 담은 임시 UTF-8 JSON 파일을 준비해 `python "<GX_PLUGIN_ROOT>/scripts/codex-project-config.py" --cwd "<PROJECT_ROOT>" --template "<INSTALLED_TEMPLATE>" --updates "<UPDATES_JSON>"`을 실행한다 (Linux는 `python3`). 기존 config를 전체 객체로 재구성하거나 `Write`/`Edit`로 덮어쓰지 않는다. updates는 중첩 JSON 객체로 쓰고 미확정 필드를 넣지 않는다. 예: VCS만 확정되면 `{"vcs":"git"}`, 프로젝트 타입의 build/test만 확정되면 `{"projectTypes":{"node":{"build":"npm run build","test":"npm test"}}}`. helper는 기존 객체의 **알 수 없는 필드까지 보존**하도록 재귀 병합한다. 각 호출 후 `.claude/config.json`을 다시 읽어 JSON 파싱과 확정 필드·기존 사용자 값 보존을 확인한다. helper 부재·비정상 종료·파싱 실패·기존 값 소실이면 setup을 중단하고 완료를 표시하지 않는다. 임시 updates 파일은 소비 프로젝트 밖에 만들고 사용 후 제거한다. Claude Code는 아래 기존 Read/Write/Edit 절차를 유지한다.
+
 ## 실행 절차
 
 아래 단계를 **순서대로** 실행한다. 각 단계 완료 시 `{항목} : 완료 ✅` 형식으로 출력한다.
@@ -36,9 +49,9 @@ allowed-tools:
 
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
-0. **config.json 부재 시 번들 템플릿에서 생성** (다른 단계보다 먼저): `test -f .claude/config.json`로 존재를 확인한다.
-   - **없으면**: 플러그인 번들 템플릿을 `Read("../../config.json")`(이 SKILL.md 위치 기준 상대경로)로 읽어 프로젝트 `.claude/config.json`에 그대로 `Write`한다 (Write가 `.claude/` 디렉토리를 없으면 생성한다). 이 템플릿만은 스킬 디렉토리 밖(플러그인 루트의 `.claude/`)에 있어, 스킬 디렉토리만 배포하는 하네스에서는 읽지 못할 수 있다 — Read가 실패하면 저장소의 `.claude/config.json`을 프로젝트에 직접 복사하도록 사용자에게 안내하고 다음 단계로 넘어간다. `config.json 생성 : 완료 ✅ (번들 템플릿 복사)` 출력 후 아래 1로 진행한다.
-   - **있으면**: 건너뛰고 아래 1로 진행한다.
+0. **config.json 생성·검증** (다른 단계보다 먼저): 기존 소비 프로젝트 `.claude/config.json`이 있으면 읽고 JSON으로 파싱한다. 오류가 있으면 파일 경로와 오류를 보고하고 setup을 중단한다. 기존 설정은 자동 덮어쓰지 않는다.
+   - **없으면**: 이 SKILL.md 위치 기준 `Read("references/config.template.json")`로 번들 템플릿을 UTF-8로 읽고 JSON으로 파싱한다. 로드나 파싱이 실패하면 실패 파일 경로를 보고하고 setup을 중단한다. Codex에서는 위 helper에 빈 updates 객체 `{}`를 전달해 템플릿에서 생성한다. Claude Code에서는 정상 템플릿을 소비 프로젝트 `.claude/config.json`에 기록한다. 이후 **다시 읽어 JSON으로 파싱한다**. 재검증에 성공했을 때만 `config.json 생성 : 완료 ✅`를 출력하고 아래 1로 진행한다. 쓰기/재읽기 실패면 완료를 표시하지 않고 중단한다.
+   - **있으면**: 기존 JSON 파싱 성공 후 아래 1로 진행한다.
 1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
 2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
 3. 결과에 따라 분기:
@@ -61,7 +74,7 @@ allowed-tools:
      - "Git" 선택 → `git init` 실행 후 `VCS_TYPE = "git"`
      - "SVN" 선택 → `VCS_TYPE = "svn"`
      - "없음" 선택 → "VCS 없이는 커밋/PR 기능을 사용할 수 없습니다." 안내 후 `VCS_TYPE = ""`
-4. `.claude/config.json`의 `"vcs"` 필드를 `VCS_TYPE` 값으로 갱신한다 (Edit).
+4. `.claude/config.json`의 `"vcs"` 필드를 `VCS_TYPE` 값으로 갱신한다. Codex에서는 위 helper의 updates `{"vcs":"{VCS_TYPE}"}`만 사용한다. Claude Code는 기존 Edit를 사용한다.
 5. `VCS 감지 : 완료 ✅ ({VCS_TYPE})` 출력.
 
 이후 단계는 `VCS_TYPE`에 따라 분기한다.
@@ -110,8 +123,8 @@ allowed-tools:
    )
    ```
    - "등록" → 5로 진행. "명령 수정" → 입력값 반영 후 5로 진행. "건너뛰기" → `프로젝트 타입 등록 : 건너뜀 (사용자 선택)` 출력 후 1단계로 진행.
-5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 Edit로 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다.
-6. **권한 등록**: build/test 명령의 첫 토큰에서 prefix 권한을 도출하고 (예: `make test` → `Bash(make *)`) 확인받는다:
+5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). Codex에서는 위 helper에 `{"projectTypes":{"{타입키}":{확정한 필드만}}}` 형태의 updates만 전달해 기존 타입의 다른 필드와 사용자 정의 필드를 보존한다. Claude Code는 기존 Edit를 사용한다. `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다.
+6. **권한 등록 (Claude Code만)**: build/test 명령의 첫 토큰에서 prefix 권한을 도출하고 (예: `make test` → `Bash(make *)`) 확인받는다. **Codex에서는 이 단계에서 `.claude/settings.local.json`을 읽거나 수정하지 않는다.** 대신 Python/Bash/Git 명령의 실제 실행 가능 여부와 `/hooks`에서 사용자가 GX hook을 검토·신뢰했는지 확인한다. 필요한 명령 권한은 현재 Codex 정책에 따라 처리하며 확인되지 않은 상태를 `권한 설정 완료`로 표시하지 않는다:
    ```
    AskUserQuestion(
      questions: [{
@@ -377,14 +390,14 @@ AskUserQuestion(
    - 건너뛰기 → 건너뜀
    - URL 입력 → `https://chat.googleapis.com/` 시작 여부 검증
    - 유효하지 않으면 1회 재입력 요청. 재입력도 유효하지 않으면 건너뜀.
-   - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`)
+   - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`). Codex에서는 위 helper에 `{"notifications":{"googleChat":{"enabled":true,"webhookUrl":"{확정 URL}"}}}` updates만 전달한다. Claude Code는 기존 Edit를 사용한다.
      `Google Chat 연동 : 완료 ✅` 출력
 
 ### 5단계: 모델 프로파일 (선택)
 
 gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파일을 설정한다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
 
-0. **세션 확정값 우선**: 이 스킬이 파이프라인의 config 부트스트랩(phase-setup config 가드의 `Skill("oh-my-gx:gx-setup")` 호출)으로 실행되었고, 이번 세션에서 모델 프로파일이 이미 확정된 경우(플래그·자연어·모드 확인 질문 답변) → **질문 없이 그 확정 값을 config.json에 기록**하고 `모델 프로파일 : 완료 ✅ ({값}, 세션 확정값 기록)` 출력 후 완료 단계로 진행한다 (프로파일 이중 질문 방지).
+0. **세션 확정값 우선**: 이 스킬이 파이프라인의 config 부트스트랩(phase-setup config 가드의 `Skill("oh-my-gx:gx-setup")` 호출)으로 실행되었고, 이번 세션에서 모델 프로파일이 이미 확정된 경우(플래그·자연어·모드 확인 질문 답변) → **질문 없이 그 확정 값을 config.json에 기록**하고 `모델 프로파일 : 완료 ✅ ({값}, 세션 확정값 기록)` 출력 후 완료 단계로 진행한다 (프로파일 이중 질문 방지). Codex 기록은 위 helper의 `{"modelProfile":"{확정값}"}` updates만 사용한다.
 1. `.claude/config.json`의 `"modelProfile"` 필드를 확인한다:
    - 값이 이미 설정되어 있으면 (`"standard"` 또는 `"eco"`) → `모델 프로파일 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 완료 단계로 진행.
    - 비어있으면 → 2번으로.
@@ -402,7 +415,7 @@ gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파
      }]
    )
    ```
-3. 선택 값을 `.claude/config.json`의 `"modelProfile"`에 기록한다 (표준 → `"standard"`, 에코 → `"eco"`).
+3. 선택 값을 `.claude/config.json`의 `"modelProfile"`에 기록한다 (표준 → `"standard"`, 에코 → `"eco"`). Codex는 위 helper의 `{"modelProfile":"{확정값}"}` updates만 사용한다. Claude Code는 기존 Edit를 사용한다.
 4. 에코 선택 시 1줄 안내: "메인 세션 모델은 플러그인이 제어하지 않습니다. 토큰 절약이 목적이면 세션 모델도 Sonnet 사용을 권장합니다."
 5. `모델 프로파일 : 완료 ✅ ({값})` 출력. 실행별 오버라이드는 `/gx-dev`·`/gx-tdd`의 `--eco`/`--standard` 플래그로 가능하다.
 

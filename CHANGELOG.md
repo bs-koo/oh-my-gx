@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.32.0 (2026-09-14)
+
+Codex에 설치한 GX 플러그인으로 프로젝트 설정부터 TDD, native 교차 리뷰, verify까지 실행할 수 있도록 하네스 차이를 처리한다. Windows Codex CLI 0.154.0에서 실제 설치·모델·훅을 검증하고, 실패와 수정 후 재검증을 구분해 기록했다. Claude Code의 기존 실행 경로는 유지한다.
+
+- **변경 — 17개 스킬의 Codex 실행 규약**: 실제 도구 스키마, 설치 루트 탐색, 질문 응답 대기·결정 기록, 역할별 도구 지침과 독립 프롬프트 전달을 공통화했다. 역할 본문 17개·tools/tier 인덱스·설정 템플릿을 배포에 동봉하고 생성기로 정합성을 검사한다.
+- **변경 — 모델 티어와 실행 모드**: 기존 Opus/Sonnet을 high/mid로 옮겨 세션의 허용 모델·추론 강도를 선택하도록 했다. standard/eco의 역할별 배치와 단계 예외를 적용하며 메인 세션 모델은 그대로 사용한다. 모든 모드·단계 조합의 실측 완료를 의미하지 않는다.
+- **추가 — Codex 훅 어댑터와 설치기**: PreToolUse Bash 매칭, ask→deny 변환, 실행 실패 시 차단을 적용했다. 기존 훅을 보존하고 Windows Git Bash 탐색·경로 인용·원자적 저장을 지원한다. 훅 신뢰 확인과 pending/stale verify 커밋 차단 절차를 문서화했다.
+- **수정 — 설정 보존·코드 지문·결정 기록**: setup은 구조적 병합으로 사용자 정의 설정을 유지한다. 임시 인덱스와 객체 DB로 실제 `.git` 쓰기 없이 지문을 계산하고, 실패·잘못된 지문은 verify를 통과시키지 않는다. 질문 ID·복수 답변·자유 입력과 올바른 브랜치 경로를 보존한다.
+- **추가 — Codex runner와 Ralph 연동**: UTF-8 입력, 최종 응답·이벤트·stderr 분리, 시간 초과 시 자식 프로세스 정리를 지원한다. Ralph는 설치 경로·최종 계약·AC 원장을 확인하고 실행 산출물을 커밋에서 제외한다. 교차 리뷰는 내부 native와 외부 Codex 제공자를 구분한다.
+- **문서 — Codex 사용 안내**: 설치·갱신, setup·TDD·리뷰·verify·커밋·PR 요청과 Superpowers 병행 사용을 정리하고 README·가이드·GitHub Pages 홈페이지에 연결했다. [실측 보고서](docs/reports/2026-09-14-codex-validation.md)에 환경·증거·실패 이력을 남겼다.
+- **검증 — Windows/Linux 회귀와 실제 실행**: Windows Codex 계약 84개, Linux 79개(Windows 전용 5개 제외), 정합성 린트 36개, 훅 6개 그룹, Claude Ralph 36개, behavior runner 30개를 통과했다. 실제 setup → TDD → native 리뷰 → verify 통과와 개별 결함 수정 후 재검증을 확인했다. CI의 CRLF 리소스 드리프트, GNU grep/pipefail 오판, Windows 단축 경로 비교도 보완했다.
+- **남은 제약**: 무인 Ralph의 Git 커밋은 권한 문제로 BLOCKED였으며 중첩 외부 Codex 실행에도 권한 제약이 있다. RED의 구현 코드 미열람은 독립 trace로 확인하지 못했다. Linux 인증 모델·macOS·릴리스 태그 설치와 standard/eco 전체 조합은 미검증이다. Claude와의 완전한 동작 일치를 보장하지 않는다.
+
 ## v1.31.0 (2026-09-09)
 
 프롬프트로만 금지되는 계약을 실제 모델 실행으로 검증하는 하네스를 둔다. 린트는 문구를, 골든 시나리오는 사람이 행동을 보지만, "문구가 있다고 모델이 따르는 것은 아니다"(v1.24.0)에 대한 자동 검증은 없었다. superpowers writing-skills의 방식(서브에이전트로 위반을 관찰)을 스크립트로 옮겼다. 설계: `docs/specs/2026-09-09-superpowers-gap-design.md` D4.

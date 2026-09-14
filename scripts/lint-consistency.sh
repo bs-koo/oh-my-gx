@@ -166,7 +166,8 @@ echo "[8/36] Skill 체이닝 스킬의 Skill 선언"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
          .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md \
          .claude/skills/gx-ralph-iterate/SKILL.md; do
-  awk '/^allowed-tools:/,/^---$/' "$f" | grep -qE '^[[:space:]]*-[[:space:]]*Skill[[:space:]]*$' \
+  # pipefail에서 grep -q가 조기 종료하면 awk의 SIGPIPE(141)를 누락으로 오판한다.
+  awk '/^allowed-tools:/,/^---$/' "$f" | grep -E '^[[:space:]]*-[[:space:]]*Skill[[:space:]]*$' >/dev/null \
     || fail "allowed-tools에 Skill 미선언 (본문이 Skill 체이닝 지시): $f"
 done
 [ "$FAIL" -eq 0 ] && ok "Skill 체이닝 5스킬 선언 확인"
@@ -322,7 +323,7 @@ for a in agents/*.md; do
   grep -q "^model: opus" "$a" || continue
   name=$(basename "$a" .md)
   case "$name" in architect|humanizer-*) continue ;; esac
-  echo "$ECO_LINES" | grep -qE "[^-a-z]$name|^$name" || fail "opus 에이전트($name)가 eco 하향 목록에 없음 — SKILL.md 모델 프로파일 규칙 갱신 필요"
+  echo "$ECO_LINES" | grep -E "[^-a-z]$name|^$name" >/dev/null || fail "opus 에이전트($name)가 eco 하향 목록에 없음 — SKILL.md 모델 프로파일 규칙 갱신 필요"
 done
 [ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
@@ -340,7 +341,7 @@ fi
 for f in .claude/skills/gx-dev/SKILL.md .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-lens/SKILL.md; do
   grep -q '상대경로' "$f" || fail "번들 경로 규약(상대경로) 설명 누락: $f"
 done
-grep -q 'Read("\.\./\.\./config\.json")' .claude/skills/gx-setup/SKILL.md \
+grep -qF 'Read("references/config.template.json")' .claude/skills/gx-setup/SKILL.md \
   || fail "gx-setup config.json 번들 템플릿 생성 단계 누락"
 # 상대경로가 실제 파일을 가리키는지 (오타·파일 이동 방어 — 절대경로 조립을 버린 대가로 필수)
 while IFS=: read -r f ref; do
@@ -385,7 +386,7 @@ grep -qF 'prd.md·ac.md·design.md 셋 다 없으면' .claude/skills/gx-cross-re
   || fail "cross-review fallback 3원 조건(prd·ac·design 셋 다) 누락"
 for code in E2 E5 E6; do
   awk '/### 영어 즉시 수정/{p=1} /### 영어 맥락 판단/{p=0} p' .claude/skills/gx-humanizer/SKILL.md \
-    | grep -q "^| $code " || fail "humanizer 영어 P1 치트시트에 $code 누락"
+    | grep "^| $code " >/dev/null || fail "humanizer 영어 P1 치트시트에 $code 누락"
 done
 [ "$FAIL" -eq 0 ] && ok "cross-review fallback 3원 + humanizer P1(E2/E5/E6) 확인"
 
@@ -506,7 +507,60 @@ grep -q '하네스' .claude/skills/gx-ralph-iterate/SKILL.md   || fail "gx-ralph
 grep -q 'vitest' docs/test-harness-guide.md || fail "test-harness-guide.md JS/TS(vitest) 섹션 누락"
 # G9: 사용자 문서에 프론트 지원 서술
 grep -q '프론트' docs/guide.md || fail "guide.md 프론트엔드 지원 서술 누락"
-[ "$FAIL" -eq 0 ] && ok "등록 검증·복합 타입·프론트 힌트·복수 타입 실행·core 판별·헤드리스·구축 가이드·사용자 문서 확인"
+# G10: 하네스 적응 노트 커버리지 — 스킬이 실제로 쓰는 도구의 대응이 그 스킬 안에 적혀 있는가.
+# 설치 사용자에게 닿는 것은 스킬 디렉토리뿐이다 (.claude/rules/harness-codex.md는 이 저장소에서만 실린다).
+# 노트가 없으면 Codex에서 Task·AskUserQuestion·Skill 호출이 조용히 아무것도 하지 않고 게이트가 증발한다.
+for d in .claude/skills/gx-*/; do
+  sname=$(basename "$d")
+  NOTES=$(grep -rl '하네스 적응' "$d" 2>/dev/null)
+  if [ -z "$NOTES" ]; then
+    fail "하네스 적응 노트 누락: $sname"
+    continue
+  fi
+  # 노트가 SKILL.md 밖에 있으면 SKILL.md가 그 파일을 가리켜야 한다 (읽히지 않으면 없는 것과 같다)
+  if ! printf '%s
+' "$NOTES" | grep "$d\?SKILL.md$" >/dev/null; then
+    nbase=$(basename "$(printf '%s
+' "$NOTES" | head -1)")
+    grep -q "$nbase" "$d/SKILL.md" || fail "하네스 노트 포인터 누락: $sname → $nbase"
+  fi
+  NOTE_TEXT=$(printf '%s
+' "$NOTES" | xargs cat 2>/dev/null)
+  # pipefail에서 grep -q의 조기 종료가 큰 NOTE_TEXT의 printf를 SIGPIPE로 실패시킨다.
+  # 파이프 입력은 끝까지 소비하고 출력만 버려 실제 매칭 결과를 판정한다.
+  if [ "$sname" = "gx-ralph-iterate" ]; then
+    # 헤드리스 전용 — 질문 도구 대응을 적으면 응답할 사용자가 없는 세션에서 멈춘다
+    printf '%s' "$NOTE_TEXT" | grep 'BLOCKED' >/dev/null || fail "헤드리스 스킬 노트에 BLOCKED 종료 규칙 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null && fail "헤드리스 스킬 노트에 질문 도구 대응이 있음: $sname"
+  elif grep -rq 'AskUserQuestion' "$d"; then
+    printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null || fail "노트에 질문 도구 대응 누락: $sname"
+  fi
+  if grep -rq 'subagent_type[=:] *"oh-my-gx' "$d" || grep -rq 'Task 도구' "$d"; then
+    printf '%s' "$NOTE_TEXT" | grep 'spawn_agent' >/dev/null || fail "노트에 서브에이전트 대응 누락: $sname"
+  fi
+  if grep -rq 'subagent_type[=:] *"Explore"' "$d"; then
+    printf '%s' "$NOTE_TEXT" | grep 'Explore' >/dev/null || fail "노트에 Explore 대응 누락: $sname"
+  fi
+  if grep -rq 'subagent_type[=:] *"general-purpose"' "$d"; then
+    printf '%s' "$NOTE_TEXT" | grep 'general-purpose' >/dev/null || fail "노트에 general-purpose 대응 누락: $sname"
+  fi
+  if grep -rq 'Skill(' "$d"; then
+    printf '%s' "$NOTE_TEXT" | grep 'SKILL.md' >/dev/null || fail "노트에 스킬 상호 호출 대응 누락: $sname"
+  fi
+  if [ "$sname" = gx-dev ]; then
+    runtime_ref='references/codex-runtime.md'
+  elif [ "$sname" = gx-tdd ]; then
+    runtime_ref='../../gx-dev/references/codex-runtime.md'
+    grep -qF "$runtime_ref" "$d/references/harness-adaptation.md" || fail "gx-tdd 적응표에 Codex 공통 규약 경로 누락"
+  else
+    runtime_ref='../gx-dev/references/codex-runtime.md'
+  fi
+  if [ "$sname" != gx-tdd ]; then
+    grep -qF "$runtime_ref" "$d/SKILL.md" || fail "Codex 공통 규약 참조 누락: $sname"
+  fi
+done
+[ -f .claude/skills/gx-dev/references/codex-runtime.md ] || fail "Codex 공통 실행 규약 누락"
+[ "$FAIL" -eq 0 ] && ok "등록 검증·복합 타입·프론트 힌트·복수 타입 실행·core 판별·헤드리스·구축 가이드·사용자 문서·하네스 노트 커버리지 확인"
 echo
 echo "[25/36] 작업 계획(plan.md) 계약"
 # --work 플래그·읽기 절차·갱신 Step·커밋 규칙이 dev/tdd 양쪽과 라우팅 규칙에 대칭으로 존재하는지 대조한다.
@@ -586,7 +640,7 @@ done
 
 # S4: --work 충돌 규칙이 정식 목록에 없으면 첫 bullet에서 파싱이 끝나 도달하지 못한다
 for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
-  awk '/^## 플래그 충돌 검증/{f=1;next} f&&/^## /{exit} f' "$f" | grep -q -- '--work'     || fail "정식 플래그 충돌 목록에 --work 미등록: $f"
+  awk '/^## 플래그 충돌 검증/{f=1;next} f&&/^## /{exit} f' "$f" | grep -- '--work' >/dev/null     || fail "정식 플래그 충돌 목록에 --work 미등록: $f"
 done
 
 # S5: Step 5가 브랜치를 재유도하면 3.0.5가 기록한 이름과 어긋나 행 매칭이 실패한다
@@ -624,15 +678,16 @@ grep -q '진행할 작업 확인' "$DEV_SETUP" || fail "작업 확정 후 사용
 # S10~S13: 착수 기록의 실행 시점. 3.0.5 시점의 현재 브랜치는 아직 베이스 브랜치이므로
 # (Step 2.2가 checkout한다) 여기서 커밋하면 훅 G1이 deny한다 — 기입·커밋은 작업 브랜치를
 # 만든 뒤 Step 5.5의 몫이고, 그 사이 공백은 원격 브랜치 조회로 메운다.
-TDD_305_SEC=$(awk '/^## 작업 계획 참조$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK")
+# Windows 체크아웃의 Markdown CRLF도 제목의 끝 앵커가 같은 의미로 읽게 한다.
+TDD_305_SEC=$(awk '{sub(/\r$/, "")} /^## 작업 계획 참조$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK")
 DEV_305_SEC=$(awk '/^### 3\.0\.5 /{f=1;next} f&&/^### /{exit} f' "$DEV_SETUP")
-printf '%s' "$TDD_305_SEC" | grep -q '메시지로 커밋' \
+printf '%s' "$TDD_305_SEC" | grep '메시지로 커밋' >/dev/null \
   && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $TDD_WORK"
-printf '%s' "$TDD_305_SEC" | grep -q 'ls-remote' \
+printf '%s' "$TDD_305_SEC" | grep 'ls-remote' >/dev/null \
   || fail "3.0.5에 원격 브랜치 중복 감지 누락: $TDD_WORK"
-printf '%s' "$DEV_305_SEC" | grep -q '메시지로 커밋' \
+printf '%s' "$DEV_305_SEC" | grep '메시지로 커밋' >/dev/null \
   && fail "3.0.5에 커밋 지시 잔존 (베이스 브랜치라 G1에 deny된다): $DEV_SETUP"
-printf '%s' "$DEV_305_SEC" | grep -q 'ls-remote' \
+printf '%s' "$DEV_305_SEC" | grep 'ls-remote' >/dev/null \
   || fail "3.0.5에 원격 브랜치 중복 감지 누락: $DEV_SETUP"
 for f in "$TDD_SETUP" "$DEV_SETUP"; do
   S5=$(grep -n '^## Step 5:' "$f" | head -1 | cut -d: -f1)
@@ -665,9 +720,9 @@ grep -q '자기 재개' "$TDD_WORK" || fail "3.0.5 중복 착수 판정에 자�
 # 신규 브랜치는 upstream이 없어 `git push`만으로는 실패한다(실측). -u가 빠지면 원격
 # 브랜치가 생기지 않고, 그러면 3.0.5의 ls-remote 중복 감지가 근거를 잃는다.
 # 파일 단위로 보면 두 지점 중 하나만 남아도 통과하므로 구간별로 검사한다.
-awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -qF 'git push -u origin' \
+awk '{sub(/\r$/, "")} /^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -F 'git push -u origin' >/dev/null \
   || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $TDD_WORK"
-awk '/^### 착수 기록 보정/{f=1} f{print}' "$TDD_RESUME" | grep -qF 'git push -u origin' \
+awk '/^### 착수 기록 보정/{f=1} f{print}' "$TDD_RESUME" | grep -F 'git push -u origin' >/dev/null \
   || fail "착수 기록 보정의 push에 -u 누락: $TDD_RESUME"
 # 대상 작업 자신의 상태를 보지 않으면 폐기된 작업이 경고 없이 개발된다
 grep -q '폐기된 작업입니다' "$TDD_WORK" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $TDD_WORK"
@@ -678,9 +733,9 @@ grep -q '한국어→영어로 번역하고 최대 40자' "$TDD_WORK" || fail "-
 
 for f in "$DEV_SETUP"; do
   grep -q '자기 재개' "$f" || fail "3.0.5 중복 착수 판정에 자기 재개 구분 누락: $f"
-  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -qF 'git push -u origin' \
+  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -F 'git push -u origin' >/dev/null \
     || fail "Step 5.5 착수 push에 -u 누락 (원격 브랜치 미생성 → 중복 감지 무력화): $f"
-  awk '/^### 착수 기록 보정/,/^## Step 1:/' "$f" | grep -qF 'git push -u origin' \
+  awk '/^### 착수 기록 보정/,/^## Step 1:/' "$f" | grep -F 'git push -u origin' >/dev/null \
     || fail "착수 기록 보정의 push에 -u 누락: $f"
   grep -q '폐기된 작업입니다' "$f" || fail "3.0.5에 대상 작업 폐기 상태 경고 누락: $f"
   grep -q '착수 기록 보정' "$f" || fail "재개 시 착수 기록 보정 절 누락: $f"
@@ -692,27 +747,27 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md .claude/skills/gx-dev/ph
 done
 # svn에서는 Claude의 커밋이 훅에 차단된다 — plan.md를 커밋하는 지점마다 svn 분기가 필요하다
 # gx-tdd: 되돌림·Step 5.5 세부 문구 모두 setup-work.md로 이동했다.
-awk '/^## 작업 계획 되돌림$/{f=1} f{print}' "$TDD_WORK" | grep -q 'svn이면' \
+awk '{sub(/\r$/, "")} /^## 작업 계획 되돌림$/{f=1} f{print}' "$TDD_WORK" | grep 'svn이면' >/dev/null \
   || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $TDD_WORK"
 # svn은 ls-remote로 대체 감지할 수단이 없다 — 사용자가 수동 커밋해야 공유된다는 점을 알려야 한다
-awk '/^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep -q '중복 착수를 감지하지 못한다' \
+awk '{sub(/\r$/, "")} /^## 착수 기록$/{f=1;next} f&&/^## /{exit} f' "$TDD_WORK" | grep '중복 착수를 감지하지 못한다' >/dev/null \
   || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $TDD_WORK"
 for f in "$DEV_SETUP"; do
-  awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep -q 'svn이면' \
+  awk '/^\*\*작업 계획 되돌림\*\*/,/^$/' "$f" | grep 'svn이면' >/dev/null \
     || fail "Step 7 되돌림에 svn 분기 누락 (Claude의 svn 커밋은 훅에 차단된다): $f"
-  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep -q '중복 착수를 감지하지 못한다' \
+  awk '/^## Step 5\.5:/,/^## Step 6:/' "$f" | grep '중복 착수를 감지하지 못한다' >/dev/null \
     || fail "Step 5.5 svn 안내에 감지 불가 경고 누락: $f"
 done
 for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-dev/SKILL.md; do
   # "W01 이어서 해줘"는 WORK와 RESUME이 함께 성립한다 — 양보 규칙이 없으면 충돌로 중단된다
   grep -q '자연어 WORK + RESUME 판정' "$f" || fail "자연어 WORK의 RESUME 양보 규칙 누락: $f"
   # --phase 경로는 phase-setup(3.0.5)을 건너뛴다 — work-id를 싣지 않으면 --work가 조용히 무시된다
-  awk '/\*\*환경 감지\*\*/,/^---/' "$f" | grep -q 'work-id' \
+  awk '/\*\*환경 감지\*\*/,/^---/' "$f" | grep 'work-id' >/dev/null \
     || fail "--phase 환경 감지에 work-id 기록 누락 (--work가 조용히 무시된다): $f"
 done
 # ralph의 완료 갱신도 push해야 후속 담당자의 의존 확인이 풀린다
 # 'push' 단순 검색은 같은 구간의 설명 문장("완료로 표시되고 push된다")에 걸려 무력하다 — 지시 문구로 본다
-awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md | grep -q '현재 브랜치로 push한다' \
+awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md | grep '현재 브랜치로 push한다' >/dev/null \
   || fail "ralph plan 완료 갱신에 push 지시 누락"
 # 브랜치 예시는 영어로 통일한다 (--work 경로만 한글이면 명명이 갈린다)
 grep -rn 'feat/[가-힣]' .claude/skills README.md >/dev/null 2>&1 \
@@ -786,23 +841,13 @@ grep -qF '컨텍스트가 길어졌다는 이유로 멈추지 않는다' "$ITERA
 [ "$FAIL" -eq 0 ] && ok "헤드리스 조기 종료 방지 철칙 확인"
 
 echo "[30/36] Codex 훅 배치·실측 계약"
-# hooks.json의 ${CLAUDE_PLUGIN_ROOT} 폴백은 Codex에서 조용히 실패할 수 있고,
-# hook-tests.sh는 스크립트를 직접 호출하므로 이 층을 검증하지 못한다.
-# 절차가 문서에 없으면 사용자는 G3가 안 도는 것을 알 방법이 없다.
 CODEX_MD=.claude/rules/harness-codex.md
-grep -qF '### 훅 수동 배치' "$CODEX_MD" \
-  || fail "훅 수동 배치 절차 누락: $CODEX_MD"
-# 문서 전체 존재 검사는 기존 절에 같은 단어가 있으면 통과해 회귀를 놓친다 — 절 범위로 좁힌다.
-awk '/^### 훅 수동 배치/,/^## /' "$CODEX_MD" | grep -qF 'CLAUDE_PLUGIN_ROOT' \
-  || fail "훅 수동 배치 절에 경로 변수 폴백 위험 설명 누락: $CODEX_MD"
-grep -qF '게이트가 도는지 확인' "$CODEX_MD" \
-  || fail "훅 동작 확인 절차 누락: $CODEX_MD"
-# agent_type·모델 목록은 Codex 세션에서만 확인 가능하다. 추측으로 채우면 잘못된 설정을 배포한다.
-grep -qF '## 실측 체크리스트' "$CODEX_MD" \
-  || fail "실측 체크리스트 절 누락: $CODEX_MD"
-awk '/^## 실측 체크리스트/,0' "$CODEX_MD" | grep -qF 'agent_type' \
-  || fail "실측 체크리스트에 agent_type 확인 항목 누락: $CODEX_MD"
-[ "$FAIL" -eq 0 ] && ok "Codex 훅 배치·실측 계약 확인"
+python3 -c 'import json; from pathlib import Path; h=json.loads(Path("hooks.json").read_text(encoding="utf-8")); assert any(x.get("matcher") == "^Bash$" for x in h["hooks"]["PreToolUse"]); assert all("commandWindows" in y for x in h["hooks"]["PreToolUse"] for y in x["hooks"])' \
+  || fail "Codex hooks.json 파싱·Bash matcher·Windows 명령 계약 위반"
+[ -f .claude/hooks/codex_hook.py ] || fail "Codex Python 훅 어댑터 누락"
+grep -qF 'codex-runtime.md' "$CODEX_MD" || fail "Codex 문서에서 역할 매핑 링크 누락"
+[ -f .claude/skills/gx-dev/references/codex-roles/index.json ] || fail "Codex 역할 인덱스 누락"
+[ "$FAIL" -eq 0 ] && ok "Codex 훅 JSON·어댑터·역할 매핑 링크 확인"
 
 echo "[31/36] 린트 번호 크로스레퍼런스 정합"
 # 분모가 오를 때마다 문서가 인용하는 [N/M]이 뒤처진다. 26→29 전환에서 7곳이 드리프트해
@@ -813,7 +858,7 @@ LINT_TOTAL=$(grep -cE '^echo "\[[0-9]+/[0-9]+\]' scripts/lint-consistency.sh)
 # --exclude-dir=worktrees: .claude/worktrees/는 별도 git 워크트리 체크아웃이 얹히는 자리라
 # 그 안의 docs/superpowers/plans/ 같은 과거 계획 문서까지 .claude 재귀에 딸려 들어온다.
 # docs/·CHANGELOG와 같은 역사 기록이므로 검사 대상에서 제외한다.
-XREF_BAD=$(grep -rnE '\[[0-9]+/[0-9]+\]' --include=*.md --exclude-dir=worktrees .claude README.md tests 2>/dev/null \
+XREF_BAD=$(grep -rnE '\[[0-9]+/[0-9]+\]' --include=*.md --exclude-dir=worktrees --exclude-dir=codex-roles .claude README.md tests 2>/dev/null \
   | grep -vE "/${LINT_TOTAL}\]" || true)
 if [ -n "$XREF_BAD" ]; then
   fail "린트 번호 크로스레퍼런스가 실제 분모(${LINT_TOTAL})와 불일치:"
@@ -860,7 +905,7 @@ SEC=$(awk '/^### Step 2-V: 태스크 리뷰/{f=1} /^## Step 3: 정체 감지/{f=
 [ -n "$SEC" ] || fail "Step 2-V 태스크 리뷰 절 누락: phase-implement.md"
 awk '/^### Step 2-V: 태스크 리뷰/{f=1} f && /^## Step 3: 정체 감지/{found=1; exit} END{exit !found}' "$IMPL" || fail "Step 2-V 절이 Step 3 앞에 있지 않다 (구간 검사가 파일 끝까지 늘어난다): phase-implement.md"
 for s in '프로덕션 파일이 2개 이상' 'fix-round' 'reports/t{N}-diff.txt' 'reports/t{N}-review.md' 'reports/t{N}-diff-r{r}.txt' 'model: "sonnet"' 'subagent_type="oh-my-gx:reviewer"' 'deferred-minors' 'NOT ADDRESSED' 'GIT_INDEX_FILE' 'NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED' '발견 단계의 목표는 커버리지다' 'RED 재호출' 'TASK_DIFF_FAILED' 'core.quotePath=false'; do
-  printf '%s' "$SEC" | grep -qF "$s" || fail "태스크 리뷰 계약 문구 누락($s): phase-implement.md Step 2-V"
+  printf '%s' "$SEC" | grep -F "$s" >/dev/null || fail "태스크 리뷰 계약 문구 누락($s): phase-implement.md Step 2-V"
 done
 grep -qF '## 태스크 범위 모드' agents/reviewer.md || fail "태스크 범위 모드 절 누락: agents/reviewer.md"
 grep -qF '## 재리뷰 판정' agents/reviewer.md || fail "재리뷰 판정 표 형식 누락: agents/reviewer.md"
@@ -894,7 +939,7 @@ for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phase
   SEC=$(awk '/^[0-9]+\. \*\*도메인 컨텍스트 탐색\*\*/{f=1} /^[0-9]+\. \*\*외부 규격 참조 탐색\*\*/{f=0} f' "$f")
   [ -n "$SEC" ] || fail "도메인 컨텍스트 탐색 절 누락: $f"
   for s in 'README.md' 'status.md' 'glossary.md' 'architecture.md' '미반영' '우선순위' '4요소'; do
-    printf '%s' "$SEC" | grep -qF "$s" || fail "도메인 컨텍스트 구성 요소($s) 누락: $f"
+    printf '%s' "$SEC" | grep -F "$s" >/dev/null || fail "도메인 컨텍스트 구성 요소($s) 누락: $f"
   done
 done
 for f in .claude/skills/gx-tdd/phases/phase-requirements.md .claude/skills/gx-dev/phases/phase-requirements.md; do

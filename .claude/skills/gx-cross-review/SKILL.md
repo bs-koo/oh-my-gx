@@ -37,6 +37,16 @@ allowed-tools:
 
 항상 한국어로 응답한다.
 
+**하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
+
+Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+
+- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `Task(subagent_type="oh-my-gx:{name}")` → 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다.
+
+도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
 ## 정체성
 
 > **cross-review의 본질 = "산출물 대비 충실도 검증"**.
@@ -45,7 +55,8 @@ allowed-tools:
 | advisor | 차별점 |
 |---------|--------|
 | `codex` | 산출물 기반 검증 미션 + 다른 모델 관점 (이중 차별) |
-| `claude` | 산출물 기반 검증 미션 + 별도 페르소나/contract (단일 차별) |
+| `native` | 현재 하네스의 내부 역할 에이전트로 산출물 기반 검증 |
+| `claude` | Claude Code 호스트에서 기존 역할 리뷰 (Codex 호스트에서는 미지원) |
 
 기본 `/codex:review`와의 비교:
 
@@ -61,7 +72,7 @@ allowed-tools:
 
 `ARGS[0]`은 비워두는 것이 기본이다. 옵션 플래그만 지원한다:
 
-- `--advisor codex|claude`: advisor 자동 선택 (생략 시 사용자에게 묻는다).
+- `--advisor codex|native|claude`: advisor 선택 (생략 시 사용자에게 묻는다).
 - `--dev-dir <path>`: 산출물 디렉토리 직접 지정 (생략 시 현재 브랜치 기준 자동 추론).
 - `--base <branch>`: 베이스 브랜치 직접 지정 (생략 시 자동 감지).
 - `--scope diff|stat`: diff 수집 모드 (기본: diff. 변경이 큰 경우 stat).
@@ -76,11 +87,12 @@ allowed-tools:
 다른 스킬과 동일한 명명 규칙을 따른다 (gx-dev "공유 규칙" 참조):
 
 - `BRANCH`: `git branch --show-current` 결과.
+- `PROJECT_ROOT`: `git rev-parse --show-toplevel`로 확인한 소비 프로젝트의 절대경로.
 - `BRANCH_SLUG`: `${BRANCH}`에서 `/`를 `-`로 치환한 값.
 - `DEV_DIR`: 기본값 `.dev/${BRANCH_SLUG}`. `--dev-dir`로 오버라이드 가능.
 - `BASE_BRANCH`: 자동 감지 또는 `--base`로 지정.
-- `ADVISOR`: `codex` 또는 `claude`. Step 1에서 결정.
-- `CODEX_COMPANION`: codex companion 스크립트 절대 경로. Step 3a에서 동적 탐색.
+- `ADVISOR`: `codex`, `native`, `claude`. Step 1에서 결정.
+- `GX_PLUGIN_ROOT`: 설치된 GX 플러그인 루트의 확인된 절대경로. `scripts/codex-run.py` 확인에 사용.
 - `DIFF_FILE`: `${DEV_DIR}/diff.txt`. Step 2-2에서 갱신.
 - `ARTIFACTS`: 로드된 산출물 목록 (prd/design/trust-ledger/self-check/codemap/references).
 - `RESULT_FILE`: `${DEV_DIR}/cross-review.md`. Step 4 산출물.
@@ -102,7 +114,7 @@ allowed-tools:
 
 | 옵션 | 형식 | 저장 변수 | 허용 값 |
 |------|------|----------|---------|
-| `--advisor` | `--advisor codex` 또는 `--advisor=codex` | `${ADVISOR}` | `codex`, `claude` |
+| `--advisor` | `--advisor codex` 또는 `--advisor=codex` | `${ADVISOR}` | `codex`, `native`, `claude` |
 | `--dev-dir` | `--dev-dir <path>` 또는 `--dev-dir=<path>` | `${DEV_DIR}` | 디렉토리 경로 |
 | `--base` | `--base main` 또는 `--base=main` | `${BASE_BRANCH}` | 브랜치명 |
 | `--scope` | `--scope diff` 또는 `--scope=stat` | `${SCOPE}` | `diff`(기본), `stat` |
@@ -114,13 +126,14 @@ allowed-tools:
 
 ### 0-1. 브랜치/디렉토리 결정
 
-1. `git branch --show-current` → `${BRANCH}`. 빈 문자열(detached HEAD)이면 중단:
+1. `git rev-parse --show-toplevel`로 소비 프로젝트의 `${PROJECT_ROOT}` 절대경로를 확인한다. 실패하면 Git 프로젝트가 아니므로 중단한다. 이후 Git·helper 명령은 이 경로를 작업 위치로 쓴다.
+2. `git branch --show-current` → `${BRANCH}`. 빈 문자열(detached HEAD)이면 중단:
    ```
    "현재 detached HEAD 상태입니다. 브랜치 위에서 다시 호출해주세요."
    ```
-2. `${BRANCH_SLUG}` = `${BRANCH}`에서 `/` → `-`.
-3. `--dev-dir`이 지정되지 않았으면 `${DEV_DIR}` = `.dev/${BRANCH_SLUG}`.
-4. `mkdir -p ${DEV_DIR}` 실행 (없으면 생성).
+3. `${BRANCH_SLUG}` = `${BRANCH}`에서 `/` → `-`.
+4. `--dev-dir`이 지정되지 않았으면 `${DEV_DIR}` = `.dev/${BRANCH_SLUG}`.
+5. 상대 `${DEV_DIR}`은 `${PROJECT_ROOT}` 기준 절대경로로 정규화한다 (`--dev-dir`로 이미 절대경로가 주어졌으면 유지). `mkdir -p ${DEV_DIR}` 실행 (없으면 생성). 이후 `${PROMPT_FILE}`·`${RAW_FILE}`·events도 이 절대 `${DEV_DIR}` 아래에서 계산해 helper에 전달한다.
 
 ### 0-2. 베이스 브랜치 결정
 
@@ -203,8 +216,9 @@ AskUserQuestion(
     question: "어떤 advisor로 교차 검증을 수행할까요?",
     header: "advisor 선택",
     options: [
-      { label: "codex (Recommended)", description: "다른 모델(GPT-5.4) 관점으로 교차 검증" },
-      { label: "claude", description: "oh-my-gx의 qa-manager + security-auditor를 cross-review 미션으로 호출 (omc 의존 없음)" }
+      { label: "codex (Recommended)", description: "Codex CLI read-only 세션으로 교차 검증" },
+      { label: "native", description: "현재 하네스의 qa-manager + security-auditor 역할로 검증" },
+      { label: "claude", description: "Claude Code 호스트에서 기존 역할 리뷰 (Codex 호스트 미지원)" }
     ],
     multiSelect: false
   }]
@@ -236,25 +250,12 @@ AskUserQuestion(
    ```
    자동 설치/인증은 수행하지 않는다 — 사용자 환경 침해 방지.
 
-2. **companion 스크립트 탐색**:
-   ```bash
-   ls -t ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | head -1
-   ```
-   결과를 `${CODEX_COMPANION}`에 저장. 빈 결과면:
-   ```
-   codex CLI는 있지만 codex 플러그인이 설치되지 않았습니다.
+2. **GX 네이티브 helper 확인**: 이 SKILL.md가 설치된 GX 루트의 절대경로를 `${GX_PLUGIN_ROOT}`로 확정하고 `scripts/codex-run.py` 존재를 확인한다. 없으면 "GX 배포가 불완전합니다: {경로}"를 보고하고 중단한다. 소비 프로젝트나 Claude plugin cache에서 companion을 찾지 않는다.
+3. **인증 상태**: helper 실행 시 Codex CLI가 검사한다. 설치/인증 문제가 나오면 오류를 보고하고 종료한다. 자동 설치/인증은 하지 않는다.
 
-   설치:
-     /plugin marketplace add openai/codex-plugin-cc
-     /plugin install codex@openai-codex
-     /reload-plugins
+Codex CLI가 설치·인증되어 있어도 **부모 Codex의 workspace-write 세션 안에서 다시 Codex CLI를 실행하면** `CODEX_HOME` 임시 파일이나 앱 서버 초기화에 필요한 쓰기/네트워크가 차단될 수 있다. 이 경우 오류를 그대로 보고하고, 현재 하네스의 역할 리뷰를 원하면 `--advisor native`로 별도 실행한다. 대화형 호스트에서는 필요한 CLI 권한을 기존 승인 절차로 처리한다. 인증 파일 복사, 권한 변경, 자동 우회 재시도는 하지 않는다. 헤드리스 부모가 승인할 수 없는 작업은 성공으로 취급하지 않는다.
 
-   설치 후 다시 호출해주세요.
-   ```
-
-3. **인증 상태**: companion이 자체적으로 인증을 검증하므로, 이 단계에서는 추가 점검을 하지 않는다.
-
-claude advisor를 선택했으면 1-1을 건너뛴다.
+`--advisor native`는 현재 하네스의 역할 에이전트 리뷰다. `--advisor claude`는 Claude Code 호스트에서만 기존 역할 리뷰를 수행한다. **Codex 호스트에서 claude를 선택하면 Claude 실행 경로 미지원으로 종료하고 native 또는 codex를 명시적으로 선택하도록 안내한다.** 이름만 자동으로 바꾸지 않는다. 둘 다 codex 환경 사전 점검은 건너뛴다.
 
 ---
 
@@ -326,7 +327,7 @@ codex는 prompt 파일에 저장한 후 인자로 전달, claude는 Task prompt�
 
 `${PROMPT_FILE}` (= `${DEV_DIR}/cross-review-prompt.md`)에 다음 형식으로 작성한다.
 
-> **prompt 본문 작성 규칙**: companion이 `--prompt-file`로 파일을 직접 읽으므로 셸 인용/길이 제한은 무관하다. 다만 codex 측 prompt 파서 안정성을 위해 본문에 백틱(`` ` ``), 이스케이프되지 않은 큰따옴표(`"`), `$` 시작 토큰은 절제하고 코드 인용은 4칸 들여쓰기로 대체할 것을 권장한다.
+> **prompt 본문 작성 규칙**: helper가 파일을 UTF-8로 읽어 stdin으로 전달한다. `$`·백틱·따옴표를 임의로 삭제하지 않고 산출물 원문을 보존한다.
 
 ```xml
 <task>
@@ -404,14 +405,15 @@ references/ 디렉토리의 파일별로 위반 여부.
 
 #### 3a-2. codex 호출
 
+재실행 전 기존 `${RAW_FILE}`, `${DEV_DIR}/cross-review.events.jsonl`, `${DEV_DIR}/cross-review.events.jsonl.stderr` **세 파일 모두** 존재하는 것만 충돌 없는 timestamp archive로 옮긴다. 하나라도 그대로 남으면 helper가 기존 출력 충돌로 거절할 수 있다. 백업 이름이 이미 있으면 새 suffix를 사용하고 기존 archive를 덮어쓰지 않는다. 이전 성공 응답을 재사용하지 않는다. 아래는 Bash 실행 예시이며 Python 실행 파일은 setup에서 검증한 실제 경로로 치환한다.
+
 ```bash
-node "${CODEX_COMPANION}" task --prompt-file "${PROMPT_FILE}" \
-  > "${RAW_FILE}" 2>&1
+python3 "$GX_PLUGIN_ROOT/scripts/codex-run.py" --cwd "$PROJECT_ROOT" \
+  --prompt "$PROMPT_FILE" --final "$RAW_FILE" \
+  --events "$DEV_DIR/cross-review.events.jsonl" --mode review --timeout 300
 ```
 
-- companion이 정식 지원하는 `--prompt-file` 플래그로 파일 경로만 전달한다. 위치 인자에 본문을 펼치지 않으므로 OS 명령줄 길이 제한(`ARG_MAX`, Windows ~32KB)을 회피한다.
-- Bash 도구 호출 시 `timeout: 300000` 파라미터를 명시한다 (기본 2분으로는 부족).
-- `--write` 플래그는 명시적으로 사용하지 않는다 (read-only 검증).
+helper가 prompt를 stdin으로 전달하고 read-only 세션을 연다. 프로세스 종료 코드가 0이 아니면 `${RAW_FILE}` 내용이 있어도 실패다. stderr와 이벤트를 보고하고 중단하며 정규화·자동 수정을 진행하지 않는다.
 
 #### 3a-3. 응답 검증
 
@@ -420,9 +422,9 @@ node "${CODEX_COMPANION}" task --prompt-file "${PROMPT_FILE}" \
 3. 영어 응답 감지: 첫 50줄에서 한국어 문자(가-힣) 비율이 20% 미만이면 영어로 간주. 이 경우 한국어 정규화 단계를 추가:
    - 오케스트레이터가 직접 응답을 한국어로 재작성한다 (의미는 보존).
 
-### 3-B. claude 경로
+### 3-B. native/claude 역할 경로
 
-`${ADVISOR}` == `claude`인 경우.
+`${ADVISOR}` == `native`이거나 Claude Code 호스트에서 `${ADVISOR}` == `claude`인 경우. Codex native는 공통 실행 규약의 역할 본문·도구 제약과 현재 태스크 prompt 전문을 자식에게 전달한다. Claude Code의 기존 Task 타입은 유지한다.
 
 #### 3b-1. cross-review contract
 
@@ -500,7 +502,9 @@ advisor와 무관하게 동일한 포맷으로 정규화하여 `${RESULT_FILE}`�
 ```markdown
 # Cross-Review 결과
 
-- advisor: codex | claude
+- advisor: codex | native | claude
+- 실행 하네스: Codex CLI | 현재 하네스 | Claude Code
+- 실제 모델: 확인된 모델명 또는 미확인 (이벤트/도구 기록에 있을 때만 기재)
 - 브랜치: ${BRANCH} (base: ${BASE_BRANCH})
 - DEV_DIR: ${DEV_DIR}
 - 실행 시각: 2026-05-04T10:30:00Z
@@ -564,6 +568,7 @@ Write(${RESULT_FILE}, normalized_content)
 ## Cross-Review 완료
 
 - advisor: codex
+- 실행 하네스/실제 모델: Codex CLI / 확인된 모델명 또는 미확인
 - AC 충족: [Must] 4/5, [Should] 2/3
 - 설계 범위 이탈: 1건
 - 신규 위험: Critical 1, Warning 2, Info 3
@@ -734,15 +739,17 @@ AskUserQuestion(
 
 ### F-3. fallback 실행
 
-**codex 선택 시**: companion의 `review` 서브명령을 그대로 호출 (산출물 주입 없음). companion이 자체적으로 diff를 수집하므로 `${DIFF_FILE}`은 전달하지 않는다.
-```bash
-node "${CODEX_COMPANION}" review --wait --base "${BASE_BRANCH}" --scope auto > "${RAW_FILE}"
-```
-- `--wait`: 동기 결과 수신.
-- `--base`: 베이스 브랜치 명시 (Step 0-2 결과).
-- `--scope`: companion은 `auto|working-tree|branch`만 허용하므로 항상 `auto`로 고정한다. Step 0-0의 `${SCOPE}`(`diff|stat`)는 자체 diff 수집(Step 2-2)에만 의미 있고, fallback은 companion이 알아서 결정한다.
+**fallback 승인 후 공통 선행 단계**: Step 1의 advisor 선택과 1-1 환경 확인을 수행한다. `--advisor claude`를 Codex 호스트에서 선택했다면 여기서 중단한다. 이어서 Step 2-2의 diff 수집을 **실제로 실행**하여 `${DIFF_FILE}`을 만든다. 산출물이 없는 경우에도 diff 수집을 건너뛰지 않는다. diff가 비었으면 "변경사항이 없습니다"를 보고 종료한다. 이 선행 단계가 끝난 뒤 F-3으로 돌아온다.
 
-**claude 선택 시**: `qa-manager`만 호출, 일반 contract 사용 (cross-review 미션 제거). security-auditor는 호출하지 않는다 (산출물 없으면 보안 정합성 검증이 불가능).
+**codex 선택 시**: 일반 리뷰 미션과 `${BASE_BRANCH}`·실제로 수집한 `${DIFF_FILE}` 경로를 `${PROMPT_FILE}`에 기록하고 네이티브 helper의 read-only review 모드로 호출한다. 산출물 없는 경우 AC 매트릭스가 없음을 prompt에 명시한다. 기존 `${RAW_FILE}`, `${DEV_DIR}/cross-review.events.jsonl`, `${DEV_DIR}/cross-review.events.jsonl.stderr` 세 파일 모두 3a-2와 같은 충돌 없는 timestamp archive로 옮긴다.
+```bash
+python3 "$GX_PLUGIN_ROOT/scripts/codex-run.py" --cwd "$PROJECT_ROOT" \
+  --prompt "$PROMPT_FILE" --final "$RAW_FILE" \
+  --events "$DEV_DIR/cross-review.events.jsonl" --mode review --timeout 300
+```
+- 종료 코드가 0이 아니면 결과 정규화 없이 중단한다. diff 수집 범위는 Step 2-2에서 만든 `${DIFF_FILE}`을 따른다.
+
+**native/claude 역할 선택 시**: `qa-manager`만 호출, 일반 contract 사용 (cross-review 미션 제거). security-auditor는 호출하지 않는다 (산출물 없으면 보안 정합성 검증이 불가능). Codex의 claude 선택은 Step 1에서 이미 중단한다.
 
 결과는 동일하게 `${RESULT_FILE}`에 저장. AC 매트릭스 / 설계 범위 이탈 섹션은 생략하고 신규 위험 섹션만 채운다.
 
@@ -761,7 +768,7 @@ node "${CODEX_COMPANION}" review --wait --base "${BASE_BRANCH}" --scope auto > "
 1. advisor 응답에 Critical 항목이 있어도 즉시 coder를 호출하지 않는다.
 2. 모든 수정은 Step 5의 AskUserQuestion을 거쳐 사용자가 명시적으로 승인한 항목만 수행.
 3. coder는 "수정" 모드로만 호출하고, 신규 기능 추가나 리팩토링은 위임 범위 밖.
-4. 이 원칙은 codex 플러그인의 `codex-result-handling` 스킬과 일치한다.
+4. 승인된 범위만 수정하고 리뷰 결과를 자동으로 구현 작업으로 전환하지 않는다.
 
 ---
 
@@ -771,7 +778,7 @@ node "${CODEX_COMPANION}" review --wait --base "${BASE_BRANCH}" --scope auto > "
 - **claude Task 실패**: 어느 한 Task가 실패하면 성공한 결과만으로 정규화. 사용자에게 부분 결과임을 명시.
 - **컨텍스트 초과**: Step 2-1의 슬라이싱으로 60,000 토큰 이하로 압축. 그래도 초과하면 사용자에게 `--scope stat` 사용 안내.
 - **diff 빈 파일**: 변경사항이 없으면 "변경사항이 없습니다." 표시 후 즉시 종료.
-- **pre-tool-guard 충돌**: oh-my-gx의 PreToolUse hook이 codex companion 호출을 차단하면 사용자에게 hook 우회 안내 (드물 것).
+- **hook 차단**: GX 훅이 실행을 차단하면 차단 이유를 보고하고 중단한다. 훅 신뢰·검증 우회로 재시도하지 않는다.
 
 ---
 
@@ -781,7 +788,9 @@ node "${CODEX_COMPANION}" review --wait --base "${BASE_BRANCH}" --scope auto > "
 
 ```yaml
 status: in_progress | completed | aborted
-advisor: codex | claude
+advisor: codex | native | claude
+execution_harness: Codex CLI | current | Claude Code
+actual_model: 확인된 모델명 또는 미확인
 started: 2026-05-04T10:30:00Z
 completed: 2026-05-04T10:35:00Z
 findings:

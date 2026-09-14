@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # gx-ralph 외부 러너 — Ralph 루프 드라이버
 #
-# 매 반복 새 claude 세션(-p)을 기동해 gx-ralph-iterate 스킬로 AC 1건씩 처리한다.
+# 매 반복 새 Claude 또는 Codex 세션을 기동해 gx-ralph-iterate 스킬로 AC 1건씩 처리한다.
 # 상태 계약의 정본: .claude/skills/gx-ralph/SKILL.md "상태 계약 (SSOT)" (드리프트 주의)
 #
 # 사용법: bash scripts/gx-ralph.sh [max_iterations]
 # 환경변수:
 #   GX_RALPH_CLAUDE_CMD    claude CLI 명령 (기본: claude / 테스트에서 mock 주입)
+#   GX_RALPH_HARNESS       claude(기본) 또는 codex
+#   GX_RALPH_CODEX_CMD     Codex 실행 파일 경로 (선택)
+#   GX_RALPH_ITERATE_SKILL Codex에서 읽을 설치된 반복 스킬의 절대경로 (Codex에서 필수)
 #   GX_RALPH_SKILL_NAME    반복 스킬 호출명 (기본: /oh-my-gx:gx-ralph-iterate / 개발 저장소: /gx-ralph-iterate)
 #   GX_RALPH_ITER_TIMEOUT  반복당 타임아웃 초 (기본: 1800)
 #   GX_RALPH_MODEL         반복 세션 오케스트레이터 모델 (기본: 미지정 = CLI 기본. 에이전트는 자기 frontmatter 모델 유지)
@@ -15,6 +18,8 @@
 set -uo pipefail
 
 CLAUDE_CMD="${GX_RALPH_CLAUDE_CMD:-claude}"
+HARNESS="${GX_RALPH_HARNESS:-claude}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_NAME="${GX_RALPH_SKILL_NAME:-/oh-my-gx:gx-ralph-iterate}"
 ITER_TIMEOUT="${GX_RALPH_ITER_TIMEOUT:-1800}"
 # --model 은 지정됐을 때만 전달한다 (기본 비움 = CLI 기본 모델. 반복 세션의 오케스트레이터 역할은
@@ -28,10 +33,43 @@ ALLOWED_TOOLS="Read,Write,Edit,Glob,Grep,Task,Skill,Bash(git *),Bash(./gradlew *
 
 fail() { echo "[gx-ralph] 사전 조건 실패: $1" >&2; exit 6; }
 
+case "$HARNESS" in claude|codex) ;; *) fail "지원하지 않는 하네스: $HARNESS" ;; esac
+PYTHON_CMD=''
+for candidate in python3 python; do
+  if "$candidate" -c 'import sys; raise SystemExit(sys.version_info < (3,10))' >/dev/null 2>&1; then
+    PYTHON_CMD="$candidate"; break
+  fi
+done
+[ -n "$PYTHON_CMD" ] || fail "Python 3.10 이상이 필요합니다"
+if [ "$HARNESS" = codex ]; then
+  [ -n "${GX_RALPH_ITERATE_SKILL:-}" ] && [ -f "$GX_RALPH_ITERATE_SKILL" ] || fail "Codex 반복 스킬 경로가 필요합니다"
+  "$PYTHON_CMD" -c 'import pathlib,sys; raise SystemExit(not pathlib.Path(sys.argv[1]).is_absolute())' "$GX_RALPH_ITERATE_SKILL" >/dev/null 2>&1 || fail "Codex 반복 스킬은 절대경로여야 합니다"
+  CODEX_EXE="${GX_RALPH_CODEX_CMD:-}"
+  if [ -n "$CODEX_EXE" ]; then
+    [ -f "$CODEX_EXE" ] || fail "Codex 실행 파일을 찾을 수 없습니다"
+  else
+    CODEX_EXE=$("$PYTHON_CMD" -c 'import os,shutil,sys; p=shutil.which("codex.cmd" if os.name=="nt" else "codex"); sys.stdout.buffer.write((p or "").encode("utf-8"))') || fail "Codex 실행 파일을 찾을 수 없습니다"
+    [ -n "$CODEX_EXE" ] || fail "Codex 실행 파일을 찾을 수 없습니다"
+  fi
+  [ -f "$SCRIPT_DIR/codex-fingerprint.py" ] || fail "설치된 지문 헬퍼를 찾을 수 없습니다"
+  PROMPT_SCRIPT_DIR="$SCRIPT_DIR"
+  if command -v cygpath >/dev/null 2>&1; then
+    PROMPT_SCRIPT_DIR=$(cygpath -m "$SCRIPT_DIR") || fail "설치 경로를 변환할 수 없습니다"
+  fi
+  GX_INSTALLED_ROOT=$(dirname "$PROMPT_SCRIPT_DIR")
+  GX_FINGERPRINT_HELPER="$PROMPT_SCRIPT_DIR/codex-fingerprint.py"
+fi
+
 # ── 사전 조건 assert ──
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "git 저장소가 아닙니다"
 # 상대 경로(.dev/, .claude/config.json)가 저장소 루트 기준이 되도록 이동 (하위 디렉토리 실행 방어)
 cd "$(git rev-parse --show-toplevel)" || fail "저장소 루트로 이동할 수 없습니다"
+if [ "$HARNESS" = codex ]; then
+  PROMPT_PROJECT_ROOT="$PWD"
+  if command -v cygpath >/dev/null 2>&1; then
+    PROMPT_PROJECT_ROOT=$(cygpath -m "$PWD") || fail "프로젝트 경로를 변환할 수 없습니다"
+  fi
+fi
 
 if [ -f ".claude/config.json" ] && grep -q '"vcs"[[:space:]]*:[[:space:]]*"svn"' .claude/config.json 2>/dev/null; then
   fail "SVN 프로젝트에서는 gx-ralph를 사용할 수 없습니다"
@@ -89,9 +127,16 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 # ── 이전 실행 로그 보존 (재실행 시 iter-N.log 덮어쓰기 방지) ──
-if ls "$DEV_DIR"/iter-*.log >/dev/null 2>&1; then
+OLD_OUTPUTS=("$DEV_DIR"/iter-*.log "$DEV_DIR"/iter-*.final.md "$DEV_DIR"/iter-*.prompt.md "$DEV_DIR"/iter-*.events.jsonl "$DEV_DIR"/iter-*.events.jsonl.stderr)
+if [ -e "${OLD_OUTPUTS[0]}" ] || [ -e "${OLD_OUTPUTS[1]}" ] || [ -e "${OLD_OUTPUTS[2]}" ] || [ -e "${OLD_OUTPUTS[3]}" ] || [ -e "${OLD_OUTPUTS[4]}" ]; then
   ARCHIVE="$DEV_DIR/logs-$(date '+%Y%m%d-%H%M%S')"
-  mkdir -p "$ARCHIVE" && mv "$DEV_DIR"/iter-*.log "$ARCHIVE"/
+  n=1
+  while [ -e "$ARCHIVE" ]; do ARCHIVE="$DEV_DIR/logs-$(date '+%Y%m%d-%H%M%S')-$n"; n=$((n+1)); done
+  mkdir -p "$ARCHIVE" || fail "로그 보존 디렉터리를 만들 수 없습니다"
+  for output in "${OLD_OUTPUTS[@]}"; do
+    [ -e "$output" ] || continue
+    mv -- "$output" "$ARCHIVE/" || fail "이전 반복 출력을 보존할 수 없습니다"
+  done
   echo "[gx-ralph] 이전 반복 로그를 $ARCHIVE/ 로 보존"
 fi
 
@@ -121,14 +166,50 @@ while [ "$i" -le "$MAX_ITER" ]; do
   # MSYS_NO_PATHCONV=1: Git Bash(Windows)가 "/gx-..." 인자를 Windows 경로로 자동 변환해
   # 프롬프트가 깨지는 것을 방지한다 (통합 스모크 실측 2026-07-10). 타 환경에서는 무해.
   # shellcheck disable=SC2086 — CLAUDE_CMD/TIMEOUT_CMD의 의도적 단어 분리. MODEL_ARGS는 배열(빈 배열 안전 확장 — bash 3.2의 set -u 호환)
-  MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
+  FINAL="$DEV_DIR/iter-$i.final.md"
+  if [ "$HARNESS" = codex ]; then
+    PROMPT="$DEV_DIR/iter-$i.prompt.md"
+    printf '다음 SKILL.md를 읽고 반복 1회를 수행하라: %s\n' "$GX_RALPH_ITERATE_SKILL" > "$PROMPT"
+    printf 'GX_INSTALLED_ROOT=%s\nGX_FINGERPRINT_HELPER=%s\nGX_PROJECT_ROOT=%s\n' \
+      "$GX_INSTALLED_ROOT" "$GX_FINGERPRINT_HELPER" "$PROMPT_PROJECT_ROOT" >> "$PROMPT"
+    printf 'verify 지문 계산에는 위 GX_FINGERPRINT_HELPER 절대경로를 직접 사용하라. 설치 루트를 검색하거나 .claude에서 부모 경로를 세어 추측하지 말라.\n' >> "$PROMPT"
+    printf '종료 계약은 최종 응답의 정확한 한 줄로만 출력하라. 질문이 필요하면 BLOCKED로 종료하라.\n' >> "$PROMPT"
+    "$PYTHON_CMD" "$SCRIPT_DIR/codex-run.py" --cwd "$PWD" --prompt "$PROMPT" \
+      --final "$FINAL" --events "$DEV_DIR/iter-$i.events.jsonl" --mode iterate \
+      --timeout "$ITER_TIMEOUT" ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
+      --codex-executable "$CODEX_EXE" > "$LOG" 2>&1
+  else
+    MSYS_NO_PATHCONV=1 $TIMEOUT_CMD $CLAUDE_CMD -p "$SKILL_NAME" ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} --allowedTools "$ALLOWED_TOOLS" > "$LOG" 2>&1
+  fi
   EXIT_CODE=$?
-
-  # [^<]* 대신 .* — BLOCKED 사유에 '<'가 포함돼도 계약이 파싱되도록 (계약은 한 줄에 하나)
-  CONTRACT=$(grep -o '<ralph>.*</ralph>' "$LOG" 2>/dev/null | tail -1)
+  [ "$EXIT_CODE" -eq 0 ] || { echo "[gx-ralph] 반복 실행 실패 (exit: $EXIT_CODE) — $LOG 확인" >&2; exit 3; }
+  CONTRACT_SOURCE="$LOG"
+  [ "$HARNESS" = codex ] && CONTRACT_SOURCE="$FINAL"
+  CONTRACT=$("$PYTHON_CMD" - "$CONTRACT_SOURCE" <<'PY'
+import pathlib, re, sys
+try:
+    lines = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8').replace('\r', '').splitlines()
+except (OSError, UnicodeError):
+    raise SystemExit(1)
+contracts = [line for line in lines if re.fullmatch(r'<ralph>(COMPLETE|CONTINUE|BLOCKED: .+)</ralph>', line)]
+nonblank = [line for line in lines if line.strip()]
+if len(contracts) != 1 or not nonblank or nonblank[-1] != contracts[0]:
+    raise SystemExit(1)
+sys.stdout.buffer.write((contracts[0] + '\n').encode('utf-8'))
+PY
+  ) || { echo "[gx-ralph] 종료 계약 미출력 — $CONTRACT_SOURCE 확인" >&2; exit 3; }
 
   case "$CONTRACT" in
     "<ralph>COMPLETE</ralph>")
+      "$PYTHON_CMD" - "$AC_FILE" <<'PY' || { echo "[gx-ralph] COMPLETE 원장 검증 실패 — 모든 AC의 passes=true가 필요합니다" >&2; exit 3; }
+import json, sys
+try:
+    with open(sys.argv[1], encoding='utf-8') as stream:
+        items = json.load(stream)['acs']
+except (OSError, ValueError, KeyError, TypeError):
+    raise SystemExit(1)
+raise SystemExit(0 if isinstance(items, list) and items and all(isinstance(a, dict) and a.get('passes') is True for a in items) else 1)
+PY
       DONE=$(ac_passes)
       # 복귀 파이프라인은 origin 분기 — gx-tdd 출발 루프는 spec→quality 리뷰(/gx-tdd)가 정본
       ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')

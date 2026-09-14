@@ -1,5 +1,7 @@
 # phase-review: 통합 리뷰 (reviewer 1석 — spec verdict 선행) + Security 병렬
 
+Codex에서는 이 phase 파일 기준 `../../gx-dev/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/reviewer.md`·`agents/implementer.md` 등 저장소 기준 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 역할 본문·도구 제약을 사용한다. reviewer의 Part 1 spec verdict 선행 및 Part 2 quality verdict와 YAML 반환 계약은 그대로 유지한다.
+
 ## Iron Law
 
 ```
