@@ -323,7 +323,7 @@ for a in agents/*.md; do
   grep -q "^model: opus" "$a" || continue
   name=$(basename "$a" .md)
   case "$name" in architect|humanizer-*) continue ;; esac
-  echo "$ECO_LINES" | grep -qE "[^-a-z]$name|^$name" || fail "opus 에이전트($name)가 eco 하향 목록에 없음 — SKILL.md 모델 프로파일 규칙 갱신 필요"
+  echo "$ECO_LINES" | grep -E "[^-a-z]$name|^$name" >/dev/null || fail "opus 에이전트($name)가 eco 하향 목록에 없음 — SKILL.md 모델 프로파일 규칙 갱신 필요"
 done
 [ "$FAIL" -eq 0 ] && ok "config 키·기록 규칙·오버라이드·opus 집합 대조·결정 로직·setup 단계 확인"
 
@@ -519,31 +519,33 @@ for d in .claude/skills/gx-*/; do
   fi
   # 노트가 SKILL.md 밖에 있으면 SKILL.md가 그 파일을 가리켜야 한다 (읽히지 않으면 없는 것과 같다)
   if ! printf '%s
-' "$NOTES" | grep -q "$d\?SKILL.md$"; then
+' "$NOTES" | grep "$d\?SKILL.md$" >/dev/null; then
     nbase=$(basename "$(printf '%s
 ' "$NOTES" | head -1)")
     grep -q "$nbase" "$d/SKILL.md" || fail "하네스 노트 포인터 누락: $sname → $nbase"
   fi
   NOTE_TEXT=$(printf '%s
 ' "$NOTES" | xargs cat 2>/dev/null)
+  # pipefail에서 grep -q의 조기 종료가 큰 NOTE_TEXT의 printf를 SIGPIPE로 실패시킨다.
+  # 파이프 입력은 끝까지 소비하고 출력만 버려 실제 매칭 결과를 판정한다.
   if [ "$sname" = "gx-ralph-iterate" ]; then
     # 헤드리스 전용 — 질문 도구 대응을 적으면 응답할 사용자가 없는 세션에서 멈춘다
-    printf '%s' "$NOTE_TEXT" | grep -q 'BLOCKED' || fail "헤드리스 스킬 노트에 BLOCKED 종료 규칙 누락: $sname"
-    printf '%s' "$NOTE_TEXT" | grep -q 'request_user_input' && fail "헤드리스 스킬 노트에 질문 도구 대응이 있음: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'BLOCKED' >/dev/null || fail "헤드리스 스킬 노트에 BLOCKED 종료 규칙 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null && fail "헤드리스 스킬 노트에 질문 도구 대응이 있음: $sname"
   elif grep -rq 'AskUserQuestion' "$d"; then
-    printf '%s' "$NOTE_TEXT" | grep -q 'request_user_input' || fail "노트에 질문 도구 대응 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null || fail "노트에 질문 도구 대응 누락: $sname"
   fi
   if grep -rq 'subagent_type[=:] *"oh-my-gx' "$d" || grep -rq 'Task 도구' "$d"; then
-    printf '%s' "$NOTE_TEXT" | grep -q 'spawn_agent' || fail "노트에 서브에이전트 대응 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'spawn_agent' >/dev/null || fail "노트에 서브에이전트 대응 누락: $sname"
   fi
   if grep -rq 'subagent_type[=:] *"Explore"' "$d"; then
-    printf '%s' "$NOTE_TEXT" | grep -q 'Explore' || fail "노트에 Explore 대응 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'Explore' >/dev/null || fail "노트에 Explore 대응 누락: $sname"
   fi
   if grep -rq 'subagent_type[=:] *"general-purpose"' "$d"; then
-    printf '%s' "$NOTE_TEXT" | grep -q 'general-purpose' || fail "노트에 general-purpose 대응 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'general-purpose' >/dev/null || fail "노트에 general-purpose 대응 누락: $sname"
   fi
   if grep -rq 'Skill(' "$d"; then
-    printf '%s' "$NOTE_TEXT" | grep -q 'SKILL.md' || fail "노트에 스킬 상호 호출 대응 누락: $sname"
+    printf '%s' "$NOTE_TEXT" | grep 'SKILL.md' >/dev/null || fail "노트에 스킬 상호 호출 대응 누락: $sname"
   fi
   if [ "$sname" = gx-dev ]; then
     runtime_ref='references/codex-runtime.md'
@@ -903,7 +905,7 @@ SEC=$(awk '/^### Step 2-V: 태스크 리뷰/{f=1} /^## Step 3: 정체 감지/{f=
 [ -n "$SEC" ] || fail "Step 2-V 태스크 리뷰 절 누락: phase-implement.md"
 awk '/^### Step 2-V: 태스크 리뷰/{f=1} f && /^## Step 3: 정체 감지/{found=1; exit} END{exit !found}' "$IMPL" || fail "Step 2-V 절이 Step 3 앞에 있지 않다 (구간 검사가 파일 끝까지 늘어난다): phase-implement.md"
 for s in '프로덕션 파일이 2개 이상' 'fix-round' 'reports/t{N}-diff.txt' 'reports/t{N}-review.md' 'reports/t{N}-diff-r{r}.txt' 'model: "sonnet"' 'subagent_type="oh-my-gx:reviewer"' 'deferred-minors' 'NOT ADDRESSED' 'GIT_INDEX_FILE' 'NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED' '발견 단계의 목표는 커버리지다' 'RED 재호출' 'TASK_DIFF_FAILED' 'core.quotePath=false'; do
-  printf '%s' "$SEC" | grep -qF "$s" || fail "태스크 리뷰 계약 문구 누락($s): phase-implement.md Step 2-V"
+  printf '%s' "$SEC" | grep -F "$s" >/dev/null || fail "태스크 리뷰 계약 문구 누락($s): phase-implement.md Step 2-V"
 done
 grep -qF '## 태스크 범위 모드' agents/reviewer.md || fail "태스크 범위 모드 절 누락: agents/reviewer.md"
 grep -qF '## 재리뷰 판정' agents/reviewer.md || fail "재리뷰 판정 표 형식 누락: agents/reviewer.md"
@@ -937,7 +939,7 @@ for f in .claude/skills/gx-tdd/phases/phase-setup.md .claude/skills/gx-dev/phase
   SEC=$(awk '/^[0-9]+\. \*\*도메인 컨텍스트 탐색\*\*/{f=1} /^[0-9]+\. \*\*외부 규격 참조 탐색\*\*/{f=0} f' "$f")
   [ -n "$SEC" ] || fail "도메인 컨텍스트 탐색 절 누락: $f"
   for s in 'README.md' 'status.md' 'glossary.md' 'architecture.md' '미반영' '우선순위' '4요소'; do
-    printf '%s' "$SEC" | grep -qF "$s" || fail "도메인 컨텍스트 구성 요소($s) 누락: $f"
+    printf '%s' "$SEC" | grep -F "$s" >/dev/null || fail "도메인 컨텍스트 구성 요소($s) 누락: $f"
   done
 done
 for f in .claude/skills/gx-tdd/phases/phase-requirements.md .claude/skills/gx-dev/phases/phase-requirements.md; do

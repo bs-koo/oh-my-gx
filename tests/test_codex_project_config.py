@@ -52,7 +52,7 @@ class ProjectConfigTests(unittest.TestCase):
                             'projectTypes': {'node': {'test': 'npm test', 'new': 'yes'}}})
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, str(self.config) + '\n')
+        self.assertEqual(result.stdout, str(self.config.resolve()) + '\n')
         self.assertEqual(json.loads(self.config.read_text(encoding='utf-8')), {
             'vcs': 'git', 'modelProfile': 'standard', 'fixtureKeep': {'nested': {'x': 1}},
             'projectTypes': {'node': {'test': 'npm test', 'detect': ['package.json'],
@@ -72,7 +72,7 @@ class ProjectConfigTests(unittest.TestCase):
         self.write_updates({'vcs': 'git', 'projectTypes': {'node': {'test': 'npm test'}}})
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, str(self.config) + '\n')
+        self.assertEqual(result.stdout, str(self.config.resolve()) + '\n')
         self.assertEqual(json.loads(self.config.read_text(encoding='utf-8')), {
             'vcs': 'git', 'modelProfile': '',
             'projectTypes': {'node': {'detect': ['package.json'], 'test': 'npm test'}},
