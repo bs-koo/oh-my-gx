@@ -127,6 +127,19 @@ class CodexQuestionContractTests(unittest.TestCase):
                 match = re.search(r'(?m)^\s*\{\s*label:[^\n]*description:\s*"Other로', text)
                 self.assertIsNone(match, f"{path}: {match.group(0) if match else ''}")
 
+    def test_smoke_contract_checks_question_shape(self):
+        text = (ROOT / "tests/codex-smoke.md").read_text(encoding="utf-8")
+        row = next((line for line in text.splitlines() if line.startswith("| Q2 |")), None)
+        self.assertIsNotNone(row)
+        for phrase in (
+            "gx-context", "개방형", "gx-dev", "모드·프로파일",
+            "stable snake_case id", "질문 3개 이하", "선택지 3개 이하",
+            "명시적 Other option 0개", "UI Other", "같은 id", "decision capture",
+            "미실행",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, row)
+
 
 if __name__ == "__main__":
     unittest.main()
