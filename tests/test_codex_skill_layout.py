@@ -131,6 +131,20 @@ class SkillInstructionLayoutTests(unittest.TestCase):
     def test_tdd_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-tdd")
 
+    def test_moved_reference_headers_and_tdd_pointers_are_file_relative(self):
+        for name in ("gx-dev", "gx-tdd"):
+            directory = SKILLS / name
+            for relative in CONTRACT_REFS:
+                with self.subTest(skill=name, reference=relative):
+                    reference = directory / relative
+                    self.assertIn("상대경로는 이 파일의 위치를 기준으로 해석한다.", self.text(reference).splitlines()[0])
+
+        state = SKILLS / "gx-tdd/references/pipeline-state.md"
+        for relative in ("../phases/setup-resume.md", "frontend-testing.md"):
+            with self.subTest(pointer=relative):
+                self.assertIn(f"`{relative}`", self.text(state))
+                self.assertTrue((state.parent / relative).is_file())
+
     def assert_contract_load(self, name: str) -> None:
         directory = SKILLS / name
         main = self.text(directory / "SKILL.md")
