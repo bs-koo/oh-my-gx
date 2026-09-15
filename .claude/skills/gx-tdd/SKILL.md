@@ -33,6 +33,7 @@ allowed-tools: ["Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "
 - 상대경로 Read가 실패하면, 하네스가 알려준 이 SKILL.md의 절대경로에서 디렉토리 부분을 떼어 앞에 붙인 뒤 다시 시도한다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명(`Task`·`AskUserQuestion`·`Skill`)으로 서술한다. Codex 등 다른 하네스에서 실행 중이면 먼저 `Read("references/harness-adaptation.md")`로 도구 대응표를 읽고 그대로 옮겨 수행한다. 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다.
+Codex: `../gx-dev/references/codex-runtime.md`를 읽는다. 질문은 한 번에 1~3개, 질문마다 선택지는 2~3개. Other를 option으로 직접 추가하지 않는다. 실제 도구 스키마를 우선한다.
 
 Codex Windows: read files as UTF-8 (`Get-Content -Encoding UTF8`).
 
@@ -676,10 +677,11 @@ AskUserQuestion(
 
 #### 변환 규칙
 
-- **questions 배열 필수**: 최상위에 반드시 `questions: [{ ... }]` 배열로 감싸고, `header`(최대 12자)와 `multiSelect`(기본 false)를 지정한다.
-- **options는 `{ label, description }` 구조**이며 구버전 `value` 필드는 없다. "Other"(직접 입력)는 UI가 자동 제공하므로 별도 옵션을 만들지 않는다.
-- **(권장)** 표시가 있는 선택지는 options 첫 번째에 배치하고 label 끝에 `(Recommended)`를 추가한다.
-- 질문이 **2개 이상**이면 순서대로 하나씩 AskUserQuestion을 호출한다. 이전 답변이 다음 질문의 맥락에 영향을 주면 반영한다. (이 규칙은 에이전트 질문 변환에 적용된다 — **의도 파싱 Step 3의 모드·프로파일 동시 질문은 명시적 예외**로, 한 호출의 questions 배열에 2개를 담는다.)
+- **questions 배열 필수**: `questions: [{ ... }]`로 감싼다. `header`는 최대 12자, `multiSelect` 기본 false.
+- **options 필수**: 2~3개. `{ label, description }` 구조, `value` 없음. UI Other는 별도 option이 아니다.
+- **개방형 질문**: 후보 2개, 자유 입력은 UI Other. 후보가 없으면 자연어로 묻고 답변을 기다린다.
+- **(권장)** option은 첫 번째에 놓고 label 끝에 `(Recommended)`를 붙인다.
+- 에이전트 질문 **2개 이상**: 하나씩 순차 호출하며 앞선 답변을 반영한다. **의도 파싱 Step 3 모드·프로파일은 예외**로 동시 질문한다.
 - 에이전트가 기술 용어를 사용한 경우 **비기술적 표현으로 의역**한다. 예: "JWT vs 세션" → "로그인 유지 방식".
 - 복수 선택이 필요하면 `multiSelect: true`로 지정한다.
 

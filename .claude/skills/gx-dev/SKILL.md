@@ -64,6 +64,7 @@ allowed-tools:
 
 Codex에서는 먼저 `Read("references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
+질문은 한 번에 1~3개, 질문마다 선택지는 2~3개로 제한한다. 추천 답변은 첫 번째에 놓고 label 끝에 `(Recommended)`를 붙인다. UI가 자유 입력을 제공하므로 Other를 option으로 직접 추가하지 않는다. Codex 변환에서는 `references/codex-runtime.md`와 실제 도구 스키마를 우선한다.
 
 | 이 문서의 표기 | Codex 대응 |
 |----------------|-----------|
@@ -655,12 +656,12 @@ AskUserQuestion(
 
 #### AskUserQuestion 스키마 규칙
 
-- **questions 배열 필수**: 최상위에 반드시 `questions: [{ ... }]` 배열로 감싼다. 1~5개 질문 가능.
+- **questions 배열 필수**: 최상위에 반드시 `questions: [{ ... }]` 배열로 감싼다. 질문은 한 번에 1~3개다.
 - **header 필수**: 각 질문에 `header` (최대 12자)를 지정한다. 칩/태그로 표시된다.
-- **options 필수**: 2~4개. 각 옵션은 `{ label, description }` 구조. `value` 필드는 없다.
+- **options 필수**: 질문마다 선택지는 2~3개다. 각 옵션은 `{ label, description }` 구조. `value` 필드는 없다.
 - **multiSelect 필수**: 기본 `false`. 에이전트가 "복수 선택 가능"으로 표시하면 `true`.
 - **"Other" 자동 제공**: UI가 항상 "Other" 선택지를 자동 추가하며, Other를 누르면 자유 입력 창이 열린다.
-- **자유 입력 가이드 라벨**: 예상 답변 후보가 2개 이상 떠오르면 그 후보를 options에 넣는다. 후보를 제시할 수 없는 개방형 질문이면 `{ label: "Other로 입력", description: "Other로 이동해서 자연어로 입력해주세요" }`를 사용자 유도 옵션으로 배치한다. `"직접 입력"`, `"답변 입력"`, `"주제 입력"` 같은 모호한 메타 라벨은 사용하지 않는다 — 사용자가 해당 옵션을 실제 입력 버튼으로 오인한다.
+- **자유 입력**: 예상 답변 후보 2개를 실제 선택지로 제시한다. 후보가 없다면 자연어로 개방형 질문을 묻고 실제 답변을 기다린다. UI Other가 제공되는 질문에서는 사용자가 그 자유 입력란을 사용한다. `"Other로 입력"`, `"직접 입력"`, `"답변 입력"`, `"주제 입력"` 같은 입력용 메타 라벨을 옵션으로 만들지 않는다.
 - **preview (선택)**: 옵션에 `preview` 필드를 추가하면 마크다운 미리보기가 표시된다. 산출물 비교 시 유용하다.
 
 #### 변환 규칙
