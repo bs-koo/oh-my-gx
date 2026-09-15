@@ -163,6 +163,29 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             self.assertIn("`${PROJECT_ROOT}/.dev/*/state.md`", state_section, path)
             self.assertIn("`${PROJECT_ROOT}/.claude/config.json`", vcs_section, path)
 
+    def test_svn_repository_identity_is_shared(self):
+        svn_rules = []
+        for path in SETUPS:
+            text = self.read(path)
+            rule = next(
+                line for line in text.splitlines() if line.startswith("   - **svn**:")
+            )
+            self.assertNotIn("svn info --show-item repos-root-url", rule, path)
+            for phrase in (
+                "svn info --show-item url",
+                "trunk",
+                "branches/<name>",
+                "tags/<name>",
+                "REPOSITORY_ID",
+                "basename(PROJECT_ROOT)",
+            ):
+                self.assertIn(phrase, rule, path)
+            self.assertIn("끝에서", rule, path)
+            self.assertIn("마지막", rule, path)
+            self.assertIn("비거나 모호하면", rule, path)
+            svn_rules.append(rule)
+        self.assertEqual(*svn_rules)
+
     def test_skill_contract_uses_root_for_full_and_phase_only_runs(self):
         legacy_forms = (
             "`PROJECT_ROOT`: 항상 `./`",
