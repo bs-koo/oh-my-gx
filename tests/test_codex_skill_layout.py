@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import re
+import tempfile
 import unittest
 
 
@@ -25,13 +26,44 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         return path.read_text(encoding="utf-8")
 
     def assert_relative_links_resolve(self, path: Path) -> None:
-        """옮긴 본문에서 지시문 파일을 기준으로 쓴 Markdown 링크를 확인한다."""
-        for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", self.text(path)):
-            target = target.split("#", 1)[0]
-            if not target or "://" in target or target.startswith("mailto:"):
+        """출력 템플릿을 제외한 지시문 링크를 파일 위치 기준으로 확인한다."""
+        fence = None
+        for line in self.text(path).splitlines():
+            marker = re.match(r"^[ \t]*(`{3,}|~{3,})(.*)$", line)
+            if marker:
+                token, rest = marker.groups()
+                if fence is None:
+                    fence = token
+                elif token[0] == fence[0] and len(token) >= len(fence) and not rest.strip():
+                    fence = None
                 continue
-            with self.subTest(source=path.relative_to(ROOT), target=target):
-                self.assertTrue((path.parent / target).is_file())
+            if fence is not None:
+                continue
+            for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", line):
+                target = target.split("#", 1)[0]
+                if not target or "://" in target or target.startswith("mailto:"):
+                    continue
+                self.assertTrue((path.parent / target).is_file(), f"{path}: {target}")
+
+    def test_relative_links_ignore_output_template_but_check_instructions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "mode.md"
+            (source.parent / "existing.md").write_text("참조 본문", encoding="utf-8")
+            source.write_text(
+                "참조: [실제 지시문](existing.md)\n"
+                "```markdown\n"
+                "# 생성될 context/README.md\n"
+                "- [공통 용어 사전](glossary.md)\n"
+                "```\n",
+                encoding="utf-8",
+            )
+            self.assert_relative_links_resolve(source)
+            source.write_text(
+                source.read_text(encoding="utf-8") + "참조: [누락된 지시문](missing.md)\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(AssertionError):
+                self.assert_relative_links_resolve(source)
 
     def test_context_modes_are_conditionally_loaded(self):
         directory = SKILLS / "gx-context"
