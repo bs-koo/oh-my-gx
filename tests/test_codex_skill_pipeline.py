@@ -1,8 +1,8 @@
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,7 +168,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
             self.assertIn("not a git repository", root_step, path)
             self.assertIn("E155007", root_step, path)
-            self.assertIn("명령이 없거나 메타데이터 오류", root_step, path)
+            self.assertIn("메타데이터 오류 등 다른 실패", root_step, path)
             self.assertIn("진단을 표시하고 중단", root_step, path)
             self.assertNotIn("둘 다 실패하면", root_step, path)
 
@@ -196,6 +196,108 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_missing_vcs_tools_skip_only_when_no_working_copy_markers(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
+            for phrase in (
+                "command -v git",
+                "command -v svn",
+                "현재 디렉토리와 상위 디렉토리",
+                "`.git` 파일·디렉토리",
+                "`.svn` 디렉토리",
+                "마커가 없으면 없는 명령을 건너뛴다",
+                "마커가 있는데 필요한 명령이 없으면 진단을 표시하고 중단",
+            ):
+                self.assertIn(phrase, root_step, path)
+
+        probe = (
+            'PATH=""; if command -v git >/dev/null || '
+            'command -v svn >/dev/null; then exit 9; fi; '
+            'p="$PWD"; while :; do '
+            'if test -e "$p/.git"; then echo needs-git; exit; fi; '
+            'if test -d "$p/.svn"; then echo needs-svn; exit; fi; '
+            'parent="${p%/*}"; if test "$parent" = "$p"; then break; fi; '
+            'p="$parent"; done; echo fresh'
+        )
+        bash = shutil.which("bash") or "bash"
+        with tempfile.TemporaryDirectory(prefix="pipeline probe ") as temp_root:
+            base = Path(temp_root)
+            nested = base / "nested"
+            nested.mkdir()
+            cases = (
+                (None, None, "fresh"),
+                (".git", "directory", "needs-git"),
+                (".git", "file", "needs-git"),
+                (".svn", "directory", "needs-svn"),
+            )
+            for marker, kind, expected in cases:
+                if marker:
+                    if kind == "file":
+                        (base / marker).write_text("gitdir: elsewhere\n", encoding="utf-8")
+                    else:
+                        (base / marker).mkdir()
+                result = subprocess.run(
+                    [bash, "-c", probe],
+                    cwd=nested,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
+                if marker:
+                    if kind == "file":
+                        (base / marker).unlink()
+                    else:
+                        (base / marker).rmdir()
+
+    def test_fresh_git_init_recomputes_absolute_root(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
+            self.assertIn(
+                "`git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산",
+                root_step,
+                path,
+            )
+
+        git = shutil.which("git") or "git"
+        with tempfile.TemporaryDirectory(prefix="pipeline git init ") as temp_root:
+            root = Path(temp_root).resolve()
+            nested = root / "nested"
+            nested.mkdir()
+            before = subprocess.run(
+                [git, "-C", str(nested), "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(before.returncode, 0)
+            created = subprocess.run(
+                [git, "-C", str(root), "init", "-q"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(created.returncode, 0, created.stderr)
+            after = subprocess.run(
+                [git, "-C", str(nested), "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(after.returncode, 0, after.stderr)
+            self.assertEqual(Path(after.stdout.strip()).resolve(), root)
+
+    def test_missing_git_is_reported_before_git_init_prompt(self):
+        for path in SETUPS:
+            text = self.read(path)
+            vcs_step = text[text.index("## Step 1:") : text.index("## Step 1.5:")]
+            guard = "`command -v git` 실패면 Git 명령 부재를 안내하고 중단한다."
+            self.assertIn(guard, vcs_step, path)
+            self.assertLess(vcs_step.index(guard), vcs_step.index("git init"), path)
 
 
 if __name__ == "__main__":
