@@ -29,8 +29,31 @@ class PipelineBootstrapContractTests(unittest.TestCase):
         for path in (DEV, TDD):
             text = self.read(path)
             selection = text[text.index("## Phase 선택") :]
-            self.assertIn("requirements`: `[setup, requirements]`", selection, path)
+            self.assertIn(
+                "requirements`: `[setup, requirements]`를 실행하여 작업환경과 "
+                "도메인 컨텍스트를 확정한 뒤 PRD를 작성한다.",
+                selection,
+                path,
+            )
             self.assertIn("design`: `[setup, design]`", selection, path)
+
+    def test_design_gate_precedes_phase_file_execution(self):
+        for path in (DEV, TDD):
+            text = self.read(path)
+            loop_start = text.index("### Phase 실행 루프")
+            loop_end = text.index("### Phase 파일 경로", loop_start)
+            loop = text[loop_start:loop_end]
+            design_list = "PHASES = [setup, design]"
+            design_gate = (
+                'if phase == "design" and not exists("${DEV_DIR}/prd.md"):\n'
+                "        → phase-requirements부터 실행"
+            )
+            phase_execution = '# 2b. Phase 파일 Read (필수)\n    Read("phases/phase-{phase}.md")'
+
+            self.assertIn(design_gate, loop, path)
+            self.assertIn(phase_execution, loop, path)
+            self.assertLess(loop.index(design_list), loop.index(design_gate), path)
+            self.assertLess(loop.index(design_gate), loop.index(phase_execution), path)
 
 
 if __name__ == "__main__":

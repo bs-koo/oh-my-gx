@@ -717,10 +717,10 @@ AskUserQuestion(
 ## Phase 선택 (--phase 플래그)
 
 `--phase` 실행 목록:
-- `--phase requirements`: `[setup, requirements]` 실행 후 PRD를 쓴다.
+- `--phase requirements`: `[setup, requirements]`를 실행하여 작업환경과 도메인 컨텍스트를 확정한 뒤 PRD를 작성한다.
 - `--phase design`: `[setup, design]`을 실행한다. setup 후 `${DEV_DIR}/prd.md`가 없으면 게이트가 requirements를 먼저 실행한다.
 - `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `${DEV_DIR}/design.md`도 없으면: "설계서가 필요합니다. `/gx-tdd --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
-- `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰). **단독 실행은 리뷰 결과 보고로 종료하며 phase-complete로 체이닝하지 않는다** (완료 절차는 `--phase complete`로 별도 실행). 종료 시 부트스트랩 골격 state.md라면 `status: completed`로 갱신한다 (영구 in_progress 잔존 방지).
+- `--phase review`: 환경·베이스 브랜치 감지 후 현재 변경사항을 리뷰한다. **결과 보고로 종료하고 phase-complete로 체이닝하지 않는다** (`--phase complete` 별도 실행). 종료 시 부트스트랩 골격 state.md는 `status: completed`로 갱신한다.
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (인수 검증, test, commit, PR, status 갱신). TDD 이행 여부는 phase-complete **진입부의 TDD 이행 게이트(Step -2)** 가 모든 진입 경로에서 공통 검사한다.
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
