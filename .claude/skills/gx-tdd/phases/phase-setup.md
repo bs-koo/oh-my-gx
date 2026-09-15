@@ -128,7 +128,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
 4. **도메인 컨텍스트 탐색**: 현재 레포와 매칭되는 도메인 컨텍스트를 찾는다.
    - **git**: `git remote get-url origin`으로 레포명을 추출한다 (예: `xx/asset-factory-api`).
-   - **svn**: `svn info --show-item url`의 작업 복사본 URL 끝에서 `trunk`, `branches/<name>`, `tags/<name>` 접미부를 제거한 뒤 남은 마지막 경로 세그먼트를 `REPOSITORY_ID`로 쓴다. URL·결과가 비거나 모호하면 `basename(PROJECT_ROOT)`를 쓴다.
+   - **svn**: `svn info --show-item url` 종료 코드 != 0이면 진단 후 중단한다. URL 끝에서 `trunk`, `branches/<name>`, `tags/<name>`을 제거하고 남은 마지막 세그먼트를 `REPOSITORY_ID`로 쓴다. 성공했지만 URL·ID가 비거나 모호하면 경고 후 `basename(PROJECT_ROOT)`를 쓴다.
    - `context/*/PROJECTS.md`를 Grep하여 해당 레포를 참조하는 도메인을 찾는다.
    - 매칭되면 해당 도메인의 네 파일을 Read하여 `DOMAIN_CONTEXT`를 **4요소**로 구성한다 (우선순위 순 — `contextLimits` 초과 시 역할별 슬라이스 안에서 뒤 요소부터 요약하되 architect 슬라이스는 용어부터 요약하고, 요약으로도 넘치면 생략한다):
      1. **용어**: `glossary.md` 전체

@@ -81,6 +81,34 @@ printf '%s\n' "$project_root"
 '''
 
 
+# Executable approximation of the SVN URL outcome gate documented in both
+# setup phases. This checks command failure separately from a successful URL
+# that cannot identify a repository; it does not execute a skill or model.
+SVN_URL_OUTCOME_PROBE = r'''
+svn() {
+  test "$1 $2 $3" = 'info --show-item url' || return 9
+  if test "$MOCK_SVN_STATUS" = failure; then
+    printf '%s\n' 'E200009: SVN metadata error' >&2
+    return 1
+  fi
+  printf '%s\n' "$MOCK_SVN_URL"
+}
+url=$(svn info --show-item url 2>&1)
+status=$?
+if test "$status" -ne 0; then
+  printf 'SVN URL diagnostic: %s\n' "$url" >&2
+  exit "$status"
+fi
+case "$url" in
+  ''|https://*/|http://*/|svn://*/)
+    printf '%s\n' 'SVN URL warning: ambiguous output' >&2
+    printf '%s\n' 'project'
+    ;;
+  *) printf '%s\n' 'repository' ;;
+esac
+'''
+
+
 class PipelineBootstrapContractTests(unittest.TestCase):
     def read(self, path: Path) -> str:
         return path.read_text(encoding="utf-8")
@@ -185,6 +213,43 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             self.assertIn("비거나 모호하면", rule, path)
             svn_rules.append(rule)
         self.assertEqual(*svn_rules)
+
+    def test_svn_url_failure_stops_before_ambiguous_fallback(self):
+        for path in SETUPS:
+            rule = next(
+                line for line in self.read(path).splitlines()
+                if line.startswith("   - **svn**:")
+            )
+            for phrase in (
+                "종료 코드 != 0",
+                "진단",
+                "중단",
+                "성공했지만",
+                "경고",
+                "basename(PROJECT_ROOT)",
+            ):
+                self.assertIn(phrase, rule, path)
+            self.assertLess(rule.index("종료 코드 != 0"), rule.index("성공했지만"))
+
+        bash = shutil.which("bash") or "bash"
+        cases = (
+            ("failure", "", 1, "", "SVN URL diagnostic"),
+            ("success", "https://svn.example.invalid/", 0, "project", "SVN URL warning"),
+        )
+        for status, url, exit_code, output, message in cases:
+            with self.subTest(status=status):
+                env = os.environ.copy()
+                env.update(MOCK_SVN_STATUS=status, MOCK_SVN_URL=url)
+                result = subprocess.run(
+                    [bash, "-c", SVN_URL_OUTCOME_PROBE],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, exit_code, result.stderr)
+                self.assertEqual(result.stdout.strip(), output)
+                self.assertIn(message, result.stderr)
 
     def test_skill_contract_uses_root_for_full_and_phase_only_runs(self):
         legacy_forms = (
