@@ -32,7 +32,7 @@ ROOT_SELECTION_PROBE = r'''
 PATH=""
 if test "$MOCK_GIT" != missing; then
   git() {
-    if test "$1" = init; then MOCK_GIT=wc; MOCK_GIT_ROOT="$PWD"; return 0; fi
+    if test "$1" = init; then MOCK_GIT=wc; MOCK_GIT_ROOT=$(pwd -P); return 0; fi
     case "$MOCK_GIT" in
       wc) printf '%s\n' "$MOCK_GIT_ROOT" ;;
       no_wc) printf '%s\n' 'fatal: not a git repository' >&2; return 1 ;;
@@ -619,6 +619,33 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                         self.assertTrue(result.stdout.strip().startswith("/"))
                     if marker:
                         (base / marker).rmdir()
+
+    def test_git_init_recomputes_physical_root_when_pwd_is_an_alias(self):
+        bash = shutil.which("bash") or "bash"
+        with tempfile.TemporaryDirectory(prefix="pipeline alias ") as temp_root:
+            nested = Path(temp_root) / "nested"
+            nested.mkdir()
+            physical_root = subprocess.check_output(
+                [bash, "-c", "pwd -P"], cwd=nested, text=True
+            ).strip()
+            env = os.environ.copy()
+            env.update(
+                MOCK_GIT="no_wc",
+                MOCK_SVN="missing",
+                MOCK_GIT_ROOT="",
+                MOCK_SVN_ROOT="",
+                MOCK_INIT="yes",
+            )
+            result = subprocess.run(
+                [bash, "-c", "PWD=/synthetic-alias\n" + ROOT_SELECTION_PROBE],
+                cwd=nested,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), physical_root)
 
 
 if __name__ == "__main__":
