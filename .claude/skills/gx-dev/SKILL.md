@@ -388,15 +388,14 @@ security-auditor의 감사 결과를 누적하는 문서. 오케스트레이터�
 phase-setup에서 결정된 변수를 이후 모든 Phase에서 사용한다:
 - `VCS_TYPE`: `.claude/config.json`의 `"vcs"` 값. `"git"`, `"svn"`, 또는 `""` (미설정, `"git"`으로 취급). phase-setup에서 읽어 이후 모든 Phase에서 사용한다. VCS별 명령어 분기의 기준이 된다.
 - `GIT_PREFIX`: `VCS_TYPE`이 `"git"`이면 `git`, `"svn"`이면 `svn`. 소비 프로젝트 루트에서 직접 실행한다.
-- `PROJECT_ROOT`: 항상 `./` (현재 디렉토리).
+- `PROJECT_ROOT`: phase-setup Step -1이 Git `--show-toplevel` > SVN `wc-root` > 현재 디렉토리 절대경로 순으로 결정한 값.
 - `DEV_DIR`: 브랜치별 산출물 디렉토리. `.dev/{branch-slug}` 형식. branch-slug는 브랜치명에서 `/`를 `-`로 치환한 값 (예: `feat/login` → `.dev/feat-login`). phase-setup Step 5에서 브랜치 결정 후 설정한다. **SVN은 브랜치가 없어 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk` 폴백).** 이후 모든 Phase에서 산출물 Read/Write 경로의 기준이 된다.
 - `BASE_BRANCH`: phase-setup Step 2에서 결정된 베이스 브랜치 (예: `main`, `develop`). state.md의 `base` 필드에 기록된다. SVN인 경우 미사용. phase-setup Step 3-0(context 최신화), phase-complete Step 3(경로 B 커밋 로그 비교), Step 4(diff 기반 환류)에서 사용한다.
 - `DIFF_FILE`: 변경사항 diff를 저장하는 파일 경로. `${DEV_DIR}/diff.txt`. Diff 수집 규칙에 따라 phase-implement(자기점검), phase-review, phase-complete에서 갱신된다.
 - `DOMAIN_CONTEXT`: phase-setup Step 3(도메인 컨텍스트 탐색)에서 `context/*/PROJECTS.md` 매칭으로 로드된 4요소 — 용어(glossary)·README 핵심(배경·안 하면·사용자/규모·성공 기준)·status.md 미반영 항목·아키텍처. 매칭되지 않으면 빈 상태.
 - `REFERENCES`: phase-setup Step 3(외부 규격 참조 탐색)에서 `references/` 디렉토리를 탐색하여 수집한 외부 규격 문서 목록(파일 경로 + 한줄 설명). `references/` 디렉토리가 없으면 빈 상태. 빈 상태이면 에이전트 프롬프트에 포함하지 않는다.
 - `MODEL_PROFILE`: 모델 프로파일 (`standard`/`eco`). phase-setup Step 1.5에서 결정하며 state.md의 `model-profile`에 기록된다. 디스패치 적용 규칙은 아래 "모델 프로파일" 섹션 참조.
-- Agent에게 `PROJECT_ROOT` 경로를 항상 전달하여 파일 도구(Read/Write/Edit/Glob/Grep)의 기준점으로 사용하게 한다.
-- 빌드/테스트 명령(`./gradlew`, `npm`, `pytest` 등)을 `PROJECT_ROOT`에서 실행한다. `PROJECT_ROOT`가 기본값 `./`이면 **bare 명령**으로 실행한다 (예: `npm test`, `./gradlew build`) — `allowed-tools`의 prefix 패턴(`Bash(npm *)` 등)과 매칭되어 권한 프롬프트가 뜨지 않는다. `PROJECT_ROOT`가 `./`가 아닌 경우에만 작업 디렉토리 보존을 위해 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다 — 단 이 서브셸 형태는 `(cd`로 시작하여 prefix 패턴과 매칭되지 않으므로 권한 프롬프트가 뜰 수 있다 (gradle 포함 모든 명령에 적용되는 기존 한계).
+- Agent에게 `PROJECT_ROOT`를 전달해 파일 도구의 기준점으로 쓰고, Git·SVN·빌드·테스트 명령도 그 디렉토리에서 실행한다.
 
 ### 모델 프로파일 (MODEL_PROFILE)
 
@@ -709,10 +708,10 @@ AskUserQuestion(
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (test, commit, PR).
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
-> 1. `git rev-parse --is-inside-work-tree`로 git repo 확인.
-> 2. `PROJECT_ROOT` = 현재 디렉토리.
-> 3. `MODEL_PROFILE` 결정: `.dev/{branch-slug}/state.md`에 `model-profile` 필드가 있으면 그 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
-> 4. `--work {ID}`가 지정되었으면 `.dev/{branch-slug}/state.md`에 `work-id: {ID}`를 기록한다 (파일이 없으면 이 항목만으로 만들지 않는다). 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
+> 1. `PROJECT_ROOT` = phase-setup과 같은 우선순위의 절대경로. 이후 config, `.dev`, context, VCS·빌드·테스트 명령은 이 경로를 기준으로 수행한다.
+> 2. `${PROJECT_ROOT}/.claude/config.json`의 `vcs`를 읽고(부재·파싱 실패 시 git), **git**은 `git rev-parse --is-inside-work-tree`, **svn**은 `svn info`로 작업 복사본을 확인한다.
+> 3. `MODEL_PROFILE` 결정: `${PROJECT_ROOT}/.dev/{branch-slug}/state.md`에 `model-profile` 필드가 있으면 그 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
+> 4. `--work {ID}`가 지정되었으면 `${PROJECT_ROOT}/.dev/{branch-slug}/state.md`에 `work-id: {ID}`를 기록한다 (파일이 없으면 이 항목만으로 만들지 않는다). 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
 
 ---
 

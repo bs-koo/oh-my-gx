@@ -5,6 +5,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 DEV = ROOT / ".claude/skills/gx-dev/SKILL.md"
 TDD = ROOT / ".claude/skills/gx-tdd/SKILL.md"
+SETUPS = (
+    ROOT / ".claude/skills/gx-dev/phases/phase-setup.md",
+    ROOT / ".claude/skills/gx-tdd/phases/phase-setup.md",
+)
 
 
 class PipelineBootstrapContractTests(unittest.TestCase):
@@ -54,6 +58,82 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             self.assertIn(phase_execution, loop, path)
             self.assertLess(loop.index(design_list), loop.index(design_gate), path)
             self.assertLess(loop.index(design_gate), loop.index(phase_execution), path)
+
+    def test_setup_resolves_absolute_project_root_before_state_scan(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text.index("## Step -1: 프로젝트 루트 결정")
+            state_step = text.index("## Step 0: 진행 중 작업 감지")
+            self.assertLess(root_step, state_step, path)
+
+            section = text[root_step:state_step]
+            git_root = "git rev-parse --show-toplevel"
+            svn_root = "svn info --show-item wc-root"
+            fallback = "현재 디렉토리의 절대경로"
+            for phrase in (git_root, svn_root, fallback):
+                self.assertIn(phrase, section, path)
+            self.assertLess(section.index(git_root), section.index(svn_root), path)
+            self.assertLess(section.index(svn_root), section.index(fallback), path)
+            self.assertIn(
+                "`git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산",
+                section,
+                path,
+            )
+            self.assertIn(
+                "`.claude/config.json`, `.dev/`, `context/`, `references/`와 "
+                "모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준",
+                section,
+                path,
+            )
+
+            state_section = text[state_step : text.index("## Step 1:", state_step)]
+            vcs_section = text[
+                text.index("## Step 1:", state_step) : text.index("## Step 1.5:")
+            ]
+            self.assertIn("`${PROJECT_ROOT}/.dev/*/state.md`", state_section, path)
+            self.assertIn("`${PROJECT_ROOT}/.claude/config.json`", vcs_section, path)
+
+    def test_skill_contract_uses_root_for_full_and_phase_only_runs(self):
+        legacy_forms = (
+            "`PROJECT_ROOT`: 항상 `./`",
+            "| `PROJECT_ROOT` | `./` |",
+            "`PROJECT_ROOT` = 현재 디렉토리",
+            "PROJECT_ROOT`가 기본값 `./`",
+            "기본값 `./`이면 **bare 명령**",
+        )
+        for path in (DEV, TDD):
+            text = self.read(path)
+            for phrase in legacy_forms:
+                self.assertNotIn(phrase, text, path)
+            self.assertIn(
+                "`PROJECT_ROOT`: phase-setup Step -1이 Git `--show-toplevel` > SVN "
+                "`wc-root` > 현재 디렉토리 절대경로 순으로 결정한 값.",
+                text,
+                path,
+            )
+
+            phase_only = text[text.index("> **환경 감지**") :]
+            root_rule = (
+                "`PROJECT_ROOT` = phase-setup과 같은 우선순위의 절대경로. 이후 config, "
+                "`.dev`, context, VCS·빌드·테스트 명령은 이 경로를 기준으로 수행한다."
+            )
+            self.assertIn(root_rule, phase_only, path)
+            self.assertLess(
+                phase_only.index(root_rule),
+                phase_only.index("git rev-parse --is-inside-work-tree"),
+                path,
+            )
+
+    def test_setup_does_not_reassign_project_root_to_dot(self):
+        for path in SETUPS:
+            text = self.read(path)
+            self.assertNotIn("`PROJECT_ROOT = ./`", text, path)
+            self.assertNotIn("`PROJECT_ROOT` = `./`", text, path)
+            self.assertIn(
+                "`PROJECT_ROOT`는 Step -1에서 결정한 절대경로를 유지한다.",
+                text,
+                path,
+            )
 
 
 if __name__ == "__main__":

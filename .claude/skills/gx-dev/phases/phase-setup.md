@@ -1,9 +1,21 @@
 # phase-setup: 작업환경 준비
 
+## Step -1: 프로젝트 루트 결정
+
+현재 디렉토리에서 아래 순서로 절대경로 `PROJECT_ROOT`를 결정한다.
+
+1. `git rev-parse --show-toplevel` 성공 시 그 출력을 사용한다.
+2. Git이 아니고 `svn info --show-item wc-root` 성공 시 그 출력을 사용한다.
+3. 둘 다 실패하면 현재 디렉토리의 절대경로를 사용한다. 이후 Git 생성을 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
+
+이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 상대경로 파일 도구 호출도 이 경로 아래에서 해석한다.
+
 ## Step 0: 진행 중 작업 감지
 
+진행 상태는 `${PROJECT_ROOT}/.dev/*/state.md`를 기준으로 탐색한다.
+
 ### `--resume` 플래그가 있는 경우
-1. `.dev/*/state.md`를 Glob으로 탐색한다.
+1. `${PROJECT_ROOT}/.dev/*/state.md`를 Glob으로 탐색한다.
 2. 각 state.md를 Read하여 `status: in_progress`인 것을 필터링한다. `pipeline` 필드가 있는 state.md(다른 파이프라인 산출물 — 예: `pipeline: gx-tdd`)는 후보에서 제외한다.
 3. `in_progress`가 **1개**이면 → 질문 없이 바로 재개 (아래 "이어서 진행" 절차).
 4. `in_progress`가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택을 요청한다:
@@ -27,7 +39,7 @@
 ARGS[0]이 있으면 → 새 작업이므로 자동 감지를 건너뛰고 Step 1로 진행.
 ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
-1. `.dev/*/state.md`를 Glob으로 탐색한다.
+1. `${PROJECT_ROOT}/.dev/*/state.md`를 Glob으로 탐색한다.
 2. state.md가 존재하고 `status: in_progress`이면:
    - `pipeline` 필드가 있으면(다른 파이프라인 산출물 — 예: `pipeline: gx-tdd`) 재개를 제안하지 않는다. "진행 중 작업은 {pipeline} 파이프라인 산출물입니다. 해당 파이프라인으로 재개하세요 (예: `/gx-tdd --resume`)." 안내 후 종료한다 (상태 덮어쓰기 방지).
    - 사용자에게 AskUserQuestion으로 질문:
@@ -49,7 +61,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
 **이어서 진행 시:**
-- state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags, mode, model-profile을 복원. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다. DEV_DIR이 없으면 재구성한다 — git은 브랜치명의 `/`를 `-`로 치환, svn은 `.dev/.active`가 가리키는 `.dev/{slug}`(없으면 `.dev/trunk` 폴백). Step 5의 DEV_DIR 설정 규칙과 동일.
+- state.md에서 VCS_TYPE, GIT_PREFIX, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags, mode, model-profile을 복원하되 PROJECT_ROOT는 Step -1의 절대경로를 유지한다. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다. DEV_DIR이 없으면 재구성한다 — git은 브랜치명의 `/`를 `-`로 치환, svn은 `.dev/.active`가 가리키는 `.dev/{slug}`(없으면 `.dev/trunk` 폴백). Step 5의 DEV_DIR 설정 규칙과 동일.
 - **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-dev {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격 등 mode를 기록하지 않는 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/prd.md`, `${DEV_DIR}/design.md`, `${DEV_DIR}/trust-ledger.md`, `${DEV_DIR}/codemap.md`, `${DEV_DIR}/self-check.md`, `${DEV_DIR}/ac.md`, `${DEV_DIR}/summary.md`가 있으면 Read하여 맥락 복원.
@@ -67,7 +79,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 ## Step 1: VCS 확인
 
-`.claude/config.json`의 `"vcs"` 필드를 읽어 `VCS_TYPE`을 결정한다.
+`${PROJECT_ROOT}/.claude/config.json`의 `"vcs"` 필드를 읽어 `VCS_TYPE`을 결정한다.
 
 **git인 경우** (vcs가 `"git"` 또는 `""` 미설정):
 - `git rev-parse --is-inside-work-tree` 확인.
@@ -159,7 +171,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    d. 실패 시 경고를 표시하고 현재 상태로 계속 진행한다.
 
 ## Step 3: 프로젝트 정보 수집
-`PROJECT_ROOT = ./` (현재 디렉토리).
+`PROJECT_ROOT`는 Step -1에서 결정한 절대경로를 유지한다. 프로젝트 설정은 `${PROJECT_ROOT}/.claude/config.json`에서 읽는다.
 
 ### 3.0.5 작업 계획 참조 (`--work` 사용 시)
 

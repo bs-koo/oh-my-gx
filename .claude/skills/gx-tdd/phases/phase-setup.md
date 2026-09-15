@@ -1,14 +1,24 @@
 # phase-setup: 작업환경 준비
 
+## Step -1: 프로젝트 루트 결정
+
+현재 디렉토리에서 아래 순서로 절대경로 `PROJECT_ROOT`를 결정한다.
+
+1. `git rev-parse --show-toplevel` 성공 시 그 출력을 사용한다.
+2. Git이 아니고 `svn info --show-item wc-root` 성공 시 그 출력을 사용한다.
+3. 둘 다 실패하면 현재 디렉토리의 절대경로를 쓴다. 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
+
+이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 상대경로 파일 도구도 이 경로에서 해석한다.
+
 ## Step 0: 진행 중 작업 감지
 
-ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건너뛰고 Step 1로 진행한다.
+`${PROJECT_ROOT}/.dev/*/state.md`를 기준으로 진행 상태를 탐색한다. ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건너뛰고 Step 1로 진행한다.
 
 그 외(`--resume` 지정, 또는 ARGS[0] 부재)에는 `Read("setup-resume.md")`를 수행한다. 그 파일이 state.md 탐색·재개 정합성 체크(0.1)·"이어서 진행" 복원·구 버전 세션 방어·`--work` 세션의 착수 기록 보정을 담당한다. 재개가 확정되면 phase-setup의 나머지 Step(1~7)을 건너뛴다.
 
 ## Step 1: VCS 확인
 
-`.claude/config.json`의 `"vcs"` 필드를 읽어 `VCS_TYPE`을 결정한다. **config.json이 없거나 파싱 불가하면** `VCS_TYPE`을 잠정 `"git"`으로 두고 진행하며, 파일 존재·자동 생성·손상 검증은 Step 3.0 config 가드에서 정식 처리한 뒤 `vcs` 값으로 재확정한다 (config가 늦게 생성되어도 부트스트랩이 깨지지 않도록).
+`${PROJECT_ROOT}/.claude/config.json`의 `"vcs"` 필드를 읽어 `VCS_TYPE`을 결정한다. **config.json이 없거나 파싱 불가하면** `VCS_TYPE`을 잠정 `"git"`으로 두고 진행하며, 파일 존재·자동 생성·손상 검증은 Step 3.0 config 가드에서 정식 처리한 뒤 `vcs` 값으로 재확정한다 (config가 늦게 생성되어도 부트스트랩이 깨지지 않도록).
 
 **git인 경우** (vcs가 `"git"` 또는 `""` 미설정):
 - `git rev-parse --is-inside-work-tree` 확인.
@@ -68,17 +78,17 @@ config.json이 아직 없으면(부트스트랩) 플래그·자연어·질문 �
 Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. 그 전에 복원하면 베이스 브랜치로 변경이 섞일 수 있다.
 
 1. `AUTO_STASHED=true`이면 **Step 5 종료 시점**에 `git stash pop` 실행.
-2. pop 충돌 발생 시 사용자에게 보고하고 AskUserQuestion:
-   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 먼저 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>` — `DEV_DIR`이 아직 미정이면(2.3은 Step 6.5보다 먼저 실행된다) Step 6.5의 규칙대로 `.dev/{branch-slug}`를 먼저 확정하고 `mkdir -p`한 뒤 Write한다 — 골격이 없으면 `--resume`이 재개할 작업을 찾지 못한다). 이후 conflict 상태를 유지한 채 파이프라인을 일시 중단하고, 사용자에게 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개 지시.
+2. pop 충돌 시 보고하고 AskUserQuestion:
+   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>`). `DEV_DIR`이 미정이면(2.3은 Step 6.5보다 먼저 실행) Step 6.5 규칙대로 `.dev/{branch-slug}`를 확정하고 `mkdir -p` 후 Write한다. 골격이 없으면 `--resume`이 작업을 못 찾는다. 충돌을 유지한 채 중단하고 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개한다.
    - "stash를 drop하고 계속" → `git stash drop`으로 버리고 다음 단계 진행. 위험 수용을 state.md에 기록.
 3. 복원 성공 시 `AUTO_STASHED=false`로 초기화하고 execution-log에 `auto-stash-restored` 기록.
 
 ## Step 3: 프로젝트 정보 수집
-`PROJECT_ROOT = ./` (현재 디렉토리).
+`PROJECT_ROOT`는 Step -1에서 결정한 절대경로를 유지한다.
 
 ### 3.0 config.json 가드 (필수 선행, 재시도 1회 제한)
 
-`test -f .claude/config.json`로 존재 여부를 확인한다.
+`test -f ${PROJECT_ROOT}/.claude/config.json`로 존재 여부를 확인한다.
 
 **Iron Law (무한 루프 방지)**: `CONFIG_SETUP_ATTEMPTS` 변수로 setup 시도 횟수를 추적한다. 초기값 0. setup 호출마다 +1. **2 이상이면 자동 재시도 금지** (사용자 직접 해결 요구).
 
@@ -113,7 +123,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
 4. **도메인 컨텍스트 탐색**: 현재 레포와 매칭되는 도메인 컨텍스트를 찾는다.
    - **git**: `git remote get-url origin`으로 레포명을 추출한다 (예: `xx/asset-factory-api`).
-   - **svn**: `svn info --show-item url`로 작업 복사본 URL을 추출하고, `trunk`/`branches`/`tags`를 제외한 마지막 경로 세그먼트를 레포명으로 사용한다 (단일 저장소 다중 프로젝트 구조 대응). 추출이 모호하면 로컬 디렉토리명(`basename $(pwd)`)을 폴백으로 사용한다.
+   - **svn**: `svn info --show-item url`로 작업 복사본 URL을 추출하고, `trunk`/`branches`/`tags`를 제외한 마지막 경로 세그먼트를 레포명으로 사용한다 (단일 저장소 다중 프로젝트 구조 대응). 추출이 모호하면 `basename(PROJECT_ROOT)`를 폴백으로 사용한다.
    - `context/*/PROJECTS.md`를 Grep하여 해당 레포를 참조하는 도메인을 찾는다.
    - 매칭되면 해당 도메인의 네 파일을 Read하여 `DOMAIN_CONTEXT`를 **4요소**로 구성한다 (우선순위 순 — `contextLimits` 초과 시 역할별 슬라이스 안에서 뒤 요소부터 요약하되 architect 슬라이스는 용어부터 요약하고, 요약으로도 넘치면 생략한다):
      1. **용어**: `glossary.md` 전체
@@ -147,7 +157,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 5: 작업환경 생성
 
-**svn인 경우** → 격리 브랜치를 만들지 않는다. SVN은 trunk에서 직접 작업하며, `svn update`로 최신 상태만 동기화한다. **작업 slug를 git 브랜치명 생성과 동일 규칙으로 만든다** — `--work` 사용 시 3.0.5가 결정한 slug > `--slug <name>` > ARGS[0] 이슈 키(config `issueKey.pattern`) > 타입+키워드 `{type}-{description}`(최대 40자) 순. slug는 `/`→`-` 치환 후 `[a-zA-Z0-9._-]`로 정규화하고(대문자 이슈 키 보존) `/`·`..`를 제거한다. `DEV_DIR = .dev/{slug}/`(기능별 격리)로 설정하고 `mkdir -p ${DEV_DIR}`를 실행한 뒤, 결정한 slug를 `.dev/.active`에 기록한다(덮어쓰기 — 훅·라우팅·verify가 활성 작업을 찾는 포인터). 완료 후 프로젝트 타입, 작업 경로, slug를 사용자에게 보고하고 **Step 5.5(작업 계획 착수 기록)로 진행**한다 (Step 6.5는 git 전용이라 건너뜀).
+**svn인 경우** → 브랜치 없이 trunk에서 작업하고 `svn update`한다. **slug는 git 브랜치명과 동일 규칙으로 만든다**: 3.0.5의 `--work` slug > `--slug <name>` > ARGS[0] 이슈 키(config `issueKey.pattern`) > 타입+키워드 `{type}-{description}`(최대 40자). `/`→`-`, `[a-zA-Z0-9._-]` 정규화(대문자 유지), `/`·`..` 제거. `DEV_DIR = .dev/{slug}/`로 설정해 `mkdir -p ${DEV_DIR}`하고, `.dev/.active`에 slug를 덮어쓴다(훅·라우팅·verify의 활성 작업 포인터). 타입·경로·slug를 보고한 뒤 **Step 5.5로 진행**한다 (Step 6.5는 git 전용).
 
 **git인 경우:**
 격리된 작업환경을 생성한다.
@@ -166,9 +176,9 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 
 ## Step 6: VCS ignore 자동 보강
 
-**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 이전 버전이 등록한 `.dev`가 남아 있으면 제거를 제안한다: `svn propget svn:ignore .`로 확인 후, 사용자 확인을 받아 `.dev` 줄만 제외한 목록으로 `svn propset svn:ignore`를 재적용한다.
+**svn인 경우** → `.dev` 산출물(PRD·설계서·Trust Ledger·state.md 등)은 **협업 공유 대상**이므로 `svn:ignore`에 추가하지 않는다. 기존 `.dev` ignore는 `svn propget svn:ignore .`로 확인하고, 사용자 확인 후 `.dev` 줄만 빼서 `svn propset svn:ignore`를 재적용한다.
 
-단 **`.dev/.active`는 공유 예외**다 — 이 머신의 활성 작업을 가리키는 런타임 포인터라 공유되면 다른 사용자의 `--resume`·verify baseline이 타인 세션 기준으로 오염된다. `.dev`가 아직 unversioned면 `svn add --depth=empty .dev`로 디렉토리만 등록한 뒤 `svn propset svn:ignore '.active' .dev`를 적용해 `.active`를 공유에서 제외한다. 이미 `.active`가 versioned로 커밋되어 있으면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내한다. 제거 후에는 위 `svn propset svn:ignore '.active' .dev`를 반드시 재적용한다 (ignore 속성이 없으면 다음 `svn add --force .`가 `.active`를 다시 등록한다).
+단 **`.dev/.active`는 공유 예외**다 — 머신별 활성 작업 포인터를 공유하면 타인의 `--resume`·verify baseline이 오염된다. `.dev`가 unversioned면 `svn add --depth=empty .dev` 후 `svn propset svn:ignore '.active' .dev`로 제외한다. `.active`가 versioned면 `svn rm --keep-local .dev/.active`로 버전 관리에서만 제거하도록 안내하고, 다시 `svn propset svn:ignore '.active' .dev`한다 (없으면 `svn add --force .`가 재등록한다).
 
 처리 후 Step 7로 진행한다.
 
