@@ -2,7 +2,7 @@
 
 릴리스 전 수동 점검용 행동 회귀 시나리오. `scripts/lint-consistency.sh`(정적 불변식)가 잡지 못하는 **모델 행동 계층**의 회귀를 검증한다.
 
-사용법: 스테이징 프로젝트(또는 임시 저장소)에서 각 시나리오의 픽스처를 만들고, Claude Code 세션에서 트리거를 입력해 기대 동작을 확인한다. ★는 자동화 후보 — 회귀가 반복 관찰되면 headless(`claude -p`) CI로 승격한다.
+사용법: 스테이징 프로젝트(또는 임시 저장소)에서 각 시나리오의 픽스처를 만들고, 해당 시나리오의 Claude Code 또는 Codex 세션에서 트리거를 입력해 기대 동작을 확인한다. ★는 자동화 후보 — Claude Code 회귀가 반복 관찰되면 headless(`claude -p`) CI로 승격한다.
 
 ## 픽스처 준비 (S1·S2·S3·S8 공통)
 
@@ -61,6 +61,8 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 | S42 ★ | 세션 IMPLEMENT가 테스트에 없는 public 헬퍼를 하나 더 만든 태스크 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | verify_implement 5가 사용자에게 **묻지 않고** 헬퍼를 제거하고 focused를 재실행한다. `.dev/{slug}/decisions.md`에 `· Ruling: T{N} 과잉 구현 정리` 블록(판정·근거·틀리면 3줄)이 append되고 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절이 남는다. 사이클 완료 보고의 `판정:` 줄과 PR 본문 `## Rulings`에 제목이 나열된다. AskUserQuestion이 뜨면 회귀 | phase-implement 판정 기록 규약 + 린트 [35/36] |
 | S43 ★ | `context/충전/`이 있고 README `## 성공 기준`에 "1회 한도 100,000원", status.md에 `FR-3 \| 1회 충전 한도 검증 \| - \| ⬜ \|` 행이 있는 저장소 | `/gx-tdd 포인트 충전 한도 검증 TDD로 구현해줘` | product-owner 프롬프트에 README 핵심 네 절과 status.md ⬜ 행이 실린다. PRD 요구사항 제목에 `FR-3 (status.md 미반영)`이 붙고 새 FR 번호가 생기지 않는다. AC의 Then에 `100,000`이 검증값으로 들어간다. phase-complete Step 3이 FR-3 행을 ✅로 바꾸고 AC 열을 채운다 | phase-setup 3.1 4요소 + phase-requirements FR 인용 + 린트 [36/36] |
 | S44 ★ | context가 없는 저장소, 입력 문서에 ID 없는 기능 요구사항 3건과 `NFR-2` 1건 | `/gx-context 주문 --from requirements/order.md` | `context/주문/status.md` 원장에 `FR-1~3`과 `NFR-2`의 요구사항 문장이 남고 `.dev/plan.md`는 그 ID만 참조한다. 같은 문서를 다시 실행해도 ID가 늘지 않으며 기존 ✅ 행의 AC·PR은 유지된다 | gx-context C-4-1 요구사항 원장 병합 |
+| S45 ★ | Git 저장소의 `src/service/`에서 명령을 시작하고 루트에 `.claude/config.json`, `context/주문/`이 있음 | `/gx-tdd 주문 검증 --phase design` | `PROJECT_ROOT`는 `git rev-parse --show-toplevel`로 얻은 절대경로다. `[setup, design]`을 실행하고 루트 `.dev`에 PRD가 없으면 requirements를 먼저 실행한다. 하위 `src/service/.dev`나 config를 만들지 않는다 | gx-tdd Step -1 + 부분 phase 결정표 |
+| S46 ★ | Codex의 질문 도구를 사용할 수 있는 Plan 모드에서 gx-context 문서 분석 중 문제·규모 질문이 필요함 (기본 모드도 별도 확인) | `/gx-context 주문 --from requirements/order.md` | Plan 모드의 실제 `request_user_input` 호출은 매번 질문 1~3개, 질문별 선택지 2~3개이고 각 질문에 `header`·`question`·stable snake_case `id`, 각 선택지에 `label`·`description`이 있다. 첫 선택지는 `(Recommended)`이며 명시적 Other option은 없다. UI Other의 실제 자유 입력은 같은 `id`로 `decisions.md`에 기록된다. 기본 모드에서는 제공된 async 도구 또는 자연어로 묻고 실제 답변을 기다린 뒤 같은 `id`로 capture하며, 제공되지 않은 동기 도구 호출을 주장하지 않는다 | codex-runtime 질문 변환 + smoke Q2 |
 
 ## 자동 행동 테스트 (scripts/behavior-tests.sh)
 
@@ -82,4 +84,4 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 
 ## 결과 기록
 
-점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/44 통과 (미통과: ID)` 형식으로 기록한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다. 행동 테스트는 `행동 테스트: B1~B3 통과 (모델 sonnet/sonnet/opus, 반복 3)` 형식으로 함께 기록한다.
+점검 결과는 릴리스 PR 본문에 `골든 시나리오: N/46 통과 (미통과: ID)` 형식으로 기록한다. 실제 세션을 실행하지 않은 시나리오는 통과로 세지 않고 미실행으로 표시한다. 미통과 시나리오는 원인(문서 회귀/모델 행동/환경)을 구분해 이슈로 남긴다. 행동 테스트는 `행동 테스트: B1~B3 통과 (모델 sonnet/sonnet/opus, 반복 3)` 형식으로 함께 기록한다.
