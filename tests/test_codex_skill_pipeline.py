@@ -282,6 +282,70 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                 path,
             )
 
+    def test_tdd_phase_only_dev_dir_joins_once_to_project_root(self):
+        text = self.read(TDD)
+        phase_only = text[text.index("> **환경 감지**") :]
+        rule = next(line for line in phase_only.splitlines() if line.startswith("> 4."))
+        consumers = (
+            ROOT / ".claude/skills/gx-tdd/phases/phase-implement.md",
+            ROOT / ".claude/skills/gx-tdd/phases/phase-review.md",
+        )
+        for path in consumers:
+            self.assertIn("${PROJECT_ROOT}/${DEV_DIR}", self.read(path), path)
+
+        for vcs, value, expected in (
+            ("git", "feat/login", ".dev/feat-login/"),
+            ("svn", "feature", ".dev/feature/"),
+            ("svn fallback", "", ".dev/trunk/"),
+        ):
+            with self.subTest(vcs=vcs):
+                if vcs == "git":
+                    template = rule.split("`DEV_DIR = ", 1)[1].split("`", 1)[0]
+                    dev_dir = template.replace("{branch-slug}", value.replace("/", "-"))
+                else:
+                    svn_rule = rule.split("**svn**:", 1)[1]
+                    if value:
+                        template = svn_rule.split("`DEV_DIR = ", 1)[1].split("`", 1)[0]
+                        dev_dir = template.replace("{slug}", value)
+                    else:
+                        dev_dir = svn_rule.split("폴백", 1)[0].split("`")[-2]
+                self.assertEqual(dev_dir, expected)
+                with tempfile.TemporaryDirectory(prefix="pipeline phase root ") as root:
+                    state = Path(root) / expected / "state.md"
+                    state.parent.mkdir(parents=True)
+                    state.write_text("pipeline: gx-tdd\n", encoding="utf-8")
+                    result = subprocess.run(
+                        [shutil.which("bash") or "bash", "-c",
+                         'test -f "$1/$2/state.md"', "probe", root, dev_dir],
+                        cwd=root,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_tdd_diff_redirection_handles_spaced_dev_dir(self):
+        text = self.read(TDD)
+        section = text[text.index("#### 수집 절차") : text.index("## Phase 선택")]
+        commands = [
+            line.strip() for line in section.splitlines()
+            if "${DEV_DIR}/diff.txt" in line and line.strip().startswith(("git ", "echo "))
+        ]
+        self.assertTrue(commands)
+        with tempfile.TemporaryDirectory(prefix="pipeline diff root ") as root:
+            diff_dir = Path(root) / ".dev" / "feature with space"
+            diff_dir.mkdir(parents=True)
+            env = os.environ.copy()
+            env["DEV_DIR"] = ".dev/feature with space"
+            for command in commands:
+                result = subprocess.run(
+                    [shutil.which("bash") or "bash", "-c",
+                     "git() { printf 'changed\\n'; }; " + command],
+                    cwd=root, env=env, capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, (command, result.stderr))
+            self.assertTrue((diff_dir / "diff.txt").is_file())
+
     def test_setup_does_not_reassign_project_root_to_dot(self):
         for path in SETUPS:
             text = self.read(path)
@@ -491,8 +555,16 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                     "git command missing",
                 ),
                 (
+                    "git tool reports no wc for marker", "no_wc", "missing", ".git", "no",
+                    "git root diagnostic",
+                ),
+                (
                     "missing svn for marker", "no_wc", "missing", ".svn", "no",
                     "svn command missing",
+                ),
+                (
+                    "svn tool reports no wc for marker", "no_wc", "no_wc", ".svn", "no",
+                    "svn root diagnostic",
                 ),
                 (
                     "git metadata error", "error", "missing", None, "no",

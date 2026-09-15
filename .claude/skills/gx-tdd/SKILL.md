@@ -614,17 +614,17 @@ Agent에게 변경사항 diff를 전달할 때, 메인 컨텍스트 절약을 �
 
 #### 수집 절차
 
-1. `DIFF_FILE = ${DEV_DIR}/diff.txt`. **매 수집 시** `mkdir -p ${DEV_DIR}`를 실행하여 디렉토리 존재를 보장한다.
+1. `DIFF_FILE = ${DEV_DIR}/diff.txt`. **매 수집 시** `mkdir -p "${DEV_DIR}"`를 실행하여 디렉토리 존재를 보장한다.
 2. diff를 파일에 직접 리다이렉트한다 (Bash 결과에 diff가 나타나지 않음):
    ```bash
-   git diff --cached -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
+   git diff --cached -- . ':(exclude).dev' > "${DEV_DIR}/diff.txt"
    ```
-3. `wc -l < ${DEV_DIR}/diff.txt`로 줄 수를 확인한다.
+3. `wc -l < "${DEV_DIR}/diff.txt"`로 줄 수를 확인한다.
 4. 총 변경이 **500줄 이상**이면: `--stat` 요약을 파일 앞에 추가하고, 파일 끝에 "변경된 파일을 Read 도구로 직접 확인하라"는 안내를 추가한다:
    ```bash
-   git diff --cached --stat -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
-   echo "---" >> ${DEV_DIR}/diff.txt
-   echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> ${DEV_DIR}/diff.txt
+   git diff --cached --stat -- . ':(exclude).dev' > "${DEV_DIR}/diff.txt"
+   echo "---" >> "${DEV_DIR}/diff.txt"
+   echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> "${DEV_DIR}/diff.txt"
    ```
 5. Agent 프롬프트에는 **파일 경로만 전달**한다:
    ```
@@ -726,7 +726,7 @@ AskUserQuestion(
 > 1. `PROJECT_ROOT` = phase-setup과 같은 우선순위의 절대경로. 이후 config, `.dev`, context, VCS·빌드·테스트 명령은 이 경로를 기준으로 수행한다.
 > 2. `${PROJECT_ROOT}/.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
 > 3. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
-> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = ${PROJECT_ROOT}/.dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = ${PROJECT_ROOT}/.dev/{slug}/` (`.active` 부재·공백 시 `${PROJECT_ROOT}/.dev/trunk/` 폴백).
+> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`: `${DEV_DIR}/state.md`의 `model-profile` 값이 있으면 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌리고 `verify-fingerprint`를 비운다.** 재진입 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다. `pipeline`/`verify-status`는 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)에 필요하다.
 > 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
