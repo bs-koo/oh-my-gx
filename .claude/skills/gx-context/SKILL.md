@@ -402,6 +402,12 @@ context/{도메인}/
 - 입력 문서의 ID가 유효하고 중복되지 않으면 유지한다.
 - ID가 없거나 중복이면 유형별 기존 최댓값 다음 번호를 부여하며 삭제된 번호를 재사용하지 않는다.
 - AC가 연결되기 전과 구현 근거가 없을 때는 각각 `-`를 쓴다.
+
+<!-- gx-sync
+git-head: -
+svn-revision: -
+pr-merged-at: -
+-->
 ```
 
 ### B-10. 인덱스 업데이트
@@ -759,12 +765,17 @@ AskUserQuestion(
 1. `context/{도메인}/status.md` Read
 2. ⬜ 항목이 0개면 → "갱신할 미반영 항목이 없습니다." 출력 후 종료
 3. ⬜ 항목 목록을 파싱하여 `PENDING_ITEMS` 배열로 저장
+4. `<!-- gx-sync ... -->`에서 `SYNC_GIT_HEAD`, `SYNC_SVN_REVISION`, `SYNC_PR_MERGED_AT`을 읽는다. 블록이나 값이 없으면 `-`로 둔다.
+5. git이면 현재 `HEAD`, svn이면 현재 revision, gh가 있으면 현재 UTC 시각을 갱신 후보로 저장한다. 아직 status.md에는 쓰지 않는다.
 
 ### E-2. git 히스토리 분석
 
-1. **git**: `git log --oneline -20`으로 최근 커밋 20개 확인. **svn**: `svn log -l 20`으로 최근 커밋 20개 확인.
-2. **git**: `gh pr list --state merged --limit 10`으로 최근 머지된 PR 확인 (gh 없으면 건너뜀). **svn**: 건너뜀 (PR 개념 없음).
-3. 커밋 메시지와 PR 제목에서 `PENDING_ITEMS`의 FR/AC/설명과 매칭되는 항목을 식별
+1. **git cursor 있음**: `git merge-base --is-ancestor ${SYNC_GIT_HEAD} HEAD`가 성공하면 `git log --oneline ${SYNC_GIT_HEAD}..HEAD`를 조회한다. ancestor가 아니면 cursor 손상으로 보고 초기 조회로 전환한다.
+2. **git 초기 조회**: 각 pending FR/NFR/AC ID를 전체 이력에서 `git log --all --oneline --regexp-ignore-case --grep=<ID>`로 정확히 검색한다. 설명 키워드는 최근 100건 `git log --oneline -100`에서 보조 검색한다.
+3. **svn cursor 있음**: `svn log -r ${SYNC_SVN_REVISION}:HEAD`를 조회한다. 초기 조회는 각 pending ID로 `svn log --search <ID>`를 수행하고 설명 키워드는 `svn log -l 100`에서 보조 검색한다.
+4. **PR**: gh가 있고 `SYNC_PR_MERGED_AT`이 있으면 `gh pr list --state merged --search "merged:>=${SYNC_PR_MERGED_AT}" --limit 100`을 사용한다. 초기 조회는 각 pending ID로 `gh pr list --state merged --search "<ID> in:title,body" --limit 100`을 수행한다.
+5. 커밋 메시지와 PR 제목·본문에서 pending ID를 우선 매칭하고, ID가 없을 때만 설명 키워드 일치를 후보로 제시한다.
+6. 명령 실패는 해당 소스의 `분석 실패`로 표시한다. 분석·명령 실패 시 cursor를 갱신하지 않는다.
 
 ### E-3. 매칭 결과 제시
 
@@ -801,6 +812,8 @@ AskUserQuestion(
 - ⬜ → ✅ 변경
 - PR 열에 PR 링크 또는 커밋 해시 기입
 - 수정일 갱신
+- 사용자가 `전체 반영`, `조정 후 반영`, `건너뛰기` 중 하나를 확정하고 모든 분석 명령이 성공한 경우에만 gx-sync 블록을 현재 HEAD/revision/UTC 시각으로 Edit한다.
+- 질문 중단, 파일 Edit 실패, 분석·명령 실패 시 기존 cursor를 유지한다.
 
 ### E-5. 완료 안내
 

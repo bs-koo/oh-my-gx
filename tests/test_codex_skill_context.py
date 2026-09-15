@@ -96,6 +96,25 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         ):
             self.assertIn(phrase, section)
 
+    def test_sync_uses_persisted_cursor(self):
+        text = self.read(CONTEXT_SKILL)
+        for phrase in (
+            "<!-- gx-sync",
+            "git-head:",
+            "svn-revision:",
+            "pr-merged-at:",
+            "${SYNC_GIT_HEAD}..HEAD",
+            "분석·명령 실패 시 cursor를 갱신하지 않는다",
+        ):
+            self.assertIn(phrase, text)
+        self.assertNotIn("git log --oneline -20", text)
+
+    def test_initial_sync_searches_ids_across_history(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        self.assertIn("각 pending FR/NFR/AC ID를 전체 이력", section)
+        self.assertIn("설명 키워드는 최근 100건", section)
+
 
 if __name__ == "__main__":
     unittest.main()
