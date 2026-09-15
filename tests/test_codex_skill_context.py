@@ -50,7 +50,7 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         self.assertIn("기존 원장에 없는 유효하고 고유한 입력 ID는 그대로 사용", section)
         self.assertIn("`FR-N`·`NFR-N` 형식", section)
         self.assertIn("`NFR-2`는 그대로 유지", section)
-        self.assertIn("ID가 없거나 유효하지 않거나 입력 안에서 중복", section)
+        self.assertIn("유효하지 않거나 입력 안에서 중복된 ID는 먼저 제거하여 ID 없는 후보로 정규화", section)
 
     def test_both_matching_modes_preserve_metadata_before_edit(self):
         text = self.read(CONTEXT_SKILL)
@@ -93,6 +93,20 @@ class ContextRequirementLedgerTests(unittest.TestCase):
             "할당 즉시 `RESERVED_LEDGER_IDS`에 추가",
             "기존 `FR-1` + 입력 `FR-2` + ID 없는 FR → `FR-2`, `FR-3`",
             "Edit 전에 제안 표의 ID 중복",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_invalid_and_duplicate_input_ids_match_idless_before_allocation(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### C-4-1. 요구사항 원장 반영"):text.index("### C-5. 작업 계획")]
+        normalize = section.index("유효하지 않거나 입력 안에서 중복된 ID는 먼저 제거하여 ID 없는 후보로 정규화")
+        match = section.index("기존 행 하나와 후보 하나만 일대일로 연결")
+        allocate = section.index("미매칭 후보에만 자동 ID를 할당")
+        self.assertLess(normalize, match)
+        self.assertLess(match, allocate)
+        for phrase in (
+            "`REQ-42`로 같은 문서를 다시 분석해도 핵심 문장이 같으면 기존 FR/NFR ID를 유지",
+            "중복된 `FR-1` 후보 둘을 하나의 기존 행에 모두 매칭하지 않는다",
         ):
             self.assertIn(phrase, section)
 
@@ -168,6 +182,23 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         ):
             self.assertIn(phrase, section)
         self.assertNotIn("gh pr list --state merged", section)
+
+    def test_pr_source_requires_git_even_when_gh_is_available(self):
+        text = self.read(CONTEXT_SKILL)
+        preflight = text[text.index("### E-1. 사전 확인"):text.index("### E-2. git 히스토리 분석")]
+        analysis = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        update = text[text.index("### E-4. status.md 갱신"):text.index("### E-5. 완료 안내")]
+        self.assertIn("`ACTIVE_VCS = git`이고 gh를 사용할 수 있을 때만 `PR_SOURCE_ACTIVE = true`", preflight)
+        self.assertIn("`PR_SOURCE_ACTIVE = true`일 때만 `CANDIDATE_PR_SYNC_AT`", preflight)
+        self.assertIn("`PR_SOURCE_ACTIVE = true`일 때만 PR을 조회", analysis)
+        self.assertIn("svn: 건너뜀 (PR 개념 없음)", analysis)
+        self.assertIn("SVN 분석과 cursor 처리는 정상적으로 계속", analysis)
+        self.assertIn("`PR_SOURCE_ACTIVE = true`인 경우 PR의 모든 page 처리가 성공했을 때만", update)
+
+    def test_context_tree_describes_canonical_three_state_ledger(self):
+        text = self.read(CONTEXT_RULE)
+        self.assertIn("status.md          ← 정본 FR/NFR별 3상태 원장", text)
+        self.assertNotIn("구현 추적 (AC별 ✅/⬜)", text)
 
     def test_sync_advances_frozen_candidates_only_after_complete_success(self):
         text = self.read(CONTEXT_SKILL)

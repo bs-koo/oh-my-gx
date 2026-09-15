@@ -16,7 +16,7 @@ context/{도메인}/
 ├── PROJECTS.md        ← 관련 GHE 레포 매핑
 ├── glossary.md        ← 용어 사전
 ├── architecture.md    ← 전체 구조 요약 + 주제 문서 링크 (인덱스)
-├── status.md          ← 구현 추적 (AC별 ✅/⬜)
+├── status.md          ← 정본 FR/NFR별 3상태 원장
 │
 ├── {주제}/README.md   ← 주제별 상세 정책/설계
 └── ...
