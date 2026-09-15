@@ -4,13 +4,13 @@
 
 현재 디렉토리에서 아래 순서로 절대경로 `PROJECT_ROOT`를 결정한다.
 
-현재 디렉토리와 상위 디렉토리에서 `.git` 파일·디렉토리, `.svn` 디렉토리 마커를 확인하고 `command -v git`·`command -v svn`으로 도구를 확인한다. 마커가 없으면 없는 명령을 건너뛴다. 마커가 있는데 필요한 명령이 없으면 진단을 표시하고 중단한다. 마커가 있는데 해당 도구가 작업 복사본 아님을 보고해도 메타데이터 오류로 중단한다.
+현재 디렉토리와 상위 디렉토리의 `.git` 파일·디렉토리, `.svn` 디렉토리 마커와 `command -v git`·`command -v svn`을 확인한다. 마커가 없으면 없는 명령을 건너뛴다. 명령 부재·마커 없음은 해당 VCS의 작업 복사본 부재로 확정한다. 마커가 있는데 명령이 없거나 도구가 작업 복사본 아님을 보고하면 진단을 표시하고 중단한다.
 
 1. `git rev-parse --show-toplevel` 성공 시 그 출력을 쓴다. 실패가 `fatal: not a git repository`이면 2로 간다.
 2. Git 작업 복사본이 아니면 `svn info --show-item wc-root`를 실행해 성공 시 그 출력을 쓴다. 실패가 `E155007`(not a working copy)이면 3으로 간다.
-3. 두 도구가 모두 작업 복사본 아님을 확인했을 때만 현재 디렉토리의 절대경로를 쓴다. 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
+3. Git·SVN 각각 `not a working copy`(Git: `not a git repository`)나 명령 부재·마커 없음으로 부재가 확정되면 현재 디렉토리의 절대경로를 쓴다. 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
 
-메타데이터 오류 등 다른 실패면 진단을 표시하고 중단한다. 이를 작업 복사본 부재로 간주하지 않는다.
+메타데이터 오류 등 다른 실패는 부재가 아니므로 진단을 표시하고 중단한다.
 
 이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 프로젝트 파일의 상대경로는 이 루트에서 해석한다. 번들 스킬·phase 파일(`Read("setup-resume.md")`, `Read("setup-work.md")` 등)은 지시 파일 위치 기준 상대경로로 읽는다.
 

@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -13,6 +14,71 @@ SETUPS = (
     ROOT / ".claude/skills/gx-tdd/phases/phase-setup.md",
 )
 TDD_RESUME = ROOT / ".claude/skills/gx-tdd/phases/setup-resume.md"
+
+
+# Executable approximation of the prose in phase-setup Step -1. Mock VCS commands
+# make unavailable tools, working copies, and metadata errors deterministic.
+ROOT_SELECTION_PROBE = r'''
+PATH=""
+if test "$MOCK_GIT" != missing; then
+  git() {
+    if test "$1" = init; then MOCK_GIT=wc; MOCK_GIT_ROOT="$PWD"; return 0; fi
+    case "$MOCK_GIT" in
+      wc) printf '%s\n' "$MOCK_GIT_ROOT" ;;
+      no_wc) printf '%s\n' 'fatal: not a git repository' >&2; return 1 ;;
+      error) printf '%s\n' 'fatal: corrupt git metadata' >&2; return 1 ;;
+    esac
+  }
+fi
+if test "$MOCK_SVN" != missing; then
+  svn() {
+    case "$MOCK_SVN" in
+      wc) printf '%s\n' "$MOCK_SVN_ROOT" ;;
+      no_wc) printf '%s\n' 'E155007: not a working copy' >&2; return 1 ;;
+      error) printf '%s\n' 'E200009: corrupt svn metadata' >&2; return 1 ;;
+    esac
+  }
+fi
+has_marker() {
+  local p="$PWD"
+  while :; do
+    if test "$1" = .git && test -e "$p/.git"; then return 0; fi
+    if test "$1" = .svn && test -d "$p/.svn"; then return 0; fi
+    if test "$p" = /; then break; fi
+    p="${p%/*}"
+    if test -z "$p"; then p=/; fi
+  done
+  return 1
+}
+resolve_root() {
+  local answer status
+  if command -v git >/dev/null; then
+    answer=$(git rev-parse --show-toplevel 2>&1); status=$?
+    if test "$status" -eq 0; then printf '%s\n' "$answer"; return 0; fi
+    if has_marker .git || test "$answer" != 'fatal: not a git repository'; then
+      printf 'git root diagnostic: %s\n' "$answer" >&2; return 1
+    fi
+  elif has_marker .git; then
+    printf '%s\n' 'git command missing for .git marker' >&2; return 1
+  fi
+  if command -v svn >/dev/null; then
+    answer=$(svn info --show-item wc-root 2>&1); status=$?
+    if test "$status" -eq 0; then printf '%s\n' "$answer"; return 0; fi
+    if has_marker .svn || test "$answer" != 'E155007: not a working copy'; then
+      printf 'svn root diagnostic: %s\n' "$answer" >&2; return 1
+    fi
+  elif has_marker .svn; then
+    printf '%s\n' 'svn command missing for .svn marker' >&2; return 1
+  fi
+  pwd -P
+}
+project_root=$(resolve_root) || exit 1
+if test "$MOCK_INIT" = yes; then
+  git init || exit 1
+  project_root=$(resolve_root) || exit 1
+fi
+printf '%s\n' "$project_root"
+'''
 
 
 class PipelineBootstrapContractTests(unittest.TestCase):
@@ -208,7 +274,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                 "`.git` 파일·디렉토리",
                 "`.svn` 디렉토리",
                 "마커가 없으면 없는 명령을 건너뛴다",
-                "마커가 있는데 필요한 명령이 없으면 진단을 표시하고 중단",
+                "마커가 있는데 명령이 없거나 도구가 작업 복사본 아님을 보고하면 진단을 표시하고 중단",
             ):
                 self.assertIn(phrase, root_step, path)
 
@@ -298,6 +364,89 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             guard = "`command -v git` 실패면 Git 명령 부재를 안내하고 중단한다."
             self.assertIn(guard, vcs_step, path)
             self.assertLess(vcs_step.index(guard), vcs_step.index("git init"), path)
+
+    def test_skipped_tool_counts_as_confirmed_no_working_copy(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
+            self.assertIn(
+                "명령 부재·마커 없음은 해당 VCS의 작업 복사본 부재로 확정한다",
+                root_step,
+                path,
+            )
+            fallback = root_step[root_step.index("3. ") :]
+            self.assertIn("Git·SVN 각각", fallback, path)
+            self.assertIn("명령 부재·마커 없음", fallback, path)
+            self.assertIn("not a working copy", fallback, path)
+
+    def test_root_selection_probe_covers_missing_tools_and_metadata_errors(self):
+        bash = shutil.which("bash") or "bash"
+        with tempfile.TemporaryDirectory(prefix="pipeline contract ") as temp_root:
+            base = Path(temp_root)
+            nested = base / "nested"
+            nested.mkdir()
+            base_root = subprocess.check_output(
+                [bash, "-c", "pwd -P"], cwd=base, text=True
+            ).strip()
+            nested_root = subprocess.check_output(
+                [bash, "-c", "pwd -P"], cwd=nested, text=True
+            ).strip()
+
+            cases = (
+                # name, git, svn, marker, init, expected root or diagnostic
+                ("fresh without tools", "missing", "missing", None, "no", nested_root),
+                ("no svn before git init", "no_wc", "missing", None, "yes", nested_root),
+                ("svn working copy without git", "missing", "wc", ".svn", "no", base_root),
+                ("git wins over svn", "wc", "wc", None, "no", base_root),
+                (
+                    "missing git for marker", "missing", "missing", ".git", "no",
+                    "git command missing",
+                ),
+                (
+                    "missing svn for marker", "no_wc", "missing", ".svn", "no",
+                    "svn command missing",
+                ),
+                (
+                    "git metadata error", "error", "missing", None, "no",
+                    "git root diagnostic",
+                ),
+                (
+                    "svn metadata error", "no_wc", "error", None, "no",
+                    "svn root diagnostic",
+                ),
+            )
+            for name, git_mode, svn_mode, marker, init, expected in cases:
+                with self.subTest(name=name):
+                    if marker:
+                        (base / marker).mkdir()
+                    env = os.environ.copy()
+                    env.update(
+                        MOCK_GIT=git_mode,
+                        MOCK_SVN=svn_mode,
+                        MOCK_GIT_ROOT=base_root,
+                        MOCK_SVN_ROOT=(
+                            nested_root if name == "git wins over svn" else base_root
+                        ),
+                        MOCK_INIT=init,
+                    )
+                    result = subprocess.run(
+                        [bash, "-c", ROOT_SELECTION_PROBE],
+                        cwd=nested,
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if "diagnostic" in expected or "command missing" in expected:
+                        self.assertNotEqual(result.returncode, 0, result.stdout)
+                        self.assertEqual(result.stdout, "")
+                        self.assertIn(expected, result.stderr)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout.strip(), expected)
+                        self.assertTrue(result.stdout.strip().startswith("/"))
+                    if marker:
+                        (base / marker).rmdir()
 
 
 if __name__ == "__main__":
