@@ -79,6 +79,23 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         plan_section = text[planner:]
         self.assertIn("`LEDGER_REQUIREMENTS`의 요구사항 항목", plan_section)
 
+    def test_preserved_and_idless_inputs_share_reserved_id_set(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### C-4-1. 요구사항 원장 반영"):text.index("### C-5. 작업 계획")]
+        reserve = section.index("`RESERVED_LEDGER_IDS`")
+        allocate = section.index("자동 ID를 할당")
+        edit = section.index("Edit으로")
+        self.assertLess(reserve, allocate)
+        self.assertLess(allocate, edit)
+        for phrase in (
+            "기존 원장의 모든 ID와 입력에서 유효하고 고유한 ID를 먼저 예약",
+            "예약 집합의 유형별 최댓값 다음 번호",
+            "할당 즉시 `RESERVED_LEDGER_IDS`에 추가",
+            "기존 `FR-1` + 입력 `FR-2` + ID 없는 FR → `FR-2`, `FR-3`",
+            "Edit 전에 제안 표의 ID 중복",
+        ):
+            self.assertIn(phrase, section)
+
 
 if __name__ == "__main__":
     unittest.main()
