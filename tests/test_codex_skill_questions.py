@@ -20,16 +20,24 @@ INPUT_LABEL = re.compile(
 
 
 def skill_text(path: Path) -> str:
-    if path != SKILLS[0]:
+    if path not in SKILLS or path == SKILLS[2]:
         return path.read_text(encoding="utf-8")
     directory = path.parent
-    ordered = (
-        path,
-        directory / "modes/create.md",
-        directory / "modes/from-document.md",
-        directory / "modes/update.md",
-        directory / "modes/sync.md",
-    )
+    if path == SKILLS[0]:
+        ordered = (
+            path,
+            directory / "modes/create.md",
+            directory / "modes/from-document.md",
+            directory / "modes/update.md",
+            directory / "modes/sync.md",
+        )
+    else:
+        ordered = (
+            path,
+            directory / "references/intent-routing.md",
+            directory / "references/pipeline-state.md",
+            directory / "references/interaction-contract.md",
+        )
     return "\n".join(part.read_text(encoding="utf-8") for part in ordered)
 
 

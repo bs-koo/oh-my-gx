@@ -148,6 +148,13 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertLessEqual(len(main.splitlines()), 520)
 
     def test_moved_headings_have_one_owner_per_skill(self):
+        for name in ("gx-dev", "gx-tdd"):
+            self.assert_moved_heading_owner(name)
+
+    def test_dev_moved_headings_have_one_owner(self):
+        self.assert_moved_heading_owner("gx-dev")
+
+    def assert_moved_heading_owner(self, name: str) -> None:
         expected = {
             "## 인자": CONTRACT_REFS[0],
             "## 코드 맵": CONTRACT_REFS[1],
@@ -156,15 +163,14 @@ class SkillInstructionLayoutTests(unittest.TestCase):
             "## 플래그 충돌 검증": CONTRACT_REFS[0],
             "## 에러 처리": CONTRACT_REFS[2],
         }
-        for name in ("gx-dev", "gx-tdd"):
-            directory = SKILLS / name
-            paths = [directory / "SKILL.md", *(directory / p for p in CONTRACT_REFS)]
-            for heading, owner in expected.items():
-                with self.subTest(skill=name, heading=heading):
-                    self.assertTrue((directory / owner).is_file())
-                    self.assertIn(heading, self.text(directory / owner).splitlines())
-                    owners = [p for p in paths if p.is_file() and heading in self.text(p).splitlines()]
-                    self.assertEqual(owners, [directory / owner])
+        directory = SKILLS / name
+        paths = [directory / "SKILL.md", *(directory / p for p in CONTRACT_REFS)]
+        for heading, owner in expected.items():
+            with self.subTest(skill=name, heading=heading):
+                self.assertTrue((directory / owner).is_file())
+                self.assertIn(heading, self.text(directory / owner).splitlines())
+                owners = [p for p in paths if p.is_file() and heading in self.text(p).splitlines()]
+                self.assertEqual(owners, [directory / owner])
 
     def test_phase_safety_gates_remain_in_main_skills(self):
         for name in ("gx-dev", "gx-tdd"):

@@ -16,6 +16,16 @@ SETUPS = (
 TDD_RESUME = ROOT / ".claude/skills/gx-tdd/phases/setup-resume.md"
 
 
+def skill_bundle(directory: Path) -> str:
+    ordered = (
+        directory / "SKILL.md",
+        directory / "references/intent-routing.md",
+        directory / "references/pipeline-state.md",
+        directory / "references/interaction-contract.md",
+    )
+    return "\n".join(path.read_text(encoding="utf-8") for path in ordered)
+
+
 # Executable approximation of the prose in phase-setup Step -1. Mock VCS commands
 # make unavailable tools, working copies, and metadata errors deterministic.
 ROOT_SELECTION_PROBE = r'''
@@ -111,6 +121,8 @@ esac
 
 class PipelineBootstrapContractTests(unittest.TestCase):
     def read(self, path: Path) -> str:
+        if path == DEV:
+            return skill_bundle(path.parent)
         return path.read_text(encoding="utf-8")
 
     def test_partial_phase_lists_include_setup(self):
