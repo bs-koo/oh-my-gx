@@ -182,6 +182,39 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         ):
             self.assertIn(phrase, section)
 
+    def test_sync_rejects_svn_cursor_ahead_of_candidate(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-1. 사전 확인"):text.index("### E-2. git 히스토리 분석")]
+        for phrase in (
+            "SYNC_SVN_REVISION <= CANDIDATE_SVN_REVISION",
+            "SVN cursor 역전",
+            "정상 빈 범위로 처리하지 않는다",
+            "기존 cursor를 보존",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_sync_rejects_pr_cursor_after_candidate(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-1. 사전 확인"):text.index("### E-2. git 히스토리 분석")]
+        for phrase in (
+            "SYNC_PR_MERGED_AT <= CANDIDATE_PR_SYNC_AT",
+            "PR cursor 역전",
+            "정상 빈 범위로 처리하지 않는다",
+            "기존 cursor를 보존",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_exact_id_matching_is_case_insensitive_without_prefix_collisions(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        for phrase in (
+            "Git/SVN/PR 모두",
+            "pending ID와 입력 텍스트를 ASCII 대문자로 동일하게 정규화",
+            "`fr-1`은 `FR-1`과 일치",
+            "`NFR-1`이나 `FR-10`과 일치하지 않는다",
+        ):
+            self.assertIn(phrase, section)
+
 
 if __name__ == "__main__":
     unittest.main()
