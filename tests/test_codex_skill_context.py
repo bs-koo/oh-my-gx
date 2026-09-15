@@ -103,7 +103,7 @@ class ContextRequirementLedgerTests(unittest.TestCase):
             "git-head:",
             "svn-revision:",
             "pr-merged-at:",
-            "${SYNC_GIT_HEAD}..HEAD",
+            "${SYNC_GIT_HEAD}..${CANDIDATE_GIT_HEAD}",
             "분석·명령 실패 시 cursor를 갱신하지 않는다",
         ):
             self.assertIn(phrase, text)
@@ -114,6 +114,73 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
         self.assertIn("각 pending FR/NFR/AC ID를 전체 이력", section)
         self.assertIn("설명 키워드는 최근 100건", section)
+
+    def test_sync_preflight_validates_cursors_and_freezes_upper_bounds(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-1. 사전 확인"):text.index("### E-2. git 히스토리 분석")]
+        for phrase in (
+            "40자리 hexadecimal",
+            "git cat-file -e \"${SYNC_GIT_HEAD}^{commit}\"",
+            "10진수 숫자",
+            "엄격한 UTC ISO 8601",
+            "실제 UTC 날짜·시각으로 파싱",
+            "검증 실패한 cursor를 명령 인자로 사용하지 않는다",
+            "CANDIDATE_GIT_HEAD",
+            "CANDIDATE_SVN_REVISION",
+            "CANDIDATE_PR_SYNC_AT",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_git_sync_distinguishes_merge_base_exit_codes_and_matches_full_message(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        for phrase in (
+            "종료 코드 `0`",
+            "종료 코드 `1`",
+            "종료 코드 `2` 이상",
+            "branch/rewrite",
+            "`%B`",
+            "${SYNC_GIT_HEAD}..${CANDIDATE_GIT_HEAD}",
+            "`(^|[^A-Za-z0-9-])<ID>($|[^A-Za-z0-9-])`",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_svn_sync_uses_exclusive_lower_bound_and_rechecks_xml_message(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        for phrase in (
+            "SYNC_SVN_REVISION + 1",
+            "${SVN_FROM_REVISION}:${CANDIDATE_SVN_REVISION}",
+            "--xml",
+            "메시지에서 exact token을 재검증",
+        ):
+            self.assertIn(phrase, section)
+
+    def test_pr_sync_paginates_complete_bounded_window_with_body(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-2. git 히스토리 분석"):text.index("### E-3. 매칭 결과")]
+        for phrase in (
+            "`gh api --paginate`",
+            "모든 page",
+            "number·title·body·html_url·merged_at",
+            "start <= merged_at < candidate",
+            "제목·본문",
+        ):
+            self.assertIn(phrase, section)
+        self.assertNotIn("gh pr list --state merged", section)
+
+    def test_sync_advances_frozen_candidates_only_after_complete_success(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### E-4. status.md 갱신"):text.index("### E-5. 완료 안내")]
+        for phrase in (
+            "CANDIDATE_GIT_HEAD",
+            "CANDIDATE_SVN_REVISION",
+            "CANDIDATE_PR_SYNC_AT",
+            "모든 page 처리",
+            "검증 실패",
+            "기존 cursor를 유지",
+        ):
+            self.assertIn(phrase, section)
 
 
 if __name__ == "__main__":
