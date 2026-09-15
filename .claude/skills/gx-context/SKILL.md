@@ -123,7 +123,7 @@ AskUserQuestion(
    - `test -f context/glossary.md` 가 false인 경우, B-0과 동일하게 `context/glossary.md` 생성
 3. 스캔 결과를 기반으로 각 문서 초안 작성:
    - **README.md**: 도메인 개요 (스캔에서 파악한 범위, 주요 기능)
-   - **PROJECTS.md**: 현재 레포를 자동 등록 (git: `git remote get-url origin`, svn: `svn info --show-item repos-root-url`에서 레포명 추출)
+   - **PROJECTS.md**: 현재 레포를 자동 등록한다. git은 `git remote get-url origin`의 레포명을 사용한다. svn은 `svn info --show-item url` 끝의 `trunk`, `branches/<name>`, `tags/<name>`을 제거하고 남은 마지막 세그먼트를 `REPOSITORY_ID`로 사용하며, 결과가 비거나 모호하면 `basename(PROJECT_ROOT)`를 사용한다.
    - **glossary.md**: 엔티티명, 주요 상수, enum 값 등에서 추출한 용어 초안
    - **architecture.md**: 패키지 구조, 레이어 구조 요약
    - **status.md**: 빈 템플릿

@@ -215,6 +215,19 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         ):
             self.assertIn(phrase, section)
 
+    def test_context_uses_shared_svn_repository_identity(self):
+        text = self.read(CONTEXT_SKILL)
+        for phrase in (
+            "svn info --show-item url",
+            "trunk",
+            "branches/<name>",
+            "tags/<name>",
+            "REPOSITORY_ID",
+            "basename(PROJECT_ROOT)",
+        ):
+            self.assertIn(phrase, text)
+        self.assertNotIn("svn info --show-item repos-root-url", text)
+
 
 if __name__ == "__main__":
     unittest.main()
