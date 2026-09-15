@@ -94,6 +94,17 @@ class SkillInstructionLayoutTests(unittest.TestCase):
                 owners = [p for p in paths if p.is_file() and heading in self.text(p).splitlines()]
                 self.assertEqual(owners, [directory / owner])
 
+    def test_context_internal_reads_resolve_from_skill_directory(self):
+        directory = SKILLS / "gx-context"
+        document_mode = self.text(directory / "modes/from-document.md")
+        for relative in ("modes/create.md", "modes/update.md"):
+            with self.subTest(relative=relative):
+                self.assertIn(f'Read("{relative}")', document_mode)
+                self.assertTrue((directory / relative).is_file())
+        for relative in CONTEXT_MODES.values():
+            with self.subTest(mode=relative):
+                self.assertIn("상대경로는 gx-context/SKILL.md 위치를 기준으로", self.text(directory / relative))
+
     def test_dev_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-dev")
 

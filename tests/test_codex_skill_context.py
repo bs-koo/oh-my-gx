@@ -10,7 +10,20 @@ STATUS_HEADER = "| ID | 요구사항 | AC | 상태 | PR |"
 
 
 class ContextRequirementLedgerTests(unittest.TestCase):
+    def context_bundle(self) -> str:
+        directory = CONTEXT_SKILL.parent
+        ordered = [
+            directory / "SKILL.md",
+            directory / "modes/create.md",
+            directory / "modes/from-document.md",
+            directory / "modes/update.md",
+            directory / "modes/sync.md",
+        ]
+        return "\n".join(path.read_text(encoding="utf-8") for path in ordered)
+
     def read(self, path: Path) -> str:
+        if path == CONTEXT_SKILL:
+            return self.context_bundle()
         return path.read_text(encoding="utf-8")
 
     def test_status_template_has_canonical_ledger(self):

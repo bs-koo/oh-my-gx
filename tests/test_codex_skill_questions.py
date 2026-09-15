@@ -19,6 +19,20 @@ INPUT_LABEL = re.compile(
 )
 
 
+def skill_text(path: Path) -> str:
+    if path != SKILLS[0]:
+        return path.read_text(encoding="utf-8")
+    directory = path.parent
+    ordered = (
+        path,
+        directory / "modes/create.md",
+        directory / "modes/from-document.md",
+        directory / "modes/update.md",
+        directory / "modes/sync.md",
+    )
+    return "\n".join(part.read_text(encoding="utf-8") for part in ordered)
+
+
 def static_question_shapes(markdown: str):
     """Count questions and options in fenced AskUserQuestion examples."""
     fence_lines = []
@@ -71,7 +85,7 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_skills_use_common_question_bounds(self):
         for path in SKILLS:
-            text = path.read_text(encoding="utf-8")
+            text = skill_text(path)
             with self.subTest(skill=path.parent.name):
                 self.assertIn("질문은 한 번에 1~3개", text)
                 self.assertIn("질문마다 선택지는 2~3개", text)
@@ -80,7 +94,7 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_skills_do_not_add_input_labels_as_options(self):
         for path in SKILLS:
-            text = path.read_text(encoding="utf-8")
+            text = skill_text(path)
             with self.subTest(skill=path.parent.name):
                 self.assertIsNone(INPUT_LABEL.search(text))
                 self.assertNotIn("권장 답변 + Other + 모르겠음", text)
@@ -88,7 +102,7 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_skills_use_runtime_schema_for_codex_questions(self):
         for path in SKILLS:
-            text = path.read_text(encoding="utf-8")
+            text = skill_text(path)
             with self.subTest(skill=path.parent.name):
                 self.assertIn("codex-runtime.md", text)
                 self.assertIn("실제 도구 스키마", text)
@@ -97,7 +111,7 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_static_examples_have_valid_question_and_option_counts(self):
         for path in (*SKILLS, *PHASES):
-            examples = list(static_question_shapes(path.read_text(encoding="utf-8")))
+            examples = list(static_question_shapes(skill_text(path)))
             with self.subTest(path=path):
                 if path in SKILLS:
                     self.assertGreater(len(examples), 0)
@@ -113,7 +127,7 @@ class CodexQuestionContractTests(unittest.TestCase):
                 validate_question_shape(questions, options)
 
     def test_context_correction_choice_waits_for_follow_up_answer(self):
-        text = SKILLS[0].read_text(encoding="utf-8")
+        text = skill_text(SKILLS[0])
         align = text.split("3. 모든 프레임이 해소되면", 1)[1].split("**모호함 판단 기준**", 1)[0]
         self.assertIn('"수정 필요" 선택 시', align)
         self.assertIn("후속 질문", align)
@@ -125,7 +139,7 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_real_choices_do_not_claim_same_question_other_input(self):
         for path in (*SKILLS, *PHASES):
-            text = path.read_text(encoding="utf-8")
+            text = skill_text(path)
             with self.subTest(path=path):
                 match = re.search(r'(?m)^\s*\{\s*label:[^\n]*description:\s*"Other로', text)
                 self.assertIsNone(match, f"{path}: {match.group(0) if match else ''}")
