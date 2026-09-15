@@ -1,4 +1,7 @@
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 
@@ -9,6 +12,7 @@ SETUPS = (
     ROOT / ".claude/skills/gx-dev/phases/phase-setup.md",
     ROOT / ".claude/skills/gx-tdd/phases/phase-setup.md",
 )
+TDD_RESUME = ROOT / ".claude/skills/gx-tdd/phases/setup-resume.md"
 
 
 class PipelineBootstrapContractTests(unittest.TestCase):
@@ -134,6 +138,64 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                 text,
                 path,
             )
+
+    def test_tdd_resume_keeps_root_resolved_before_state_restore(self):
+        path = TDD_RESUME
+        text = self.read(path)
+        resume = text[text.index("**이어서 진행 시:**") :]
+        self.assertNotIn(
+            "state.md에서 VCS_TYPE, GIT_PREFIX, PROJECT_ROOT,", resume, path
+        )
+        self.assertIn("PROJECT_ROOT는 Step -1의 절대경로를 유지한다", resume, path)
+
+    def test_setup_distinguishes_project_paths_from_bundled_references(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
+            self.assertIn("프로젝트 파일의 상대경로", root_step, path)
+            self.assertIn("번들 스킬·phase 파일", root_step, path)
+            self.assertIn("지시 파일 위치 기준", root_step, path)
+            self.assertIn("Read(\"", text, path)
+            self.assertNotIn(
+                "상대경로 파일 도구 호출도 이 경로 아래에서 해석한다",
+                root_step,
+                path,
+            )
+
+    def test_root_fallback_only_after_not_working_copy_diagnostics(self):
+        for path in SETUPS:
+            text = self.read(path)
+            root_step = text[text.index("## Step -1:") : text.index("## Step 0:")]
+            self.assertIn("not a git repository", root_step, path)
+            self.assertIn("E155007", root_step, path)
+            self.assertIn("명령이 없거나 메타데이터 오류", root_step, path)
+            self.assertIn("진단을 표시하고 중단", root_step, path)
+            self.assertNotIn("둘 다 실패하면", root_step, path)
+
+    def test_tdd_config_guard_quotes_spaced_project_root(self):
+        path = SETUPS[1]
+        text = self.read(path)
+        guard_start = text.index("### 3.0 config.json 가드")
+        guard = text[guard_start : text.index("**Iron Law", guard_start)]
+        command = 'test -f "${PROJECT_ROOT}/.claude/config.json"'
+        self.assertIn(command, guard, path)
+
+        with tempfile.TemporaryDirectory(prefix="pipeline root ") as temp_root:
+            config = Path(temp_root) / ".claude" / "config.json"
+            config.parent.mkdir()
+            config.write_text("{}", encoding="utf-8")
+            root = Path(temp_root).resolve().as_posix()
+            result = subprocess.run(
+                [
+                    shutil.which("bash") or "bash",
+                    "-c",
+                    command.replace("${PROJECT_ROOT}", root),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

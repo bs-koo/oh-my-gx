@@ -4,11 +4,13 @@
 
 현재 디렉토리에서 아래 순서로 절대경로 `PROJECT_ROOT`를 결정한다.
 
-1. `git rev-parse --show-toplevel` 성공 시 그 출력을 사용한다.
-2. Git이 아니고 `svn info --show-item wc-root` 성공 시 그 출력을 사용한다.
-3. 둘 다 실패하면 현재 디렉토리의 절대경로를 쓴다. 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
+1. `git rev-parse --show-toplevel` 성공 시 그 출력을 쓴다. 실패가 `fatal: not a git repository`이면 2로 간다.
+2. Git 작업 복사본이 아니면 `svn info --show-item wc-root`를 실행해 성공 시 그 출력을 쓴다. 실패가 `E155007`(not a working copy)이면 3으로 간다.
+3. 두 도구가 모두 작업 복사본 아님을 확인했을 때만 현재 디렉토리의 절대경로를 쓴다. 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
 
-이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 상대경로 파일 도구도 이 경로에서 해석한다.
+명령이 없거나 메타데이터 오류 등 다른 실패면 진단을 표시하고 중단한다. 이를 작업 복사본 부재로 간주하지 않는다.
+
+이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 프로젝트 파일의 상대경로는 이 루트에서 해석한다. 번들 스킬·phase 파일(`Read("setup-resume.md")`, `Read("setup-work.md")` 등)은 지시 파일 위치 기준 상대경로로 읽는다.
 
 ## Step 0: 진행 중 작업 감지
 
@@ -18,7 +20,7 @@
 
 ## Step 1: VCS 확인
 
-`${PROJECT_ROOT}/.claude/config.json`의 `"vcs"` 필드를 읽어 `VCS_TYPE`을 결정한다. **config.json이 없거나 파싱 불가하면** `VCS_TYPE`을 잠정 `"git"`으로 두고 진행하며, 파일 존재·자동 생성·손상 검증은 Step 3.0 config 가드에서 정식 처리한 뒤 `vcs` 값으로 재확정한다 (config가 늦게 생성되어도 부트스트랩이 깨지지 않도록).
+`${PROJECT_ROOT}/.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다. **config 부재·파싱 실패 시** 잠정 `"git"`으로 두고 Step 3.0 config 가드에서 존재·생성·손상을 처리한 뒤 `vcs`로 재확정한다 (늦게 생성된 config에도 대응).
 
 **git인 경우** (vcs가 `"git"` 또는 `""` 미설정):
 - `git rev-parse --is-inside-work-tree` 확인.
@@ -34,14 +36,14 @@
 
 ## Step 1.5: 모델 프로파일 결정
 
-`MODEL_PROFILE`을 결정한다 (우선순위 순 — 먼저 매칭된 것 사용):
+`MODEL_PROFILE`은 첫 매칭 값으로 결정한다:
 1. 플래그: `--eco` → `eco`, `--standard` → `standard`
 2. ARGS[0] 자연어: `에코 모드`/`에코로`/`절약 모드` 포함 → `eco` (단독 명사 `에코`는 오탐 방지를 위해 제외)
 3. 의도 파싱 Step 3에서 프로파일 질문에 답한 경우 → 그 답변 (표준 → `standard`, 에코 → `eco`)
 4. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`) — config.json이 없거나 파싱 불가하면 건너뛴다 (Step 3.0에서 재확정)
 5. 그 외 (미설정·빈 값·config 부재) → `standard`
 
-config.json이 아직 없으면(부트스트랩) 플래그·자연어·질문 답변이 없을 때 잠정 `standard`로 두고, **Step 3.0 config 가드에서 config 로드 후 `modelProfile` 값으로 재확정한다** (Step 1의 vcs 재확정과 동일 패턴).
+config 부재·플래그·자연어·질문 답변 없음이면 잠정 `standard`; **Step 3.0에서 config 로드 후 `modelProfile`로 재확정한다** (Step 1의 vcs와 동일).
 
 `eco`로 결정되면 안내한다: "에코 모드로 실행합니다 — 에이전트 디스패치가 sonnet 중심으로 하향됩니다 (절차·게이트·Iron Law는 동일). 더 큰 절감을 원하면 실행 전 세션 모델도 sonnet으로 바꾸세요 — 그래야 오케스트레이터와 인라인 단계(setup·complete 등)까지 sonnet으로 실행됩니다. (에코는 에이전트 디스패치만 낮추며, 오케스트레이터/메인 세션 모델은 플러그인이 제어하지 못합니다.)"
 `standard`로 결정되면 안내한다: "표준 프로파일 — 에이전트를 frontmatter 모델대로 디스패치합니다 (architect·coder·design-critic·test-architect·reviewer 등 opus 에이전트는 세션 모델과 무관하게 opus로 실행). 세션 모델을 sonnet으로 낮춰 절감하려면 표준이 아니라 eco를 쓰세요 — 표준은 이 opus 에이전트들을 그대로 유지하므로 절감 효과가 제한적입니다."
@@ -88,7 +90,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 ### 3.0 config.json 가드 (필수 선행, 재시도 1회 제한)
 
-`test -f ${PROJECT_ROOT}/.claude/config.json`로 존재 여부를 확인한다.
+`test -f "${PROJECT_ROOT}/.claude/config.json"`로 존재 여부를 확인한다.
 
 **Iron Law (무한 루프 방지)**: `CONFIG_SETUP_ATTEMPTS` 변수로 setup 시도 횟수를 추적한다. 초기값 0. setup 호출마다 +1. **2 이상이면 자동 재시도 금지** (사용자 직접 해결 요구).
 

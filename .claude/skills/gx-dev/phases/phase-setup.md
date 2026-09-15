@@ -4,11 +4,13 @@
 
 현재 디렉토리에서 아래 순서로 절대경로 `PROJECT_ROOT`를 결정한다.
 
-1. `git rev-parse --show-toplevel` 성공 시 그 출력을 사용한다.
-2. Git이 아니고 `svn info --show-item wc-root` 성공 시 그 출력을 사용한다.
-3. 둘 다 실패하면 현재 디렉토리의 절대경로를 사용한다. 이후 Git 생성을 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
+1. `git rev-parse --show-toplevel` 성공 시 그 출력을 사용한다. 실패가 `fatal: not a git repository`이면 2로 간다.
+2. Git 작업 복사본이 아니면 `svn info --show-item wc-root`를 실행해 성공 시 그 출력을 사용한다. 실패가 `E155007`(not a working copy)이면 3으로 간다.
+3. 두 도구가 모두 작업 복사본 아님을 확인했을 때만 현재 디렉토리의 절대경로를 사용한다. 이후 Git 생성을 승인받아 `git init`을 실행하면 `git rev-parse --show-toplevel`로 다시 계산한다.
 
-이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 상대경로 파일 도구 호출도 이 경로 아래에서 해석한다.
+명령이 없거나 메타데이터 오류 등 다른 실패면 진단을 표시하고 중단한다. 이를 작업 복사본 부재로 간주하지 않는다.
+
+이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 프로젝트 파일의 상대경로는 이 루트에서 해석한다. 번들 스킬·phase 파일(`Read("../../gx-setup/references/project-type-hints.md")` 등)은 지시 파일 위치 기준 상대경로로 읽는다.
 
 ## Step 0: 진행 중 작업 감지
 
