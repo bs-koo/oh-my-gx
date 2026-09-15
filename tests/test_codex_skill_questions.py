@@ -20,7 +20,7 @@ INPUT_LABEL = re.compile(
 
 
 def skill_text(path: Path) -> str:
-    if path not in SKILLS or path == SKILLS[2]:
+    if path not in SKILLS:
         return path.read_text(encoding="utf-8")
     directory = path.parent
     if path == SKILLS[0]:

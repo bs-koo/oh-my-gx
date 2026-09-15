@@ -121,7 +121,7 @@ esac
 
 class PipelineBootstrapContractTests(unittest.TestCase):
     def read(self, path: Path) -> str:
-        if path == DEV:
+        if path in (DEV, TDD):
             return skill_bundle(path.parent)
         return path.read_text(encoding="utf-8")
 
@@ -337,8 +337,8 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_tdd_diff_redirection_handles_spaced_dev_dir(self):
-        text = self.read(TDD)
-        section = text[text.index("#### 수집 절차") : text.index("## Phase 선택")]
+        text = self.read(TDD.parent / "references/pipeline-state.md")
+        section = text[text.index("#### 수집 절차") :]
         commands = [
             line.strip() for line in section.splitlines()
             if "${DEV_DIR}/diff.txt" in line and line.strip().startswith(("git ", "echo "))

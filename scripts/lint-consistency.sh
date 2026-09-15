@@ -47,13 +47,17 @@ FAIL=0
 fail() { echo "  FAIL: $1"; FAIL=1; }
 ok()   { echo "  ok: $1"; }
 
-# gx-dev 실행 계약은 메인과 순서가 고정된 세 참조 파일로만 구성한다.
+# gx-dev/gx-tdd 실행 계약은 각 메인과 순서가 고정된 세 참조 파일로만 구성한다.
 # 기존 런타임/역할/외부 규격 references까지 검색하면 계약 누락을 가릴 수 있다.
 DEV_SKILL_TEXT=$(cat .claude/skills/gx-dev/SKILL.md \
   .claude/skills/gx-dev/references/{intent-routing,pipeline-state,interaction-contract}.md)
+TDD_SKILL_TEXT=$(cat .claude/skills/gx-tdd/SKILL.md \
+  .claude/skills/gx-tdd/references/{intent-routing,pipeline-state,interaction-contract}.md)
 skill_contract_text() {
   if [ "$1" = .claude/skills/gx-dev/SKILL.md ]; then
     printf '%s\n' "$DEV_SKILL_TEXT"
+  elif [ "$1" = .claude/skills/gx-tdd/SKILL.md ]; then
+    printf '%s\n' "$TDD_SKILL_TEXT"
   else
     cat "$1"
   fi
@@ -294,7 +298,7 @@ GXTDD=.claude/skills/gx-tdd/SKILL.md
 TDD_REQ=.claude/skills/gx-tdd/phases/phase-requirements.md
 TDD_IMPL=.claude/skills/gx-tdd/phases/phase-implement.md
 # 모드 값 정합 + core 경로에서 Iron Law 유지 (RGR·verify 회귀 방지)
-grep -q "mode: all | core" "$GXTDD" || fail "모드 값(all | core) 기록 규칙 누락: $GXTDD"
+grep -q "mode: all | core" <<< "$TDD_SKILL_TEXT" || fail "모드 값(all | core) 기록 규칙 누락: $GXTDD"
 grep -q "Iron Law 유지 (core여도)" "$GXTDD" || fail "core Iron Law 유지 문구 누락: $GXTDD"
 # requirements core 분기: 오케스트레이터 직접 ac.md + G-W-T 게이트 유지
 grep -q "핵심 모드 분기" "$TDD_REQ" || fail "requirements core 분기 누락: $TDD_REQ"
@@ -313,7 +317,7 @@ grep -q "구 버전 세션 방어" .claude/skills/gx-tdd/phases/setup-resume.md 
 # 레거시·폐지 모드 잔존 금지 (v1.18.0: --hotfix 플래그·구 명칭 hotfix/light 완전 제거 — 자연어 '핫픽스'는 한글이라 무관)
 grep -rqi "hotfix" .claude/skills/gx-tdd && fail "레거시 hotfix 잔존: gx-tdd"
 grep -rqiE "\blight\b" .claude/skills/gx-tdd && fail "구 명칭 light 잔존: gx-tdd"
-grep -q "HOTFIX 모드" "$GXTDD" && fail "폐지된 HOTFIX 모드 잔존: $GXTDD"
+grep -q "HOTFIX 모드" <<< "$TDD_SKILL_TEXT" && fail "폐지된 HOTFIX 모드 잔존: $GXTDD"
 [ "$FAIL" -eq 0 ] && ok "tdd core 경로·RGR/G-W-T 유지·긴급 감사·구 버전 방어·폐지 모드 부재 확인"
 
 echo "[14/36] 모델 프로파일(standard/eco) 계약 정합"
@@ -330,7 +334,7 @@ for f in .claude/skills/gx-dev/phases/phase-setup.md .claude/skills/gx-tdd/phase
 done
 grep -q "모델 프로파일" .claude/skills/gx-setup/SKILL.md || fail "gx-setup 모델 프로파일 단계 누락"
 # 의미 정합: agents/*.md의 opus 집합 ↔ SKILL eco 하향 목록 (architect는 유지 원칙, humanizer 계열은 파이프라인 외)
-ECO_LINES=$(grep "eco (에코 모드)" <(skill_contract_text "$GXDEV") "$GXTDD")
+ECO_LINES=$(grep "eco (에코 모드)" <(skill_contract_text "$GXDEV") <(skill_contract_text "$GXTDD"))
 for a in agents/*.md; do
   grep -q "^model: opus" "$a" || continue
   name=$(basename "$a" .md)
