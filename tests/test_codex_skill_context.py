@@ -44,6 +44,41 @@ class ContextRequirementLedgerTests(unittest.TestCase):
         self.assertIn("B-5~B-11", section)
         self.assertIn("C-4-1을 반드시 실행", section)
 
+    def test_from_mode_preserves_valid_unused_input_id(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### C-4-1. 요구사항 원장 반영"):text.index("### C-5. 작업 계획")]
+        self.assertIn("기존 원장에 없는 유효하고 고유한 입력 ID는 그대로 사용", section)
+        self.assertIn("`FR-N`·`NFR-N` 형식", section)
+        self.assertIn("`NFR-2`는 그대로 유지", section)
+        self.assertIn("ID가 없거나 유효하지 않거나 입력 안에서 중복", section)
+
+    def test_both_matching_modes_preserve_metadata_before_edit(self):
+        text = self.read(CONTEXT_SKILL)
+        section = text[text.index("### C-4-1. 요구사항 원장 반영"):text.index("### C-5. 작업 계획")]
+        match = section.index("ID 일치와 핵심 문장 일치 모두")
+        compare = section.index("모든 기존 행과 비교")
+        edit = section.index("Edit으로")
+        reread = section.index("저장한 표를 다시 읽어")
+        self.assertLess(match, compare)
+        self.assertLess(compare, edit)
+        self.assertLess(edit, reread)
+        self.assertIn("기존 ID·AC·상태·PR을 유지", section[match:edit])
+        self.assertIn("변경되면 Edit하지 않는다", section[compare:edit])
+
+    def test_final_ledger_array_matches_saved_rows_before_plan(self):
+        text = self.read(CONTEXT_SKILL)
+        producer = text.index("### C-4-1. 요구사항 원장 반영")
+        planner = text.index("### C-5. 작업 계획")
+        section = text[producer:planner]
+        update = section.index("각 객체를 최종 `{ id, type, text, ac, status, pr }`로 갱신")
+        equality = section.index("저장한 표의 행과 `LEDGER_REQUIREMENTS`가 일치")
+        self.assertLess(update, equality)
+        self.assertIn("각 객체의 id·type·text·ac·status·pr", section[equality:])
+        self.assertIn("일치하지 않으면 C-5로 진행하지 않는다", section[equality:])
+
+        plan_section = text[planner:]
+        self.assertIn("`LEDGER_REQUIREMENTS`의 요구사항 항목", plan_section)
+
 
 if __name__ == "__main__":
     unittest.main()
