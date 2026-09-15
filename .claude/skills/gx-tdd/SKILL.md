@@ -296,8 +296,12 @@ all:  setup → requirements → design → implement (RGR) → review (spec+qua
 # 1. 모드에 따라 Phase 목록 결정
 if core (핵심 모드):
     PHASES = [setup, requirements, implement, complete]   # requirements는 core 분기 (오케스트레이터 직접 ac.md)
+elif --phase == "requirements":
+    PHASES = [setup, requirements]
+elif --phase == "design":
+    PHASES = [setup, design]
 elif --phase 지정:
-    PHASES = [해당 phase만] (SKILL.md "Phase 선택" 섹션 참조)
+    PHASES = [해당 phase만]
 else:  # ALL
     PHASES = [setup, requirements, design, implement, review, complete]
 
@@ -418,7 +422,6 @@ phase-setup 결정, 모든 Phase 사용.
 |---|---|---|
 | `VCS_TYPE` | `.claude/config.json`의 `"vcs"` 값 (`"git"`/`"svn"`) | Step 1 |
 | `GIT_PREFIX` | `VCS_TYPE`과 동일 | Step 1 |
-| `PROJECT_ROOT` | `./` | — |
 | `DEV_DIR` | `.dev/{branch-slug}/`. **SVN은 브랜치가 없으므로 git 브랜치명과 동일 규칙으로 작업 slug를 만들어 `.dev/{slug}/`를 쓰고(기능별 격리), 활성 slug를 `.dev/.active`에 기록한다 — 훅·라우팅·verify가 이 포인터로 활성 작업의 state.md를 찾는다(`.active` 부재·공백 시 `.dev/trunk/` 폴백).** | Step 6.5 |
 | `BASE_BRANCH` | SVN 미사용 | Step 2 |
 | `DIFF_FILE` | `${DEV_DIR}/diff.txt` | — |
@@ -426,8 +429,8 @@ phase-setup 결정, 모든 Phase 사용.
 | `REFERENCES` | `references/` 문서 목록. 없으면 빈 상태·미포함 | Step 3.1 |
 | `MODEL_PROFILE` | `standard`/`eco` | Step 1.5 |
 
-- Agent에 `PROJECT_ROOT`를 **항상** 전달해 파일 도구 기준점으로 쓴다.
-- 빌드/테스트 명령은 `PROJECT_ROOT`에서 실행. 기본값 `./`이면 **bare 명령**으로 실행(`allowed-tools` prefix 매칭 — 권한 프롬프트 없음), 아니면 서브셸 `(cd ${PROJECT_ROOT} && <cmd>)`로 감싼다.
+- `PROJECT_ROOT`: phase-setup Step -1이 Git `--show-toplevel` > SVN `wc-root` > 현재 디렉토리 절대경로 순으로 결정한 값.
+- Agent에게 `PROJECT_ROOT`를 전달해 파일 도구의 기준점으로 쓰고, Git·SVN·빌드·테스트 명령도 그 디렉토리에서 실행한다.
 
 ### 모델 프로파일 (MODEL_PROFILE)
 
@@ -611,17 +614,17 @@ Agent에게 변경사항 diff를 전달할 때, 메인 컨텍스트 절약을 �
 
 #### 수집 절차
 
-1. `DIFF_FILE = ${DEV_DIR}/diff.txt`. **매 수집 시** `mkdir -p ${DEV_DIR}`를 실행하여 디렉토리 존재를 보장한다.
+1. `DIFF_FILE = ${DEV_DIR}/diff.txt`. **매 수집 시** `mkdir -p "${DEV_DIR}"`를 실행하여 디렉토리 존재를 보장한다.
 2. diff를 파일에 직접 리다이렉트한다 (Bash 결과에 diff가 나타나지 않음):
    ```bash
-   git diff --cached -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
+   git diff --cached -- . ':(exclude).dev' > "${DEV_DIR}/diff.txt"
    ```
-3. `wc -l < ${DEV_DIR}/diff.txt`로 줄 수를 확인한다.
+3. `wc -l < "${DEV_DIR}/diff.txt"`로 줄 수를 확인한다.
 4. 총 변경이 **500줄 이상**이면: `--stat` 요약을 파일 앞에 추가하고, 파일 끝에 "변경된 파일을 Read 도구로 직접 확인하라"는 안내를 추가한다:
    ```bash
-   git diff --cached --stat -- . ':(exclude).dev' > ${DEV_DIR}/diff.txt
-   echo "---" >> ${DEV_DIR}/diff.txt
-   echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> ${DEV_DIR}/diff.txt
+   git diff --cached --stat -- . ':(exclude).dev' > "${DEV_DIR}/diff.txt"
+   echo "---" >> "${DEV_DIR}/diff.txt"
+   echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> "${DEV_DIR}/diff.txt"
    ```
 5. Agent 프롬프트에는 **파일 경로만 전달**한다:
    ```
@@ -712,20 +715,20 @@ AskUserQuestion(
 
 ## Phase 선택 (--phase 플래그)
 
-`--phase`가 지정되면 해당 Phase만 실행한다:
-- `--phase requirements`: setup (필요 시) + requirements만 실행 (PRD 작성).
-- `--phase design`: setup (필요 시) + requirements + design만 실행. 대화 맥락에 요구사항이 없고 `${DEV_DIR}/prd.md`도 없으면 requirements부터 시작.
+`--phase` 실행 목록:
+- `--phase requirements`: `[setup, requirements]`를 실행하여 작업환경과 도메인 컨텍스트를 확정한 뒤 PRD를 작성한다.
+- `--phase design`: `[setup, design]`을 실행한다. setup 후 `${DEV_DIR}/prd.md`가 없으면 게이트가 requirements를 먼저 실행한다.
 - `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `${DEV_DIR}/design.md`도 없으면: "설계서가 필요합니다. `/gx-tdd --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
-- `--phase review`: 환경 감지 + 베이스 브랜치 감지 + review 실행 (현재 변경사항을 리뷰). **단독 실행은 리뷰 결과 보고로 종료하며 phase-complete로 체이닝하지 않는다** (완료 절차는 `--phase complete`로 별도 실행). 종료 시 부트스트랩 골격 state.md라면 `status: completed`로 갱신한다 (영구 in_progress 잔존 방지).
+- `--phase review`: 환경·베이스 브랜치 감지 후 현재 변경사항을 리뷰한다. **결과 보고로 종료하고 phase-complete로 체이닝하지 않는다** (`--phase complete` 별도 실행). 종료 시 부트스트랩 골격 state.md는 `status: completed`로 갱신한다.
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (인수 검증, test, commit, PR, status 갱신). TDD 이행 여부는 phase-complete **진입부의 TDD 이행 게이트(Step -2)** 가 모든 진입 경로에서 공통 검사한다.
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
-> 1. `.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
-> 2. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
-> 3. `PROJECT_ROOT` = 현재 디렉토리.
-> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
-> 5. `MODEL_PROFILE`을 결정한다: `${DEV_DIR}/state.md`가 있으면 그 `model-profile` 필드 값을 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
-> 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌린다** (`verify-fingerprint`도 빈 값으로 리셋) — 완료된 세션에 재진입하면 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구해 전부 꺼지기 때문이다. `--phase implement`의 기준선 게이트(Step 0.5)가 warnings-baseline을 이 파일에 기록해야 이후 `--phase complete`의 gx-verify가 로드할 수 있고, `pipeline`/`verify-status` 필드가 있어야 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)가 동작한다.
+> 1. `PROJECT_ROOT` = phase-setup과 같은 우선순위의 절대경로. 이후 config, `.dev`, context, VCS·빌드·테스트 명령은 이 경로를 기준으로 수행한다.
+> 2. `${PROJECT_ROOT}/.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
+> 3. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
+> 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
+> 5. `MODEL_PROFILE`: `${DEV_DIR}/state.md`의 `model-profile` 값이 있으면 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
+> 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌리고 `verify-fingerprint`를 비운다.** 재진입 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다. `pipeline`/`verify-status`는 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)에 필요하다.
 > 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
 
 ---
