@@ -80,7 +80,7 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - `갱신` → `Read("modes/update.md")`
 - `동기화` → `Read("modes/sync.md")`
 
-`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 A-3에서 루트 README.md·glossary.md 초기화에 B-0 템플릿이 필요할 때, 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때만 해당 mode 파일을 추가로 Read한다.
+`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 A-3에서 루트 README.md·glossary.md 초기화에 B-0 템플릿이 필요할 때 또는 새 도메인의 status.md에 B-9-1 템플릿이 필요할 때, 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때만 해당 mode 파일을 추가로 Read한다.
 
 ---
 
@@ -129,7 +129,7 @@ AskUserQuestion(
 
 ### A-3. 초안 생성
 
-`context/README.md` 또는 `context/glossary.md`가 없으면 초기화 전에 `Read("modes/create.md")`로 B-0의 해당 루트 파일 템플릿을 읽는다. 두 파일이 모두 있으면 이 추가 Read를 생략한다.
+`context/README.md` 또는 `context/glossary.md`가 없으면 초기화 전에 `Read("modes/create.md")`로 B-0의 해당 루트 파일 템플릿을 읽는다. 새 도메인의 `status.md`를 생성할 때는 두 루트 파일이 모두 있어도 생성 전에 `Read("modes/create.md")`로 B-9-1의 5열 요구사항 원장과 `<!-- gx-sync ... -->` cursor 템플릿을 읽는다. 같은 A-3에서 두 조건이 모두 참이면 한 번만 Read한다.
 
 각 감지된 도메인에 대해:
 1. 도메인별 디렉토리 생성: `mkdir -p context/{도메인}/`

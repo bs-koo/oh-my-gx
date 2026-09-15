@@ -118,6 +118,32 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertLess(section.index('Read("modes/create.md")'), section.index("1. 도메인별 디렉토리 생성"))
         self.assertIn('`Read("modes/create.md")`의 B-0과 동일하게 `context/README.md` 생성', section)
 
+    def test_scan_reads_status_template_when_root_files_exist_and_domain_is_new(self):
+        main = self.text(SKILLS / "gx-context/SKILL.md")
+        section = main.split("### A-3. 초안 생성", 1)[1].split("### A-4. 사용자 검토", 1)[0]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = Path(temp_dir) / "context"
+            context.mkdir()
+            (context / "README.md").write_text("인덱스", encoding="utf-8")
+            (context / "glossary.md").write_text("용어", encoding="utf-8")
+            self.assertTrue((context / "README.md").is_file())
+            self.assertTrue((context / "glossary.md").is_file())
+            self.assertFalse((context / "새도메인" / "status.md").is_file())
+        self.assertIn('새 도메인의 `status.md`를 생성할 때', section)
+        self.assertIn('`Read("modes/create.md")`로 B-9-1', section)
+        self.assertLess(section.index('`Read("modes/create.md")`로 B-9-1'), section.index("1. 도메인별 디렉토리 생성"))
+        self.assertIn("5열 요구사항 원장", section)
+        self.assertIn("`<!-- gx-sync", section)
+
+    def test_existing_domain_create_choice_hands_off_once_to_update(self):
+        create = self.text(SKILLS / "gx-context/modes/create.md")
+        section = create.split("### B-1. 도메인 확인", 1)[1].split("### B-2. 순차 검증 질문", 1)[0]
+        self.assertLess(section.index("`context/{도메인}/`이 이미 존재하면"), section.index('"갱신" → `Read("modes/update.md")`'))
+        self.assertIn('"갱신" → `Read("modes/update.md")` 후 모드 D를 실행하고 모드 B를 종료한다.', section)
+        self.assertIn('"취소" → 작업을 종료한다.', section)
+        self.assertEqual(section.count('Read("modes/update.md")'), 1)
+        self.assertLess(section.index('"갱신" → `Read("modes/update.md")`'), create.index("### B-2. 순차 검증 질문"))
+
     def test_manual_scan_choice_has_valid_description_and_reads_create_on_branch(self):
         main = self.text(SKILLS / "gx-context/SKILL.md")
         section = main.split("### A-0. 사용자 확인", 1)[1].split("### A-1. 프로젝트 구조 스캔", 1)[0]
@@ -130,6 +156,14 @@ class SkillInstructionLayoutTests(unittest.TestCase):
 
     def test_tdd_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-tdd")
+
+    def test_ralph_verify_fingerprint_owner_is_tdd_pipeline_reference(self):
+        ralph = self.text(SKILLS / "gx-ralph/SKILL.md")
+        target = SKILLS / "gx-ralph" / "../gx-tdd/references/pipeline-state.md"
+        self.assertTrue(target.is_file())
+        self.assertIn("### verify 지문 (verify-fingerprint)", self.text(target))
+        self.assertEqual(ralph.count("../gx-tdd/references/pipeline-state.md"), 2)
+        self.assertNotIn('gx-tdd SKILL.md의 "verify 지문"', ralph)
 
     def test_moved_reference_headers_and_tdd_pointers_are_file_relative(self):
         for name in ("gx-dev", "gx-tdd"):
