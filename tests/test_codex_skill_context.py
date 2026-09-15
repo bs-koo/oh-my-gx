@@ -4,6 +4,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CONTEXT_SKILL = ROOT / ".claude/skills/gx-context/SKILL.md"
 CONTEXT_RULE = ROOT / ".claude/rules/context-docs.md"
+DEV_SETUP = ROOT / ".claude/skills/gx-dev/phases/phase-setup.md"
+TDD_SETUP = ROOT / ".claude/skills/gx-tdd/phases/phase-setup.md"
 STATUS_HEADER = "| ID | 요구사항 | AC | 상태 | PR |"
 
 
@@ -248,6 +250,15 @@ class ContextRequirementLedgerTests(unittest.TestCase):
 
     def test_context_uses_shared_svn_repository_identity(self):
         text = self.read(CONTEXT_SKILL)
+        producer = text[text.index("### A-3. 초안 생성"):text.index("### A-4. 사용자 검토")]
+        consumers = (self.read(DEV_SETUP), self.read(TDD_SETUP))
+        for phrase in (
+            "`svn info --show-item url` 종료 코드 != 0이면 진단 후 중단",
+            "성공했지만 URL·ID가 비거나 모호하면 경고 후 `basename(PROJECT_ROOT)`",
+        ):
+            self.assertIn(phrase, producer)
+            for consumer in consumers:
+                self.assertIn(phrase, consumer)
         for phrase in (
             "svn info --show-item url",
             "trunk",
