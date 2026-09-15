@@ -12,6 +12,8 @@ SKILLS = (
     ROOT / ".claude/skills/gx-dev/SKILL.md",
     ROOT / ".claude/skills/gx-tdd/SKILL.md",
 )
+PHASES = tuple((ROOT / f".claude/skills/{skill}/phases").glob("*.md") for skill in ("gx-dev", "gx-tdd"))
+PHASES = tuple(path for group in PHASES for path in group)
 INPUT_LABEL = re.compile(
     r"label:\s*[\"'](?:Other(?:로 입력)?|직접 입력|답변 입력|주제 입력)[\"']"
 )
@@ -94,10 +96,11 @@ class CodexQuestionContractTests(unittest.TestCase):
                 self.assertIn("(Recommended)", text)
 
     def test_static_examples_have_valid_question_and_option_counts(self):
-        for path in SKILLS:
+        for path in (*SKILLS, *PHASES):
             examples = list(static_question_shapes(path.read_text(encoding="utf-8")))
-            with self.subTest(skill=path.parent.name):
-                self.assertGreater(len(examples), 0)
+            with self.subTest(path=path):
+                if path in SKILLS:
+                    self.assertGreater(len(examples), 0)
                 for questions, options in examples:
                     validate_question_shape(questions, options)
 
@@ -121,11 +124,36 @@ class CodexQuestionContractTests(unittest.TestCase):
         self.assertNotIn("선택 후 UI Other에", align)
 
     def test_real_choices_do_not_claim_same_question_other_input(self):
-        for path in SKILLS:
+        for path in (*SKILLS, *PHASES):
             text = path.read_text(encoding="utf-8")
-            with self.subTest(skill=path.parent.name):
+            with self.subTest(path=path):
                 match = re.search(r'(?m)^\s*\{\s*label:[^\n]*description:\s*"Other로', text)
                 self.assertIsNone(match, f"{path}: {match.group(0) if match else ''}")
+
+    def test_phase_correction_waits_before_applying_text(self):
+        paths = (
+            "gx-dev/phase-requirements.md", "gx-dev/phase-design.md",
+            "gx-dev/phase-core.md", "gx-dev/phase-implement.md",
+            "gx-tdd/phase-requirements.md", "gx-tdd/phase-design.md",
+            "gx-tdd/phase-implement.md",
+        )
+        for name in paths:
+            text = (ROOT / ".claude/skills" / name.replace("/", "/phases/", 1)).read_text(encoding="utf-8")
+            with self.subTest(phase=name):
+                self.assertIn("수정 선택 시 별도 후속 질문", text)
+                self.assertIn("실제 수정 답변을 기다린 뒤", text)
+                self.assertIn("원 질문 UI Other", text)
+                self.assertLess(text.index("실제 수정 답변을 기다린 뒤"), text.index("수정 내용을 반영"))
+
+    def test_dynamic_resume_and_task_routes_keep_all_candidates(self):
+        setup = (ROOT / ".claude/skills/gx-dev/phases/phase-setup.md").read_text(encoding="utf-8")
+        self.assertIn("후보를 잃지 않도록", setup)
+        self.assertIn("2~3개", setup)
+        self.assertIn("다음 후보", setup)
+        implement = (ROOT / ".claude/skills/gx-tdd/phases/phase-implement.md").read_text(encoding="utf-8")
+        for route in ("AC 묶어서 재분해", "작업 계획으로 분할", "무인 루프로 전환", "그대로 진행"):
+            self.assertIn(route, implement)
+        self.assertIn("두 단계", implement)
 
     def test_smoke_contract_checks_question_shape(self):
         text = (ROOT / "tests/codex-smoke.md").read_text(encoding="utf-8")

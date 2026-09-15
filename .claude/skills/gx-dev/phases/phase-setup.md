@@ -22,7 +22,7 @@
 1. `${PROJECT_ROOT}/.dev/*/state.md`를 Glob으로 탐색한다.
 2. 각 state.md를 Read하여 `status: in_progress`인 것을 필터링한다. `pipeline` 필드가 있는 state.md(다른 파이프라인 산출물 — 예: `pipeline: gx-tdd`)는 후보에서 제외한다.
 3. `in_progress`가 **1개**이면 → 질문 없이 바로 재개 (아래 "이어서 진행" 절차).
-4. `in_progress`가 **2개 이상**이면 → AskUserQuestion으로 사용자에게 선택을 요청한다:
+4. `in_progress`가 **2개 이상**이면 → 후보를 잃지 않도록 state.md의 `branch`·`args`·경로를 정렬한 목록으로 먼저 표시한다. AskUserQuestion 한 번에는 2~3개 선택지만 넣는다. 후보가 3개 이하이면 모두 제시한다. 4개 이상이면 앞의 후보 2개와 "다음 후보"를 제시하고, "다음 후보" 선택 시 아직 보지 않은 다음 2개와 "다음 후보"를 후속 질문으로 제시한다. 마지막 페이지에 후보가 1개만 남으면 그 후보와 "처음 후보로 돌아가기"의 2개를 제시한다. 이 순환으로 모든 후보를 선택할 수 있으며 실제 선택 답변을 기다린 뒤 해당 state.md를 재개한다. 추천 후보는 첫 번째에 `(Recommended)`를 붙인다.
    ```
    AskUserQuestion(
      questions: [{
@@ -30,13 +30,14 @@
        header: "재개 작업 선택",
        multiSelect: false,
        options: [
-         { label: "<branch-1>", description: "<args-1>" },
-         { label: "<branch-2>", description: "<args-2>" },
-         ...각 state.md의 branch + args로 옵션 생성
+        { label: "<branch-1> (Recommended)", description: "<args-1>" },
+        { label: "<branch-2>", description: "<args-2>" },
+        { label: "다음 후보", description: "남은 재개 후보를 다음 질문에 표시합니다" }
        ]
      }]
    )
    ```
+   후보가 2~3개인 경우 "다음 후보"를 넣지 않고 해당 후보만 제시한다. 4개 이상에서 마지막 페이지의 후보가 2개이면 둘만 제시하고, 다시 앞쪽 후보를 보고 싶다면 자연어 요청 또는 UI Other 답변으로 첫 페이지를 다시 표시한다.
 5. state.md가 없거나 모두 `status: completed`이면 → "재개할 작업이 없습니다." 출력 후 종료. `pipeline` 필드 제외로 후보가 0개가 된 경우에는 해당 파이프라인의 재개 명령을 안내한다 (예: `pipeline: gx-tdd`이면 "`/gx-tdd --resume`으로 재개하세요.") 후 종료.
 
 ### `--resume` 플래그가 없는 경우 (자동 감지)

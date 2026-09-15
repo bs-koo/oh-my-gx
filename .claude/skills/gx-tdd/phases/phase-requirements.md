@@ -25,7 +25,7 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 - 저장 전에 **G-W-T 검증 게이트**(아래 섹션)를 정상 플로우와 동일하게 수행한다 (core에서도 RGR이 강제되므로 그 전제인 게이트도 유지).
 - 게이트 통과 후 사용자에게 전문 표시 + 승인 확인 (AskUserQuestion 1회: 승인/수정 요청).
 - 승인 → 저장 후 phase-implement로 진행.
-- 수정 요청 → 수정 후 **G-W-T 게이트 재수행 + 재승인**을 거쳐 저장한다 (수정이 형식을 깨뜨릴 수 있으므로 게이트는 저장 전 불변식이다).
+- 수정 요청 → 수정 선택 시 별도 후속 질문으로 수정할 부분을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영한다. 원 질문 UI Other에 직접 입력한 수정 답변은 별도 경로에서 사용한다. **G-W-T 게이트 재수행 + 재승인**을 거쳐 저장한다 (수정이 형식을 깨뜨릴 수 있으므로 게이트는 저장 전 불변식이다).
 
 핵심 모드가 아닌 경우 아래 전체 모드 플로우를 따른다.
 
@@ -99,14 +99,14 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
       header: "산출물 확인",
       options: [
         { label: "승인", description: "설계 단계로 진행" },
-        { label: "수정 요청", description: "Other로 이동해서 수정할 부분을 자연어로 입력해주세요" }
+        { label: "수정 요청", description: "별도 후속 질문에서 수정할 부분을 입력합니다" }
       ],
       multiSelect: false
     }]
   )
   ```
 - 승인 → phase-design으로 진행.
-- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 product-owner를 1회 더 호출 후 phase-design으로 진행.
+- 수정 요청 → 수정 선택 시 별도 후속 질문으로 수정할 부분을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영해 product-owner를 1회 더 호출한다. 원 질문 UI Other에 직접 입력한 수정 답변은 별도 경로에서 사용한다. G-W-T 게이트 재수행·재승인을 거친 뒤 phase-design으로 진행한다.
 
 ## G-W-T 검증 게이트 (Phase 완료 전 필수)
 

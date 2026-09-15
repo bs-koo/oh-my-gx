@@ -38,7 +38,7 @@ AskUserQuestion(
     header: "AC 확인",
     options: [
       { label: "승인", description: "구현 시작" },
-      { label: "수정 요청", description: "Other로 이동해서 수정할 사항을 자연어로 입력해주세요" }
+      { label: "수정 요청", description: "별도 후속 질문에서 수정할 사항을 입력합니다" }
     ],
     multiSelect: false
   }]
@@ -46,7 +46,7 @@ AskUserQuestion(
 ```
 
 - **승인** → Step 1로 진행.
-- **수정 요청 또는 Other** → 입력 내용으로 ac.md를 갱신 후 재확인. 승인까지 반복한다.
+- **수정 요청** → 수정 선택 시 별도 후속 질문으로 수정할 사항을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영하여 ac.md를 갱신하고 재확인한다. 원 질문 UI Other에 수정 내용을 직접 입력했다면 그 답변을 사용한다. 승인까지 반복한다.
 
 ## Step 1: 구현
 

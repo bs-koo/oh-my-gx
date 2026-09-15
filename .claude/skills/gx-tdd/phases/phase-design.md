@@ -151,14 +151,14 @@ design-critic 결과 처리:
       header: "산출물 확인",
       options: [
         { label: "승인", description: "구현 단계로 진행" },
-        { label: "수정 요청", description: "Other로 이동해서 수정할 부분을 자연어로 입력해주세요" }
+        { label: "수정 요청", description: "별도 후속 질문에서 수정할 부분을 입력합니다" }
       ],
       multiSelect: false
     }]
   )
   ```
 - 승인 → phase-implement로 진행.
-- 수정 요청 → 후속 AskUserQuestion(자유입력)으로 수정 내용을 받아 다음 반복 진행.
+- 수정 요청 → 수정 선택 시 별도 후속 질문으로 수정할 부분을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영해 다음 반복으로 진행한다. 원 질문 UI Other에 직접 입력한 수정 답변은 별도 경로에서 사용한다.
 
 **2회 반복 후**: 최신 설계로 phase-implement를 진행한다. 미해결 질문이 있으면 기록한다.
 
