@@ -8,7 +8,7 @@
 2. 현재 API는 `spawn_agent(task_name, message, fork_turns, model, reasoning_effort)`다. 격리는 `fork_turns: "none"`을 쓴다. `agent_type`은 실제 스키마에 있을 때만 사용한다. 전체 이력 fork와 모델 override를 함께 요구하지 않는다.
 3. 역할 high/mid는 index에서 읽는다. 현재 후보는 high=`gpt-6-astra`/`high`, mid=`gpt-5.6-sol`/`medium`이다. **allowlist에 없는 모델은 호출하지 않는다.** 후보 부재 시 같은 허용 모델의 `high`/`medium`으로 구분한다. 허용 effort도 구분할 수 없으면 지원 제한을 보고한다. 태스크가 명시한 티어 예외와 eco의 architect high 유지 규칙을 우선한다.
 4. 자식 결과는 `wait_agent`로 받고 수정 라운드는 `followup_task`로 재개한다. 도구 수 제한이나 `agent_type` 부재를 역할 전달 생략의 이유로 삼지 않는다. 원래 태스크의 JSON/YAML 반환 계약을 보존한다.
-5. 질문은 제공된 async 도구 또는 해당 모드에서 허용된 동기 도구를 사용한다. 동기 질문에는 `id`를 넣고 UI가 제공하는 Other를 직접 옵션으로 추가하지 않는다. 응답 전에는 독립 작업만 수행한다. 자연어 fallback도 실제 답변을 기다린다. 확정된 자연어/async 결정은 아래 capture payload로 기록한다.
+5. 질문은 현재 모드에서 제공된 async 도구 또는 허용된 동기 도구를 사용한다. 동기 `request_user_input`이 Plan 모드에서만 제공되면 기본 모드에서 호출하지 않는다. Claude `AskUserQuestion.questions[]`를 Codex `request_user_input` 형식으로 옮길 때는 한 번에 질문 1~3개, 질문마다 선택지 2~3개로 제한한다. 각 질문에 `header`·`question`·`options`를 채우고, 같은 결정을 다시 물을 때도 유지되는 stable snake_case `id`를 Codex 변환 단계에서 추가한다. Claude 전용 `multiSelect`를 제거하고, 각 option에는 짧은 `label`과 한 문장의 `description`을 넣는다. 추천 option을 첫 번째에 놓고 label 끝에 `(Recommended)`를 붙인다. UI가 자유 입력을 제공하므로 Other를 직접 option으로 추가하지 않는다. 실제 도구 스키마가 이 문서보다 우선하며, 필드나 개수 제한이 다르면 노출된 스키마에 맞춘다. 응답 전에는 독립 작업만 수행하고 자연어 fallback도 실제 답변을 기다린다. 확정된 자연어/async 결정은 아래 capture payload로 기록한다.
 6. `Skill` 호출은 설치 목록의 해당 `SKILL.md`를 읽고 절차를 실행한다. verify/commit/pull-request의 검사와 중단 조건을 생략하지 않는다.
 7. Bash 코드는 Git Bash 또는 Bash를 명시해서 실행한다. PowerShell 명령은 PowerShell로 실행하고 작업 위치는 `workdir`로 지정한다. timeout 인자를 추측하지 않는다. `session_id`가 나오면 `write_stdin`으로 완료를 기다린다.
 8. `allowed-tools`와 index의 `tools`는 Codex의 권한 설정이 아니다. 역할 지침과 실제 도구 권한을 구분한다.
@@ -44,7 +44,7 @@ function reviewArguments({roleBody, roleTools, projectInstructions, taskPrompt, 
 실제 사용자 응답이 확정된 뒤 자연어/async 선택 결과를 UTF-8 JSON 파일에 쓰고, 설치된 GX 루트의 `.claude/hooks/codex_hook.py capture`에 stdin으로 전달한다. 경로는 **이 runtime 파일 위치에서** `../../../../.claude/hooks/codex_hook.py`로 찾을 수 있다. 소비 프로젝트의 `.claude/hooks`를 찾지 않는다. 이미 PostToolUse 훅이 같은 결정을 기록했다면 명시적 기록은 생략한다. 기록에 실패하면 stderr를 확인하고 실패를 드러내되 응답 전에 추측한 답을 기록하지 않는다.
 
 ```json
-{"tool_name":"request_user_input","cwd":"D:/consumer-project","tool_input":{"questions":[{"id":"verify_action","question":"검증 후 진행할까요?","options":[{"label":"검증 실행","description":"테스트를 실행합니다"}]}]},"tool_response":{"answers":{"verify_action":{"answers":["검증 실행"]}}}}
+{"tool_name":"request_user_input","cwd":"D:/consumer-project","tool_input":{"questions":[{"id":"verify_action","header":"검증 선택","question":"검증 후 진행할까요?","options":[{"label":"검증 실행 (Recommended)","description":"테스트를 실행하고 결과를 확인합니다."},{"label":"나중에 실행","description":"검증을 보류하고 이유를 기록합니다."}]}]},"tool_response":{"answers":{"verify_action":{"answers":["검증 실행 (Recommended)"]}}}}
 ```
 
 ## 경로·인코딩·Git
