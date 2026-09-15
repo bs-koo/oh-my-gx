@@ -105,6 +105,26 @@ class SkillInstructionLayoutTests(unittest.TestCase):
             with self.subTest(mode=relative):
                 self.assertIn("상대경로는 gx-context/SKILL.md 위치를 기준으로", self.text(directory / relative))
 
+    def test_scan_reads_b0_when_readme_is_missing_but_glossary_exists(self):
+        main = self.text(SKILLS / "gx-context/SKILL.md")
+        section = main.split("### A-3. 초안 생성", 1)[1].split("### A-4. 사용자 검토", 1)[0]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context = Path(temp_dir) / "context"
+            context.mkdir()
+            (context / "glossary.md").write_text("용어", encoding="utf-8")
+            self.assertFalse((context / "README.md").is_file())
+            self.assertTrue((context / "glossary.md").is_file())
+        self.assertIn("`context/README.md` 또는 `context/glossary.md`가 없으면", section)
+        self.assertLess(section.index('Read("modes/create.md")'), section.index("1. 도메인별 디렉토리 생성"))
+        self.assertIn('`Read("modes/create.md")`의 B-0과 동일하게 `context/README.md` 생성', section)
+
+    def test_manual_scan_choice_has_valid_description_and_reads_create_on_branch(self):
+        main = self.text(SKILLS / "gx-context/SKILL.md")
+        section = main.split("### A-0. 사용자 확인", 1)[1].split("### A-1. 프로젝트 구조 스캔", 1)[0]
+        self.assertIn('description: "질문에 답하며 도메인을 수동으로 생성합니다"', section)
+        self.assertNotIn('description: "`Read(', section)
+        self.assertIn('"수동 생성" → `Read("modes/create.md")` 후', section)
+
     def test_dev_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-dev")
 

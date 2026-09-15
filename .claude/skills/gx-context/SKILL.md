@@ -80,7 +80,7 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - `갱신` → `Read("modes/update.md")`
 - `동기화` → `Read("modes/sync.md")`
 
-`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때만 해당 mode 파일을 추가로 Read한다.
+`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 A-3에서 루트 README.md·glossary.md 초기화에 B-0 템플릿이 필요할 때, 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때만 해당 mode 파일을 추가로 Read한다.
 
 ---
 
@@ -98,13 +98,13 @@ AskUserQuestion(
     multiSelect: false,
     options: [
       { label: "자동 생성", description: "코드베이스 스캔으로 도메인 구조를 자동 생성합니다" },
-      { label: "수동 생성", description: "`Read("modes/create.md")`로 전환하여 수동 생성합니다" }
+      { label: "수동 생성", description: "질문에 답하며 도메인을 수동으로 생성합니다" }
     ]
   }]
 )
 ```
 - "자동 생성" → A-1로 진행
-- "수동 생성" → 모드 B(신규)로 전환하여 수동 생성
+- "수동 생성" → `Read("modes/create.md")` 후 모드 B(신규)로 전환하여 수동 생성
 
 ### A-1. 프로젝트 구조 스캔
 
@@ -129,10 +129,12 @@ AskUserQuestion(
 
 ### A-3. 초안 생성
 
+`context/README.md` 또는 `context/glossary.md`가 없으면 초기화 전에 `Read("modes/create.md")`로 B-0의 해당 루트 파일 템플릿을 읽는다. 두 파일이 모두 있으면 이 추가 Read를 생략한다.
+
 각 감지된 도메인에 대해:
 1. 도메인별 디렉토리 생성: `mkdir -p context/{도메인}/`
 2. `context/` 루트 파일 초기화 (필요시):
-   - `test -f context/README.md` 가 false인 경우, B-0과 동일하게 `context/README.md` 생성
+   - `test -f context/README.md` 가 false인 경우, `Read("modes/create.md")`의 B-0과 동일하게 `context/README.md` 생성
    - `test -f context/glossary.md` 가 false인 경우, `Read("modes/create.md")`의 B-0과 동일하게 `context/glossary.md` 생성
 3. 스캔 결과를 기반으로 각 문서 초안 작성:
    - **README.md**: 도메인 개요 (스캔에서 파악한 범위, 주요 기능)

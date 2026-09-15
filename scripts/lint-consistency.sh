@@ -662,8 +662,9 @@ grep -q 'W01 시작해줘' .claude/rules/skill-routing.md || fail "skill-routing
 grep -q '기존 파일이 있으면' <<< "$CONTEXT_SKILL_TEXT"   || fail "plan.md 저장 절에 신규/기존 분기 누락 (재계획 시 덮어쓰기 위험)"
 # S8: 재계획은 "대기는 재조정" 한 줄로 끝나면 안 된다. 겹침·불필요 판정과
 # 폐기 처리가 없으면 낡은 작업이 계획에 남아 의존 확인의 근거가 된다.
-grep -q '겹침' <<< "$CONTEXT_SKILL_TEXT"   || fail "재계획에 기존 작업 겹침 판정 누락"
-grep -q '폐기' <<< "$CONTEXT_SKILL_TEXT"   || fail "재계획에 불필요해진 작업 처리 누락"
+C_REPLAN_TEXT=$(sed -n '/^#### C-5-6\./,/^#### C-5-7\./p' .claude/skills/gx-context/modes/from-document.md)
+grep -qF '| **겹침** |' <<< "$C_REPLAN_TEXT"   || fail "재계획에 기존 작업 겹침 판정 누락"
+grep -qF '| **폐기** | 요구사항이 삭제되어' <<< "$C_REPLAN_TEXT"   || fail "재계획에 불필요해진 작업 처리 누락"
 grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 폐기 미등록"
 # S9: 온보딩 — 계획을 만든 뒤 어떻게 쓰는지, 계획이 있는데 그냥 요청했을 때
 # 무엇을 안내하는지가 없으면 사용자가 기능의 존재를 모른 채 지나간다.
