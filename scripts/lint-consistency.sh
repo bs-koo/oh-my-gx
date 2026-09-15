@@ -285,8 +285,8 @@ grep -q "구 버전 세션 방어" .claude/skills/gx-dev/phases/phase-setup.md \
 # 레거시·폐지 모드 잔존 금지 (v1.18.0: --hotfix 플래그·구 명칭 hotfix/light 완전 제거 — 자연어 '핫픽스'는 한글이라 무관)
 grep -rqi "hotfix" .claude/skills/gx-dev && fail "레거시 hotfix 잔존: gx-dev"
 grep -rqiE "\blight\b" .claude/skills/gx-dev && fail "구 명칭 light 잔존: gx-dev"
-grep -q "HOTFIX 모드" "$GXDEV" && fail "폐지된 HOTFIX 모드 잔존: $GXDEV"
-grep -q "경량 구현" "$GXDEV" && fail "폐지된 경량 구현 모드 잔존: $GXDEV"
+grep -q "HOTFIX 모드" <<< "$DEV_SKILL_TEXT" && fail "폐지된 HOTFIX 모드 잔존: gx-dev 실행 계약"
+grep -q "경량 구현" <<< "$DEV_SKILL_TEXT" && fail "폐지된 경량 구현 모드 잔존: gx-dev 실행 계약"
 [ "$FAIL" -eq 0 ] && ok "CORE 경로·Gate 필수·산출물 계약·구 버전 방어·폐지 모드 부재 확인"
 
 echo "[13/36] gx-tdd CORE 모드 계약 정합"
