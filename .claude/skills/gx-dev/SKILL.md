@@ -680,13 +680,13 @@ AskUserQuestion(
     header: "산출물 확인",
     options: [
       { label: "승인", description: "다음 단계로 진행" },
-      { label: "수정 요청", description: "Other로 이동해서 수정할 사항을 자연어로 입력해주세요" }
+      { label: "수정 요청", description: "선택하면 후속 질문에서 수정할 사항을 묻습니다" }
     ],
     multiSelect: false
   }]
 )
 ```
-사용자가 "수정 요청"이나 Other를 선택하면 수정 내용을 직접 입력받는다.
+"수정 요청" 선택 시 후속 질문으로 수정 내용을 받고 실제 답변을 기다린다. 원 질문 UI Other에 입력한 내용은 바로 처리한다.
 
 ---
 
