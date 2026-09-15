@@ -80,7 +80,7 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - `갱신` → `Read("modes/update.md")`
 - `동기화` → `Read("modes/sync.md")`
 
-`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 A-3에서 루트 README.md·glossary.md 초기화에 B-0 템플릿이 필요할 때 또는 새 도메인의 status.md에 B-9-1 템플릿이 필요할 때, 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때만 해당 mode 파일을 추가로 Read한다.
+`스캔`은 아래 모드 A를 이 SKILL.md에서 계속 실행한다. 스캔 중 수동 생성으로 전환하거나 A-3에서 루트 README.md·glossary.md 초기화에 B-0 템플릿이 필요할 때 또는 새 도메인의 status.md에 B-9-1 템플릿이 필요할 때, 문서 기반 모드가 내부에서 신규·갱신 절차를 호출할 때, 신규 B-1에서 기존 도메인의 갱신을 선택할 때만 해당 mode 파일을 추가로 Read한다. B-1의 갱신 선택에서는 `Read("modes/update.md")` 후 모드 D를 실행하고 모드 B를 종료한다.
 
 ---
 

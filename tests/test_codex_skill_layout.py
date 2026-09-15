@@ -136,8 +136,12 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertIn("`<!-- gx-sync", section)
 
     def test_existing_domain_create_choice_hands_off_once_to_update(self):
+        main = self.text(SKILLS / "gx-context/SKILL.md")
+        load_rule = main.split("## 모드 실행", 1)[1].split("---", 1)[0]
         create = self.text(SKILLS / "gx-context/modes/create.md")
         section = create.split("### B-1. 도메인 확인", 1)[1].split("### B-2. 순차 검증 질문", 1)[0]
+        self.assertIn("신규 B-1에서 기존 도메인의 갱신을 선택할 때", load_rule)
+        self.assertIn("해당 mode 파일을 추가로 Read한다", load_rule)
         self.assertLess(section.index("`context/{도메인}/`이 이미 존재하면"), section.index('"갱신" → `Read("modes/update.md")`'))
         self.assertIn('"갱신" → `Read("modes/update.md")` 후 모드 D를 실행하고 모드 B를 종료한다.', section)
         self.assertIn('"취소" → 작업을 종료한다.', section)
