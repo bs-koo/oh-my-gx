@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.33.0 (2026-09-15)
+
+### Added
+
+- gx-context `--from`이 문서에서 추출한 요구사항을 `status.md` 원장에 안정적인 FR/NFR ID로 저장하고, 이후 문서 재분석에서 기존 ID와 사용자 수정을 보존한다.
+- context sync가 Git·SVN·PR 변경 cursor를 기록해 고정 조회 범위 밖의 변경을 다음 동기화에서 이어서 확인한다.
+- 핵심 스킬의 context, pipeline, question, layout 계약을 Windows·Linux Codex unittest와 골든 시나리오로 검사한다.
+
+### Changed
+
+- gx-dev·gx-tdd의 requirements/design 부분 phase가 setup을 먼저 실행하고 VCS 작업 루트의 절대경로를 사용한다. PRD가 없는 작업 루트에서는 requirements부터 진행한다.
+- SVN 저장소 ID와 Claude Code·Codex 질문 수·선택지·Other 응답·사용자 정정 반영 규칙을 gx-context·gx-dev·gx-tdd에서 맞춘다.
+- gx-context mode와 gx-dev·gx-tdd 실행 계약을 조건부 참조 파일로 분리해 필요한 지침만 읽도록 한다.
+
+Codex 실제 세션의 Q2 질문 동작과 릴리스 태그 설치는 별도 검증 항목이다.
+
 ## v1.32.0 (2026-09-14)
 
 Codex에 설치한 GX 플러그인으로 프로젝트 설정부터 TDD, native 교차 리뷰, verify까지 실행할 수 있도록 하네스 차이를 처리한다. Windows Codex CLI 0.154.0에서 실제 설치·모델·훅을 검증하고, 실패와 수정 후 재검증을 구분해 기록했다. Claude Code의 기존 실행 경로는 유지한다.

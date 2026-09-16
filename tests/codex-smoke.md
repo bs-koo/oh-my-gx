@@ -16,12 +16,15 @@ Windows 예시: `codex.cmd plugin marketplace add bs-koo/oh-my-gx`, `codex.cmd p
 
 R2는 상세 tool trace가 없으면 `src 미열람`을 **미확인**으로 기록한다. prod 해시 불변만으로 읽기 격리를 입증하지 않는다. 모델/effort 티어도 하네스 이벤트가 제공한 값만 실측으로 적는다. 결과 보고서 파일을 쓰지 못하는 읽기 전용 역할은 자식 반환을 부모가 저장한다.
 
+Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 각각 실행한다. gx-context에는 문서 기반 개방형 답변이 필요한 입력을 주고 UI Other에 답한다. gx-dev에는 모드·프로파일 선택이 필요한 입력을 주고 실제 선택에 답한다. 두 경우 모두 표시된 질문·선택지와 답변 전후 도구 trace, 같은 질문 id로 남은 `codex_hook.py capture` 결정 기록을 보관한다. 질문이 Plan 모드에서만 제공되거나 자연어 질문으로 표시되면 사용한 모드·도구와 실제 답변을 따로 기록한다. 실제 세션을 실행하지 않은 경우 Q2는 `미실행`이다.
+
 | ID | 입력·환경 | 필수 증거 | 상태 |
 |---|---|---|---|
 | R1 | 고의적 AC 위반 fixture를 reviewer child에 전달 | spec 판정이 quality보다 앞섬; 코드 불변; 두 verdict 순서·내용 | PASS |
 | R2 | red-writer에 실패 테스트 추가 요청 | 구현 src 미열람 trace; prod 해시 불변; 실제 RED 테스트 실패 | PARTIAL (src 미열람 미확인) |
 | R3 | 작은 한국어 문단을 humanizer strict로 처리 | fidelity/naturalness 서로 다른 child id; `04_fidelity.json`의 `audit_verdict`, `05_naturalness.json`의 `verdict` | 역할 분리 확인 / strict 재작성 필요 |
 | Q1 | 기본 모드에서 선택 질문 | 실제 답변 전 의존 작업 없음; 질문 id/선택지/실제 답변의 결정 기록 보존 | 수정 후 PASS |
+| Q2 | gx-context 문서 기반 개방형 질문과 gx-dev 모드·프로파일 질문 | 각 질문의 stable snake_case id; 질문 3개 이하; 질문별 선택지 3개 이하; 명시적 Other option 0개; UI Other 자유 입력과 선택 답변의 decision capture가 같은 id로 기록됨 | 미실행 (1.33.0 후보에서도 UI Other·capture 본시험 미완료) |
 
 ## 보호 훅·커밋
 
@@ -41,3 +44,15 @@ Claude companion을 설치하지 않은 임시 소비 프로젝트에서 `--advi
 ## 2026-09-14 추가 결과
 
 외부 Codex runner는 호스트에서 실제 read-only 리뷰에 성공했다. 부모 Codex 샌드박스의 중첩 CLI는 홈 임시 파일 권한으로 실패했으며, 전체 흐름 2·3회차는 명시한 `--advisor native`를 사용했다. Ralph final-3는 구현·테스트·build·유효 지문 뒤 커밋 권한 오류를 BLOCKED(exit 2)로 반환했다. 최종 산출물 제외 보완은 임시 Git 스테이징으로 별도 검증했다. 전체 흐름 3회의 실패·수정 이력, 역할·토큰·시간 및 미측정 항목은 실측 보고서를 따른다.
+
+## 1.33.0 후보 후속 검증 (2026-09-16)
+
+후보 브랜치 `release/core-skills-hardening`을 `--ref`로 지정해 Git marketplace를 추가하고, 인증된 Codex 검증 홈에 `oh-my-gx@oh-my-gx` 1.33.0을 설치했다. 설치 cache와 후보 snapshot HEAD는 [실측 보고서](../docs/reports/2026-09-15-core-skills-codex-validation.md)에 기록했다. 임시 소비 프로젝트의 `AGENTS.md`는 복사하지 않았다.
+
+| ID | 실제 시도 | 결과 |
+|---|---|---|
+| S45 | `src/service`에서 gx-tdd `--phase design` | 미실행: 실제 세션은 시작했으나 스킬 파일 읽기 전 Codex `exec_command` 도구 초기화가 반복 실패해 setup·design 증거가 없다. |
+| S46 | gx-context `--from` 질문 | 미실행: 1.33.0 스킬 읽기는 확인했으나 중첩 cwd의 경로·`context/` 모드 전제가 맞지 않아 본시험 질문·결정까지 진행하지 못했다. |
+| Q2 | gx-context UI Other·id capture와 gx-dev 선택 답변 | 미실행: UI Other 입력, 동일 id의 `codex_hook.py capture`, gx-dev 질문 세션이 없다. |
+
+`gx-context`는 현재 caller cwd의 `context/`와 `--from` 상대경로를 사용한다. 임시 프로젝트의 `context/`와 `requirements/order.md`가 루트에 있으면 gx-context smoke는 프로젝트 루트에서 시작한다. gx-tdd의 중첩 cwd 검증은 별도 시나리오로 유지한다. 이 후보의 런타임 차단과 중첩 경로 관찰은 단위 테스트 PASS로 대체하지 않는다.
