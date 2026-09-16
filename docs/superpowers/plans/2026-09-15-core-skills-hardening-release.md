@@ -180,6 +180,7 @@ Expected: diff 오류 없음. status는 깨끗하거나 의도한 검증 보고�
 Windows PowerShell:
 
 ```powershell
+$releaseWorktree = (git rev-parse --show-toplevel | Out-String).Trim()
 $caseRoot = Join-Path $env:TEMP 'gx-core-skills-1330'
 New-Item -ItemType Directory -Force -Path (Join-Path $caseRoot 'src/service') | Out-Null
 Set-Location $caseRoot
@@ -194,12 +195,12 @@ git config user.name 'GX Smoke'
 - [ ] **Step 2: Git source plugin을 깨끗하게 설치한다**
 
 ```powershell
-codex.cmd plugin marketplace add bs-koo/oh-my-gx
+codex.cmd plugin marketplace add bs-koo/oh-my-gx --ref release/core-skills-hardening
 codex.cmd plugin add oh-my-gx@oh-my-gx
 codex.cmd plugin list --json
 ```
 
-설치 목록에서 version `1.33.0`, cache 절대경로, GX 스킬 목록을 기록한다.
+설치 목록에서 version `1.33.0`, cache 절대경로, GX 스킬 목록과 marketplace의 후보 브랜치 ref를 기록한다. 기본 브랜치의 이전 버전을 설치해 후보 검증으로 계산하지 않는다.
 
 - [ ] **Step 3: 하위 디렉터리 phase와 질문을 실제 세션에서 확인한다**
 
@@ -221,17 +222,20 @@ $gx-context 주문 --from requirements/order.md
 
 - [ ] **Step 4: 실제 명령값으로 검증 보고서 골격을 생성하고 결과를 채운다**
 
+Step 1과 같은 PowerShell 세션에서 실행한다. 보고서는 임시 소비 프로젝트가 아니라 `$releaseWorktree`에 쓴다.
+
 ```powershell
 $codexVersion = (codex.cmd --version | Out-String).Trim()
 $pluginList = (codex.cmd plugin list --json | Out-String).Trim()
-$repoRoot = (git rev-parse --show-toplevel | Out-String).Trim()
+$consumerRoot = (git -C $caseRoot rev-parse --show-toplevel | Out-String).Trim()
+$smokeDate = Get-Date -Format 'yyyy-MM-dd'
 $report = @"
 # 1.33.0 핵심 스킬 Codex 검증
 
-- 일시: 2026-09-15
+- 일시: $smokeDate
 - OS: Windows
 - Codex CLI: $codexVersion
-- 테스트 저장소: $repoRoot
+- 테스트 저장소: $consumerRoot
 
 ## 설치 목록 원문
 
@@ -246,7 +250,7 @@ $pluginList
 | decision capture | 미실행 | decisions.md의 question id와 답변을 기록한다 |
 "@
 [IO.File]::WriteAllText(
-  (Join-Path $repoRoot 'docs/reports/2026-09-15-core-skills-codex-validation.md'),
+  (Join-Path $releaseWorktree 'docs/reports/2026-09-15-core-skills-codex-validation.md'),
   $report,
   [Text.UTF8Encoding]::new($false)
 )
