@@ -203,12 +203,14 @@ codex.cmd plugin list --json
 
 - [ ] **Step 3: 하위 디렉터리 phase와 질문을 실제 세션에서 확인한다**
 
-`src/service`에서 다음 두 입력을 각각 새 Codex 세션으로 실행한다.
+`gx-tdd`는 `src/service`에서, `gx-context`는 저장소 루트에서 각각 새 Codex 세션으로 실행한다. `gx-context`의 `context/` 모드 판별은 호출 위치를 기준으로 하므로 루트의 기존 컨텍스트를 확인하려면 루트에서 시작한다.
 
 ```text
 $gx-tdd 주문 검증 --phase design
 $gx-context 주문 --from requirements/order.md
 ```
+
+`--from` 입력 파일은 `gx-context` 호출 위치인 저장소 루트에서 상대경로로 지정한다.
 
 필수 증거:
 
