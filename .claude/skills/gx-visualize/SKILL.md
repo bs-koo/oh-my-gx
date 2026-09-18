@@ -110,7 +110,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 - `--domain`을 주면 그 도메인만 그린다. 생략하면 `split_by_domain()`이 찾은 전 도메인을 각각 그린다.
 
 1. `scripts/merge_map.py`의 `changed_paths`로 변경·삭제 파일을 구한다. `--scope session`이면 이번 사이클 diff의 파일로 제한하고 병합 없이 그 결과만 렌더링한다.
-2. `scripts/scan_entrypoints.py`로 그 파일들만 스캔한다. 매니페스트가 없으면 전체를 스캔하고, 이것이 최초 전체 스캔임을 사용자에게 먼저 알린다.
+2. `scripts/scan_entrypoints.py`로 그 파일들만 스캔한다. 매니페스트가 없으면 전체를 스캔하고, 이것이 최초 전체 스캔임을 사용자에게 먼저 알린다. `scan()`은 UTF-8로 읽지 못한 소스를 CP949로 재시도한다(오래된 한국어 JSP·Java 코드베이스에 흔하다). 둘 다 실패한 파일은 크래시시키지 않고 결과의 `skipped`에 담아 건너뛴다 — 조용히 버리지 않고 사용자에게 보고한다.
 3. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
 4. `--scope all`이면 `scripts/merge_map.py`로 이전 IR과 병합한 뒤 `split_by_domain()`으로 도메인별 IR로 나눈다. `--scope session`은 병합도 분할도 하지 않는다 — 스냅샷이므로 누적 IR과 매니페스트를 건드리지 않는다.
 5. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.

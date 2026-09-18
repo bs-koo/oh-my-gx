@@ -14,9 +14,25 @@ VIEWS = {"trace", "progress", "impact", "service", "sequence"}
 EVIDENCE_KINDS = {"artifact", "code", "test", "command", "design", "inferred"}
 LOCATOR_TYPES = {"xlsx", "pdf"}
 
+_FALLBACK_ENCODING = "cp949"
+
 
 def _error(path: str, message: str) -> str:
     return f"{path}: {message}"
+
+
+def _read_evidence_source(path: Path) -> str:
+    """Read a cited evidence source file, falling back to cp949 for legacy Korean sources.
+
+    오래된 한국어 JSP·Java 코드베이스에는 CP949로 저장된 파일이 섞여 있는 경우가 흔하다.
+    utf-8-sig를 먼저 시도하고 실패하면 cp949로 재시도한다. 둘 다 실패하면 그 예외를
+    그대로 올려 호출자의 기존 "근거 파일을 읽지 못했다" 처리 경로를 타게 한다 -
+    errors="replace"로 문자를 조용히 뭉개지 않는다.
+    """
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        return path.read_text(encoding=_FALLBACK_ENCODING)
 
 
 def _reject_constant(value: str) -> None:
@@ -163,7 +179,7 @@ def validate(path: Path | str, project_root: Path | str | None = None) -> dict[s
                 errors.append((f"{ev_path}.line", "must be a positive integer"))
                 continue
             try:
-                line_count = len(evidence_path.read_text(encoding="utf-8-sig").splitlines())
+                line_count = len(_read_evidence_source(evidence_path).splitlines())
             except (OSError, UnicodeError) as exc:
                 errors.append((f"{ev_path}.file", f"cannot read evidence file: {exc}"))
             else:

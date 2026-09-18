@@ -2,6 +2,7 @@ import importlib.util
 import json
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-java"
@@ -257,6 +258,33 @@ class PathCollisionEdgeTests(unittest.TestCase):
             len(requests_edges),
             "a path shared by two unrelated api nodes must not be guessed - the edge should be dropped",
         )
+
+
+class LegacyEncodingTests(unittest.TestCase):
+    """오래된 한국어 JSP·Java 코드베이스는 CP949로 저장된 파일이 섞여 있는 경우가 흔하다
+    (실측: GSEED Gseed_Web_Renew, JSP 81개 중 2개가 CP949). utf-8로만 읽으면
+    UnicodeDecodeError가 스캔 전체를 중단시킨다 - 파일 하나 때문에 나머지 수백 개의
+    결과까지 잃는 것은 정직하지 않다."""
+
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_cp949_encoded_jsp_still_yields_a_screen_node(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "legacy.jsp").write_bytes("<html>한글 화면</html>".encode("cp949"))
+            result = self.scan(root)
+        screens = [n for n in result["nodes"] if n["kind"] == "screen"]
+        self.assertEqual(1, len(screens))
+        self.assertEqual([], result["skipped"])
+
+    def test_file_undecodable_in_either_encoding_is_skipped_not_raised(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "broken.jsp").write_bytes(b"\xff\xfe\x00\x01")
+            result = self.scan(root)  # must not raise
+        self.assertEqual([], result["nodes"])
+        self.assertEqual(["broken.jsp"], result["skipped"])
 
 
 if __name__ == "__main__":

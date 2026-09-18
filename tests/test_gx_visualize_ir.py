@@ -110,6 +110,20 @@ class VisualIrValidationTests(unittest.TestCase):
         self.assertEqual(receipt["edge_count"], 1)
         self.assertEqual(receipt["missing_inputs"], [])
 
+    def test_cp949_evidence_source_line_count_is_still_checked(self):
+        # 오래된 한국어 JSP·Java 코드베이스에는 CP949로 저장된 파일이 섞여 있는 경우가
+        # 흔하다 - utf-8로만 읽으면 근거 파일을 읽지 못했다는 거짓 에러가 나서 실제로는
+        # 유효한 IR을 실패로 판정한다.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evidence = root / "legacy.jsp"
+            evidence.write_bytes("첫줄\n둘째줄\n한글 화면\n".encode("cp949"))
+            payload = self.base_ir()
+            payload["nodes"][0]["evidence"] = [{"file": "legacy.jsp", "line": 2, "kind": "code"}]
+            receipt = validator.validate(self.write_ir(payload, root))
+        self.assertEqual(receipt["status"], "valid")
+        self.assertEqual(receipt["errors"], [])
+
     def test_project_root_relative_evidence_supports_real_dev_visual_layout(self):
         ir_path = PROJECT_FIXTURE / ".dev" / "feat-energy" / "visual" / "trace.json"
 

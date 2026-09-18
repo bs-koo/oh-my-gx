@@ -41,6 +41,8 @@ _CLASS_RE = re.compile(r"\b(?:class|interface)\s+(\w+)")
 _FIELD_RE = re.compile(r"\bprivate\s+(?:final\s+)?(\w+)\s+\w+\s*;")
 _COMMENT_OR_STRING_RE = re.compile(r'"(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/', re.DOTALL)
 
+_FALLBACK_ENCODING = "cp949"
+
 
 def node_id(kind: str, rel_path: str, symbol: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9]+", "-", rel_path).strip("-")
@@ -53,6 +55,24 @@ def _rel(path: Path, root: Path) -> str:
 
 def _is_excluded(path: Path, root: Path) -> bool:
     return any(part in EXCLUDED_DIRS for part in path.relative_to(root).parts[:-1])
+
+
+def _read_source(path: Path) -> str | None:
+    """Read a scanned source file, falling back to cp949 for legacy Korean sources.
+
+    오래된 한국어 JSP·Java 코드베이스에는 CP949로 저장된 파일이 섞여 있는 경우가 흔하다
+    (실측: GSEED Gseed_Web_Renew, JSP 81개 중 2개). utf-8을 먼저 시도하고 실패하면
+    cp949로 재시도한다. 둘 다 실패하면 errors="replace"로 문자를 조용히 뭉개는 대신
+    None을 반환해, 호출자가 그 파일을 건너뛰고 기록하게 한다.
+    """
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        pass
+    try:
+        return path.read_text(encoding=_FALLBACK_ENCODING)
+    except UnicodeDecodeError:
+        return None
 
 
 def _node(kind: str, rel_path: str, symbol: str, label: str, line: int, technical: str | None = None) -> dict[str, Any]:
@@ -100,8 +120,10 @@ def _class_kind(text: str) -> str | None:
     return None
 
 
-def _scan_jsp(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    text = path.read_text(encoding="utf-8")
+def _scan_jsp(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
+    text = _read_source(path)
+    if text is None:
+        return None
     rel_path = _rel(path, root)
     symbol = path.stem
     node = _node("screen", rel_path, symbol, rel_path, 1, rel_path)
@@ -135,8 +157,10 @@ def _scan_servlet(path: Path, root: Path, text: str) -> tuple[list[dict[str, Any
     return nodes, edges
 
 
-def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    text = path.read_text(encoding="utf-8")
+def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
+    text = _read_source(path)
+    if text is None:
+        return None
     rel_path = _rel(path, root)
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
@@ -155,8 +179,10 @@ def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list
     return [nodes[key] for key in sorted(nodes)], edges
 
 
-def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    text = path.read_text(encoding="utf-8")
+def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
+    text = _read_source(path)
+    if text is None:
+        return None
     stripped_text = _strip_comments(text)
     lines = stripped_text.splitlines()
     rel_path = _rel(path, root)
@@ -292,6 +318,7 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
     node_ids_seen: set[str] = set()
     raw_edges: list[dict[str, Any]] = []
     files: dict[str, list[str]] = {}
+    skipped: list[str] = []
 
     for path in candidates:
         if not path.is_file():
@@ -299,15 +326,23 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
         if _is_excluded(path, root):
             continue
         if path.suffix == ".jsp":
-            file_nodes, file_edges = _scan_jsp(path, root)
+            scanned = _scan_jsp(path, root)
         elif path.suffix == ".xml":
-            file_nodes, file_edges = _scan_mapper_xml(path, root)
+            scanned = _scan_mapper_xml(path, root)
         else:
-            stripped_text = _strip_comments(path.read_text(encoding="utf-8"))
-            if _SERVLET_RE.search(stripped_text):
-                file_nodes, file_edges = _scan_servlet(path, root, stripped_text)
+            text = _read_source(path)
+            if text is None:
+                scanned = None
             else:
-                file_nodes, file_edges = _scan_java(path, root)
+                stripped_text = _strip_comments(text)
+                if _SERVLET_RE.search(stripped_text):
+                    scanned = _scan_servlet(path, root, stripped_text)
+                else:
+                    scanned = _scan_java(path, root)
+        if scanned is None:
+            skipped.append(_rel(path, root))
+            continue
+        file_nodes, file_edges = scanned
         if not file_nodes:
             continue
         rel_path = _rel(path, root)
@@ -328,7 +363,12 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
             stem = Path(edge["source"]).stem.replace("Mapper", "DAO")
             edge["source"] = dao_by_stem.get(stem, dao_by_stem.get(Path(edge["source"]).stem, edge["source"]))
 
-    return {"nodes": nodes, "edges": _resolve_edges(nodes, raw_edges), "files": dict(sorted(files.items()))}
+    return {
+        "nodes": nodes,
+        "edges": _resolve_edges(nodes, raw_edges),
+        "files": dict(sorted(files.items())),
+        "skipped": sorted(skipped),
+    }
 
 
 def main() -> int:
