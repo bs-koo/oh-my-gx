@@ -36,16 +36,25 @@ KIND_TO_COL = {
 
 MAX_SOURCES = 3
 
-# 다음 세 상수는 Archify의 architecture 렌더러가 label 적합성을 판정하는 공식을
-# 그대로 옮긴 것이다(~/.agents/skills/archify/renderers/architecture/render-architecture.mjs:65,
-# :366-368). 컴포넌트 기본 크기는 그 렌더러 안에 하드코딩돼 있고 layout.cellW/cellH와는
-# 무관하다: `estLabelW = textUnits(label) * 6.6; estLabelW > width + 8`이면 검증이
-# 실패한다. sublabel·tag는 같은 파일 :372-382에서 minimumNodeTextWidth로 축소 구제를
-# 받으므로 이 계산에 넣지 않는다.
+# 다음 상수는 Archify architecture 렌더러의 실제 판정 공식을 그대로 옮긴 것이다
+# (~/.agents/skills/archify/renderers/architecture/render-architecture.mjs:45-50,
+# :366-368, :372-386). 컴포넌트 기본 크기는 그 렌더러 안에 하드코딩돼 있고
+# layout.cellW/cellH와는 무관하다: `estLabelW = textUnits(label) * 6.6; estLabelW >
+# width + 8`이면 검증이 실패한다.
+#
+# sublabel·tag는 shrink-to-fit 구제를 받지만(같은 파일 :372-386이 위임하는
+# renderers/shared/text-fit.mjs:23-26,42-44) 9px에서 `sublabelMinimum`(6px)까지만
+# 줄어든다 — `minimumNodeTextWidth = textUnits(text) * 6 * widthFactor(0.6)`가
+# `width - 8`(availableNodeTextWidth)을 넘으면 그 아래로는 줄지 않고 검증이 실패한다.
+# 실측 사례(2026-09-18): `GET /adm/v1/reb/versions/{targetGrcodeCd}/download/by-
+# building-pk`처럼 긴 API 경로가 이 하한을 넘는다. 그래서 폭은 label 조건과 sublabel
+# 조건의 최댓값이어야 한다.
 _DEFAULT_COMPONENT_WIDTH = 120
 _DEFAULT_COMPONENT_HEIGHT = 60
 _LABEL_WIDTH_PER_UNIT = 6.6
 _LABEL_FIT_MARGIN = 8
+_SUBLABEL_WIDTH_PER_UNIT = 6
+_SUBLABEL_MIN_SCALE = 0.6
 
 # 그리드 칸 간격 기본값. renderers/architecture/render-architecture.mjs:384-392의
 # rectsOverlap(a, b, 8)이 모든 컴포넌트 쌍에 적용되므로, 같은 행에서 옆 열과 맞닿는
@@ -74,16 +83,22 @@ def text_units(text: str) -> int:
     return sum(2 if _FULLWIDTH_RE.match(ch) else 1 for ch in text)
 
 
-def _label_width(label: str) -> int:
-    """Minimum component width `label` needs to pass Archify's fit check, rounded up."""
-    return math.ceil(text_units(label) * _LABEL_WIDTH_PER_UNIT - _LABEL_FIT_MARGIN)
+def _label_width(label: str) -> float:
+    """Minimum component width `label` needs to pass Archify's fit check."""
+    return text_units(label) * _LABEL_WIDTH_PER_UNIT - _LABEL_FIT_MARGIN
 
 
-def _component_size(label: str) -> list[int] | None:
-    """`size` override for `label`, or `None` when the default 120x60 box already fits it."""
-    if _label_width(label) <= _DEFAULT_COMPONENT_WIDTH:
+def _sublabel_width(sublabel: str) -> float:
+    """Minimum component width `sublabel` still needs once shrunk to its 6px legible floor."""
+    return text_units(sublabel) * _SUBLABEL_WIDTH_PER_UNIT * _SUBLABEL_MIN_SCALE + _LABEL_FIT_MARGIN
+
+
+def _component_size(label: str, sublabel: str) -> list[int] | None:
+    """`size` override for `label`/`sublabel`, or `None` when the default 120x60 box fits both."""
+    width = max(_DEFAULT_COMPONENT_WIDTH, math.ceil(max(_label_width(label), _sublabel_width(sublabel))))
+    if width == _DEFAULT_COMPONENT_WIDTH:
         return None
-    return [_label_width(label), _DEFAULT_COMPONENT_HEIGHT]
+    return [width, _DEFAULT_COMPONENT_HEIGHT]
 
 
 def _sources(evidence: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
@@ -125,7 +140,7 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
         "row": row,
         "col": col,
     }
-    size = _component_size(node["label"])
+    size = _component_size(node["label"], node.get("technical_label", ""))
     if size is not None:
         component["size"] = size
     if "technical_label" in node:
@@ -137,10 +152,19 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
     return component
 
 
-def _connection(edge: dict[str, Any]) -> dict[str, Any]:
+def _connection(edge: dict[str, Any], node_col: dict[str, int], row_of: dict[str, int]) -> dict[str, Any]:
     connection: dict[str, Any] = {"from": edge["source"], "to": edge["target"]}
     if "relation" in edge:
         connection["label"] = edge["relation"]
+    source, target = edge["source"], edge["target"]
+    # 같은 열 안의 엣지(예: service -> service, repository -> repository)는 Archify의
+    # clean-flow/endpoint-side-direction 규칙이 거부한다(실측: auth 모듈 2건). 같은 열
+    # 호출도 실제 관계이므로 버리지 않고 fromSide/toSide를 명시해 세로 방향임을 알린다.
+    if node_col.get(source) == node_col.get(target):
+        if row_of.get(target, 0) > row_of.get(source, 0):
+            connection["fromSide"], connection["toSide"] = "bottom", "top"
+        else:
+            connection["fromSide"], connection["toSide"] = "top", "bottom"
     return connection
 
 
@@ -195,7 +219,7 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
         "meta": meta,
         "layout": layout,
         "components": components,
-        "connections": [_connection(edge) for edge in edges],
+        "connections": [_connection(edge, node_col, row_of) for edge in edges],
     }
 
 

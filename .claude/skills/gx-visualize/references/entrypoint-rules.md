@@ -15,7 +15,7 @@
 ## edge relation 값
 
 - `requests`: screen → api
-- `calls`: api → service, service → repository
+- `calls`: api → service, service → repository. 컬렉터가 필드로 찾은 협력자는 계층을 가리지 않으므로 **같은 계층 안의 호출도 나온다**(`service → service`, `repository → repository`) — 예: 한 서비스가 다른 서비스나 매퍼를 필드로 갖는 경우.
 - `reads`·`writes`: repository → table (MyBatis `select`는 `reads`, `insert`·`update`·`delete`는 `writes`)
 
 ## 제약

@@ -120,6 +120,31 @@ CROSSED_CHAINS_IR = {
     ],
 }
 
+def _ir_same_layer_chain() -> dict:
+    # service -> service, repository -> repository는 실제로 존재한다(설계서 5.7.1,
+    # 실측: RefreshTokenRepository -> RefreshTokenMapper). 같은 열에 놓이므로
+    # KIND_TO_COL만으로는 방향을 구분할 수 없다.
+    return {
+        "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+        "nodes": [
+            {"id": "svc-a", "kind": "service", "label": "서비스A", "evidence": []},
+            {"id": "svc-b", "kind": "service", "label": "서비스B", "evidence": []},
+        ],
+        "edges": [{"id": "e1", "source": "svc-a", "target": "svc-b", "relation": "calls"}],
+    }
+
+
+def _ir_normal_chain() -> dict:
+    return {
+        "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+        "nodes": [
+            {"id": "api-a", "kind": "api", "label": "API", "evidence": []},
+            {"id": "svc-a", "kind": "service", "label": "서비스", "evidence": []},
+        ],
+        "edges": [{"id": "e1", "source": "api-a", "target": "svc-a", "relation": "calls"}],
+    }
+
+
 VALID_IR = {
     "schema_version": 1,
     "view": "service",
@@ -464,6 +489,16 @@ class ToArchifyTests(unittest.TestCase):
         second = self.to_archify(CROSSED_CHAINS_IR, "architecture")
         self.assertEqual(first, second)
 
+    def test_same_column_edge_gets_explicit_sides(self):
+        # service -> service, repository -> repository 는 실제로 존재한다(설계서 5.7.1).
+        conn = self.to_archify(_ir_same_layer_chain(), "architecture")[EDGE_KEY][0]
+        self.assertEqual(conn["fromSide"], "bottom")
+        self.assertEqual(conn["toSide"], "top")
+
+    def test_cross_column_edge_has_no_explicit_sides(self):
+        conn = self.to_archify(_ir_normal_chain(), "architecture")[EDGE_KEY][0]
+        self.assertNotIn("fromSide", conn)
+
     def test_cited_paths_collects_and_dedupes_code_evidence_files(self):
         # render_archify가 git dirty 검사를 이 목록에만 국한하므로(ruling 4, 라운드 2),
         # to_archify()가 실제로 sources에 실을 파일과 정확히 같아야 한다.
@@ -505,9 +540,14 @@ class ToArchifyTests(unittest.TestCase):
         # 기본 박스에 들어가면 size를 내보내지 않는다 — 불필요한 필드를 만들지 않는다
         self.assertNotIn("size", self.to_archify(_ir_with_label("로그인"), "architecture")[NODE_KEY][0])
 
-    def test_sublabel_length_does_not_force_size(self):
-        # sublabel에는 shrink-to-fit이 있으므로 길어도 size를 강제하지 않는다
-        ir = _ir_with_label("로그인", technical="POST /api/v1/authentication/login/session")
+    def test_long_sublabel_widens_the_box(self):
+        # sublabel은 6px까지만 줄고 그 아래로는 Archify가 문서를 거부한다.
+        ir = _ir_with_label("조회", technical="GET /adm/v1/reb/versions/{targetGrcodeCd}/download/by-building-pk")
+        c = self.to_archify(ir, "architecture")[NODE_KEY][0]
+        self.assertGreaterEqual(c["size"][0] - 8, _text_units(c["sublabel"]) * 6 * 0.6)
+
+    def test_short_sublabel_does_not_widen(self):
+        ir = _ir_with_label("조회", technical="GET /a")
         self.assertNotIn("size", self.to_archify(ir, "architecture")[NODE_KEY][0])
 
     def test_size_is_deterministic(self):

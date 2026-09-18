@@ -28,7 +28,7 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--input-
 - `--project-root`: evidence 경로를 해석하고 가둘 명시적 프로젝트 루트. 파이프라인 호출은 항상 `PROJECT_ROOT`를 전달한다.
 - `--scope`: `service`·`sequence` 뷰의 출력 위치를 가른다. 기본값은 `session`. 자세한 내용은 [누적 아키텍처 맵](#누적-아키텍처-맵)을 읽는다.
 - `--map-dir`: `--scope all`의 출력 디렉터리. 기본값은 `docs/architecture/`.
-- `--domain`: 라벨 보강에 쓸 `context/{도메인}/`를 명시한다. 생략하면 스캔 대상 파일 경로에서 도메인을 추정한다.
+- `--domain`: `context/{도메인}/`로 라벨을 보강하고, `--scope all`에서는 **그릴 도메인 선택**도 겸한다. 생략하면 스캔 대상 파일 경로에서 도메인을 추정하고 전 도메인을 그린다.
 - 잘못된 view나 backend는 허용 목록을 보여 주고 렌더링 전에 실패한다.
 
 명시 요청이 없으면 자동 실행하지 않는다. 직접 호출 외에 “시각화 포함”, “구조를 그림으로 보여줘”, “변경 영향도를 시각화해줘”도 명시 요청으로 본다.
@@ -94,18 +94,27 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 | scope | 위치 | 성격 |
 |---|---|---|
 | `session` | `${DEV_DIR}/visual/` | 그 시점 스냅샷, 갱신하지 않는다 |
-| `all` | `${MAP_DIR}/` (기본 `docs/architecture/`, `--map-dir`로 변경) | 항상 최신, 증분 갱신 |
+| `all` | `${MAP_DIR}/` (기본 `docs/architecture/`, `--map-dir`로 변경) | 항상 최신, 증분 갱신, 도메인별로 분할 |
 
 두 산출물을 **한 폴더에 섞지 않는다**. 세션 출력은 갱신되지 않으므로 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다.
 
 `--scope session` HTML 상단에는 **스냅샷 배너**를 넣는다 — 생성 시각과 `git rev-parse --short HEAD` 결과, 그리고 "이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다". `--scope all`에는 넣지 않는다.
 
+### 도메인 분할 (`--scope all`)
+
+실제 저장소 규모(86노드)를 한 장으로 그리면 Archify 검증이 대량으로 실패하고, 애초에 사람이 읽을 수도 없다(설계서 §5.7). 그래서 `--scope all`은 `scripts/split_domains.py`의 `split_by_domain()`으로 노드를 도메인별로 나눠 각각 별도 문서로 그린다. `--scope session`은 분할하지 않는다 — 세션 diff는 이미 작아서 나눌 필요가 없다.
+
+- 파일명은 `{domain}.ir.json`·`{domain}.html`이다(예: `auth.ir.json`, `auth.html`). `--scope all`에는 기존 `service.json`·`service.html` 단일 파일 규칙을 더 이상 적용하지 않는다.
+- 테이블 노드는 경로로 도메인을 판정하지 않고, 자신을 참조하는 모든 도메인에 복제된다. 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않으므로 조용히 지우지 않고 관련된 각 도메인 IR의 `missing_inputs`에 `cross-domain-edge`로 남기며, 보고에 건수를 포함한다.
+- **도메인마다 개별로 Archify에 넣어 판정한다 — 전부 성공 아니면 전부 실패로 묶지 않는다.** 한 저장소 안에서 어떤 도메인은 그림이 나오고 어떤 도메인은 표(폴백)로 떨어지는 것이 정상이며, 그 사실을 보고에 드러낸다. 실패한 도메인만 mermaid → static으로 폴백하고, 통과한 도메인의 그림은 그대로 둔다.
+- `--domain`을 주면 그 도메인만 그린다. 생략하면 `split_by_domain()`이 찾은 전 도메인을 각각 그린다.
+
 1. `scripts/merge_map.py`의 `changed_paths`로 변경·삭제 파일을 구한다. `--scope session`이면 이번 사이클 diff의 파일로 제한하고 병합 없이 그 결과만 렌더링한다.
 2. `scripts/scan_entrypoints.py`로 그 파일들만 스캔한다. 매니페스트가 없으면 전체를 스캔하고, 이것이 최초 전체 스캔임을 사용자에게 먼저 알린다.
 3. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
-4. `--scope all`이면 `scripts/merge_map.py`로 이전 IR과 병합한다. `--scope session`은 병합하지 않는다 — 스냅샷이므로 누적 IR과 매니페스트를 건드리지 않는다.
-5. `scripts/validate_ir.py`로 검증한다. **실패하면 이전 `${MAP_DIR}/service.ir.json`을 덮어쓰지 않는다.**
-6. 커밋 대상을 보고한다 — `--scope all`은 `${MAP_DIR}/service.ir.json`·`service.html`·`.scan-manifest.json`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 영수증은 어느 쪽도 커밋하지 않는다.
+4. `--scope all`이면 `scripts/merge_map.py`로 이전 IR과 병합한 뒤 `split_by_domain()`으로 도메인별 IR로 나눈다. `--scope session`은 병합도 분할도 하지 않는다 — 스냅샷이므로 누적 IR과 매니페스트를 건드리지 않는다.
+5. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.
+6. 커밋 대상을 보고한다 — `--scope all`은 도메인마다 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`과 공유 `.scan-manifest.json`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 영수증은 어느 쪽도 커밋하지 않는다.
 
 스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않는다. `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
 
