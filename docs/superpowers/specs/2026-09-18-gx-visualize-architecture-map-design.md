@@ -35,6 +35,18 @@
 - 파일 리네임 추적 (삭제 + 추가로 표현한다)
 - Java·JSP 외 언어의 스캐너 (후속 범위)
 
+### 후속 범위 — 연기된 Archify 다이어그램 타입 2종
+
+둘 다 사용자 확인을 거쳐 이번 범위에서 **명시적으로 연기**했다. 구현에 필요한 실측 사실을 여기 남긴다 — 나중에 다시 조사하지 않기 위함이다.
+
+**sequence** (2026-09-18 연기). `~/.agents/skills/archify/schemas/sequence.schema.json`은 `[schema_version, diagram_type, meta, participants, messages]`를 요구하고 `additionalProperties: false`이며 `components`·`connections`·`layout`을 **정의하지 않는다**. 즉 architecture 변환기를 재사용할 수 없고 participants/messages 전용 변환기가 필요하다. 그때까지 `sequence` view는 `_DIAGRAM_TYPES`에 없으므로 `not_applicable` 경로로 폴백한다. 연기 근거: 요구의 중심은 아키텍처 맵이며 반쯤 된 sequence 변환기보다 정확한 architecture 맵이 낫다.
+
+**dataflow** (2026-09-18 연기, 테이블 수준으로 범위 확정). 데이터가 어떻게 처리되어 어느 테이블에 저장되는지를 보여주는 뷰다.
+
+- Archify 쪽 요구: `dataflow.schema.json`의 필수는 `[schema_version, diagram_type, meta, stages, nodes, flows]`. `nodes` 필수는 `id, type, label, stage, row`, `flows` 필수는 `from, to, label`이고 `flows.classification`으로 민감도(PII 등)를 표시할 수 있다. `stages`는 파이프라인 단계(열)를 정의한다.
+- **우리가 이미 가진 것**: `scan_entrypoints.py`의 `_scan_mapper_xml`이 MyBatis 구문 단위로 테이블명과 방향을 뽑는다 — `select` → `reads`, `insert|update|delete` → `writes`. 따라서 "어느 기능이 어느 테이블을 읽고 쓰는가"는 추가 스캔 없이 기존 데이터를 재구성하면 된다. 이것이 테이블 수준 dataflow의 뼈대다.
+- **컬럼 수준은 범위 밖**이다. §8의 "SQL 본문을 IR에 싣지 않는다"는 규칙은 유지하되, 컬럼 식별자와 리터럴 값을 구분하는 정제 여지가 있다 — 위험한 것은 값(`WHERE ssn = '...'`)이고 컬럼명은 스키마 정보다. 다만 eGov MyBatis는 `SELECT *`와 동적 `<if>` SQL이 지배적이라 정규식으로는 부분만 추출되며, **부분을 완전한 것처럼 표시하면 부정확한 설계도가 된다.** 컬럼 수준을 하려면 추출 실패 지점을 "없음"과 구분해 표시하는 규약이 선행되어야 한다.
+
 ## 4. 결정 사항
 
 | # | 결정 | 근거 |
