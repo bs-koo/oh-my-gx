@@ -62,14 +62,26 @@ def _to_archify_module():
 
 
 def _git_repository_evidence(project_root: Path | str) -> dict[str, str] | None:
-    """Return {url, revision, link_mode} when project_root is a git checkout with a resolvable HEAD and origin.
+    """Return {url, revision, link_mode} when project_root is a clean git checkout with a resolvable HEAD and origin.
 
     Archify requires this pinned evidence to verify component.sources against the real
     repository (docs/reports/2026-09-18-archify-ir-schema.md §3.3). Returns None — not
     a failure — for non-git projects, so GX can still render without source evidence.
+
+    Also returns None when the working tree is dirty (git status --porcelain is
+    non-empty): a committed-but-modified file still passes Archify's blob-existence
+    check at HEAD, but a `line` cited from the working tree may no longer match the
+    committed content — a citation that looks verified but may be wrong. Requiring a
+    clean tree trades that silent risk for losing links on a dirty tree, which is
+    honest and reversible (commit or stash, then re-render).
     """
     root = str(project_root)
     try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, shell=False, check=False
+        )
+        if status.returncode != 0 or status.stdout.strip():
+            return None
         revision = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, shell=False, check=False
         )
@@ -105,17 +117,21 @@ def _view(ir_path: Path) -> str:
     return view if view in {"trace", "progress", "impact", "service", "sequence"} else "trace"
 
 
-_DIAGRAM_TYPES = {"service": "architecture", "sequence": "sequence"}
+_DIAGRAM_TYPES = {"service": "architecture"}
 
 
 def diagram_type(view: str) -> str | None:
     """Return the Archify diagram type for `view`, or None if Archify does not serve it.
 
-    Archify's architecture grid only has a mapping for the service view's 5-tier kind
-    vocabulary (screen/api/service/repository/table); trace/progress/impact carry an
-    unrelated kind vocabulary that collapses onto a single grid column and commonly
-    breaches Archify's fixed component width. None tells render_archify to skip the
-    Archify subprocess entirely rather than spend two calls guaranteed to fail.
+    Only `service` has a converter: Archify's architecture grid maps the service view's
+    5-tier kind vocabulary (screen/api/service/repository/table); trace/progress/impact
+    carry an unrelated kind vocabulary that collapses onto a single grid column and
+    commonly breaches Archify's fixed component width. `sequence` has no converter
+    either — to_archify only emits architecture-shaped documents (components/
+    connections), but Archify's sequence schema requires participants/messages and
+    rejects components/connections/layout outright; writing that converter is deferred.
+    None tells render_archify to skip the Archify subprocess entirely rather than spend
+    two calls guaranteed to fail.
     """
     return _DIAGRAM_TYPES.get(view)
 

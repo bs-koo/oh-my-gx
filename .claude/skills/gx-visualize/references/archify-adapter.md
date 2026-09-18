@@ -15,9 +15,9 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 
 ## Archify 명령 계약
 
-`diagram_type(view)`이 `service` → `architecture`, `sequence` → `sequence`로만 값을 반환한다. 그 외 뷰(`trace`/`progress`/`impact`)는 `None`을 반환하고, `render_archify`는 이를 **적용 대상 아님**으로 취급해 Archify subprocess를 아예 띄우지 않는다 — 이 뷰들의 kind 어휘는 5계층 grid 매핑 대상이 아니라서 시도해도 항상 레이아웃 검증에서 실패하기 때문이다 (근거: `docs/reports/2026-09-18-archify-ir-schema.md` §3.2, §5). 이때 receipt의 첫 `attempts` 항목은 `status: "not_applicable"`이고 `command`/`exit_code`는 `null`이다 — 실패가 아니라 애초에 시도하지 않았다는 뜻이다. 최상위 `status`도 `"not_applicable"`로 기록되고, 곧바로 폴백 렌더러가 산출물을 만든다.
+`diagram_type(view)`은 `service` → `architecture`로만 값을 반환한다. 그 외 뷰는 `None`을 반환하고, `render_archify`는 이를 **적용 대상 아님**으로 취급해 Archify subprocess를 아예 띄우지 않는다. `trace`/`progress`/`impact`는 kind 어휘가 5계층 grid 매핑 대상이 아니라서 시도해도 항상 레이아웃 검증에서 실패한다(근거: `docs/reports/2026-09-18-archify-ir-schema.md` §3.2, §5). `sequence`는 `to_archify.py`에 변환기가 아예 없다 — architecture 문서(`components`/`connections`)만 만드는데 Archify의 `sequence` 스키마는 `participants`/`messages`를 요구하고 `additionalProperties: false`라 architecture 문서를 그대로 거부한다; sequence 변환기는 이후로 미뤄졌다. 두 경우 모두 receipt의 첫 `attempts` 항목은 `status: "not_applicable"`이고 `command`/`exit_code`는 `null`이다 — 실패가 아니라 애초에 시도하지 않았다는 뜻이다. 최상위 `status`도 `"not_applicable"`로 기록되고, 곧바로 폴백 렌더러가 산출물을 만든다.
 
-`diagram-type`이 있는 경우(`service`/`sequence`)에만 아래 두 호출을 순서대로 추가한다. 입력은 원본 GX IR이 아니라 `to_archify.py`가 변환한 Archify 문서다 — GX IR(`nodes`/`edges`)과 Archify 스키마(`components`/`connections`)는 필드 이름을 공유하지 않는다.
+`diagram-type`이 있는 경우(현재는 `service`뿐)에만 아래 두 호출을 순서대로 추가한다. 입력은 원본 GX IR이 아니라 `to_archify.py`가 변환한 Archify 문서다 — GX IR(`nodes`/`edges`)과 Archify 스키마(`components`/`connections`)는 필드 이름을 공유하지 않는다.
 
 ```text
 <archify_command> validate <diagram-type> <converted.archify.json> --json
@@ -25,6 +25,8 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 ```
 
 `--repo-root`는 `architecture`에만 적용되고, 변환된 문서가 `component.sources`를 포함할 때만 붙는다(`render_archify`가 프로젝트의 실제 git HEAD/origin에서 계산 — 얻을 수 없으면 `sources`/`meta.repository`를 함께 비운다). IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
+
+`project_root`의 워킹 트리가 dirty(`git status --porcelain`이 비어 있지 않음)하면 HEAD/origin이 정상 조회되더라도 `repository`를 계산하지 않는다 — 커밋됐지만 수정된 파일은 Archify의 블롭 존재 검사는 통과하지만 인용한 `line`이 워킹 트리 기준이라 커밋 시점과 다를 수 있기 때문이다. 이 경우 클린 트리일 때와 마찬가지로 `sources`/`meta.repository`를 함께 비운다.
 
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.
 

@@ -41,6 +41,15 @@ TRACE_IR = {
     "edges": [],
 }
 
+SEQUENCE_IR = {
+    "schema_version": 1,
+    "view": "sequence",
+    "locale": "ko-KR",
+    "title": "호출 순서",
+    "nodes": [{"id": "n1", "kind": "participant", "label": "클라이언트", "status": "verified", "evidence": []}],
+    "edges": [],
+}
+
 
 def _single_node_ir(kind: str) -> dict:
     return {
@@ -155,11 +164,13 @@ class ArchifyCommandTests(unittest.TestCase):
     def test_service_view_maps_to_architecture_diagram_type(self):
         self.assertEqual("architecture", self.m.diagram_type("service"))
 
-    def test_sequence_view_maps_to_sequence_diagram_type(self):
-        self.assertEqual("sequence", self.m.diagram_type("sequence"))
+    def test_sequence_view_has_no_diagram_type(self):
+        # sequence는 archify participants/messages 변환기가 없다 — 이 계획 범위 밖으로
+        # 미뤄졌으므로(리뷰 라운드 1), architecture 문서를 잘못 보내지 않도록 None을 반환한다.
+        self.assertIsNone(self.m.diagram_type("sequence"))
 
     def test_non_service_or_sequence_views_have_no_diagram_type(self):
-        # Archify는 service/sequence만 지원한다 — 나머지 뷰는 애초에 시도 대상이 아니다.
+        # Archify는 service만 실제로 지원한다 — 나머지 뷰는 애초에 시도 대상이 아니다.
         for view in ("trace", "progress", "impact"):
             self.assertIsNone(self.m.diagram_type(view))
 
@@ -180,6 +191,21 @@ class ArchifyCommandTests(unittest.TestCase):
             self.assertEqual("not_applicable", receipt["status"])
             self.assertEqual("not_applicable", receipt["attempts"][0]["status"])
             self.assertIsNone(receipt["attempts"][0]["command"])
+
+    def test_sequence_view_skips_archify_subprocess_entirely(self):
+        # sequence도 diagram_type()이 None이므로 trace와 같은 skip 경로를 탄다 —
+        # archify가 이해 못 하는 architecture 문서를 보내 두 번 실패시키지 않는다.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ir_path = root / "sequence.json"
+            ir_path.write_text(json.dumps(SEQUENCE_IR, ensure_ascii=False), encoding="utf-8")
+            fake = _fake_archify(root)
+            out = root / "out"
+            self.m.render_archify(ir_path, out, ["python", str(fake)], project_root=root)
+
+            self.assertFalse((root / "argv.log").exists())
+            receipt = json.loads((out / "sequence.receipt.json").read_text(encoding="utf-8"))
+            self.assertEqual("not_applicable", receipt["status"])
 
     def test_validate_and_deliver_use_real_archify_signature(self):
         with TemporaryDirectory() as tmp:
@@ -238,6 +264,45 @@ class ArchifyCommandTests(unittest.TestCase):
             self.assertEqual("https://github.com/example/repo.git", evidence["url"])
             self.assertRegex(evidence["revision"], r"^[0-9a-f]{40}$")
             self.assertEqual("local-only", evidence["link_mode"])
+
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_dirty_tree_yields_no_repository_evidence(self):
+        # 커밋된 파일이라도 워킹 트리에서 수정됐으면 그 줄이 커밋 시점과 다를 수 있다 —
+        # Archify는 커밋된 리비전만 검증하므로 잘못된 근거를 정직해 보이게 만들 위험이 있다.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _init_git_repo(root, origin="https://github.com/example/repo.git")
+            (root / "a.txt").write_text("modified after commit", encoding="utf-8")
+            self.assertIsNone(self.m._git_repository_evidence(root))
+
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_repo_root_flag_is_passed_to_validate_and_deliver(self):
+        # deliver_command에서 *repo_root_args를 지워도 통과하던 기존 테스트들은 전부
+        # non-git tmpdir(플래그 부재)만 확인했다 — 여기서는 실제로 붙는 경우를 확인한다.
+        # project_root(git 체크아웃)와 ir_path/출력 디렉터리를 분리한다 — 같은 곳에 두면
+        # render_archify 자신이 쓰는 IR/영수증 파일이 트리를 dirty하게 만들어 이 테스트가
+        # 검증하려는 --repo-root 부착 자체가 항상 스킵된다(dirty-tree 판정, ruling 4).
+        with TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            project_root = tmp_root / "project"
+            project_root.mkdir()
+            _init_git_repo(project_root, origin="https://github.com/example/repo.git")
+            (project_root / "a.java").write_text("class A {}", encoding="utf-8")
+            subprocess.run(["git", "add", "a.java"], cwd=project_root, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "add evidence"], cwd=project_root, check=True)
+
+            work = tmp_root / "work"
+            work.mkdir()
+            ir_path = work / "service.json"
+            ir_path.write_text(json.dumps(VALID_IR, ensure_ascii=False), encoding="utf-8")
+            fake = _fake_archify(work)
+            out = work / "out"
+            self.m.render_archify(ir_path, out, ["python", str(fake)], project_root=project_root)
+
+            calls = [json.loads(line) for line in (work / "argv.log").read_text(encoding="utf-8").splitlines()]
+            self.assertIn("--repo-root", calls[0])
+            self.assertEqual(str(project_root), calls[0][calls[0].index("--repo-root") + 1])
+            self.assertIn("--repo-root", calls[1])
 
 
 class ToArchifyTests(unittest.TestCase):

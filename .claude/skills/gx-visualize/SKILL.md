@@ -103,7 +103,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 - `validation_status`: `verified|fallback|failed`
 - `missing_inputs`: 정렬된 누락 논리 입력 목록
 
-저수준 validator/renderer receipt의 `valid|fallback|failed`는 [GX 산출물 매핑](references/gx-mapping.md)의 표에 따라 report의 `verified|fallback|failed`로 정규화한다. `backend`는 요청값이나 최초 시도가 아니라 실제 HTML 생성자를 보고한다.
+저수준 validator/renderer receipt의 `valid|fallback|not_applicable|failed`는 [GX 산출물 매핑](references/gx-mapping.md)의 표에 따라 report의 `verified|fallback|failed`로 정규화한다 — `not_applicable`(Archify가 대상 view가 아니어서 애초에 시도하지 않음)도 `fallback`으로 올린다. `backend`는 요청값이나 최초 시도가 아니라 실제 HTML 생성자를 보고한다.
 
 ## 실패 계약
 

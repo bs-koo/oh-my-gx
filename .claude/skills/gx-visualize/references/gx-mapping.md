@@ -34,12 +34,14 @@
 
 ## 영수증 상태 정규화
 
-최종 report의 `validation_status`는 다음 세 상태만 사용한다. 저수준 validator/renderer receipt는 구현 계약에 따라 `valid`, `fallback`, `failed`를 사용할 수 있다.
+최종 report의 `validation_status`는 다음 세 상태만 사용한다. 저수준 validator/renderer receipt는 구현 계약에 따라 `valid`, `fallback`, `not_applicable`, `failed`를 사용할 수 있다.
 
 | 상태 | 판정 | 사용자에게 보고할 내용 |
 |---|---|---|
 | `verified` | IR이 valid이고 선택된 백엔드가 non-empty HTML을 만들었으며 경로가 receipt와 일치 | 실제 backend, 세 산출물 경로, 누락 입력 |
 | `fallback` | 선호 백엔드가 없거나 실패했지만 Mermaid 또는 static이 같은 IR로 검증 가능한 HTML을 생성 | 실제 backend와 원래 실패 진단·시도 순서 |
 | `failed` | IR 검증 실패, 모든 렌더 실패, HTML 부재·빈 파일, 또는 receipt 불일치 | 실패 이유, 누락 입력, receipt 경로, 재실행 명령 |
+
+저수준 `not_applicable`(요청한 view에 Archify 변환기가 없어 애초에 시도하지 않음 — 예: `trace`/`progress`/`impact`/`sequence`)도 `fallback`으로 정규화한다. Archify가 실패한 게 아니라 대상이 아니었다는 구분은 report를 새 값으로 늘리지 않고 `backend`(`mermaid`|`static`)와 receipt의 `attempts` 배열(첫 항목이 `not_applicable`)로 남긴다.
 
 `valid` receipt는 위 추가 검사를 모두 통과한 뒤에만 `verified`로 올린다. `fallback` receipt를 `verified`로 바꾸거나 실패한 Archify를 실제 backend로 보고하지 않는다.
