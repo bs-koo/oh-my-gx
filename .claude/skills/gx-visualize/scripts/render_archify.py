@@ -290,7 +290,7 @@ def _skip_archify(
             "command": None,
             "exit_code": None,
             "stdout": "",
-            "stderr": f"Archify does not support the '{view}' view; only service/sequence views are attempted.",
+            "stderr": f"Archify does not support the '{view}' view; only the service view is attempted.",
             "artifact_path": None,
         }
     ]

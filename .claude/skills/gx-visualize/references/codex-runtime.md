@@ -23,7 +23,7 @@ Codex에서는 이 파일 위치를 기준으로 [gx-dev 공통 실행 규약](.
 
 - 모든 `references/`, `scripts/`, `schemas/`, `templates/`, `examples/` 경로는 그 경로를 적은 파일 기준으로 해석한다.
 - Python 스크립트는 설치된 `gx-visualize/scripts/`에서 찾는다. 소비 프로젝트에 같은 이름의 스크립트가 있어도 대신 실행하지 않는다.
-- 현재 PATH와 사용자가 명시한 override만 probe한다. 패키지를 자동 설치하거나 외부 네트워크를 호출하거나 홈 디렉터리를 탐색하지 않는다.
+- Archify 탐지 대상은 `~/.agents/skills/archify/bin/archify.mjs`와 그 심링크 `~/.claude/skills/archify`뿐이다 — 그 밖의 홈 경로는 뒤지지 않는다. 없으면 `npx -y skills add tt-a1i/archify -g`로 1회만 자동 설치한다(이 명령은 네트워크를 쓴다). 종료 코드를 신뢰하지 않고 `bin/archify.mjs`의 실재와 `doctor` 성공으로만 판정한다. Codex에서 명령 실행이 샌드박스·승인으로 막히면 실패가 아니라 폴백으로 처리하고 시도 기록을 receipt에 남긴다. 고정 절대경로를 산출물에 저장하지 않는다.
 - 명령 결과는 종료 코드와 stdout/stderr를 receipt에 보존하고, 실행하지 않은 결과를 성공으로 만들지 않는다.
 - Windows의 파일 읽기·쓰기는 UTF-8을 명시한다.
 

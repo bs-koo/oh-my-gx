@@ -71,9 +71,12 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--output
 
 ## 백엔드별 예시
 
-기본값인 `auto`는 현재 환경에서 실제로 실행 가능한 백엔드만 선택합니다.
-Archify나 Mermaid를 설치하거나 자동 업데이트하지 않습니다. 설치 여부·버전·CLI
-경로는 실제 probe 또는 실행 영수증으로만 보고합니다.
+기본값인 `auto`는 현재 환경에서 실제로 실행 가능한 백엔드를 선택합니다.
+Archify가 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로
+1회 자동 설치를 시도합니다. 설치 성공은 exit code가 아니라 `doctor` 결과로만
+판정하며, 설치·재탐지가 모두 실패해도 예외 없이 Mermaid → 정적 HTML로 넘어갑니다.
+Mermaid는 자동 설치하지 않습니다. 설치 여부·버전·CLI 경로는 실제 probe 또는
+실행 영수증으로만 보고합니다.
 
 ### Archify 사용 가능
 

@@ -165,7 +165,8 @@ def _mermaid_section(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -
     source = _escape(_mermaid_source(nodes, edges))
     return (
         '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">Mermaid 다이어그램 소스</h2>'
-        '<p class="fallback-note">Mermaid를 실행할 수 없어도 아래의 정적 노드 목록과 관계 표에서 같은 내용을 확인할 수 있습니다.</p>'
+        '<p class="fallback-note">다이어그램은 생성되지 않았습니다. 아래는 같은 IR의 노드 목록과 관계 표입니다.'
+        ' 그림을 보려면 Archify가 필요합니다: npx -y skills add tt-a1i/archify -g</p>'
         f'<pre class="mermaid-source"><code>{source}</code></pre></section>'
     )
 

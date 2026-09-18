@@ -1,14 +1,20 @@
 # Archify 선택 어댑터 계약
 
-Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네트워크에 접속하지 않으며, 사용자 override·`GX_ARCHIFY_COMMAND`·현재 `PATH` 밖의 설치 경로를 추측하지 않는다.
+Archify는 선택 의존성이지만 없으면 **묻지 않고 자동 설치한다.** `scripts/detect_backend.py`의 `ensure_archify()`가 `~/.agents/skills/archify/bin/archify.mjs`(또는 그 심링크 `~/.claude/skills/archify`)를 찾지 못하면 `npx -y skills add tt-a1i/archify -g`를 `shell=False`로 1회 실행한다. 이 명령은 무관한 하네스(PromptScript) 실패 2건을 출력하면서 exit 0으로 끝날 수 있으므로 **종료 코드를 성공 판정에 쓰지 않는다** — 성공은 `bin/archify.mjs`가 실재하고 `node bin/archify.mjs doctor`가 성공(exit 0 + "Archify is ready.")하는지로만 판정한다. 설치가 실패하거나 재탐지도 실패하면 예외를 던지지 않고 `{"available": False, "command": None, "attempts": [...]}`을 반환해 폴백 체인(Mermaid → static)으로 넘어간다. 같은 실행 안에서 설치는 두 번 시도하지 않는다.
 
 ## 탐지
 
-`scripts/detect_backend.py`의 `detect_backend()`는 다음 순서로 선택한다.
+`ensure_archify(command=None)`는 다음 순서로 Archify 사용 가능 여부를 확인한다.
+
+1. `command`가 주어졌으면 그것을, 아니면 `~/.agents/skills/archify/bin/archify.mjs`·`~/.claude/skills/archify/bin/archify.mjs`(둘 중 먼저 발견된 실재 파일) 를 후보로 삼는다. PATH의 `archify`는 탐지 대상이 아니다 — 실제 설치는 `package.json`이 `"private": true`라서 PATH에 바이너리를 두지 않는다.
+2. 후보가 있으면 `doctor`로 확인한다. 성공하면 그 명령과 빈 `attempts`를 반환한다.
+3. 후보가 없거나 `doctor`가 실패하면 위 설치를 1회 시도하고 같은 후보로 재탐지한다. 그래도 실패하면 `available: False`와 설치 시도 기록을 반환한다.
+
+`scripts/detect_backend.py`의 `detect_backend()`는 위와 별개로 **백엔드 선택**을 담당한다. Archify 명령은 `ensure_archify()`가 돌려준 값을 명시적으로 전달하거나 `GX_ARCHIFY_COMMAND`·PATH의 `archify`로 받는다.
 
 1. Node 실행 가능 여부를 확인한다. 없으면 `static`을 선택한다.
-2. 명시적 Archify 명령, `GX_ARCHIFY_COMMAND`, PATH의 `archify` 순으로 `--version`을 실행한다.
-3. Archify가 없으면 명시적 Mermaid 명령, `GX_MERMAID_COMMAND`, PATH의 `mmdc` 순으로 확인한다.
+2. Archify 명령(명시적 override, `GX_ARCHIFY_COMMAND`, PATH의 `archify` 순)이 있으면 `doctor`로 확인한다. 버전은 `doctor` 출력에 없으므로 `bin/archify.mjs` 옆 `package.json`의 `version`에서 얻고, 얻을 수 없으면 `null`이다 — 값을 지어내지 않는다.
+3. Archify가 없으면 명시적 Mermaid 명령, `GX_MERMAID_COMMAND`, PATH의 `mmdc` 순으로 `--version`을 실행한다(Mermaid는 `--version`을 실제로 지원하므로 이 프로브를 그대로 쓴다).
 4. 어느 CLI도 검증되지 않으면 `static`을 선택한다.
 
 반환값은 `backend`, 사람이 읽을 수 있는 `reason`, 확인된 `version` 또는 `null`을 포함한다. 명시적 명령은 Python API에서 argv 목록으로 전달하는 방식을 권장한다. 문자열 명령에는 셸 연산자를 넣지 않는다. 모든 실행은 `shell=False`다.

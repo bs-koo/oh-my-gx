@@ -40,7 +40,8 @@ class GxVisualizeGuideTests(unittest.TestCase):
         self.assertIn("Archify 사용 가능", guide)
         self.assertIn("Archify 없음", guide)
         self.assertIn("정적 HTML 폴백", guide)
-        self.assertIn("설치하거나 자동 업데이트하지 않습니다", guide)
+        self.assertIn("자동 설치를 시도합니다", guide)
+        self.assertIn("npx -y skills add tt-a1i/archify -g", guide)
 
     def test_guide_explains_evidence_receipts_and_truthful_failures(self):
         guide = self.read(GUIDE)

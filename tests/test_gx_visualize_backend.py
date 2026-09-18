@@ -44,6 +44,9 @@ class VisualBackendTests(unittest.TestCase):
                 import sys
 
                 phase = sys.argv[1]
+                if phase == "doctor":
+                    print("Archify is ready.")
+                    raise SystemExit(0)
                 if phase == "validate":
                     print("validated")
                     raise SystemExit({validation_exit})
@@ -58,6 +61,40 @@ class VisualBackendTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        return [sys.executable, str(script)]
+
+    def realistic_archify_stub(self, root, *, version="2.17.0-dev.1"):
+        """Reproduce real Archify's shape: `--version` fails (exit 2), `doctor` succeeds.
+
+        A prior double used `[sys.executable, "--version"]` as the Archify stand-in --
+        python's own `--version` succeeds, which hid judgment L (the detector still
+        probed with `--version`, so a real Archify install was never actually
+        detectable). This stub fails `--version` exactly like real Archify
+        (docs/reports/2026-09-18-archify-ir-schema.md §1), so a regression back to the
+        `--version` probe fails the tests that use it.
+        """
+        bin_dir = root / "archify" / "bin"
+        bin_dir.mkdir(parents=True)
+        script = bin_dir / "archify.mjs"
+        script.write_text(
+            textwrap.dedent(
+                """
+                import sys
+
+                if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+                    print("Archify is ready.")
+                    raise SystemExit(0)
+                print("Unknown command", file=sys.stderr)
+                raise SystemExit(2)
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        if version is not None:
+            (root / "archify" / "package.json").write_text(
+                json.dumps({"version": version}), encoding="utf-8"
+            )
         return [sys.executable, str(script)]
 
     def invalid_project_ir(self, root):
@@ -101,14 +138,45 @@ class VisualBackendTests(unittest.TestCase):
         return [sys.executable, str(script)], marker
 
     def test_explicit_archify_command_is_detected_without_install_path_guessing(self):
-        result = self.detector.detect_backend(
-            archify_command=[sys.executable, "--version"],
-            node_command=sys.executable,
-        )
+        with tempfile.TemporaryDirectory() as temporary:
+            command = self.realistic_archify_stub(Path(temporary))
+            result = self.detector.detect_backend(
+                archify_command=command,
+                node_command=sys.executable,
+            )
 
         self.assertEqual(result["backend"], "archify")
         self.assertIn("explicit", result["reason"])
-        self.assertIsInstance(result["version"], str)
+        self.assertEqual(result["version"], "2.17.0-dev.1")
+
+    def test_archify_probe_uses_doctor_not_version(self):
+        # 판정 L: 실제 Archify는 --version에 exit 2로 실패하고 doctor에만 성공한다
+        # (docs/reports/2026-09-18-archify-ir-schema.md §1). 탐지 프로브를 --version으로
+        # 되돌리면 이 테스트가 반드시 실패해야 한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            command = self.realistic_archify_stub(Path(temporary))
+            version_probe = subprocess.run(
+                [*command, "--version"], capture_output=True, text=True, check=False
+            )
+            self.assertNotEqual(0, version_probe.returncode)
+
+            result = self.detector.detect_backend(archify_command=command, node_command=sys.executable)
+
+        self.assertEqual(result["backend"], "archify")
+
+    def test_detect_backend_and_render_archify_agree_on_the_same_command(self):
+        # 판정 L 항목 5: render_archify.py는 detect_backend를 import하지 않지만, 같은
+        # Archify 명령에 대해 두 모듈의 판정이 어긋나면 안 된다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            command = self.fake_archify(root)
+
+            detection = self.detector.detect_backend(archify_command=command, node_command=sys.executable)
+            self.assertEqual(detection["backend"], "archify")
+
+            result = self.renderer.render_archify(SERVICE_FIXTURE, root / "output", command)
+
+        self.assertEqual(result["backend"], "archify")
 
     def test_missing_node_skips_archify_and_selects_static_without_mermaid(self):
         with mock.patch.object(self.detector.shutil, "which", return_value=None):
