@@ -26,9 +26,10 @@ MAPPING_ANNOTATIONS = {
 _MAPPING_RE = re.compile(
     r'@(' + "|".join(MAPPING_ANNOTATIONS) + r')\s*\(\s*(?:value\s*=\s*)?"([^"]*)"'
 )
+_CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?"([^"]*)"')
 _METHOD_RE = re.compile(r"\b(?:public|protected)\s+[\w<>\[\],.\s]+?\s+(\w+)\s*\(")
 _CLASS_RE = re.compile(r"\b(?:class|interface)\s+(\w+)")
-_FIELD_RE = re.compile(r"\bprivate\s+final\s+(\w+)\s+\w+\s*;")
+_FIELD_RE = re.compile(r"\bprivate\s+(?:final\s+)?(\w+)\s+\w+\s*;")
 
 
 def node_id(kind: str, rel_path: str, symbol: str) -> str:
@@ -85,13 +86,22 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
     edges: list[dict[str, Any]] = []
 
     if kind == "controller":
+        class_mapping = _CLASS_MAPPING_RE.search(text)
+        class_prefix = class_mapping.group(1) if class_mapping else ""
+
         owner_ids: list[str] = []
         for index, line in enumerate(lines):
             mapping = _MAPPING_RE.search(line)
             if mapping is None:
                 continue
             verb = MAPPING_ANNOTATIONS[mapping.group(1)]
-            http_path = mapping.group(2)
+            method_path = mapping.group(2)
+
+            if class_prefix and method_path:
+                http_path = class_prefix.rstrip("/") + "/" + method_path.lstrip("/")
+            else:
+                http_path = class_prefix + method_path
+
             method_name = ""
             for following in lines[index + 1 : index + 6]:
                 method = _METHOD_RE.search(following)

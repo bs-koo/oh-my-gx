@@ -62,6 +62,16 @@ class JavaSpringScanTests(unittest.TestCase):
             evidence_file = node["evidence"][0]["file"]
             self.assertFalse(evidence_file.startswith("build/"), f"build/ directory should be excluded but found {evidence_file}")
 
+    def test_field_injection_creates_edges(self):
+        result = self.scan(FIXTURE)
+        relations = {(e["source"].split("--")[-1], e["target"].split("--")[-1]) for e in result["edges"]}
+        self.assertIn(("me", "LoginService"), relations, "Field-injected @Autowired should produce edge")
+
+    def test_class_level_request_mapping_prefixes_path(self):
+        result = self.scan(FIXTURE)
+        api_paths = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
+        self.assertIn("GET /api/profile/me", api_paths, "Class-level @RequestMapping should prefix method path")
+
 
 if __name__ == "__main__":
     unittest.main()
