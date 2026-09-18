@@ -253,6 +253,36 @@ class VisualBackendTests(unittest.TestCase):
         self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
+    def test_output_name_scopes_separate_domain_renders_to_distinct_files(self):
+        # 판정 Y: 도메인마다 같은 output_dir에 같은 view("service")의 IR을 렌더할 때
+        # output_name이 없으면 둘 다 service.html로 서로를 덮어쓴다. --output-name을
+        # 주면 각 렌더가 자기 이름의 파일을 갖고 둘 다 살아남아야 한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output_dir = root / "output"
+            first = self.renderer.render_archify(
+                SERVICE_FIXTURE, output_dir, self.fake_archify(root), output_name="auth",
+            )
+            second = self.renderer.render_archify(
+                SERVICE_FIXTURE, output_dir, self.fake_archify(root), output_name="code",
+            )
+            self.assertTrue(Path(first["html_path"]).is_file())
+            self.assertTrue(Path(second["html_path"]).is_file())
+            self.assertTrue(Path(first["receipt_path"]).is_file())
+            self.assertTrue(Path(second["receipt_path"]).is_file())
+
+        self.assertNotEqual(first["html_path"], second["html_path"])
+        self.assertTrue(first["html_path"].endswith("auth.html"))
+        self.assertTrue(second["html_path"].endswith("code.html"))
+
+    def test_output_name_omitted_keeps_view_derived_filename(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = self.renderer.render_archify(SERVICE_FIXTURE, root / "output", self.fake_archify(root))
+
+        self.assertTrue(result["html_path"].endswith("service.html"))
+        self.assertTrue(result["receipt_path"].endswith("service.receipt.json"))
+
     def test_nonzero_archify_validation_falls_back_and_retains_diagnostics(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -315,10 +345,10 @@ class VisualBackendTests(unittest.TestCase):
             root = Path(temporary)
             real_fallback = self.renderer._render_fallback
 
-            def render_or_fail(ir_path, output_dir, backend):
+            def render_or_fail(ir_path, output_dir, backend, output_name=None):
                 if backend == "mermaid":
                     raise RuntimeError("mermaid unavailable")
-                return real_fallback(ir_path, output_dir, backend)
+                return real_fallback(ir_path, output_dir, backend, output_name=output_name)
 
             with mock.patch.object(
                 self.renderer,

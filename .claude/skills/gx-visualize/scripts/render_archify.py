@@ -118,8 +118,9 @@ def _render_fallback(
     output_dir: Path,
     backend: str,
     project_root: Path | str | None = None,
+    output_name: str | None = None,
 ) -> dict[str, str]:
-    return _fallback_module().render(ir_path, output_dir, backend, project_root=project_root)
+    return _fallback_module().render(ir_path, output_dir, backend, project_root=project_root, output_name=output_name)
 
 
 def _view(ir_path: Path) -> str:
@@ -205,14 +206,15 @@ def _fallback(
     attempts: list[dict[str, Any]],
     project_root: Path | str | None = None,
     status: str = "fallback",
+    output_name: str | None = None,
 ) -> dict[str, str]:
-    html_path = output_dir / f"{_view(ir_path)}.html"
+    html_path = output_dir / f"{output_name if output_name is not None else _view(ir_path)}.html"
     for backend in ("mermaid", "static"):
         try:
             if project_root is None:
-                result = _render_fallback(ir_path, output_dir, backend)
+                result = _render_fallback(ir_path, output_dir, backend, output_name=output_name)
             else:
-                result = _render_fallback(ir_path, output_dir, backend, project_root=project_root)
+                result = _render_fallback(ir_path, output_dir, backend, project_root=project_root, output_name=output_name)
         except Exception as exc:  # preserve diagnostics and continue the explicit chain
             attempts.append(
                 {
@@ -274,6 +276,7 @@ def _skip_archify(
     receipt_path: Path,
     view: str,
     project_root: Path | str | None = None,
+    output_name: str | None = None,
 ) -> dict[str, str]:
     """Render via the fallback chain without ever invoking Archify.
 
@@ -294,7 +297,10 @@ def _skip_archify(
             "artifact_path": None,
         }
     ]
-    return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, status="not_applicable")
+    return _fallback(
+        ir_path, output_dir, receipt_path, attempts,
+        project_root=project_root, status="not_applicable", output_name=output_name,
+    )
 
 
 def render_archify(
@@ -302,14 +308,24 @@ def render_archify(
     output_dir: Path | str,
     archify_command: Command,
     project_root: Path | str | None = None,
+    output_name: str | None = None,
 ) -> dict[str, str]:
-    """Validate and deliver with Archify, then fall back without hiding failures."""
+    """Validate and deliver with Archify, then fall back without hiding failures.
+
+    `output_name`, when given, replaces the view-derived filename stem (`{view}.html`,
+    `{view}.receipt.json`, `{view}.archify.json`) with `{output_name}.*` — so a caller
+    rendering several IR documents that share the same `view` into one `output_dir`
+    (e.g. one per domain under `--scope all`) doesn't have each render overwrite the
+    last. `view` itself still decides Archify eligibility (`diagram_type`); only the
+    on-disk filenames change. Omit it to keep the existing `{view}.*` behavior.
+    """
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     view = _view(ir_path)
-    html_path = output_dir / f"{view}.html"
-    receipt_path = output_dir / f"{view}.receipt.json"
+    stem = output_name if output_name is not None else view
+    html_path = output_dir / f"{stem}.html"
+    receipt_path = output_dir / f"{stem}.receipt.json"
     html_path.unlink(missing_ok=True)
 
     local_receipt = _validator_module().validate(ir_path, project_root=project_root)
@@ -338,7 +354,7 @@ def render_archify(
 
     kind = diagram_type(view)
     if kind is None:
-        return _skip_archify(ir_path, output_dir, receipt_path, view, project_root=project_root)
+        return _skip_archify(ir_path, output_dir, receipt_path, view, project_root=project_root, output_name=output_name)
 
     command = _normalize_command(archify_command)
 
@@ -346,7 +362,7 @@ def render_archify(
     ir_document = json.loads(ir_path.read_text(encoding="utf-8-sig"))
     cited_paths = to_archify_module.cited_paths(ir_document)
     repository = _git_repository_evidence(project_root, cited_paths) if project_root is not None else None
-    archify_payload = output_dir / f"{view}.archify.json"
+    archify_payload = output_dir / f"{stem}.archify.json"
     archify_document = to_archify_module.to_archify(ir_document, kind, repository=repository)
     archify_payload.write_text(
         json.dumps(archify_document, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -356,7 +372,7 @@ def render_archify(
     validate_command = [*command, "validate", kind, str(archify_payload), "--json", *repo_root_args]
     attempts = [_run(validate_command, "validate", html_path)]
     if attempts[-1]["status"] == "failed":
-        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root)
+        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, output_name=output_name)
 
     deliver_command = [*command, "deliver", kind, str(archify_payload), str(html_path), "--json", *repo_root_args]
     attempts.append(_run(deliver_command, "deliver", html_path))
@@ -365,7 +381,7 @@ def render_archify(
             attempts[-1]["status"] = "failed"
             attempts[-1]["stderr"] = "Archify returned success without a non-empty artifact"
         html_path.unlink(missing_ok=True)
-        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root)
+        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, output_name=output_name)
 
     receipt = {
         "status": "valid",
@@ -389,6 +405,7 @@ def main() -> int:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--archify-command", required=True)
     parser.add_argument("--project-root", type=Path)
+    parser.add_argument("--output-name")
     args = parser.parse_args()
     try:
         result = render_archify(
@@ -396,6 +413,7 @@ def main() -> int:
             args.output_dir,
             args.archify_command,
             project_root=args.project_root,
+            output_name=args.output_name,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(str(exc))

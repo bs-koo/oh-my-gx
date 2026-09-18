@@ -104,7 +104,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 
 실제 저장소 규모(86노드)를 한 장으로 그리면 Archify 검증이 대량으로 실패하고, 애초에 사람이 읽을 수도 없다(설계서 §5.7). 그래서 `--scope all`은 `scripts/split_domains.py`의 `split_by_domain()`으로 노드를 도메인별로 나눠 각각 별도 문서로 그린다. `--scope session`은 분할하지 않는다 — 세션 diff는 이미 작아서 나눌 필요가 없다.
 
-- 파일명은 `{domain}.ir.json`·`{domain}.html`이다(예: `auth.ir.json`, `auth.html`). `--scope all`에는 기존 `service.json`·`service.html` 단일 파일 규칙을 더 이상 적용하지 않는다.
+- 파일명은 `{domain}.ir.json`·`{domain}.html`이다(예: `auth.ir.json`, `auth.html`). `--scope all`에는 기존 `service.json`·`service.html` 단일 파일 규칙을 더 이상 적용하지 않는다. `scripts/render_archify.py`·`scripts/render_fallback.py`는 기본적으로 IR의 `view`(항상 `service`)로 파일명을 짓기 때문에, 도메인마다 그대로 호출하면 전부 `service.html`을 서로 덮어쓴다 — 도메인별로 렌더할 때는 반드시 `--output-name {domain}`을 전달해 `{domain}.html`·`{domain}.receipt.json`을 받는다. 이 인자를 생략하면 기존 `{view}.*` 단일 문서 동작이 그대로 유지된다(예: `--scope session`).
 - 테이블 노드는 경로로 도메인을 판정하지 않고, 자신을 참조하는 모든 도메인에 복제된다. 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않으므로 조용히 지우지 않고 관련된 각 도메인 IR의 `missing_inputs`에 `cross-domain-edge`로 남기며, 보고에 건수를 포함한다.
 - **도메인마다 개별로 Archify에 넣어 판정한다 — 전부 성공 아니면 전부 실패로 묶지 않는다.** 한 저장소 안에서 어떤 도메인은 그림이 나오고 어떤 도메인은 표(폴백)로 떨어지는 것이 정상이며, 그 사실을 보고에 드러낸다. 실패한 도메인만 mermaid → static으로 폴백하고, 통과한 도메인의 그림은 그대로 둔다.
 - `--domain`을 주면 그 도메인만 그린다. 생략하면 `split_by_domain()`이 찾은 전 도메인을 각각 그린다.

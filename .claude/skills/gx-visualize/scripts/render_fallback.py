@@ -205,8 +205,15 @@ def render(
     output_dir: Path | str,
     backend: str,
     project_root: Path | str | None = None,
+    output_name: str | None = None,
 ) -> dict[str, str]:
-    """Validate and render an IR document, returning stable artifact paths."""
+    """Validate and render an IR document, returning stable artifact paths.
+
+    `output_name`, when given, replaces the view-derived filename stem (`{view}.html`,
+    `{view}.receipt.json`) with `{output_name}.*` — see render_archify.render_archify()
+    for why (shared `output_dir`, several documents of the same `view`). Omit it to keep
+    the existing `{view}.*` behavior.
+    """
     if backend not in BACKENDS:
         raise ValueError(f"backend must be one of: {', '.join(sorted(BACKENDS))}")
 
@@ -216,19 +223,20 @@ def render(
     validator = _validator_module()
     receipt = validator.validate(ir_path, project_root=project_root)
     view = _input_view(ir_path, validator.VIEWS)
+    stem = output_name if output_name is not None else view
     if receipt["status"] == "valid":
         ir = _load_ir(ir_path)
-    receipt_path = output_dir / f"{view}.receipt.json"
+    receipt_path = output_dir / f"{stem}.receipt.json"
     receipt_payload = {**receipt, "backend": backend}
     receipt_path.write_text(
         json.dumps(receipt_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     if receipt["status"] != "valid":
-        (output_dir / f"{view}.html").unlink(missing_ok=True)
+        (output_dir / f"{stem}.html").unlink(missing_ok=True)
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
-    html_path = output_dir / f"{view}.html"
+    html_path = output_dir / f"{stem}.html"
     html_path.write_text(_render_document(ir, backend), encoding="utf-8")
     return {"html_path": str(html_path), "backend": backend, "receipt_path": str(receipt_path)}
 
@@ -239,9 +247,13 @@ def main() -> int:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--backend", choices=sorted(BACKENDS), default="mermaid")
     parser.add_argument("--project-root", type=Path)
+    parser.add_argument("--output-name")
     args = parser.parse_args()
     try:
-        result = render(args.ir_path, args.output_dir, args.backend, project_root=args.project_root)
+        result = render(
+            args.ir_path, args.output_dir, args.backend,
+            project_root=args.project_root, output_name=args.output_name,
+        )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc))
         return 1

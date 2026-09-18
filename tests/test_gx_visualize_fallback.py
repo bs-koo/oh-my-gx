@@ -158,6 +158,30 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertLess(first_html.index("AN-02-001"), first_html.index("AN-03-001"))
         self.assertLess(first_html.index("AN-03-001"), first_html.index("DE-13-001"))
 
+    def test_output_name_scopes_separate_renders_to_distinct_files(self):
+        # 판정 Y: 같은 output_dir에 같은 view("trace")의 IR을 두 번 렌더하면 output_name
+        # 없이는 둘 다 trace.html로 서로를 덮어쓴다. --output-name을 주면 각 렌더가 자기
+        # 이름의 파일을 갖고 둘 다 살아남아야 한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "output"
+            first = self.renderer.render(FIXTURE, output_dir, "static", output_name="auth")
+            second = self.renderer.render(FIXTURE, output_dir, "static", output_name="code")
+            self.assertTrue(Path(first["html_path"]).is_file())
+            self.assertTrue(Path(second["html_path"]).is_file())
+            self.assertTrue(Path(first["receipt_path"]).is_file())
+            self.assertTrue(Path(second["receipt_path"]).is_file())
+
+        self.assertNotEqual(first["html_path"], second["html_path"])
+        self.assertTrue(first["html_path"].endswith("auth.html"))
+        self.assertTrue(second["html_path"].endswith("code.html"))
+
+    def test_output_name_omitted_keeps_view_derived_filename(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(FIXTURE, Path(temporary), "static")
+
+        self.assertTrue(result["html_path"].endswith("trace.html"))
+        self.assertTrue(result["receipt_path"].endswith("trace.receipt.json"))
+
     def test_failed_validation_writes_receipt_and_does_not_render_success(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
