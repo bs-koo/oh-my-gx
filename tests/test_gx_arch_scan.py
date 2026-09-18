@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
@@ -125,6 +126,76 @@ class JavaSpringScanTests(unittest.TestCase):
         all_ids = [n["id"] for n in result["nodes"]]
         unique_ids = set(all_ids)
         self.assertEqual(len(unique_ids), len(all_ids), f"Duplicate node IDs found: {len(all_ids) - len(unique_ids)} duplicates")
+
+
+JSP_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-jsp"
+
+
+class JspLegacyScanTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_jsp_file_becomes_screen_node(self):
+        result = self.scan(JSP_FIXTURE)
+        screens = [n for n in result["nodes"] if n["kind"] == "screen"]
+        self.assertEqual(1, len(screens))
+        self.assertEqual("board/list.jsp", screens[0]["evidence"][0]["file"])
+
+    def test_servlet_dopost_becomes_api_node(self):
+        result = self.scan(JSP_FIXTURE)
+        apis = [n for n in result["nodes"] if n["kind"] == "api"]
+        self.assertEqual(["doPost"], [n["id"].split("--")[-1] for n in apis])
+
+    def test_screen_form_action_links_to_api(self):
+        result = self.scan(JSP_FIXTURE)
+        self.assertTrue(any(e["relation"] == "requests" for e in result["edges"]))
+
+    def test_mapper_xml_yields_table_nodes_with_statement_evidence(self):
+        result = self.scan(JSP_FIXTURE)
+        tables = [n for n in result["nodes"] if n["kind"] == "table"]
+        self.assertEqual(["TB_BOARD"], sorted(n["technical_label"] for n in tables))
+        self.assertEqual("code", tables[0]["evidence"][0]["kind"])
+
+    def test_select_is_reads_and_insert_is_writes(self):
+        result = self.scan(JSP_FIXTURE)
+        relations = {e["relation"] for e in result["edges"] if e["target"].startswith("gx-table-")}
+        self.assertEqual({"reads", "writes"}, relations)
+
+    def test_sql_body_is_not_copied_into_ir(self):
+        result = self.scan(JSP_FIXTURE)
+        blob = json.dumps(result, ensure_ascii=False)
+        self.assertNotIn("SELECT BOARD_ID", blob)
+
+
+COLLISION_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-collision"
+
+
+class PackageCollisionEdgeTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_same_simple_name_in_different_packages_wires_correctly(self):
+        result = self.scan(COLLISION_FIXTURE)
+
+        def find_id(kind, file_suffix):
+            matches = [
+                n["id"]
+                for n in result["nodes"]
+                if n["kind"] == kind and n["evidence"][0]["file"].endswith(file_suffix)
+            ]
+            self.assertEqual(1, len(matches), f"expected exactly one {kind} node ending in {file_suffix}")
+            return matches[0]
+
+        auth_login = find_id("api", "auth/AuthController.java")
+        admin_login = find_id("api", "admin/AdminController.java")
+        auth_service = find_id("service", "auth/LoginService.java")
+        admin_service = find_id("service", "admin/LoginService.java")
+
+        edge_pairs = {(e["source"], e["target"]) for e in result["edges"]}
+        self.assertIn((auth_login, auth_service), edge_pairs)
+        self.assertIn((admin_login, admin_service), edge_pairs)
+        self.assertNotIn((auth_login, admin_service), edge_pairs)
+        self.assertNotIn((admin_login, auth_service), edge_pairs)
 
 
 if __name__ == "__main__":

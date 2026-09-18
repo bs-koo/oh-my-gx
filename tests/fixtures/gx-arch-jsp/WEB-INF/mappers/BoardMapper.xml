@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.sqi.board.BoardDAO">
+  <select id="selectList" resultType="map">
+    SELECT BOARD_ID, TITLE FROM TB_BOARD WHERE USE_YN = 'Y'
+  </select>
+  <insert id="insertBoard">
+    INSERT INTO TB_BOARD (TITLE) VALUES (#{title})
+  </insert>
+</mapper>

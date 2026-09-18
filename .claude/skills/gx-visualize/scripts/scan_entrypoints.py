@@ -28,6 +28,14 @@ _MAPPING_RE = re.compile(
 )
 _CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?"([^"]*)"')
 _METHOD_RE = re.compile(r"\b(?:public|protected)\s+[\w<>\[\],.\s]+?\s+(\w+)\s*\(")
+_SERVLET_RE = re.compile(r"\bextends\s+HttpServlet\b")
+_DO_METHOD_RE = re.compile(r"\b(?:protected|public)\s+void\s+(doGet|doPost)\s*\(")
+_NEW_FIELD_RE = re.compile(r"\bprivate\s+final\s+(\w+)\s+\w+\s*=\s*new\s+\w+")
+_FORM_ACTION_RE = re.compile(r'<form[^>]*\saction\s*=\s*"([^"]+)"', re.IGNORECASE)
+_STATEMENT_RE = re.compile(r"<(select|insert|update|delete)\b[^>]*>(.*?)</\1>", re.DOTALL | re.IGNORECASE)
+_TABLE_RE = re.compile(r"\b(?:FROM|JOIN|INTO|UPDATE)\s+([A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
+
+_WRITE_STATEMENTS = {"insert", "update", "delete"}
 _CLASS_RE = re.compile(r"\b(?:class|interface)\s+(\w+)")
 _FIELD_RE = re.compile(r"\bprivate\s+(?:final\s+)?(\w+)\s+\w+\s*;")
 _COMMENT_OR_STRING_RE = re.compile(r'"(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/', re.DOTALL)
@@ -81,7 +89,64 @@ def _class_kind(text: str) -> str | None:
         return "service"
     if "@Repository" in text or "@Mapper" in text:
         return "repository"
+    class_match = _CLASS_RE.search(text)
+    if class_match:
+        name = class_match.group(1)
+        if name.endswith(("DAO", "Dao")):
+            return "repository"
+        if name.endswith(("Service", "ServiceImpl")):
+            return "service"
     return None
+
+
+def _scan_jsp(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    text = path.read_text(encoding="utf-8")
+    rel_path = _rel(path, root)
+    symbol = path.stem
+    node = _node("screen", rel_path, symbol, rel_path, 1, rel_path)
+    edges = []
+    for match in _FORM_ACTION_RE.finditer(text):
+        edges.append({"source": node["id"], "target": match.group(1), "relation": "requests"})
+    return [node], edges
+
+
+def _scan_servlet(path: Path, root: Path, text: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    lines = text.splitlines()
+    rel_path = _rel(path, root)
+    class_match = _CLASS_RE.search(text)
+    class_name = class_match.group(1) if class_match else path.stem
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    collaborators = _FIELD_RE.findall(text) + _NEW_FIELD_RE.findall(text)
+    for index, line in enumerate(lines):
+        method = _DO_METHOD_RE.search(line)
+        if method is None:
+            continue
+        verb = "GET" if method.group(1) == "doGet" else "POST"
+        node = _node(
+            "api", rel_path, method.group(1), f"{class_name}.{method.group(1)}", index + 1, f"{verb} {class_name}"
+        )
+        nodes.append(node)
+        for collaborator in collaborators:
+            edges.append({"source": node["id"], "target": collaborator, "relation": "calls"})
+    return nodes, edges
+
+
+def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    text = path.read_text(encoding="utf-8")
+    rel_path = _rel(path, root)
+    nodes: dict[str, dict[str, Any]] = {}
+    edges: list[dict[str, Any]] = []
+    for match in _STATEMENT_RE.finditer(text):
+        verb = match.group(1).lower()
+        relation = "writes" if verb in _WRITE_STATEMENTS else "reads"
+        line = text[: match.start()].count("\n") + 1
+        for table in _TABLE_RE.findall(match.group(2)):
+            name = table.upper()
+            node = _node("table", rel_path, name, name, line, name)
+            nodes.setdefault(node["id"], node)
+            edges.append({"source": rel_path, "target": node["id"], "relation": relation, "resolved": True})
+    return [nodes[key] for key in sorted(nodes)], edges
 
 
 def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -147,14 +212,49 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
     return nodes, edges
 
 
+def _node_dir(by_id: dict[str, dict[str, Any]], node_id: str) -> str:
+    node = by_id.get(node_id)
+    if node is None:
+        return ""
+    file = node["evidence"][0]["file"]
+    return file.rsplit("/", 1)[0] if "/" in file else ""
+
+
 def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    by_symbol = {node["id"].split("--")[-1]: node["id"] for node in nodes}
+    by_id = {node["id"]: node for node in nodes}
+    by_symbol: dict[str, list[str]] = {}
+    for node in nodes:
+        by_symbol.setdefault(node["id"].split("--")[-1], []).append(node["id"])
+    by_path = {
+        node.get("technical_label", "").split(" ", 1)[-1]: node["id"]
+        for node in nodes
+        if node["kind"] == "api"
+    }
+
     resolved: dict[str, dict[str, Any]] = {}
     for edge in raw_edges:
-        target = by_symbol.get(edge["target"])
+        if edge.get("resolved"):
+            target = edge["target"]
+        else:
+            candidates = by_symbol.get(edge["target"], [])
+            if len(candidates) == 1:
+                target = candidates[0]
+            elif len(candidates) > 1:
+                source_dir = _node_dir(by_id, edge["source"])
+                same_dir = [c for c in candidates if _node_dir(by_id, c) == source_dir]
+                target = same_dir[0] if len(same_dir) == 1 else None
+            else:
+                target = None
+            if target is None:
+                target = by_path.get(edge["target"])
+            if target is None and edge["relation"] == "requests":
+                # A screen's requested URL is meaningful even when it does not resolve to a
+                # scanned API node (e.g. no web.xml url-pattern to match against) - keep the
+                # literal URL rather than silently dropping the edge.
+                target = edge["target"]
         if target is None or target == edge["source"]:
             continue
-        edge_id = f"{edge['source']}->{target}"
+        edge_id = f"{edge['source']}->{target}:{edge['relation']}"
         resolved[edge_id] = {
             "id": edge_id,
             "source": edge["source"],
@@ -166,10 +266,11 @@ def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]])
 
 def scan(project_root: Path | str, changed_files: list[str] | None = None) -> dict[str, Any]:
     root = Path(project_root).resolve()
+    suffixes = (".java", ".jsp", ".xml")
     if changed_files is None:
-        candidates = sorted(root.rglob("*.java"))
+        candidates = sorted(p for p in root.rglob("*") if p.suffix in suffixes)
     else:
-        candidates = [root / name for name in sorted(changed_files) if (root / name).suffix == ".java"]
+        candidates = [root / name for name in sorted(changed_files) if (root / name).suffix in suffixes]
 
     nodes: list[dict[str, Any]] = []
     raw_edges: list[dict[str, Any]] = []
@@ -180,7 +281,16 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
             continue
         if _is_excluded(path, root):
             continue
-        file_nodes, file_edges = _scan_java(path, root)
+        if path.suffix == ".jsp":
+            file_nodes, file_edges = _scan_jsp(path, root)
+        elif path.suffix == ".xml":
+            file_nodes, file_edges = _scan_mapper_xml(path, root)
+        else:
+            stripped_text = _strip_comments(path.read_text(encoding="utf-8"))
+            if _SERVLET_RE.search(stripped_text):
+                file_nodes, file_edges = _scan_servlet(path, root, stripped_text)
+            else:
+                file_nodes, file_edges = _scan_java(path, root)
         if not file_nodes:
             continue
         rel_path = _rel(path, root)
@@ -189,6 +299,13 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
         raw_edges.extend(file_edges)
 
     nodes.sort(key=lambda node: node["id"])
+
+    dao_by_stem = {node["id"].split("--")[-1]: node["id"] for node in nodes if node["kind"] == "repository"}
+    for edge in raw_edges:
+        if isinstance(edge["source"], str) and edge["source"].endswith(".xml"):
+            stem = Path(edge["source"]).stem.replace("Mapper", "DAO")
+            edge["source"] = dao_by_stem.get(stem, dao_by_stem.get(Path(edge["source"]).stem, edge["source"]))
+
     return {"nodes": nodes, "edges": _resolve_edges(nodes, raw_edges), "files": dict(sorted(files.items()))}
 
 
