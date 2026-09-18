@@ -1459,7 +1459,88 @@ git commit -m "feat: complete 단계에 구현 구조 시각화 제안 게이트
 
 ---
 
-### Task 8: 문서·버전·Codex 동기화
+### Task 8: Archify 자동 설치와 폴백 정직성
+
+**Files:**
+- Modify: `.claude/skills/gx-visualize/scripts/detect_backend.py`
+- Modify: `.claude/skills/gx-visualize/references/archify-adapter.md`
+- Modify: `.claude/skills/gx-visualize/SKILL.md`
+- Modify: `.claude/skills/gx-visualize/scripts/render_fallback.py`
+- Test: `tests/test_gx_arch_install.py`
+
+**Interfaces:**
+- Consumes: Task 4의 `diagram_type(view)`, Task 5의 `to_archify(ir, kind)`
+- Produces: `ensure_archify(command=None) -> dict` — `{"available": bool, "command": list[str] | None, "attempts": [...]}`. 탐지 실패 시 1회 설치를 시도하고 재탐지한다.
+
+이 태스크는 사용자 결정을 구현한다: **archify가 없으면 묻지 않고 자동 설치한다.** 이 결정은 기존 계약 세 곳을 뒤집으므로 함께 고쳐야 한다.
+
+- [ ] **Step 1: 실패 테스트를 작성한다**
+
+`tests/test_gx_arch_install.py`에 다음을 담는다. 실제 네트워크를 쓰지 않도록 설치 명령 실행을 가짜 실행 파일로 대체한다.
+
+```python
+def test_absent_archify_triggers_one_install_attempt(self):
+    # 탐지 실패 → 설치 1회 시도 → 재탐지. attempts에 설치 시도가 기록된다.
+
+def test_install_is_attempted_only_once_per_failure(self):
+    # 설치가 실패하면 같은 실행에서 재시도하지 않는다.
+
+def test_install_failure_falls_back_without_raising(self):
+    # 네트워크 차단을 흉내낸 0이 아닌 종료 코드에도 예외가 아니라 available=False를 반환한다.
+
+def test_exit_code_zero_with_promptscript_warning_is_not_success(self):
+    # `npx skills add`는 PromptScript 실패를 출력하면서 exit 0으로 끝난다.
+    # 성공 판정은 exit code가 아니라 bin/archify.mjs 존재로 한다.
+
+def test_fallback_html_states_no_diagram_was_produced(self):
+    # 폴백 HTML에 "다이어그램이 생성되지 않았습니다"와 설치 안내가 들어간다.
+```
+
+- [ ] **Step 2: 테스트를 실행해 실패를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_install -v`
+Expected: FAIL — `ensure_archify`가 없다.
+
+- [ ] **Step 3: `ensure_archify()`를 구현한다**
+
+`detect_backend.py`에 추가한다. 실측 보고(`docs/reports/2026-09-18-archify-ir-schema.md` §1)의 사실을 따른다.
+
+- 탐지 대상은 PATH의 `archify`가 아니라 `~/.agents/skills/archify/bin/archify.mjs`다. `~/.claude/skills/archify`는 그 심링크이므로 둘 중 먼저 발견된 실재 파일을 쓴다.
+- 없으면 `npx -y skills add tt-a1i/archify -g`를 `shell=False`로 1회 실행한다.
+- **exit code로 성공을 판정하지 않는다.** 이 명령은 PromptScript 실패 2건을 출력하면서 exit 0으로 끝난다. 성공은 `bin/archify.mjs`가 실재하고 `node bin/archify.mjs doctor`가 성공하는 것으로 판정한다.
+- 실패하면 예외를 던지지 않고 `available: False`를 반환하며, 시도한 argv·종료 코드·stderr를 `attempts`에 남긴다.
+- 같은 실행 안에서 설치를 두 번 시도하지 않는다.
+
+- [ ] **Step 4: 폴백 문구를 정직하게 고친다**
+
+`render_fallback.py:167`의 "Mermaid를 실행할 수 없어도 아래의 정적 노드 목록과 관계 표에서 같은 내용을 확인할 수 있습니다"를 교체한다. 표와 그림은 같은 내용이 아니다 — 현재 mermaid 백엔드는 소스를 `<pre>`에 넣을 뿐 렌더하지 않는다.
+
+```
+다이어그램은 생성되지 않았습니다. 아래는 같은 IR의 노드 목록과 관계 표입니다.
+그림을 보려면 Archify가 필요합니다: npx -y skills add tt-a1i/archify -g
+```
+
+- [ ] **Step 5: 뒤집힌 계약 세 곳을 고친다**
+
+1. `references/archify-adapter.md` 첫 문단 "어댑터는 패키지를 설치하거나 네트워크에 접속하지 않으며" — 자동 설치 정책으로 교체하고 1회 시도·exit code 불신·실패 시 폴백을 명시한다.
+2. `SKILL.md` 실행 절차의 "설치·업데이트·네트워크 접근은 하지 않는다" — 같은 방식으로 교체한다.
+3. `SKILL.md` 출력 계약에 `backend != archify`일 때 그림 부재를 보고하도록 한 줄 추가한다.
+
+- [ ] **Step 6: 테스트를 실행해 통과를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_install -v`
+Expected: PASS
+
+- [ ] **Step 7: 커밋**
+
+```bash
+git add .claude/skills/gx-visualize tests/test_gx_arch_install.py
+git commit -m "feat: Archify 자동 설치와 폴백 부재 표시를 추가"
+```
+
+---
+
+### Task 9: 문서·버전·Codex 동기화
 
 **Files:**
 - Modify: `README.md`, `index.html`, `docs/gx-visualize-guide.md`, `tests/codex-smoke.md`
@@ -1552,7 +1633,9 @@ git commit -m "docs: 누적 아키텍처 맵 문서화와 1.34.0 버전 갱신"
 | 8. 비-git mtime 지문 | Task 3 (`test_non_git_fingerprint_changes_with_content`) |
 | 9. scope별 출력 위치 분리 | Task 6 (`test_session_scope_writes_to_dev_dir`, `test_all_scope_writes_to_map_dir`) |
 | 10. 세션 HTML 스냅샷 배너 | Task 6 (`test_session_html_carries_snapshot_banner`) |
-| 11. 동기화·린트 통과 | Task 8 |
+| 11. 동기화·린트 통과 | Task 9 |
+| 12. Archify 자동 설치와 1회 시도 | Task 8 (`test_absent_archify_triggers_one_install_attempt`, `test_install_is_attempted_only_once_per_failure`) |
+| 13. 설치 실패 시 폴백·그림 부재 표시 | Task 8 (`test_install_failure_falls_back_without_raising`, `test_fallback_html_states_no_diagram_was_produced`) |
 
 JSP·Servlet·테이블 추출(설계서 §5.4)은 Task 2가 담당한다.
 
