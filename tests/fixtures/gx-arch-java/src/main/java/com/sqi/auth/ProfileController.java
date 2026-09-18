@@ -15,4 +15,9 @@ public class ProfileController {
     public String me(String userId) {
         return loginService.authenticate(userId);
     }
+
+    @GetMapping("")
+    public String root() {
+        return "profile";
+    }
 }
