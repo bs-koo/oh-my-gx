@@ -99,6 +99,15 @@ class SplitByDomainTests(unittest.TestCase):
         for d in parts:
             self.assertIn("gx-table--TB_USER", [n["id"] for n in parts[d]["nodes"]])
 
+    def test_shared_table_with_domain_owned_edges_has_no_spurious_cross_domain_marker(self):
+        # 테이블 하나를 두 도메인이 함께 참조해도(ir_shared_table: TB_USER를 auth·code가
+        # 모두 읽는다), 각 도메인이 그 테이블로 잇는 자기 소유 엣지(auth: n-auth->TB_USER,
+        # code: n-code->TB_USER)는 서로에게 cross-domain-edge로 잘못 잡히면 안 된다 -
+        # 양쪽 다 자기 도메인 안에서 양 끝을 온전히 담고 있어 실제로 잃은 적이 없다.
+        parts = split_by_domain(ir_shared_table())
+        for domain, part in parts.items():
+            self.assertNotIn("cross-domain-edge", part.get("missing_inputs", []), domain)
+
     def test_edges_crossing_domains_are_dropped_and_reported(self):
         # 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않는다.
         # 조용히 버리지 않고 해당 도메인 IR의 missing_inputs에 남긴다.
