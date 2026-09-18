@@ -1090,15 +1090,19 @@ git commit -m "fix: Archify CLI 시그니처를 실제 명령 형식으로 수�
 - Consumes: Task 4의 `diagram_type(view)`
 - Produces: `to_archify(ir: dict, kind: str) -> dict` — GX IR을 Archify 입력 문서로 변환한다.
 
-- [ ] **Step 1: Archify를 설치하고 실제 IR 스키마를 실측한다**
+- [x] **Step 1: Archify를 설치하고 실제 IR 스키마를 실측한다** — 오케스트레이터가 2026-09-18에 완료
 
-```bash
-npx -y skills add tt-a1i/archify -g
-archify doctor
-archify demo /tmp/archify-demo
+결과는 [Archify IR 스키마 실측 보고](../../reports/2026-09-18-archify-ir-schema.md)에 있다. **이 문서를 먼저 읽는다.** 아래 Step들의 `REQUIRED_TOP_LEVEL`·`NODE_KEY`·`EDGE_KEY`는 그 실측으로 확정되었다.
+
+확정된 값:
+
+```python
+REQUIRED_TOP_LEVEL = {"schema_version", "diagram_type", "meta", "components"}
+NODE_KEY = "components"
+EDGE_KEY = "connections"
 ```
 
-`/tmp/archify-demo`가 만든 `*.architecture.json`과 `*.sequence.json`을 열어 최상위 필수 키, 노드 배열의 키 이름, 엣지 배열의 키 이름을 확인한다. 확인한 내용을 `docs/reports/2026-09-18-archify-ir-schema.md`에 **실제 예제 JSON을 인용해** 기록한다. 추측으로 채우지 않는다. 설치가 불가능하면 이 Task를 중단하고 사용자에게 보고한다 — 스키마 없이 변환기를 쓰지 않는다.
+호출 경로는 PATH 바이너리가 아니라 `node ~/.agents/skills/archify/bin/archify.mjs`다. 최상위가 `additionalProperties: false`이므로 GX IR을 그대로 넘기면 반드시 실패한다.
 
 - [ ] **Step 2: 기록한 스키마에 맞춘 실패 테스트를 추가한다**
 
@@ -1132,9 +1136,28 @@ class ToArchifyTests(unittest.TestCase):
         out = self.to_archify(VALID_IR, "architecture")
         self.assertEqual("로그인", out[NODE_KEY][0]["label"])
 
-    def test_evidence_is_not_leaked_into_archify_payload(self):
+    def test_gx_evidence_maps_to_archify_sources(self):
         out = self.to_archify(VALID_IR, "architecture")
-        self.assertNotIn("evidence", json.dumps(out, ensure_ascii=False))
+        component = out[NODE_KEY][0]
+        self.assertEqual([{"path": "a.java", "line": 1}], component["sources"])
+
+    def test_gx_only_fields_are_not_leaked(self):
+        # 최상위가 additionalProperties: false이므로 GX 전용 필드는 반드시 빠져야 한다.
+        blob = json.dumps(self.to_archify(VALID_IR, "architecture"), ensure_ascii=False)
+        for gx_only in ("evidence", "technical_label", "status", '"view"', "ko-KR"):
+            self.assertNotIn(gx_only, blob)
+
+    def test_inferred_evidence_is_dropped(self):
+        ir = json.loads(json.dumps(VALID_IR))
+        ir["nodes"][0]["evidence"] = [{"kind": "inferred"}]
+        self.assertNotIn("sources", self.to_archify(ir, "architecture")[NODE_KEY][0])
+
+    def test_sources_are_capped_at_three(self):
+        ir = json.loads(json.dumps(VALID_IR))
+        ir["nodes"][0]["evidence"] = [
+            {"kind": "code", "file": f"f{n}.java", "line": n} for n in range(1, 6)
+        ]
+        self.assertEqual(3, len(self.to_archify(ir, "architecture")[NODE_KEY][0]["sources"]))
 
     def test_conversion_is_deterministic(self):
         self.assertEqual(self.to_archify(VALID_IR, "architecture"), self.to_archify(VALID_IR, "architecture"))
@@ -1150,10 +1173,14 @@ Expected: FAIL — `to_archify.py`가 없다.
 `to_archify.py`를 작성한다. 노드·엣지 키 이름과 최상위 필드는 Step 1에서 기록한 스키마를 따르고, 아래 규칙을 지킨다.
 
 - `id`·`label`은 GX IR 값을 그대로 옮긴다. 한국어를 변형하지 않는다.
-- `technical_label`은 Archify가 부제·상세를 받는 필드가 있으면 거기에 넣고, 없으면 버린다.
-- `evidence`는 Archify 문서에 싣지 않는다. 근거는 GX IR과 영수증에만 남는다.
+- `technical_label`은 `sublabel`로 옮긴다.
+- **`evidence` → `component.sources`로 매핑한다.** `{kind:"code", file, line}` → `{path: file, line: line}`. 최대 3개까지만 싣고 초과분은 버린다. `kind: "inferred"` 근거는 `path`가 없으므로 넘기지 않는다. (실측 보고 §3.3 — 초기 계획의 "싣지 않는다"는 정정되었다.)
+- `sources`를 실으면 Archify가 `meta.repository{url, revision}`과 실행 시 `--repo-root`를 요구하고 경로 존재를 실제로 검증한다. `revision`은 40자 hex여야 한다. **비-git 프로젝트이거나 40자 SHA를 얻을 수 없으면 `sources`를 싣지 않는다** — 그래도 렌더는 성공한다.
+- 배치는 `layout: {mode: "grid", cols: 5, ...}`와 component별 `row`/`col`을 쓴다. `pos`/`size`는 쓰지 않는다. `col`은 실측 보고 §3.2의 표를 따른다.
+- `meta.locale`은 `en`으로 둔다. enum이 `["en","zh-CN"]`이라 한국어를 넣을 수 없다 — 라벨의 한국어는 자유 문자열로 정상 렌더된다.
+- `status`·`view`·`locale: ko-KR` 등 GX 전용 필드는 넘기지 않는다. 최상위가 `additionalProperties: false`라 거부된다.
 - 노드·엣지는 `id` 정렬을 유지한다.
-- Archify가 모르는 `kind` 값은 스키마가 허용하는 가장 가까운 값으로 매핑하고, 매핑표를 모듈 상단 상수로 둔다.
+- `kind` → `type` 매핑표를 모듈 상단 상수로 둔다. `type` enum은 `frontend|backend|database|cloud|security|messagebus|external`이다.
 
 - [ ] **Step 5: render_archify가 변환기를 쓰도록 연결한다**
 

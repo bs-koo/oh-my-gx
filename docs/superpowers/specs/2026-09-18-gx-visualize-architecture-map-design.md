@@ -150,7 +150,30 @@ deliver_command = [*command, "deliver", str(ir_path), "--output", str(html_path)
 3. 명령 조립을 실제 시그니처로 고친다.
 4. 가짜 실행 파일이 아닌 실제 Archify로 검증한다.
 
-Archify는 계속 **선택 의존성**이다. 미설치 환경에서는 mermaid → static 폴백이 동작하고, 영수증은 Archify 성공으로 표현하지 않는다.
+### 5.5.1 설치 정책 — 묻지 않고 자동 설치
+
+Archify가 없으면 **사용자에게 묻지 않고 자동 설치한다** (2026-09-18 사용자 결정). 이는 초기 설계의 "외부 네트워크나 자동 업데이트는 요구하지 않는다"를 뒤집는다.
+
+```bash
+npx -y skills add tt-a1i/archify -g
+```
+
+- 설치 경로는 `~/.agents/skills/archify`이고 `~/.claude/skills/archify`는 그 심링크다. **PATH에 `archify` 바이너리는 생기지 않는다** — 호출은 `node <설치경로>/bin/archify.mjs`다.
+- 이 명령은 exit 0으로 끝나면서도 출력에 `PromptScript does not support global skill installation` 실패 2건을 포함한다. 다른 하네스용 설치를 건너뛴 것이므로 무해하다. **따라서 exit code로 성공을 판정하지 않고** `bin/archify.mjs` 존재와 `doctor` 결과로 판정한다.
+- `dependencies`가 비어 있어 별도 `npm install`이 불필요하다.
+- 설치 실패(사내망 차단·권한·오프라인)는 파이프라인을 실패시키지 않는다. 폴백하고, 시도한 명령·종료 코드·stderr를 영수증의 `attempts`에 남긴다.
+- 설치는 **1회만 시도한다.** 실패를 매 호출마다 재시도하면 차단된 환경에서 호출마다 수 초가 낭비된다.
+
+### 5.5.2 폴백의 정직성
+
+Archify 미설치·설치 실패 시 mermaid → static 폴백이 동작하지만, **현재 폴백 경로에는 다이어그램이 없다** — mermaid 백엔드도 Mermaid 소스를 `<pre>`에 넣을 뿐 렌더하지 않는다. 따라서 폴백 HTML과 최종 report는 "다이어그램이 생성되지 않았다"를 명시하고 archify 설치 안내를 제시한다. 표와 그림을 같은 내용으로 표현하지 않는다.
+
+### 5.5.3 확인된 제약 2건
+
+- **한국어 UI 크롬 불가.** `meta.locale` enum이 `["en","zh-CN"]`이다. 노드 라벨·부라벨·카드는 자유 문자열이라 한국어가 정상 렌더되지만, Archify가 생성하는 범례 제목 등은 영어 또는 중국어만 가능하다. `en`을 사용한다.
+- **비-git 프로젝트는 소스 근거를 실을 수 없다.** `component.sources`를 쓰면 `meta.repository{url, revision}`(revision은 40자 hex)과 실행 시 `--repo-root`가 필수이고, Archify가 경로 존재를 실제로 검증한다. 40자 SHA를 얻을 수 없으면 `sources`를 생략한다 — 렌더 자체는 성공한다.
+
+상세 실측 근거는 [Archify IR 스키마 실측 보고](../../reports/2026-09-18-archify-ir-schema.md)에 있다.
 
 ### 5.6 phase-complete 제안 게이트
 
