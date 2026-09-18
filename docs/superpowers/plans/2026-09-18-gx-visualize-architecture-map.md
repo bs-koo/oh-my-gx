@@ -1340,11 +1340,77 @@ Expected: FAIL — 새 6건 실패, 기존 케이스는 통과 유지.
 Run: `python -m unittest tests.test_gx_visualize_skill_contract -v`
 Expected: PASS
 
-- [ ] **Step 7: 커밋**
+- [ ] **Step 7: 커밋 (1단위)**
 
 ```bash
 git add .claude/skills/gx-visualize/SKILL.md .claude/skills/gx-visualize/references tests/test_gx_visualize_skill_contract.py
 git commit -m "feat: service·sequence 뷰를 누적 아키텍처 맵으로 승격"
+```
+
+---
+
+#### 2단위: 한국어 라벨 적합 (Task 5에서 이월)
+
+여기부터는 문서가 아니라 `to_archify.py`의 계산 로직이다. 1단위와 파일도 성격도 다르므로 별도로 커밋한다.
+
+Task 5의 구현자가 Archify의 `renderers/shared/render-architecture.mjs`를 읽어 확인한 사실이다. **정확한 수치와 심볼은 [Task 5 보고서](../../../.superpowers/sdd/2026-09-18-gx-visualize-architecture-map/task-5-report.md)에서 확인하고 시작한다** — 아래는 요지다.
+
+- 컴포넌트 박스 크기의 기본값은 하드코딩 **120×60**이며, 문서의 `layout.cellW/cellH`와 **무관하다**. 그 둘은 그리드 칸 간격만 정하고 박스 크기는 건드리지 않는다.
+- `label`에는 shrink-to-fit이 **없다**. `sublabel`과 `tag`에는 있다.
+- 적합 판정은 `textUnits(label) * 6.6 <= width + 8`이고 **한글은 문자당 2 units**다. 즉 `label`이 한글 약 **9자**에서 넘친다.
+
+`"에너지 사용량 조회 API"`가 11자다. 그대로 두면 전형적인 한국어 라벨이 Archify 검증에 걸려 조용히 mermaid로 떨어진다 — 한국어 우선 플러그인에서 가장 나쁜 실패 방식이다.
+
+- [ ] **Step 8: 실패 테스트를 추가한다**
+
+`tests/test_gx_arch_archify.py`에 추가한다. 실제 한국어 라벨을 쓴다.
+
+```python
+def test_long_korean_label_gets_explicit_size(self):
+    # "에너지 사용량 조회 API" = 11자 → 기본 120px를 넘는다
+    ir = _ir_with_label("에너지 사용량 조회 API")
+    component = self.to_archify(ir, "architecture")[NODE_KEY][0]
+    self.assertIn("size", component)
+    width = component["size"][0]
+    self.assertGreaterEqual(width + 8, _text_units("에너지 사용량 조회 API") * 6.6)
+
+def test_short_label_omits_size(self):
+    # 기본 박스에 들어가면 size를 내보내지 않는다 — 불필요한 필드를 만들지 않는다
+    self.assertNotIn("size", self.to_archify(_ir_with_label("로그인"), "architecture")[NODE_KEY][0])
+
+def test_sublabel_length_does_not_force_size(self):
+    # sublabel에는 shrink-to-fit이 있으므로 길어도 size를 강제하지 않는다
+    ir = _ir_with_label("로그인", technical="POST /api/v1/authentication/login/session")
+    self.assertNotIn("size", self.to_archify(ir, "architecture")[NODE_KEY][0])
+
+def test_size_is_deterministic(self):
+    ir = _ir_with_label("에너지 사용량 조회 API")
+    self.assertEqual(self.to_archify(ir, "architecture"), self.to_archify(ir, "architecture"))
+```
+
+- [ ] **Step 9: 테스트를 실행해 실패를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_archify -v`
+Expected: FAIL — 현재 `to_archify`는 `size`를 내보내지 않는다.
+
+- [ ] **Step 10: 적합 계산을 구현한다**
+
+`to_archify.py`에 Archify **자신의 공식**을 옮긴다. 추측한 상수를 쓰지 않고, 모듈 상단 주석에 출처(`render-architecture.mjs`의 해당 심볼)를 적는다.
+
+- `text_units(s)`: 한글·전각은 2, 그 외는 1.
+- 필요한 최소 너비를 그 식에서 역산하고, **기본 120×60에 들어가면 `size`를 생략**한다. 들어가지 않을 때만 내보낸다.
+- 높이는 기본값을 유지한다 — 라벨은 한 줄이고 넘치는 축은 너비뿐이다.
+- `sublabel`·`tag`는 계산에 넣지 않는다. 그 둘은 Archify가 줄여서 맞춘다.
+
+- [ ] **Step 11: 실제 Archify로 확인한다**
+
+한국어 라벨이 긴 5계층 사슬 IR을 만들어 `render_archify.py`로 종단 실행한다. receipt의 `status`가 `valid`이고 `backend`가 `archify`여야 한다 — 폴백이면 적합 계산이 틀린 것이다. 생성된 HTML을 열어 **라벨이 박스 안에 들어가는지 눈으로 확인**하고 본 것을 보고한다. `gapX`·`cellW`는 조정하지 않는다.
+
+- [ ] **Step 12: 커밋 (2단위)**
+
+```bash
+git add .claude/skills/gx-visualize/scripts/to_archify.py tests/test_gx_arch_archify.py
+git commit -m "fix: 한국어 라벨이 Archify 박스를 넘칠 때 크기를 명시한다"
 ```
 
 ---
@@ -1675,6 +1741,7 @@ git commit -m "docs: 누적 아키텍처 맵 문서화와 1.34.0 버전 갱신"
 | 11. 동기화·린트 통과 | Task 9 |
 | 12. Archify 자동 설치와 1회 시도 | Task 8 (`test_absent_archify_triggers_one_install_attempt`, `test_install_is_attempted_only_once_per_failure`) |
 | 13. 설치 실패 시 폴백·그림 부재 표시 | Task 8 (`test_install_failure_falls_back_without_raising`, `test_fallback_html_states_no_diagram_was_produced`) |
+| 14. 긴 한국어 라벨이 Archify 검증을 통과 | Task 6 2단위 (`test_long_korean_label_gets_explicit_size`, Step 11 종단 확인) |
 
 JSP·Servlet·테이블 추출(설계서 §5.4)은 Task 2가 담당한다.
 
