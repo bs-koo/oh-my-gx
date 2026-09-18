@@ -26,7 +26,9 @@
 이 저장소는 Claude Code와 Codex CLI 양쪽에 배포된다. 근거 문서는 [스킬 유지보수 규칙](../../../.claude/rules/skill-maintenance.md), [Codex 하네스 어댑터](../../../.claude/rules/harness-codex.md), 배포 정본인 [공통 실행 규약](../../../.claude/skills/gx-dev/references/codex-runtime.md), 그리고 이 스킬의 [Codex 적응 노트](../../../.claude/skills/gx-visualize/references/codex-runtime.md)다.
 
 - `.codex-plugin/plugin.json`의 `skills`는 `./.claude/skills/` **디렉터리**를 가리킨다. 신규 스킬·스크립트는 자동 포함되므로 per-skill 등록은 불필요하다.
-- **Claude 전용 도구(`Task`·`AskUserQuestion`·`Skill`)를 새로 넣거나 바꾸면 같은 파일의 하네스 적응 안내도 함께 갱신한다.** 인라인 한 줄로 끝내지 말고, 그 파일이 이미 가진 적응 절을 갱신한다. `allowed-tools`나 역할의 `tools` 목록을 Codex 권한 강제로 표현하지 않는다.
+- **하네스 적응은 스킬 수준에 있다.** phase 파일에는 적응 절이 없으며 그것이 이 저장소의 설계다 — gx-dev는 `SKILL.md`의 표, gx-tdd는 `references/harness-adaptation.md`, gx-visualize는 `references/codex-runtime.md`가 정본이다. phase 파일에 새 적응 절을 만들지 않는다.
+- 두 파이프라인의 적응 표는 이미 `AskUserQuestion` → `request_user_input`(못 쓰면 자연어로 묻되 승인 없이 진행 금지)과 `Skill(skill: …)` → 해당 `SKILL.md`를 읽어 절차 수행을 규정한다. **그 두 매핑만 쓰는 변경은 적응 갱신이 필요 없다.** 새로운 *종류*의 도구 상호작용을 도입할 때만 스킬 수준 정본을 갱신한다.
+- `allowed-tools`나 역할의 `tools` 목록을 Codex 권한 강제로 표현하지 않는다.
 - Python 스크립트는 **설치된 `gx-visualize/scripts/`** 에서 찾는다. 소비 프로젝트에 같은 이름의 스크립트가 있어도 대신 실행하지 않는다.
 - 셸 명령은 Codex에서 `exec_command` 계열로 옮겨진다. **명령 실행이 샌드박스·승인으로 막힐 수 있으므로**, 막힌 경우를 실패가 아니라 폴백 경로로 처리하고 시도 기록을 receipt에 남긴다. `merge_map.py`의 `git hash-object` 폴백이 이 요구를 이미 만족한다.
 - Windows에서 Markdown·JSON·소스 읽기와 쓰기는 **UTF-8을 명시**한다. PowerShell 예시에는 `Get-Content -Encoding UTF8`을 쓰고 Bash 문법은 Bash에서 실행한다.
@@ -1119,7 +1121,7 @@ EDGE_KEY = "connections"
 
 - [ ] **Step 2: 기록한 스키마에 맞춘 실패 테스트를 추가한다**
 
-`tests/test_gx_arch_archify.py`에 추가한다. `REQUIRED_TOP_LEVEL`과 `NODE_KEY`·`EDGE_KEY`는 Step 1에서 기록한 실제 값으로 채운다.
+`tests/test_gx_arch_archify.py`에 추가한다. `REQUIRED_TOP_LEVEL`·`NODE_KEY`·`EDGE_KEY`는 Step 1에 이미 확정값으로 주어져 있으니 그대로 모듈 상수로 정의해 쓴다 — 다시 조사하지 않는다.
 
 ```python
 TO_ARCHIFY = REPO / ".claude" / "skills" / "gx-visualize" / "scripts" / "to_archify.py"
@@ -1451,7 +1453,14 @@ AskUserQuestion(
 이 절의 실패·누락·fallback은 **커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다.** Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
 ```
 
-**하네스 적응**: Codex에서는 `AskUserQuestion`을 현재 모드에서 제공되는 질문 도구로 옮기고 실제 사용자 응답을 기다린다. `Skill()` 호출은 설치된 `gx-visualize/SKILL.md`를 읽고 그 절차를 수행하는 것으로 옮긴다.
+**하네스 적응**: 이 절은 두 파이프라인의 적응 표가 이미 규정한 매핑만 쓴다 — `AskUserQuestion` → `request_user_input`, `Skill(skill: …)` → 해당 `SKILL.md`를 읽어 절차 수행. **새 적응 절을 만들지 않는다.**
+
+다만 이 게이트에는 다른 게이트와 구별되는 성질이 하나 있으니 절 본문에 명시한다. 기존 적응 표의 "승인 없이 다음 단계로 넘어가지 않는다"는 **진행을 막는 게이트**에 대한 규정이고, 이 절은 막지 않는 **제안**이다. 따라서 두 상황을 섞지 않는다.
+
+- **구조화된 질문 도구가 없는 대화형 세션** → 자연어로 묻고 실제 답을 기다린다. 도구가 없다는 이유로 건너뛰지 않는다 — 그러면 Codex에서 시각화가 영원히 제안되지 않는다.
+- **응답할 사용자가 없는 헤드리스 세션**(`ralph.lock` 존재 또는 `pipeline: gx-ralph`) → strict no-op.
+
+"질문 도구가 없음"과 "사용자가 없음"은 다른 조건이다. 전자를 후자로 취급하지 않는다.
 
 - [ ] **Step 4: 테스트를 실행해 통과를 확인한다**
 
