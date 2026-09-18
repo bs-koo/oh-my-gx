@@ -112,6 +112,20 @@ class JavaSpringScanTests(unittest.TestCase):
         api_paths = {node["technical_label"] for node in doc_nodes}
         self.assertIn("GET /api/profile/proxy", api_paths, "@GetMapping(/proxy) should work despite string containing //")
 
+    def test_class_level_annotation_adjacent_to_first_method(self):
+        result = self.scan(FIXTURE)
+        tight_nodes = [n for n in result["nodes"] if n["kind"] == "api" and "TightController" in n["label"]]
+        self.assertEqual(1, len(tight_nodes), "Only one API node should exist for TightController.first")
+        self.assertEqual("GET /api/tight/first", tight_nodes[0]["technical_label"])
+        all_labels = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
+        self.assertFalse(any("/api/tight/api/tight" in label for label in all_labels), "No duplicate class-level annotation in method path")
+
+    def test_node_ids_are_unique(self):
+        result = self.scan(FIXTURE)
+        all_ids = [n["id"] for n in result["nodes"]]
+        unique_ids = set(all_ids)
+        self.assertEqual(len(unique_ids), len(all_ids), f"Duplicate node IDs found: {len(all_ids) - len(unique_ids)} duplicates")
+
 
 if __name__ == "__main__":
     unittest.main()

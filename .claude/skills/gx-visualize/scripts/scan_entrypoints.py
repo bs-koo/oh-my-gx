@@ -106,9 +106,12 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
         class_text_before = stripped_text[: class_match.start()]
         class_mapping = _CLASS_MAPPING_RE.search(class_text_before)
         class_prefix = class_mapping.group(1) if class_mapping else ""
+        class_line_num = class_text_before.count("\n")
 
         owner_ids: list[str] = []
         for index, line in enumerate(lines):
+            if index <= class_line_num:
+                continue
             mapping = _MAPPING_RE.search(line)
             if mapping is None:
                 continue
