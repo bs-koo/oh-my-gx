@@ -1,7 +1,9 @@
 import importlib.util
+import shutil
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / ".claude" / "skills" / "gx-visualize" / "scripts" / "merge_map.py"
@@ -147,6 +149,30 @@ class FingerprintTests(unittest.TestCase):
             changed, removed = self.m.changed_paths(root, manifest, "none")
             self.assertEqual([], changed)
             self.assertEqual([], removed)
+
+    def test_git_absent_falls_back_to_mtime_fingerprint(self):
+        # fingerprint() must not crash when the git executable itself is
+        # missing (FileNotFoundError from subprocess.run) — it should fall
+        # through to the stat-based fingerprint, same as when git fails.
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.java"
+            path.write_text("one", encoding="utf-8")
+            with mock.patch.object(self.m.subprocess, "run", side_effect=FileNotFoundError):
+                first = self.m.fingerprint(path, "git")
+            self.assertTrue(first)
+
+            path.write_text("one-two-three", encoding="utf-8")
+            with mock.patch.object(self.m.subprocess, "run", side_effect=FileNotFoundError):
+                second = self.m.fingerprint(path, "git")
+            self.assertNotEqual(first, second)
+
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_git_available_returns_blob_sha(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.java"
+            path.write_text("class A {}", encoding="utf-8")
+            result = self.m.fingerprint(path, "git")
+            self.assertRegex(result, r"^[0-9a-f]{40}$")
 
 
 if __name__ == "__main__":

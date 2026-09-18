@@ -23,14 +23,17 @@ def _is_excluded(path: Path, root: Path) -> bool:
 def fingerprint(path: Path | str, vcs: str) -> str:
     path = Path(path)
     if vcs == "git":
-        result = subprocess.run(
-            ["git", "hash-object", str(path)],
-            capture_output=True,
-            text=True,
-            shell=False,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip():
+        try:
+            result = subprocess.run(
+                ["git", "hash-object", str(path)],
+                capture_output=True,
+                text=True,
+                shell=False,
+                check=False,
+            )
+        except (FileNotFoundError, OSError):
+            result = None
+        if result is not None and result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
     stat = path.stat()
     return f"{stat.st_mtime_ns}-{stat.st_size}"
