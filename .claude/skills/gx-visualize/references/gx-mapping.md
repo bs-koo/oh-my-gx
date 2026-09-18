@@ -17,6 +17,7 @@
 | `self-check` | `self-check.md`, `trust-ledger.md` | 검증·Gate 근거 카드 | `progress` |
 | `context` | 프로젝트 `context/`의 명시적 아키텍처 자료 | 확인된 경계·용어·관계 | `service` |
 | `call-evidence` | 설계서의 sequence, 코드·테스트의 명시된 호출 근거 | 순서 edge와 파일·라인 근거 | `sequence` |
+| 진입점 체인 스캔 | `scripts/scan_entrypoints.py`의 스캔 결과 | `service`/`sequence` 뷰의 screen·api·service·repository·table 노드와 code 근거 | `service`, `sequence` |
 
 각 evidence는 [IR 계약](ir-contract.md)에 따라 실제 파일과 텍스트 line 또는 비텍스트 locator를 가리킨다. source가 관계를 선언하지 않으면 이름의 유사성만으로 edge를 만들지 않는다.
 

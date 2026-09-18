@@ -127,5 +127,49 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
         self.assertNotRegex(owned_text, r"(?m)(?:^[A-Za-z]:[\\/]|/(?:Users|home)/)")
 
 
+class AccumulatedMapContractTests(unittest.TestCase):
+    def setUp(self):
+        self.skill = (
+            ROOT / ".claude" / "skills" / "gx-visualize" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+
+    def test_scope_flag_is_documented(self):
+        self.assertIn("--scope session|all", self.skill)
+
+    def test_map_dir_default_is_docs_architecture(self):
+        self.assertIn("docs/architecture/", self.skill)
+
+    def test_service_view_is_promoted(self):
+        self.assertNotIn("계약 지원 뷰", self.skill)
+        self.assertRegex(self.skill, r"\| `service` \|.*\| 1차 필수 \|")
+
+    def test_sequence_deferral_is_documented(self):
+        self.assertRegex(self.skill, r"\| `sequence` \|.*\| 후속 범위 \|")
+        self.assertIn("participants", self.skill)
+
+    def test_skill_links_entrypoint_rules(self):
+        self.assertIn("references/entrypoint-rules.md", self.skill)
+        self.assertTrue((ROOT / ".claude" / "skills" / "gx-visualize" / "references" / "entrypoint-rules.md").is_file())
+
+    def test_korean_label_enrichment_is_required(self):
+        self.assertIn("context/", self.skill)
+        self.assertIn("한국어 라벨", self.skill)
+
+    def test_empty_scan_must_not_write_empty_ir(self):
+        self.assertIn("0개 노드", self.skill)
+
+    def test_session_scope_writes_to_dev_dir(self):
+        self.assertIn("`session` | `${DEV_DIR}/visual/`", self.skill)
+
+    def test_all_scope_writes_to_map_dir(self):
+        self.assertIn("`all` | `${MAP_DIR}/`", self.skill)
+
+    def test_session_html_carries_snapshot_banner(self):
+        self.assertIn("스냅샷 배너", self.skill)
+
+    def test_session_and_accumulated_outputs_are_not_mixed(self):
+        self.assertIn("한 폴더에 섞지 않는다", self.skill)
+
+
 if __name__ == "__main__":
     unittest.main()

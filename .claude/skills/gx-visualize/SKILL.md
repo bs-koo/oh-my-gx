@@ -1,7 +1,7 @@
 ---
 name: gx-visualize
 description: Use when 사용자가 GX 산출물의 요구사항 추적, 진행 상태, 변경 영향, 서비스 구조, 호출 순서를 시각화해 달라고 하거나 "시각화 포함", "구조를 그림으로 보여줘", "변경 영향도를 시각화해줘"라고 요청한다.
-argument-hint: <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>]
+argument-hint: <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>] [--scope session|all] [--map-dir <path>] [--domain <name>]
 allowed-tools:
   - Read
   - Glob
@@ -16,7 +16,7 @@ GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변�
 ## 호출 계약
 
 ```text
-gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>]
+gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>] [--scope session|all] [--map-dir <path>] [--domain <name>]
 ```
 
 - 기본 백엔드: `auto`
@@ -26,6 +26,9 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--input-
 - `--dev-dir`: 현재 작업의 산출물 디렉터리. 파이프라인 호출은 `DEV_DIR`을 명시적으로 전달하며, 생략 시 기존 기본값 탐색을 사용한다.
 - `--output`: 프로젝트 안의 출력 디렉터리. 외부 경로를 쓰려면 사용자의 명시적 경로가 있어야 한다.
 - `--project-root`: evidence 경로를 해석하고 가둘 명시적 프로젝트 루트. 파이프라인 호출은 항상 `PROJECT_ROOT`를 전달한다.
+- `--scope`: `service`·`sequence` 뷰의 출력 위치를 가른다. 기본값은 `session`. 자세한 내용은 [누적 아키텍처 맵](#누적-아키텍처-맵)을 읽는다.
+- `--map-dir`: `--scope all`의 출력 디렉터리. 기본값은 `docs/architecture/`.
+- `--domain`: 라벨 보강에 쓸 `context/{도메인}/`를 명시한다. 생략하면 스캔 대상 파일 경로에서 도메인을 추정한다.
 - 잘못된 view나 backend는 허용 목록을 보여 주고 렌더링 전에 실패한다.
 
 명시 요청이 없으면 자동 실행하지 않는다. 직접 호출 외에 “시각화 포함”, “구조를 그림으로 보여줘”, “변경 영향도를 시각화해줘”도 명시 요청으로 본다.
@@ -55,10 +58,12 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 | `trace` | 요구사항이 기능·데이터·테스트까지 연결됐는가? | `prd`, `design`, `DE-08`, `DE-13` | 1차 필수 |
 | `progress` | 현재 Phase·Gate·검증 상태는 무엇인가? | `state`, `summary`, `self-check` | 1차 필수 |
 | `impact` | 변경이 무엇을 추가·삭제·변경·이동했는가? | `diff`, `codemap`, `design` | 1차 필수 |
-| `service` | 서비스·화면·API·테이블 관계는 무엇인가? | `codemap`, `design`, 프로젝트 context | 계약 지원 |
-| `sequence` | 명시된 요청의 호출 순서는 무엇인가? | `design`, 명시된 호출 근거 | 계약 지원 |
+| `service` | 서비스·화면·API·테이블 관계는 무엇인가? | `codemap`, `design`, 프로젝트 context | 1차 필수 |
+| `sequence` | 명시된 요청의 호출 순서는 무엇인가? | `design`, 명시된 호출 근거 | 후속 범위 |
 
-`service`와 `sequence`는 계약 지원 뷰다. 입력 근거가 부족하면 런타임 관계를 상상해서 완성하지 말고 `missing_inputs`를 보고한다. 상세 파일 후보와 IR 변환 규칙은 [GX 산출물 매핑](references/gx-mapping.md)을 읽는다.
+`sequence`는 후속 범위다. Archify의 `sequence.schema.json`은 `participants`·`messages`를 필수로 요구하고 `components`·`connections`·`layout`은 정의하지 않으므로, `service` 뷰가 쓰는 architecture 변환기를 그대로 재사용할 수 없다. 전용 participants/messages 변환기가 나오기 전까지 `sequence` 뷰는 Archify 시도 자체를 건너뛰고 폴백 백엔드(mermaid → static)로 렌더된다. 요구의 중심은 아키텍처 맵이므로 반쯤 완성된 sequence 변환기보다 정확한 architecture 맵을 우선했다.
+
+입력 근거가 부족하면 런타임 관계를 상상해서 완성하지 말고 `missing_inputs`를 보고한다. 상세 파일 후보와 IR 변환 규칙은 [GX 산출물 매핑](references/gx-mapping.md)을, 코드 근거 기반 진입점 체인 추출 규칙은 [진입점 체인 추출 규칙](references/entrypoint-rules.md)을 읽는다.
 
 ## 입력 수집 계약
 
@@ -81,6 +86,28 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
 6. HTML이 존재하고 비어 있지 않으며 IR·receipt의 view와 경로가 일치하는지 확인한다.
 7. 아래 출력 계약으로 결과를 보고한다. 전체 예시는 [trace 요청 예시](examples/trace-request.md)를 참고한다.
+
+## 누적 아키텍처 맵
+
+`--scope`가 출력 위치를 가른다. 파일명은 기존 `{view}.json`·`{view}.html` 규칙 그대로다.
+
+| scope | 위치 | 성격 |
+|---|---|---|
+| `session` | `${DEV_DIR}/visual/` | 그 시점 스냅샷, 갱신하지 않는다 |
+| `all` | `${MAP_DIR}/` (기본 `docs/architecture/`, `--map-dir`로 변경) | 항상 최신, 증분 갱신 |
+
+두 산출물을 **한 폴더에 섞지 않는다**. 세션 출력은 갱신되지 않으므로 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다.
+
+`--scope session` HTML 상단에는 **스냅샷 배너**를 넣는다 — 생성 시각과 `git rev-parse --short HEAD` 결과, 그리고 "이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다". `--scope all`에는 넣지 않는다.
+
+1. `scripts/merge_map.py`의 `changed_paths`로 변경·삭제 파일을 구한다. `--scope session`이면 이번 사이클 diff의 파일로 제한하고 병합 없이 그 결과만 렌더링한다.
+2. `scripts/scan_entrypoints.py`로 그 파일들만 스캔한다. 매니페스트가 없으면 전체를 스캔하고, 이것이 최초 전체 스캔임을 사용자에게 먼저 알린다.
+3. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
+4. `--scope all`이면 `scripts/merge_map.py`로 이전 IR과 병합한다. `--scope session`은 병합하지 않는다 — 스냅샷이므로 누적 IR과 매니페스트를 건드리지 않는다.
+5. `scripts/validate_ir.py`로 검증한다. **실패하면 이전 `${MAP_DIR}/service.ir.json`을 덮어쓰지 않는다.**
+6. 커밋 대상을 보고한다 — `--scope all`은 `${MAP_DIR}/service.ir.json`·`service.html`·`.scan-manifest.json`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 영수증은 어느 쪽도 커밋하지 않는다.
+
+스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않는다. `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
 
 ## 런타임 사실 제약
 
