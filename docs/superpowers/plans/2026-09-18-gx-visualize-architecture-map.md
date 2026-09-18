@@ -1680,13 +1680,17 @@ Step 1에서 적은 요구 문자열(`gx-visualize`, `impact`, `.dev/{branch-slu
 
 - [ ] **Step 4: docs/gx-visualize-guide.md에 누적 맵 절을 추가한다**
 
-`docs/architecture/` 산출물 3종, `--scope` 선택, 최초 전체 스캔 경고, Archify 미설치 시 폴백 동작, 비-git 프로젝트의 mtime 지문을 설명한다.
+`--scope` 선택, 최초 전체 스캔 경고, 비-git 프로젝트의 mtime 지문을 설명한다. **산출물은 도메인별이다** — `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`과 공유 `.scan-manifest.json`. `SKILL.md`의 "도메인 분할" 절이 정본이므로 그대로 옮기고 새로 지어내지 마라.
+
+특히 **도메인마다 개별 판정**한다는 사실을 독자가 놓치지 않게 쓴다 — 한 저장소 안에서 어떤 도메인은 그림이 나오고 어떤 도메인은 표로 떨어지는 것이 정상이다. 실제 GX 프로젝트 측정값(도메인 8개 중 6개 통과)을 예로 들면 독자가 이 동작을 오해하지 않는다.
+
+**Archify 자동 설치 정책은 이미 이 파일에 있다** (Task 8이 넣었다). 다시 쓰지 말고 모순되게 고치지도 마라 — 확인만 하고 넘어간다.
 
 - [ ] **Step 5: codex-smoke.md에 시나리오를 추가한다**
 
 `tests/codex-smoke.md`에는 현재 `visualize` 언급이 **0건**이다. 아래 다섯 시나리오를 `## 시각화` 절로 추가한다. 앞의 셋은 기능 표면이고, 뒤의 둘은 Codex에서만 드러나는 위험이다.
 
-1. **누적 맵 생성** — `gx-visualize service --scope all`이 `docs/architecture/`에 IR·HTML·매니페스트를 만든다.
+1. **누적 맵 생성** — `gx-visualize service --scope all`이 `docs/architecture/`에 **도메인별** IR·HTML과 공유 매니페스트를 만들고, 도메인마다 개별로 판정한다(일부 통과·일부 폴백이 정상).
 2. **Archify 미설치 폴백** — 설치가 불가능한 환경에서 표가 생성되고 **그림 부재가 명시**된다.
 3. **시각화 실패의 진실한 보고** — 모든 백엔드 실패 시 `html_path: null`과 재실행 명령이 반환되고 stale HTML이 남지 않는다.
 4. **complete 단계 질문 게이트의 도구 대응** — Task 7이 `AskUserQuestion`을 쓴다. Codex에서 그 자리에 실제로 제공되는 질문 도구로 옮겨지고 **실제 사용자 응답을 기다리는지** 확인한다. 동기 질문 도구가 현재 모드에 없으면 어떻게 처리되는지 기록한다.
@@ -1711,12 +1715,17 @@ python -m unittest discover -s tests -p "test_codex_*.py" -v 2>&1 | tail -5
 bash scripts/hook-tests.sh
 ```
 
-Expected: 모두 `OK`. 실패가 남으면 그 항목을 고치기 전에는 이 Task를 완료로 표시하지 않는다.
+Expected: `test_gx_visualize_routing`의 **7건만 실패로 남고 그 수가 늘지 않는다.** 나머지는 전부 `OK`.
+
+그 7건은 `--visualize` 플래그 통합 배선(gx-dev SKILL.md의 플래그·한국어 트리거 정규화, phase-setup의 `visualize-view` resume 지속, phase-review의 "Step 1.5")을 요구하며 **이 계획의 범위가 아니다.** 이 브랜치의 기준선 보존 커밋이 "통합 배선 24건은 후속 계획의 RED 테스트로 의도적 미포함"이라고 명시했고, 수용 기준 17개 어디에도 없다. **고치려 들지 마라.**
 
 - [ ] **Step 8: 커밋**
 
+변경한 파일만 명시적으로 스테이징한다 (`git add -A`를 쓰지 마라 — 다른 세션의 잔여물이 섞인다).
+
 ```bash
-git add -A
+git add README.md index.html docs/gx-visualize-guide.md tests/codex-smoke.md
+git add .claude-plugin/plugin.json .claude-plugin/marketplace.json .codex-plugin/plugin.json CHANGELOG.md
 git commit -m "docs: 누적 아키텍처 맵 문서화와 1.34.0 버전 갱신"
 ```
 
