@@ -231,5 +231,23 @@ def detect_backend(
     }
 
 
+def main() -> int:
+    """CLI entry point matching SKILL.md:85 -- ensure_archify() first, then detect_backend().
+
+    Running `python detect_backend.py` alone must reproduce the documented auto-install
+    flow: without this, the CLI only ever saw PATH/env Archify and never the
+    home-directory install, so the "install automatically if missing" decision never
+    actually ran when this script was invoked directly. Existing top-level keys
+    (`backend`, `reason`, `version`) keep their original meaning; `archify_install`
+    is additive.
+    """
+    ensure_result = ensure_archify()
+    archify_command = ensure_result["command"] if ensure_result["available"] else None
+    result = detect_backend(archify_command=archify_command)
+    result["archify_install"] = ensure_result
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 if __name__ == "__main__":
-    print(json.dumps(detect_backend(), ensure_ascii=False, sort_keys=True))
+    raise SystemExit(main())

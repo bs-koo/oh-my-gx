@@ -1,4 +1,7 @@
+import contextlib
 import importlib.util
+import io
+import json
 import sys
 import tempfile
 import unittest
@@ -87,6 +90,28 @@ class EnsureArchifyInstallTests(unittest.TestCase):
         self.assertEqual(result["command"], [sys.executable, str(self._candidate(root))])
         self.assertEqual(len(result["attempts"]), 1)
         self.assertEqual(result["attempts"][0]["phase"], "install")
+
+    def test_cli_entry_point_installs_then_detects_via_ensure_archify(self):
+        # 판정 P: SKILL.md:85는 `python detect_backend.py`를 그냥 실행하면 ensure_archify()를
+        # 거친다고 서술한다. __main__이 detect_backend()만 부르도록 되돌리면 archify_install
+        # 키가 아예 없거나 backend가 archify가 아니게 되어 이 테스트가 실패해야 한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            install_command = self._write_installer(root, exit_code=0, create_bin=True)
+            with mock.patch.object(self.detector, "_ARCHIFY_CANDIDATES", (self._candidate(root),)):
+                with mock.patch.object(self.detector, "_ARCHIFY_INSTALL_COMMAND", install_command):
+                    with mock.patch.object(self.detector.shutil, "which", return_value=sys.executable):
+                        buffer = io.StringIO()
+                        with contextlib.redirect_stdout(buffer):
+                            exit_code = self.detector.main()
+
+        self.assertEqual(exit_code, 0)
+        result = json.loads(buffer.getvalue())
+        self.assertEqual(result["backend"], "archify")
+        self.assertIn("archify_install", result)
+        self.assertTrue(result["archify_install"]["available"])
+        self.assertEqual(len(result["archify_install"]["attempts"]), 1)
+        self.assertEqual(result["archify_install"]["attempts"][0]["phase"], "install")
 
     def test_install_is_attempted_only_once_per_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
