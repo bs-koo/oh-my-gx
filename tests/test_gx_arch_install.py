@@ -91,6 +91,45 @@ class EnsureArchifyInstallTests(unittest.TestCase):
         self.assertEqual(len(result["attempts"]), 1)
         self.assertEqual(result["attempts"][0]["phase"], "install")
 
+    def test_install_resolves_npx_to_absolute_path_before_invoking(self):
+        # 판정 S: Windows에서 npx는 npx.CMD로만 PATH에 있어 shell=False + 맨 이름 "npx"는
+        # CreateProcess가 못 찾아 FileNotFoundError로 끝난다(실측). node/mmdc처럼 shutil.which로
+        # 해석한 절대경로를 argv[0]에 써야 한다 -- 맨 이름으로 되돌리면 called_argv[0]이
+        # resolved_npx와 달라져 이 테스트가 실패한다.
+        resolved_npx = r"C:\Program Files\nodejs\npx.CMD"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with mock.patch.object(self.detector, "_ARCHIFY_CANDIDATES", (self._candidate(root),)):
+                with mock.patch.object(
+                    self.detector.shutil,
+                    "which",
+                    side_effect=lambda name: resolved_npx if name == "npx" else None,
+                ):
+                    with mock.patch.object(self.detector.subprocess, "run") as run:
+                        run.return_value = mock.Mock(returncode=1, stderr="")
+                        result = self.detector.ensure_archify()
+
+        called_argv = run.call_args.args[0]
+        self.assertEqual(called_argv[0], resolved_npx)
+        self.assertEqual(called_argv[1:], ["-y", "skills", "add", "tt-a1i/archify", "-g"])
+        self.assertFalse(result["available"])
+
+    def test_missing_npx_records_attempt_without_invoking_subprocess(self):
+        # 판정 S: npx가 PATH에서 전혀 안 보이면(해석 실패) 없는 실행 파일을 호출해 예외를
+        # 만들지 않고, subprocess를 아예 부르지 않은 채 정직하게 attempts에 남긴다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with mock.patch.object(self.detector, "_ARCHIFY_CANDIDATES", (self._candidate(root),)):
+                with mock.patch.object(self.detector.shutil, "which", return_value=None):
+                    with mock.patch.object(self.detector.subprocess, "run") as run:
+                        result = self.detector.ensure_archify()
+
+        run.assert_not_called()
+        self.assertFalse(result["available"])
+        self.assertEqual(len(result["attempts"]), 1)
+        self.assertIsNone(result["attempts"][0]["exit_code"])
+        self.assertIn("npx", result["attempts"][0]["stderr"])
+
     def test_cli_entry_point_installs_then_detects_via_ensure_archify(self):
         # 판정 P: SKILL.md:85는 `python detect_backend.py`를 그냥 실행하면 ensure_archify()를
         # 거친다고 서술한다. __main__이 detect_backend()만 부르도록 되돌리면 archify_install

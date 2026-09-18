@@ -139,9 +139,26 @@ def ensure_archify(command: Command | None = None) -> dict[str, Any]:
     if resolved is not None and _archify_doctor_ok(resolved):
         return {"available": True, "command": resolved, "attempts": attempts}
 
+    # Resolve the executable through PATH the same way `node` (_installed_archify_command)
+    # and `mmdc` (detect_backend) already do. A bare "npx" fails CreateProcess on Windows:
+    # npx ships as npx.CMD, and shell=False subprocess calls only match .exe by bare name.
+    install_argv = list(_ARCHIFY_INSTALL_COMMAND)
+    npx = shutil.which(install_argv[0])
+    if npx is None:
+        attempts.append(
+            {
+                "phase": "install",
+                "command": install_argv,
+                "exit_code": None,
+                "stderr": f"{install_argv[0]!r} executable not found on PATH",
+            }
+        )
+        return {"available": False, "command": None, "attempts": attempts}
+    install_argv[0] = npx
+
     try:
         install_result = subprocess.run(
-            _ARCHIFY_INSTALL_COMMAND,
+            install_argv,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -152,7 +169,7 @@ def ensure_archify(command: Command | None = None) -> dict[str, Any]:
         attempts.append(
             {
                 "phase": "install",
-                "command": list(_ARCHIFY_INSTALL_COMMAND),
+                "command": install_argv,
                 "exit_code": install_result.returncode,
                 "stderr": (install_result.stderr or "").strip(),
             }
@@ -161,7 +178,7 @@ def ensure_archify(command: Command | None = None) -> dict[str, Any]:
         attempts.append(
             {
                 "phase": "install",
-                "command": list(_ARCHIFY_INSTALL_COMMAND),
+                "command": install_argv,
                 "exit_code": None,
                 "stderr": str(exc),
             }
