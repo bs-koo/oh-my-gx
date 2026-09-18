@@ -59,6 +59,27 @@ def _single_node_ir(kind: str) -> dict:
     }
 
 
+def _ir_with_label(label: str, technical: str | None = None) -> dict:
+    node: dict = {"id": "n", "kind": "api", "label": label, "evidence": []}
+    if technical is not None:
+        node["technical_label"] = technical
+    return {
+        "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+        "nodes": [node],
+        "edges": [],
+    }
+
+
+def _text_units(text: str) -> int:
+    # render-architecture.mjs가 위임하는 renderers/shared/utils.mjs의 textUnits()를
+    # 독립적으로 재현한 테스트 전용 계측기다 — 한글 등 전각 문자는 2, 그 외는 1.
+    units = 0
+    for ch in text:
+        codepoint = ord(ch)
+        units += 2 if 0xAC00 <= codepoint <= 0xD7A3 or 0x1100 <= codepoint <= 0x115F else 1
+    return units
+
+
 LINEAR_CHAIN_IR = {
     "schema_version": 1,
     "view": "service",
@@ -471,6 +492,37 @@ class ToArchifyTests(unittest.TestCase):
 
     def test_cited_paths_is_empty_when_no_code_evidence(self):
         self.assertEqual([], self.cited_paths(TRACE_IR))
+
+    def test_long_korean_label_gets_explicit_size(self):
+        # "에너지 사용량 조회 API" = 11자 → 기본 120px를 넘는다
+        ir = _ir_with_label("에너지 사용량 조회 API")
+        component = self.to_archify(ir, "architecture")[NODE_KEY][0]
+        self.assertIn("size", component)
+        width = component["size"][0]
+        self.assertGreaterEqual(width + 8, _text_units("에너지 사용량 조회 API") * 6.6)
+
+    def test_short_label_omits_size(self):
+        # 기본 박스에 들어가면 size를 내보내지 않는다 — 불필요한 필드를 만들지 않는다
+        self.assertNotIn("size", self.to_archify(_ir_with_label("로그인"), "architecture")[NODE_KEY][0])
+
+    def test_sublabel_length_does_not_force_size(self):
+        # sublabel에는 shrink-to-fit이 있으므로 길어도 size를 강제하지 않는다
+        ir = _ir_with_label("로그인", technical="POST /api/v1/authentication/login/session")
+        self.assertNotIn("size", self.to_archify(ir, "architecture")[NODE_KEY][0])
+
+    def test_size_is_deterministic(self):
+        ir = _ir_with_label("에너지 사용량 조회 API")
+        self.assertEqual(self.to_archify(ir, "architecture"), self.to_archify(ir, "architecture"))
+
+    def test_very_long_label_widens_grid_step_to_keep_separation(self):
+        # 한글 25자 라벨 → cellW(150)+gapX(90)-8=232px 상한을 넘으므로 cellW가 함께 올라가야
+        # 같은 행 옆 칸 컴포넌트와 8px 미만으로 겹치는 rectsOverlap 실패를 피한다.
+        ir = _ir_with_label("가" * 25)
+        out = self.to_archify(ir, "architecture")
+        layout = out["layout"]
+        for component in out[NODE_KEY]:
+            width = component["size"][0] if "size" in component else 120
+            self.assertGreaterEqual(layout["cellW"] + layout["gapX"] - width, 8)
 
 
 if __name__ == "__main__":

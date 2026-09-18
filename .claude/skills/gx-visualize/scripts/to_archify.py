@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +35,55 @@ KIND_TO_COL = {
 }
 
 MAX_SOURCES = 3
+
+# 다음 세 상수는 Archify의 architecture 렌더러가 label 적합성을 판정하는 공식을
+# 그대로 옮긴 것이다(~/.agents/skills/archify/renderers/architecture/render-architecture.mjs:65,
+# :366-368). 컴포넌트 기본 크기는 그 렌더러 안에 하드코딩돼 있고 layout.cellW/cellH와는
+# 무관하다: `estLabelW = textUnits(label) * 6.6; estLabelW > width + 8`이면 검증이
+# 실패한다. sublabel·tag는 같은 파일 :372-382에서 minimumNodeTextWidth로 축소 구제를
+# 받으므로 이 계산에 넣지 않는다.
+_DEFAULT_COMPONENT_WIDTH = 120
+_DEFAULT_COMPONENT_HEIGHT = 60
+_LABEL_WIDTH_PER_UNIT = 6.6
+_LABEL_FIT_MARGIN = 8
+
+# 그리드 칸 간격 기본값. renderers/architecture/render-architecture.mjs:384-392의
+# rectsOverlap(a, b, 8)이 모든 컴포넌트 쌍에 적용되므로, 같은 행에서 옆 열과 맞닿는
+# 폭(stepX = cellW + gapX)이 컴포넌트 폭보다 8px 이상 넉넉해야 한다.
+_DEFAULT_LAYOUT = {"mode": "grid", "cols": 5, "gapX": 90, "gapY": 50, "cellW": 150, "cellH": 64}
+
+# renderers/shared/utils.mjs의 textUnits()가 전각으로 판정하는 코드포인트 범위를
+# 그대로 옮긴 것이다 — 한글 음절(AC00-D7A3)이 포함되어 한글 라벨은 문자당 2 units다.
+# 이모지 variation selector 처리(같은 함수의 나머지 절반)는 라벨에 이모지를 쓰지
+# 않으므로 옮기지 않는다.
+_FULLWIDTH_RE = re.compile(
+    "[ᄀ-ᅟ⌚-⌛〈-〉⏩-⏬⏰⏳"
+    "◽-◾☔-☕☰-☷♈-♓♿⚊-⚏"
+    "⚓⚡⚪-⚫⚽-⚾⛄-⛅⛎⛔⛪"
+    "⛲-⛳⛵⛺⛽✅✊-✋✨❌❎"
+    "❓-❕❗➕-➗➰➿⬛-⬜⭐⭕"
+    "⺀-꓏ꥠ-ꥼ가-힣豈-﫿︐-︙"
+    "︰-﹯！-｠￠-￦"
+    "\U00016fe0-\U00018dff\U0001aff0-\U0001afff\U0001b000-\U0001b2ff"
+    "\U0001f000-\U0001faff\U00020000-\U0003fffd]"
+)
+
+
+def text_units(text: str) -> int:
+    """Count `text` the way Archify's textUnits() does — fullwidth chars (한글 포함) cost 2."""
+    return sum(2 if _FULLWIDTH_RE.match(ch) else 1 for ch in text)
+
+
+def _label_width(label: str) -> int:
+    """Minimum component width `label` needs to pass Archify's fit check, rounded up."""
+    return math.ceil(text_units(label) * _LABEL_WIDTH_PER_UNIT - _LABEL_FIT_MARGIN)
+
+
+def _component_size(label: str) -> list[int] | None:
+    """`size` override for `label`, or `None` when the default 120x60 box already fits it."""
+    if _label_width(label) <= _DEFAULT_COMPONENT_WIDTH:
+        return None
+    return [_label_width(label), _DEFAULT_COMPONENT_HEIGHT]
 
 
 def _sources(evidence: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
@@ -74,6 +125,9 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
         "row": row,
         "col": col,
     }
+    size = _component_size(node["label"])
+    if size is not None:
+        component["size"] = size
     if "technical_label" in node:
         component["sublabel"] = node["technical_label"]
     if include_sources:
@@ -125,6 +179,13 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
             row_of[node["id"]] = row
 
     components = [_component(node, row_of[node["id"]], node_col[node["id"]], repository is not None) for node in nodes]
+
+    layout = dict(_DEFAULT_LAYOUT)
+    max_width = max((c["size"][0] for c in components if "size" in c), default=_DEFAULT_COMPONENT_WIDTH)
+    required_cell_w = max_width - layout["gapX"] + _LABEL_FIT_MARGIN
+    if required_cell_w > layout["cellW"]:
+        layout["cellW"] = required_cell_w
+
     meta: dict[str, Any] = {"title": ir.get("title", ""), "locale": "en"}
     if repository is not None:
         meta["repository"] = repository
@@ -132,7 +193,7 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
         "schema_version": 1,
         "diagram_type": kind,
         "meta": meta,
-        "layout": {"mode": "grid", "cols": 5, "gapX": 90, "gapY": 50, "cellW": 150, "cellH": 64},
+        "layout": layout,
         "components": components,
         "connections": [_connection(edge) for edge in edges],
     }
