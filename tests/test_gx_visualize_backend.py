@@ -44,7 +44,7 @@ class VisualBackendTests(unittest.TestCase):
                     print("validated")
                     raise SystemExit({validation_exit})
                 if phase == "deliver":
-                    output = pathlib.Path(sys.argv[sys.argv.index("--output") + 1])
+                    output = pathlib.Path(sys.argv[-2])
                     output.write_text('<html lang="ko"><body>Archify 결과</body></html>', encoding="utf-8")
                     print(str(output))
                     raise SystemExit({deliver_exit})
@@ -86,7 +86,7 @@ class VisualBackendTests(unittest.TestCase):
 
                 pathlib.Path({str(marker)!r}).write_text("called", encoding="utf-8")
                 if sys.argv[1] == "deliver":
-                    output = pathlib.Path(sys.argv[sys.argv.index("--output") + 1])
+                    output = pathlib.Path(sys.argv[-2])
                     output.write_text("<html>fake success</html>", encoding="utf-8")
                 raise SystemExit(0)
                 """

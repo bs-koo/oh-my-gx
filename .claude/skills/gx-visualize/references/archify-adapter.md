@@ -18,9 +18,11 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 `render_archify(ir_path, output_dir, archify_command)`는 같은 기본 argv에 다음 두 호출을 순서대로 추가한다.
 
 ```text
-<archify_command> validate <ir_path>
-<archify_command> deliver <ir_path> --output <view.html>
+<archify_command> validate <diagram-type> <ir_path> --json
+<archify_command> deliver  <diagram-type> <ir_path> <view.html> --json
 ```
+
+`diagram-type`은 view에서 파생한다 — `service` → `architecture`, `sequence` → `sequence`.
 
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.
 

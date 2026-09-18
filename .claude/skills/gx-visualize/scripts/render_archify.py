@@ -67,6 +67,13 @@ def _view(ir_path: Path) -> str:
     return view if view in {"trace", "progress", "impact", "service", "sequence"} else "trace"
 
 
+_DIAGRAM_TYPES = {"service": "architecture", "sequence": "sequence"}
+
+
+def diagram_type(view: str) -> str:
+    return _DIAGRAM_TYPES.get(view, "architecture")
+
+
 def _run(command: list[str], phase: str, artifact_path: Path) -> dict[str, Any]:
     try:
         result = subprocess.run(
@@ -226,12 +233,13 @@ def render_archify(
 
     command = _normalize_command(archify_command)
 
-    validate_command = [*command, "validate", str(ir_path)]
+    kind = diagram_type(view)
+    validate_command = [*command, "validate", kind, str(ir_path), "--json"]
     attempts = [_run(validate_command, "validate", html_path)]
     if attempts[-1]["status"] == "failed":
         return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root)
 
-    deliver_command = [*command, "deliver", str(ir_path), "--output", str(html_path)]
+    deliver_command = [*command, "deliver", kind, str(ir_path), str(html_path), "--json"]
     attempts.append(_run(deliver_command, "deliver", html_path))
     if attempts[-1]["status"] == "failed" or not html_path.is_file() or html_path.stat().st_size == 0:
         if attempts[-1]["status"] != "failed":
