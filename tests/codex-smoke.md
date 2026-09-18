@@ -56,3 +56,15 @@ Claude companion을 설치하지 않은 임시 소비 프로젝트에서 `--advi
 | Q2 | gx-context UI Other·id capture와 gx-dev 선택 답변 | 미실행: UI Other 입력, 동일 id의 `codex_hook.py capture`, gx-dev 질문 세션이 없다. |
 
 `gx-context`는 현재 caller cwd의 `context/`와 `--from` 상대경로를 사용한다. 임시 프로젝트의 `context/`와 `requirements/order.md`가 루트에 있으면 gx-context smoke는 프로젝트 루트에서 시작한다. gx-tdd의 중첩 cwd 검증은 별도 시나리오로 유지한다. 이 후보의 런타임 차단과 중첩 경로 관찰은 단위 테스트 PASS로 대체하지 않는다.
+
+## 시각화
+
+`gx-visualize`(1.34.0에서 추가된 18번째 스킬)와 gx-dev·gx-tdd phase-complete의 구조 시각화 제안 게이트(Step 5.5)의 실제 Codex 세션 검증이다. 로컬 단위 테스트나 mock 결과를 PASS 근거로 대체하지 않는다. V1~V3은 기능 표면, V4~V5는 Codex에서만 드러나는 위험이다. 인증된 실제 소비 프로젝트 세션을 실행하지 않은 항목은 `미실행`으로 남긴다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| V1 | Codex `/skills`에서 gx-visualize 발견 후, 임의 Git 프로젝트에서 `gx-visualize service --scope all` 최초 실행 | `docs/architecture/`에 도메인별 `{domain}.ir.json`·`{domain}.html`과 공유 `.scan-manifest.json` 생성; 도메인마다 개별 판정(일부 Archify 통과·일부 폴백 공존이 정상) | 미실행 |
+| V2 | Archify가 설치되지 않았거나 자동 설치가 실패하는 격리 환경에서 `gx-visualize --backend auto` 실행 | 실패한 Archify 시도가 receipt의 attempts에 기록됨; Mermaid → 정적 HTML로 폴백해 표가 생성됨; report에 그림(다이어그램) 부재가 명시됨 | 미실행 |
+| V3 | Archify·Mermaid·static 백엔드가 모두 실패하는 환경에서 실행 | `html_path: null`; `visualization_status: failed`; 재실행 명령 반환; 이전 stale HTML이 남지 않음 | 미실행 |
+| V4 | gx-dev 또는 gx-tdd phase-complete 대화형 세션이 Step 5.5(구조 시각화 제안)에 도달 | `AskUserQuestion` 자리에 실제 제공되는 질문 도구로 대응했는지, 실제 사용자 응답을 기다렸는지 기록; 동기 질문 도구가 현재 모드에 없을 때의 처리 방식(자연어 질문 등)을 기록 | 미실행 |
+| V5 | Archify 자동 설치의 `npx` 실행이 Codex 승인·샌드박스로 차단되는 환경에서 `--backend auto` 실행 | 차단이 예외가 아니라 폴백으로 처리됨; 설치 시도 기록이 receipt에 남음; 이어서 Mermaid → static 폴백까지 진행됨 | 미실행 |

@@ -57,15 +57,15 @@ class GxVisualizePublicDocsTests(unittest.TestCase):
     def load_json(self, path: Path) -> dict:
         return json.loads(self.read(path))
 
-    def test_public_manifests_release_version_1_33_0(self):
-        self.assertEqual(self.load_json(CLAUDE_MANIFEST)["version"], "1.33.0")
-        self.assertEqual(self.load_json(CODEX_MANIFEST)["version"], "1.33.0")
+    def test_public_manifests_release_version_1_34_0(self):
+        self.assertEqual(self.load_json(CLAUDE_MANIFEST)["version"], "1.34.0")
+        self.assertEqual(self.load_json(CODEX_MANIFEST)["version"], "1.34.0")
 
         marketplace = self.load_json(MARKETPLACE)
         plugin = next(
             item for item in marketplace["plugins"] if item["name"] == "oh-my-gx"
         )
-        self.assertEqual(plugin["version"], "1.33.0")
+        self.assertEqual(plugin["version"], "1.34.0")
 
     def test_readme_publishes_eighteenth_skill_contract(self):
         self.assertTrue(SKILL_DIR.is_dir(), "gx-visualize skill directory must ship")

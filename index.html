@@ -714,7 +714,7 @@
         <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
       </div>
       <div class="hero-meta">
-        <span><strong>17</strong> 스킬</span>
+        <span><strong>18</strong> 스킬</span>
         <span><strong>17</strong> 에이전트</span>
         <span><strong>Git · SVN</strong> 지원</span>
         <span><strong>Claude Code · Codex</strong></span>
@@ -845,7 +845,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
-      <h2 class="display-lg">17개 스킬이 사이클을 나눠 맡습니다</h2>
+      <h2 class="display-lg">18개 스킬이 사이클을 나눠 맡습니다</h2>
       <p>스킬 하나는 한 가지 역할만 맡습니다. 단독으로 불러 써도 되고, dev/tdd 파이프라인 안에서 자동으로 엮여 돌아가기도 합니다.</p>
     </div>
 
@@ -1068,6 +1068,33 @@
 <span class="ln"><span class="c-str">  "한 줄이면 PRD → 설계 → 구현 →</span></span>
 <span class="ln"><span class="c-str">   리뷰 → PR을 알아서 수행합니다."</span></span>
 <span class="ln"><span class="c-dim">  수식어 12회 → 0회</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- visualize feature -->
+    <div class="feature" style="margin-top:72px; margin-bottom:0;">
+      <div class="feature-text">
+        <span class="badge badge-coral">18번째 스킬 · 누적 아키텍처 맵</span>
+        <h3 class="display-sm">visualize</h3>
+        <p>GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 바꿉니다. 직접 호출 외에 "시각화 포함", "구조를 그림으로 보여줘", "요구사항 추적 맵을 시각화해줘", "변경 영향도를 시각화해줘" 같은 자연어도 명시 요청으로 인식합니다.</p>
+        <ul class="feature-list">
+          <li><strong>1차 필수 뷰</strong> — trace · progress · impact (요구사항 연결 · Phase 상태 · 변경 영향)</li>
+          <li><strong>백엔드 순서</strong> — <code>Archify → Mermaid → 정적 HTML</code>. Archify가 없거나 실행에 실패하면 자동 설치를 1회 시도한 뒤 폴백합니다</li>
+          <li>기본 출력은 <code>.dev/{branch-slug}/visual/</code>, <code>--scope all</code>의 누적 맵은 도메인별로 <code>docs/architecture/</code>에 쌓입니다</li>
+          <li>정적 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다</li>
+        </ul>
+        <p>자세한 뷰별 계약은 <code>docs/gx-visualize-guide.md</code>를 참고하세요.</p>
+      </div>
+      <div class="feature-art">
+        <div class="code-window" role="img" aria-label="gx-visualize 한국어 출력 흐름 예시">
+          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">gx-visualize impact</span></div>
+          <div class="code-body">
+<span class="ln"><span class="c-cmd">&gt;</span> 변경 영향도를 시각화해줘</span>
+<span class="ln">  <span class="c-str">→ impact.json</span>         <span class="c-dim">근거: file:line</span></span>
+<span class="ln">  <span class="c-str">→ impact.html</span>         <span class="c-dim">backend: archify</span></span>
+<span class="ln">  <span class="c-str">→ impact.receipt.json</span> <span class="c-dim">validation_status: verified</span></span>
           </div>
         </div>
       </div>

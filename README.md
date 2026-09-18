@@ -385,6 +385,21 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 "/gx-humanizer 보고서.md 정밀 모드로 교정해줘"        ← strict (의미 보존·과윤문 검증)
 ```
 
+### visualize
+
+`gx-visualize`는 **18번째 스킬**로 추가되어 `oh-my-gx`가 GX 스킬 18개가 됐습니다. GX 작업 산출물(PRD·설계서·diff·codemap)을 근거가 추적되는 JSON IR과 한국어 HTML로 바꿉니다. 설계·구현·리뷰·커밋 게이트를 대신하지 않으며, 시각화를 명시적으로 요청했을 때만 실행됩니다.
+
+```
+"요구사항 추적 맵을 시각화해줘"     ← trace    (요구사항 → 기능 → 테스트 연결)
+"진행 상태를 그림으로 보여줘"       ← progress (Phase·Gate·검증 상태)
+"변경 영향도를 시각화해줘"          ← impact   (추가·삭제·변경·이동)
+"시각화 포함"                      ← 현재 phase 기본값 (design→service · review→impact · 그 외→progress)
+```
+
+기본 출력은 `.dev/{branch-slug}/visual/`이며, `--backend auto`는 `Archify → Mermaid → 정적 HTML` 순으로 실행 가능한 렌더러를 고릅니다. Archify가 없거나 실행에 실패하면 사용자에게 묻지 않고 1회 자동 설치를 시도한 뒤, 그래도 안 되면 Mermaid, 다시 안 되면 정적 HTML로 폴백합니다. 정적 파일명·코드 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다.
+
+`--scope all`은 `docs/architecture/`에 도메인별로 누적 아키텍처 맵을 증분 갱신합니다. 뷰별 입력·출력 계약, 도메인 분할 규칙, 실패 시 문제 해결은 [docs/gx-visualize-guide.md](docs/gx-visualize-guide.md)를 참고하세요.
+
 ### commit / pull-request
 
 ```
