@@ -83,7 +83,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 2. [IR 계약](references/ir-contract.md)에 맞춰 `{view}.json`을 만든다. 공식 ID와 한국어 표시명을 보존하고, 텍스트는 실제 파일·라인, XLSX/PDF는 실제 파일·locator를 쓴다.
 3. `scripts/validate_ir.py {view}.json --project-root <PROJECT_ROOT>`로 IR을 검증한다. renderer API와 CLI에도 같은 `project_root`를 전달한다. 실패하면 성공 HTML을 만들거나 이전 HTML을 재사용하지 않는다.
 4. `auto`이면 `scripts/detect_backend.py`의 `ensure_archify()`가 Archify 설치를 확인하고, 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로 1회 자동 설치를 시도한 뒤 그 결과로 `detect_backend()`가 실행 가능한 백엔드를 확정한다. 설치 성공은 exit code가 아니라 `doctor` 결과로 판정하며, 설치·재탐지가 모두 실패해도 예외 없이 폴백(Mermaid → static)으로 넘어간다.
-5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
+5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. `--archify-command`에는 4번이 확정한 `command`를 그대로(verbatim) 전달한다 — 경로 형태를 바꾸지 않는다(예: Git Bash 경로로 재조립 금지). 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
 6. HTML이 존재하고 비어 있지 않으며 IR·receipt의 view와 경로가 일치하는지 확인한다.
 7. 아래 출력 계약으로 결과를 보고한다. 전체 예시는 [trace 요청 예시](examples/trace-request.md)를 참고한다.
 
