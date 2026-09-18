@@ -61,24 +61,38 @@ def _to_archify_module():
     return module
 
 
-def _git_repository_evidence(project_root: Path | str) -> dict[str, str] | None:
-    """Return {url, revision, link_mode} when project_root is a clean git checkout with a resolvable HEAD and origin.
+def _git_repository_evidence(project_root: Path | str, cited_paths: list[str]) -> dict[str, str] | None:
+    """Return {url, revision, link_mode} when project_root is a git checkout with a resolvable HEAD and origin.
 
     Archify requires this pinned evidence to verify component.sources against the real
     repository (docs/reports/2026-09-18-archify-ir-schema.md §3.3). Returns None — not
     a failure — for non-git projects, so GX can still render without source evidence.
 
-    Also returns None when the working tree is dirty (git status --porcelain is
-    non-empty): a committed-but-modified file still passes Archify's blob-existence
-    check at HEAD, but a `line` cited from the working tree may no longer match the
-    committed content — a citation that looks verified but may be wrong. Requiring a
-    clean tree trades that silent risk for losing links on a dirty tree, which is
-    honest and reversible (commit or stash, then re-render).
+    `cited_paths` (from to_archify.cited_paths) scopes the dirty check to exactly the
+    files that would be published as sources — not the whole working tree. A project's
+    unrelated in-flight changes, including gx-visualize's own committed `.dev/` output,
+    must not suppress evidence for citations that remain accurate. A *cited* path that
+    is modified or untracked does block: a committed-but-modified file still passes
+    Archify's blob-existence check at HEAD, but a `line` cited from the working tree may
+    no longer match the committed content — a citation that looks verified but may be
+    wrong. Requiring the cited paths to be clean trades that silent risk for losing
+    links on those specific files, which is honest and reversible (commit, then
+    re-render). Changes outside the cited paths can leave the rest of the code
+    meaningfully different from the pinned revision while evidence still publishes —
+    accepted, because Archify verifies each cited path and line against the revision
+    itself, so each individual citation stays accurate regardless of what else moved.
+
+    With no cited paths there is nothing to verify, so this returns None outright —
+    Archify also rejects a document that declares meta.repository with zero component
+    sources.
     """
+    if not cited_paths:
+        return None
     root = str(project_root)
     try:
         status = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, shell=False, check=False
+            ["git", "status", "--porcelain", "--", *cited_paths],
+            cwd=root, capture_output=True, text=True, shell=False, check=False,
         )
         if status.returncode != 0 or status.stdout.strip():
             return None
@@ -328,11 +342,12 @@ def render_archify(
 
     command = _normalize_command(archify_command)
 
-    repository = _git_repository_evidence(project_root) if project_root is not None else None
+    to_archify_module = _to_archify_module()
+    ir_document = json.loads(ir_path.read_text(encoding="utf-8-sig"))
+    cited_paths = to_archify_module.cited_paths(ir_document)
+    repository = _git_repository_evidence(project_root, cited_paths) if project_root is not None else None
     archify_payload = output_dir / f"{view}.archify.json"
-    archify_document = _to_archify_module().to_archify(
-        json.loads(ir_path.read_text(encoding="utf-8-sig")), kind, repository=repository
-    )
+    archify_document = to_archify_module.to_archify(ir_document, kind, repository=repository)
     archify_payload.write_text(
         json.dumps(archify_document, ensure_ascii=False, indent=2), encoding="utf-8"
     )

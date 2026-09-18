@@ -244,7 +244,16 @@ class ArchifyCommandTests(unittest.TestCase):
         # fingerprint() 테스트와 같은 방식.
         with TemporaryDirectory() as tmp:
             with mock.patch.object(self.m.subprocess, "run", side_effect=FileNotFoundError):
-                self.assertIsNone(self.m._git_repository_evidence(Path(tmp)))
+                self.assertIsNone(self.m._git_repository_evidence(Path(tmp), ["a.java"]))
+
+    def test_no_cited_paths_yields_no_repository_evidence(self):
+        # 인용할 파일이 없으면 검증할 대상 자체가 없다 — git을 아예 조회하지 않는다.
+        # (to_archify도 sources 없이 meta.repository만 싣는 문서는 만들지 않는다: Archify가
+        # referenceCount 0인 repository 선언을 거부하기 때문이다.)
+        with TemporaryDirectory() as tmp:
+            with mock.patch.object(self.m.subprocess, "run") as run:
+                self.assertIsNone(self.m._git_repository_evidence(Path(tmp), []))
+                run.assert_not_called()
 
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
     def test_git_repo_without_origin_yields_no_repository_evidence(self):
@@ -253,35 +262,52 @@ class ArchifyCommandTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _init_git_repo(root)
-            self.assertIsNone(self.m._git_repository_evidence(root))
+            self.assertIsNone(self.m._git_repository_evidence(root, ["a.txt"]))
 
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
     def test_git_repo_with_origin_yields_repository_evidence(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _init_git_repo(root, origin="https://github.com/example/repo.git")
-            evidence = self.m._git_repository_evidence(root)
+            evidence = self.m._git_repository_evidence(root, ["a.txt"])
             self.assertEqual("https://github.com/example/repo.git", evidence["url"])
             self.assertRegex(evidence["revision"], r"^[0-9a-f]{40}$")
             self.assertEqual("local-only", evidence["link_mode"])
 
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
-    def test_dirty_tree_yields_no_repository_evidence(self):
-        # 커밋된 파일이라도 워킹 트리에서 수정됐으면 그 줄이 커밋 시점과 다를 수 있다 —
+    def test_modified_cited_path_yields_no_repository_evidence(self):
+        # 인용된 파일이 커밋 이후 수정됐으면 그 줄이 커밋 시점과 다를 수 있다 —
         # Archify는 커밋된 리비전만 검증하므로 잘못된 근거를 정직해 보이게 만들 위험이 있다.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _init_git_repo(root, origin="https://github.com/example/repo.git")
             (root / "a.txt").write_text("modified after commit", encoding="utf-8")
-            self.assertIsNone(self.m._git_repository_evidence(root))
+            self.assertIsNone(self.m._git_repository_evidence(root, ["a.txt"]))
+
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_dirt_outside_cited_paths_does_not_suppress_evidence(self):
+        # 인용되지 않은 파일이 바뀌거나 새로 생겨도(gx-visualize 자신의 .dev/ 산출물처럼)
+        # 인용된 파일이 클린하면 repository는 그대로 나와야 한다 — 리뷰 라운드 2의 핵심.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _init_git_repo(root, origin="https://github.com/example/repo.git")
+            (root / "a.txt").write_text("modified after commit", encoding="utf-8")  # not cited
+            (root / "untracked.txt").write_text("new file", encoding="utf-8")  # not cited
+            (root / "cited.java").write_text("class Cited {}", encoding="utf-8")
+            subprocess.run(["git", "add", "cited.java"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "add cited file"], cwd=root, check=True)
+
+            evidence = self.m._git_repository_evidence(root, ["cited.java"])
+            self.assertIsNotNone(evidence)
+            self.assertEqual("https://github.com/example/repo.git", evidence["url"])
 
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
     def test_repo_root_flag_is_passed_to_validate_and_deliver(self):
         # deliver_command에서 *repo_root_args를 지워도 통과하던 기존 테스트들은 전부
         # non-git tmpdir(플래그 부재)만 확인했다 — 여기서는 실제로 붙는 경우를 확인한다.
-        # project_root(git 체크아웃)와 ir_path/출력 디렉터리를 분리한다 — 같은 곳에 두면
-        # render_archify 자신이 쓰는 IR/영수증 파일이 트리를 dirty하게 만들어 이 테스트가
-        # 검증하려는 --repo-root 부착 자체가 항상 스킵된다(dirty-tree 판정, ruling 4).
+        # project_root(git 체크아웃)와 ir_path/출력 디렉터리를 분리해 --repo-root 부착
+        # 자체를 dirty-tree 경로 스코프 로직과 무관하게 최소 형태로 pin한다. 실제 프로젝트
+        # 모양(IR/출력이 같은 저장소 안)은 아래 test_repo_root_flag_survives_in_repo_output에서 확인한다.
         with TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
             project_root = tmp_root / "project"
@@ -304,10 +330,41 @@ class ArchifyCommandTests(unittest.TestCase):
             self.assertEqual(str(project_root), calls[0][calls[0].index("--repo-root") + 1])
             self.assertIn("--repo-root", calls[1])
 
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_repo_root_flag_survives_in_repo_output(self):
+        # 실제 통합 모양: IR과 산출물이 프로젝트 저장소 안(.dev/{branch}/visual/ 같은 경로)에
+        # 쓰인다. render_archify 자신이 만드는 fake_archify.py/argv.log/영수증/HTML은 인용된
+        # 파일이 아니므로 dirty해도 무방해야 한다 — path scoping(리뷰 라운드 2)이 실제
+        # 통합 경로에서도 동작하는지 여기서 확인한다 (라운드 1의 test_repo_root_flag_is_
+        # passed_to_validate_and_deliver는 project_root와 출력을 분리한 최소 형태로 남겨둔다).
+        with TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            _init_git_repo(project_root, origin="https://github.com/example/repo.git")
+            (project_root / "a.java").write_text("class A {}", encoding="utf-8")
+            subprocess.run(["git", "add", "a.java"], cwd=project_root, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "add evidence"], cwd=project_root, check=True)
+
+            dev_dir = project_root / ".dev" / "feat-x" / "visual"
+            dev_dir.mkdir(parents=True)
+            ir_path = dev_dir / "service.json"
+            ir_path.write_text(json.dumps(VALID_IR, ensure_ascii=False), encoding="utf-8")
+            fake = _fake_archify(dev_dir)
+            out = dev_dir / "out"
+            self.m.render_archify(ir_path, out, ["python", str(fake)], project_root=project_root)
+
+            calls = [json.loads(line) for line in (dev_dir / "argv.log").read_text(encoding="utf-8").splitlines()]
+            self.assertIn("--repo-root", calls[0])
+            self.assertIn("--repo-root", calls[1])
+
+            payload = json.loads((out / "service.archify.json").read_text(encoding="utf-8"))
+            self.assertEqual([{"path": "a.java", "line": 1}], payload["components"][0]["sources"])
+            self.assertIn("repository", payload["meta"])
 
 class ToArchifyTests(unittest.TestCase):
     def setUp(self):
-        self.to_archify = _converter().to_archify
+        module = _converter()
+        self.to_archify = module.to_archify
+        self.cited_paths = module.cited_paths
 
     def test_output_carries_required_top_level_keys(self):
         # REQUIRED_TOP_LEVEL은 docs/reports/2026-09-18-archify-ir-schema.md에 기록한 실제 키 집합이다.
@@ -385,6 +442,35 @@ class ToArchifyTests(unittest.TestCase):
         first = self.to_archify(CROSSED_CHAINS_IR, "architecture")
         second = self.to_archify(CROSSED_CHAINS_IR, "architecture")
         self.assertEqual(first, second)
+
+    def test_cited_paths_collects_and_dedupes_code_evidence_files(self):
+        # render_archify가 git dirty 검사를 이 목록에만 국한하므로(ruling 4, 라운드 2),
+        # to_archify()가 실제로 sources에 실을 파일과 정확히 같아야 한다.
+        ir = {
+            "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+            "nodes": [
+                {"id": "n1", "kind": "api", "label": "a", "evidence": [
+                    {"kind": "code", "file": "b.java", "line": 1},
+                    {"kind": "code", "file": "a.java", "line": 2},
+                ]},
+                {"id": "n2", "kind": "service", "label": "b", "evidence": [
+                    {"kind": "code", "file": "a.java", "line": 9},
+                    {"kind": "inferred"},
+                ]},
+            ],
+            "edges": [],
+        }
+        self.assertEqual(["a.java", "b.java"], self.cited_paths(ir))
+
+    def test_cited_paths_respects_per_node_source_cap(self):
+        ir = json.loads(json.dumps(VALID_IR))
+        ir["nodes"][0]["evidence"] = [
+            {"kind": "code", "file": f"f{n}.java", "line": n} for n in range(1, 6)
+        ]
+        self.assertEqual(3, len(self.cited_paths(ir)))
+
+    def test_cited_paths_is_empty_when_no_code_evidence(self):
+        self.assertEqual([], self.cited_paths(TRACE_IR))
 
 
 if __name__ == "__main__":

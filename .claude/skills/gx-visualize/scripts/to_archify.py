@@ -52,6 +52,20 @@ def _sources(evidence: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
     return sources or None
 
 
+def cited_paths(ir: dict[str, Any]) -> list[str]:
+    """Return the sorted, deduplicated file paths that `to_archify` would cite as sources.
+
+    Mirrors `_sources`'s per-node cap so a caller can scope a git dirty check to exactly
+    the paths that would be published as evidence, instead of the whole working tree.
+    """
+    paths: set[str] = set()
+    for node in ir.get("nodes", []):
+        sources = _sources(node.get("evidence", []))
+        if sources:
+            paths.update(source["path"] for source in sources)
+    return sorted(paths)
+
+
 def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) -> dict[str, Any]:
     component: dict[str, Any] = {
         "id": node["id"],

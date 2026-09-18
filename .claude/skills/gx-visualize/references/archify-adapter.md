@@ -26,7 +26,7 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 
 `--repo-root`는 `architecture`에만 적용되고, 변환된 문서가 `component.sources`를 포함할 때만 붙는다(`render_archify`가 프로젝트의 실제 git HEAD/origin에서 계산 — 얻을 수 없으면 `sources`/`meta.repository`를 함께 비운다). IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
 
-`project_root`의 워킹 트리가 dirty(`git status --porcelain`이 비어 있지 않음)하면 HEAD/origin이 정상 조회되더라도 `repository`를 계산하지 않는다 — 커밋됐지만 수정된 파일은 Archify의 블롭 존재 검사는 통과하지만 인용한 `line`이 워킹 트리 기준이라 커밋 시점과 다를 수 있기 때문이다. 이 경우 클린 트리일 때와 마찬가지로 `sources`/`meta.repository`를 함께 비운다.
+dirty 검사는 워킹 트리 전체가 아니라 **인용될 파일에만** 국한된다(`git status --porcelain -- <cited paths...>`) — `to_archify.cited_paths(ir)`가 실제로 `sources`에 실릴 파일 목록을 미리 계산해 넘긴다. 인용된 파일 중 하나라도 수정·미추적 상태면 HEAD/origin이 정상 조회되더라도 `repository`를 계산하지 않고 `sources`/`meta.repository`를 함께 비운다 — 커밋됐지만 수정된 파일은 Archify의 블롭 존재 검사는 통과하지만 인용한 `line`이 워킹 트리 기준이라 커밋 시점과 다를 수 있기 때문이다. 인용되지 않은 다른 파일이 바뀌거나 새로 생겨도(이 프로젝트 정책상 커밋되는 `.dev/{branch}/visual/*` 산출물처럼) 이 검사에 영향을 주지 않는다 — Archify가 인용된 각 경로·줄을 리비전 자체에 대해 검증하므로 개별 인용의 정확성은 그것으로 보장된다. 인용할 파일이 하나도 없으면(코드 근거가 없는 IR) git을 조회하지도 않고 바로 `None`이다.
 
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.
 
