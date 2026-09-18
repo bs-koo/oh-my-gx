@@ -21,6 +21,19 @@
 - 커밋 메시지는 `{type}: 한국어 요약` 형식이며 `Co-Authored-By` 트레일러를 넣지 않는다.
 - 스킬 번들 파일은 **지시가 적힌 파일 기준 상대경로**로 참조한다. `${CLAUDE_PLUGIN_ROOT}`나 cwd를 플러그인 루트로 가정하지 않는다.
 
+### Codex 호환 (모든 태스크 공통)
+
+이 저장소는 Claude Code와 Codex CLI 양쪽에 배포된다. 근거 문서는 [스킬 유지보수 규칙](../../../.claude/rules/skill-maintenance.md), [Codex 하네스 어댑터](../../../.claude/rules/harness-codex.md), 배포 정본인 [공통 실행 규약](../../../.claude/skills/gx-dev/references/codex-runtime.md), 그리고 이 스킬의 [Codex 적응 노트](../../../.claude/skills/gx-visualize/references/codex-runtime.md)다.
+
+- `.codex-plugin/plugin.json`의 `skills`는 `./.claude/skills/` **디렉터리**를 가리킨다. 신규 스킬·스크립트는 자동 포함되므로 per-skill 등록은 불필요하다.
+- **Claude 전용 도구(`Task`·`AskUserQuestion`·`Skill`)를 새로 넣거나 바꾸면 같은 파일의 하네스 적응 안내도 함께 갱신한다.** 인라인 한 줄로 끝내지 말고, 그 파일이 이미 가진 적응 절을 갱신한다. `allowed-tools`나 역할의 `tools` 목록을 Codex 권한 강제로 표현하지 않는다.
+- Python 스크립트는 **설치된 `gx-visualize/scripts/`** 에서 찾는다. 소비 프로젝트에 같은 이름의 스크립트가 있어도 대신 실행하지 않는다.
+- 셸 명령은 Codex에서 `exec_command` 계열로 옮겨진다. **명령 실행이 샌드박스·승인으로 막힐 수 있으므로**, 막힌 경우를 실패가 아니라 폴백 경로로 처리하고 시도 기록을 receipt에 남긴다. `merge_map.py`의 `git hash-object` 폴백이 이 요구를 이미 만족한다.
+- Windows에서 Markdown·JSON·소스 읽기와 쓰기는 **UTF-8을 명시**한다. PowerShell 예시에는 `Get-Content -Encoding UTF8`을 쓰고 Bash 문법은 Bash에서 실행한다.
+- 특정 Codex 모델명·도구 인자를 불변 API처럼 쓰지 않는다. 실제 세션의 허용 목록과 스키마를 확인하도록 적는다.
+- 검증 명령: `python scripts/sync-codex-resources.py --check`, `bash scripts/lint-consistency.sh`. Codex 실행 경로를 바꿨으면 `python -m unittest discover -s tests -p "test_codex_*.py" -v`, 훅·보호 조건을 바꿨으면 `bash scripts/hook-tests.sh`도 실행한다.
+- **로컬 린트·mock 결과로 실제 설치·모델·훅 동작을 검증했다고 표시하지 않는다.** 실제 Codex 세션에서 확인하지 않은 항목은 [Codex smoke 계약](../../../tests/codex-smoke.md)에 **미실행으로 기록**한다.
+
 ## File Structure
 
 **신규**
@@ -1520,11 +1533,20 @@ Expected: FAIL — `ensure_archify`가 없다.
 그림을 보려면 Archify가 필요합니다: npx -y skills add tt-a1i/archify -g
 ```
 
-- [ ] **Step 5: 뒤집힌 계약 세 곳을 고친다**
+- [ ] **Step 5: 뒤집힌 계약 네 곳을 고친다**
 
 1. `references/archify-adapter.md` 첫 문단 "어댑터는 패키지를 설치하거나 네트워크에 접속하지 않으며" — 자동 설치 정책으로 교체하고 1회 시도·exit code 불신·실패 시 폴백을 명시한다.
 2. `SKILL.md` 실행 절차의 "설치·업데이트·네트워크 접근은 하지 않는다" — 같은 방식으로 교체한다.
 3. `SKILL.md` 출력 계약에 `backend != archify`일 때 그림 부재를 보고하도록 한 줄 추가한다.
+4. **`references/codex-runtime.md`의 "경로와 실행" 절** — 다음 한 문장이 새 정책을 세 군데에서 동시에 위반한다.
+
+   > 현재 PATH와 사용자가 명시한 override만 probe한다. 패키지를 자동 설치하거나 외부 네트워크를 호출하거나 홈 디렉터리를 탐색하지 않는다.
+
+   - **자동 설치 금지** → 이제 설치한다
+   - **네트워크 호출 금지** → `npx`가 네트워크를 쓴다
+   - **홈 디렉터리 탐색 금지** → 실제 설치 위치가 `~/.agents/skills/archify`이므로 홈을 봐야 한다. PATH에는 바이너리가 아예 없어 PATH probing만으로는 영원히 찾지 못한다
+
+   교체 시 다음을 명시한다: 탐지 대상은 `~/.agents/skills/archify/bin/archify.mjs`와 `~/.claude/skills/archify`(심링크)이며 그 밖의 홈 경로를 뒤지지 않는다. 설치는 1회만 시도한다. **Codex에서 명령 실행이 샌드박스·승인으로 막히면 실패가 아니라 폴백으로 처리하고 시도 기록을 receipt에 남긴다.** 고정 절대경로를 산출물에 저장하지 않는다.
 
 - [ ] **Step 6: 테스트를 실행해 통과를 확인한다**
 
@@ -1587,7 +1609,15 @@ Step 1에서 적은 요구 문자열(`gx-visualize`, `impact`, `.dev/{branch-slu
 
 - [ ] **Step 5: codex-smoke.md에 시나리오를 추가한다**
 
-누적 맵 생성, Archify 미설치 폴백, 시각화 실패의 진실한 보고 세 시나리오를 추가하고, **실제 세션에서 실행하지 않았다면 미실행으로 표시한다.** 로컬 mock 결과를 실행 근거로 적지 않는다.
+`tests/codex-smoke.md`에는 현재 `visualize` 언급이 **0건**이다. 아래 다섯 시나리오를 `## 시각화` 절로 추가한다. 앞의 셋은 기능 표면이고, 뒤의 둘은 Codex에서만 드러나는 위험이다.
+
+1. **누적 맵 생성** — `gx-visualize service --scope all`이 `docs/architecture/`에 IR·HTML·매니페스트를 만든다.
+2. **Archify 미설치 폴백** — 설치가 불가능한 환경에서 표가 생성되고 **그림 부재가 명시**된다.
+3. **시각화 실패의 진실한 보고** — 모든 백엔드 실패 시 `html_path: null`과 재실행 명령이 반환되고 stale HTML이 남지 않는다.
+4. **complete 단계 질문 게이트의 도구 대응** — Task 7이 `AskUserQuestion`을 쓴다. Codex에서 그 자리에 실제로 제공되는 질문 도구로 옮겨지고 **실제 사용자 응답을 기다리는지** 확인한다. 동기 질문 도구가 현재 모드에 없으면 어떻게 처리되는지 기록한다.
+5. **자동 설치가 샌드박스·승인으로 막힌 경우** — Task 8의 `npx` 실행이 Codex에서 차단될 때 예외가 아니라 폴백으로 처리되고 시도 기록이 receipt에 남는지 확인한다.
+
+**실제 Codex 세션에서 실행하지 않은 항목은 미실행으로 표시한다.** 로컬 mock·유닛 테스트 결과를 실제 설치·모델·훅 동작의 근거로 적지 않는다.
 
 - [ ] **Step 6: Codex 리소스를 동기화하고 린트를 돌린다**
 
