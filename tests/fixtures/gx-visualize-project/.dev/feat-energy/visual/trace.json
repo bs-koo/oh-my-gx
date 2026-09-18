@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "view": "trace",
+  "locale": "ko-KR",
+  "title": "요구사항 추적 맵",
+  "nodes": [
+    {
+      "id": "AN-02-001",
+      "kind": "requirement",
+      "label": "에너지 사용량을 기간별로 조회한다",
+      "status": "verified",
+      "evidence": [
+        {
+          "file": ".dev/feat-energy/prd.md",
+          "line": 3,
+          "kind": "artifact"
+        }
+      ]
+    }
+  ],
+  "edges": [],
+  "meta": {"project": "gx-visualize-fixture"}
+}

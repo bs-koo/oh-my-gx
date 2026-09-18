@@ -29,3 +29,7 @@ docs/presentation-*.md
 
 # Codex 훅 페이로드 캡처 로그 (실측용 임시 산출물 — 명령 문자열이 그대로 들어간다)
 .dev/codex-probe.jsonl
+
+# Python
+__pycache__/
+*.pyc

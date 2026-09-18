@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oh-my-gx.local/schemas/gx-visual-ir.schema.json",
+  "title": "GX Visualization Intermediate Representation",
+  "type": "object",
+  "required": ["schema_version", "view", "locale", "title", "nodes", "edges"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "view": {"enum": ["trace", "progress", "impact", "service", "sequence"]},
+    "locale": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}},
+    "meta": {"type": "object"}
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "label", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "technical_label": {"type": "string"},
+        "status": {"enum": ["planned", "in_progress", "review", "verified", "blocked", "unknown"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind"],
+      "oneOf": [
+        {"properties": {"kind": {"const": "inferred"}, "file": false, "line": false, "locator": false}},
+        {"required": ["file", "line"], "properties": {"kind": {"enum": ["artifact", "code", "test", "command", "design"]}, "file": {"type": "string", "minLength": 1}, "line": {"type": "integer", "minimum": 1}, "locator": false}},
+        {"required": ["file", "locator"], "properties": {"kind": {"enum": ["artifact", "code", "test", "command", "design"]}, "file": {"type": "string", "minLength": 1}, "line": false, "locator": {"$ref": "#/$defs/locator"}}}
+      ],
+      "properties": {
+        "file": {"type": "string", "minLength": 1},
+        "line": {"type": "integer", "minimum": 1},
+        "locator": {"$ref": "#/$defs/locator"},
+        "kind": {"enum": ["artifact", "code", "test", "command", "design", "inferred"]}
+      }
+    },
+    "locator": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["type", "sheet", "cell"],
+          "properties": {
+            "type": {"const": "xlsx"},
+            "sheet": {"type": "string", "minLength": 1},
+            "cell": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["type", "page"],
+          "properties": {
+            "type": {"const": "pdf"},
+            "page": {"type": "integer", "minimum": 1}
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target", "relation"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
+        "relation": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

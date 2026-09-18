@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "view": "impact",
+  "locale": "ko-KR",
+  "title": "변경 영향 맵",
+  "nodes": [
+    {
+      "id": "gx-change-visualize-skill",
+      "kind": "change",
+      "label": "시각화 스킬을 추가한다",
+      "technical_label": "gx-visualize",
+      "status": "verified",
+      "evidence": [
+        {
+          "file": ".claude/skills/gx-visualize/SKILL.md",
+          "line": 2,
+          "kind": "artifact"
+        }
+      ]
+    },
+    {
+      "id": "gx-impact-dev-output",
+      "kind": "artifact",
+      "label": "작업별 시각화 산출물을 생성한다",
+      "technical_label": ".dev/{branch-slug}/visual/",
+      "status": "verified",
+      "evidence": [
+        {
+          "file": "docs/superpowers/specs/2026-09-17-gx-visualize-design.md",
+          "line": 19,
+          "kind": "design"
+        }
+      ]
+    },
+    {
+      "id": "gx-impact-pipeline",
+      "kind": "pipeline",
+      "label": "기존 개발 파이프라인은 시각화 실패와 분리된다",
+      "status": "review",
+      "evidence": [
+        {
+          "file": "docs/superpowers/specs/2026-09-17-gx-visualize-design.md",
+          "line": 7,
+          "kind": "design"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "gx-change-visualize-skill->gx-impact-dev-output",
+      "source": "gx-change-visualize-skill",
+      "target": "gx-impact-dev-output",
+      "relation": "adds"
+    },
+    {
+      "id": "gx-change-visualize-skill->gx-impact-pipeline",
+      "source": "gx-change-visualize-skill",
+      "target": "gx-impact-pipeline",
+      "relation": "does_not_block"
+    }
+  ],
+  "meta": {
+    "project": "oh-my-gx",
+    "fixture": "task-6"
+  }
+}
