@@ -1722,6 +1722,149 @@ git commit -m "docs: 누적 아키텍처 맵 문서화와 1.34.0 버전 갱신"
 
 ---
 
+### Task 10: 도메인 분할과 변환기 결함 2건
+
+설계서 §5.7·§5.7.1을 구현한다. 실제 GX 프로젝트 측정으로 확정된 작업이며, 세 가지 모두 해법이 실측으로 검증돼 있다.
+
+**Files:**
+- Create: `.claude/skills/gx-visualize/scripts/split_domains.py`
+- Modify: `.claude/skills/gx-visualize/scripts/to_archify.py`
+- Modify: `.claude/skills/gx-visualize/SKILL.md`
+- Modify: `.claude/skills/gx-visualize/references/entrypoint-rules.md`
+- Test: `tests/test_gx_arch_split.py`, `tests/test_gx_arch_archify.py`
+
+**Interfaces:**
+- Consumes: Task 1~3의 IR, Task 5의 `to_archify(ir, kind, repository=None)`
+- Produces: `domain_of(path) -> str | None`, `split_by_domain(ir) -> dict[str, dict]`
+
+- [ ] **Step 1: 도메인 추출 실패 테스트를 쓴다**
+
+`tests/test_gx_arch_split.py`. 경로는 실제 GX 프로젝트에서 측정한 두 형태를 쓴다.
+
+```python
+LAYER_DIRS = ("controller", "service", "repository", "dao", "mapper", "web", "api")
+
+def test_domain_is_segment_before_layer_dir(self):
+    # SEF: .../modules/auth/controller/AuthController.java
+    self.assertEqual(domain_of("webframework-public/src/main/java/com/sqisoft/sef/modules/auth/controller/AuthController.java"), "auth")
+    # GSEED: .../gseed/board/controller/BoardController.java
+    self.assertEqual(domain_of("src/main/java/com/sqisoft/gseed/board/controller/BoardController.java"), "board")
+
+def test_layer_dir_named_api_still_yields_owning_domain(self):
+    # `api`는 계층 이름이자 도메인 이름일 수 있다. 계층으로 먼저 소비하지 않는다.
+    self.assertEqual(domain_of("src/main/java/com/sqisoft/gseed/api/controller/ApiController.java"), "api")
+
+def test_unknown_layout_falls_back_to_parent_dir(self):
+    self.assertEqual(domain_of("src/main/java/com/example/Foo.java"), "com")
+
+def test_domain_is_none_for_empty_path(self):
+    self.assertIsNone(domain_of(""))
+```
+
+- [ ] **Step 2: 분할 실패 테스트를 쓴다**
+
+```python
+def test_split_groups_nodes_by_domain(self):
+    parts = split_by_domain(ir_two_domains())
+    self.assertEqual(sorted(parts), ["auth", "code"])
+
+def test_table_nodes_join_every_domain_that_references_them(self):
+    # 테이블 노드는 파일 근거가 없다. 그 테이블을 읽고 쓰는 도메인 전부에 들어간다.
+    parts = split_by_domain(ir_shared_table())
+    for d in parts:
+        self.assertIn("gx-table--TB_USER", [n["id"] for n in parts[d]["nodes"]])
+
+def test_edges_crossing_domains_are_dropped_and_reported(self):
+    # 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않는다.
+    # 조용히 버리지 않고 해당 도메인 IR의 missing_inputs에 남긴다.
+    parts = split_by_domain(ir_cross_domain())
+    self.assertTrue(any("cross-domain-edge" in p.get("missing_inputs", []) for p in parts.values()))
+
+def test_split_is_deterministic(self):
+    self.assertEqual(split_by_domain(ir_two_domains()), split_by_domain(ir_two_domains()))
+```
+
+- [ ] **Step 3: 테스트를 실행해 실패를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_split -v`
+Expected: FAIL — 모듈이 없다.
+
+- [ ] **Step 4: `split_domains.py`를 구현한다**
+
+`domain_of(path)`: 경로를 `/`로 쪼개고 **계층 폴더 이름이 나오는 첫 위치**를 찾아 그 **바로 앞 세그먼트**를 반환한다. 앞 세그먼트가 없거나 계층 폴더가 없으면 파일명 바로 앞 디렉터리를 반환한다. 빈 경로는 `None`.
+
+두 실제 프로젝트에서 측정한 형태가 모두 이 규칙을 만족한다(설계서 §5.7). 특정 저장소의 `modules/` 같은 관례에 의존하지 않는다.
+
+`split_by_domain(ir)`: 노드의 첫 `evidence.file`로 도메인을 정하고, 파일 근거가 없는 노드(테이블)는 **자신을 참조하는 모든 도메인에 복제**한다. 도메인 경계를 넘는 엣지는 버리되 그 사실을 해당 도메인 IR의 `missing_inputs`에 남긴다 — 조용히 지우지 않는다.
+
+- [ ] **Step 5: 결함 A(같은 열 엣지) 실패 테스트를 쓴다**
+
+`tests/test_gx_arch_archify.py`:
+
+```python
+def test_same_column_edge_gets_explicit_sides(self):
+    # service -> service, repository -> repository 는 실제로 존재한다(설계서 5.7.1).
+    conn = self.to_archify(_ir_same_layer_chain(), "architecture")[EDGE_KEY][0]
+    self.assertEqual(conn["fromSide"], "bottom")
+    self.assertEqual(conn["toSide"], "top")
+
+def test_cross_column_edge_has_no_explicit_sides(self):
+    conn = self.to_archify(_ir_normal_chain(), "architecture")[EDGE_KEY][0]
+    self.assertNotIn("fromSide", conn)
+```
+
+- [ ] **Step 6: 결함 B(sublabel 하한) 실패 테스트를 쓰고 틀린 테스트를 고친다**
+
+기존 `test_sublabel_length_does_not_force_size`는 **틀린 동작을 고정하고 있다.** 삭제하고 아래로 교체한다.
+
+```python
+def test_long_sublabel_widens_the_box(self):
+    # sublabel은 6px까지만 줄고 그 아래로는 Archify가 문서를 거부한다.
+    ir = _ir_with_label("조회", technical="GET /adm/v1/reb/versions/{targetGrcodeCd}/download/by-building-pk")
+    c = self.to_archify(ir, "architecture")[NODE_KEY][0]
+    self.assertGreaterEqual(c["size"][0] - 8, _text_units(c["sublabel"]) * 6 * 0.6)
+
+def test_short_sublabel_does_not_widen(self):
+    ir = _ir_with_label("조회", technical="GET /a")
+    self.assertNotIn("size", self.to_archify(ir, "architecture")[NODE_KEY][0])
+```
+
+- [ ] **Step 7: 두 결함을 구현한다**
+
+`to_archify.py`의 폭 계산을 두 조건의 최댓값으로 바꾼다. 상수 출처는 모듈 상단 주석에 적는다.
+
+```
+width = max(120, ceil(max(text_units(label) * 6.6 - 8,
+                          text_units(sublabel) * 6 * 0.6 + 8)))
+layout.cellW = max(150, max(width) - gapX + 8)
+```
+
+같은 열 엣지(`from`과 `to`의 `col`이 같음)에는 `fromSide`/`toSide`를 준다 — 타깃 `row`가 크면 `bottom`→`top`, 아니면 `top`→`bottom`.
+
+- [ ] **Step 8: 테스트를 실행해 통과를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_split tests.test_gx_arch_archify -v`
+Expected: PASS
+
+- [ ] **Step 9: 실제 프로젝트로 종단 확인한다**
+
+`D:\SQ\kereb-grep-2025-admin\sqisoft-sef-2024`를 스캔해 도메인별로 나누고 각각 Archify `validate`를 돌린다. 기대값(컨트롤러 실측): `code`(15노드)·`auth`(7노드)는 **통과**, `reb`(32노드)는 실패가 남는다. 통과 도메인이 하나도 없으면 구현이 틀린 것이다. **결과를 도메인별 표로 보고한다.**
+
+- [ ] **Step 10: SKILL.md와 entrypoint-rules.md를 갱신한다**
+
+- `## 누적 아키텍처 맵` 절: `--scope all`이 도메인별로 나눠 그린다는 것, 파일명이 `{domain}.ir.json`·`{domain}.html`이라는 것, **도메인마다 개별 판정**하며 실패한 도메인만 폴백한다는 것을 적는다. 전부 성공 아니면 전부 실패로 묶지 않는다
+- `--domain`은 이제 라벨 보강뿐 아니라 **그릴 도메인 선택**도 한다 — 생략하면 전 도메인을 그린다
+- `entrypoint-rules.md`: `calls`가 `api→service`·`service→repository`뿐이라는 현재 서술은 실제 스캐너 동작과 다르다. **같은 계층 안의 호출(`service→service`, `repository→repository`)도 나온다**는 사실을 규칙에 반영한다
+
+- [ ] **Step 11: 커밋**
+
+```bash
+git add .claude/skills/gx-visualize tests/test_gx_arch_split.py tests/test_gx_arch_archify.py
+git commit -m "feat: 아키텍처 맵을 도메인별로 분할하고 변환기 결함 2건을 수정"
+```
+
+---
+
 ## Self-review
 
 **스펙 커버리지**
@@ -1742,6 +1885,9 @@ git commit -m "docs: 누적 아키텍처 맵 문서화와 1.34.0 버전 갱신"
 | 12. Archify 자동 설치와 1회 시도 | Task 8 (`test_absent_archify_triggers_one_install_attempt`, `test_install_is_attempted_only_once_per_failure`) |
 | 13. 설치 실패 시 폴백·그림 부재 표시 | Task 8 (`test_install_failure_falls_back_without_raising`, `test_fallback_html_states_no_diagram_was_produced`) |
 | 14. 긴 한국어 라벨이 Archify 검증을 통과 | Task 6 2단위 (`test_long_korean_label_gets_explicit_size`, Step 11 종단 확인) |
+| 15. `--scope all`이 도메인별로 나눠 그린다 | Task 10 (`test_split_groups_nodes_by_domain`) |
+| 16. 도메인마다 개별 판정하고 실패 도메인만 폴백 | Task 10 Step 9·10 |
+| 17. 같은 열 엣지와 긴 sublabel이 Archify 검증을 통과 | Task 10 (`test_same_column_edge_gets_explicit_sides`, `test_long_sublabel_widens_the_box`) |
 
 JSP·Servlet·테이블 추출(설계서 §5.4)은 Task 2가 담당한다.
 

@@ -206,6 +206,37 @@ Archify 미설치·설치 실패 시 mermaid → static 폴백이 동작하지�
 
 이 게이트의 실패·취소는 commit·PR 결과를 바꾸지 않는다. Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
 
+### 5.7 도메인 분할 — 실제 저장소 규모에서 확정 (2026-09-18)
+
+실제 GX 프로젝트(`kreb-grep-2025-admin`, Java 456개)에 스캐너를 돌려 확정한 설계다. 픽스처가 아니라 현장 코드로 측정했다.
+
+스캔 자체는 정확했다 — 86노드(api 30·service 20·repository 14·table 22), 86엣지, 전부 실제 `file:line` 근거를 가진다. 그러나 **전체를 한 장으로 그리면 Archify 검증이 109건으로 실패한다.** 대부분 연결선이 다른 박스를 관통하는 `clean-flow/edge-through-node`이고, 애초에 86노드 한 장은 사람이 읽을 수 없다.
+
+**결정: `--scope all`은 도메인 단위로 나눠 그린다.** 측정 근거:
+
+| 대상 | 노드 | Archify 검증 |
+|---|---|---|
+| code 모듈 | 15 | 통과 (문제 0건) |
+| auth 모듈 | 7 | 통과 (문제 0건) |
+| reb 모듈 | 32 | 실패 (8건) |
+| 전체 한 장 | 86 | 실패 (109건) |
+
+도메인 분할만으로 보통 규모 모듈은 깨끗해진다. 아주 큰 도메인은 여전히 실패하므로 **도메인별로 개별 판정하고 실패한 도메인만 폴백시킨다** — 전부 성공 아니면 전부 실패로 묶지 않는다. 한 저장소 안에서 어떤 도메인은 그림이, 어떤 도메인은 표가 나오는 상태가 정상이며 그 사실이 보고에 드러나야 한다.
+
+### 5.7.1 함께 확정된 변환기 결함 2건
+
+분할을 측정하는 과정에서 `to_archify.py`의 결함 2건이 드러났다. 둘 다 해법까지 실측으로 검증했다.
+
+**결함 A — 같은 열 내부 엣지.** 스캐너는 `service → service`(5건)와 `repository → repository`(1건) 엣지를 낸다(예: `RefreshTokenRepository → RefreshTokenMapper`). `KIND_TO_COL`이 둘을 같은 열에 놓으므로 Archify의 `clean-flow/endpoint-side-direction` 규칙이 거부한다. §5.4의 규칙 표는 `calls`를 api→service, service→repository로만 규정하므로 **규칙 문서와 스캐너가 어긋나 있다**. 이 엣지는 실제 호출이므로 버리지 않는다 — Archify가 이미 지원하는 `fromSide`/`toSide`를 지정해 해결한다(타깃 row가 크면 `bottom`→`top`). 실측: auth 모듈 2건 → 0건.
+
+**결함 B — sublabel 하한 초과.** 크기 계산이 `sublabel`을 제외했다. `sublabel`에 shrink-to-fit이 있는 것은 맞지만 **6px 하한까지만**이고 그 아래로는 Archify가 문서를 거부한다. 실제 API 경로(`GET /adm/v1/reb/versions/{targetGrcodeCd}/download/by-building-pk`)가 그 한계를 넘는다. 올바른 폭은 두 조건을 모두 만족해야 한다:
+
+```
+width >= textUnits(label) * 6.6 - 8
+width >= textUnits(sublabel) * 6 * 0.6 + 8
+cellW  = max(150, maxWidth - gapX + 8)
+```
+
 ## 6. 실패 처리
 
 - 스캔이 0개 노드를 반환하면 빈 IR을 쓰지 않고 `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
