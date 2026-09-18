@@ -29,6 +29,7 @@ _MAPPING_RE = re.compile(
 _CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?"([^"]*)"')
 _METHOD_RE = re.compile(r"\b(?:public|protected)\s+[\w<>\[\],.\s]+?\s+(\w+)\s*\(")
 _SERVLET_RE = re.compile(r"\bextends\s+HttpServlet\b")
+_WEBSERVLET_RE = re.compile(r'@WebServlet\s*\(\s*(?:value\s*=\s*)?"([^"]+)"')
 _DO_METHOD_RE = re.compile(r"\b(?:protected|public)\s+void\s+(doGet|doPost)\s*\(")
 _NEW_FIELD_RE = re.compile(r"\bprivate\s+final\s+(\w+)\s+\w+\s*=\s*new\s+\w+")
 _FORM_ACTION_RE = re.compile(r'<form[^>]*\saction\s*=\s*"([^"]+)"', re.IGNORECASE)
@@ -115,6 +116,8 @@ def _scan_servlet(path: Path, root: Path, text: str) -> tuple[list[dict[str, Any
     rel_path = _rel(path, root)
     class_match = _CLASS_RE.search(text)
     class_name = class_match.group(1) if class_match else path.stem
+    url_match = _WEBSERVLET_RE.search(text)
+    url_pattern = url_match.group(1) if url_match else class_name
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
     collaborators = _FIELD_RE.findall(text) + _NEW_FIELD_RE.findall(text)
@@ -124,7 +127,7 @@ def _scan_servlet(path: Path, root: Path, text: str) -> tuple[list[dict[str, Any
             continue
         verb = "GET" if method.group(1) == "doGet" else "POST"
         node = _node(
-            "api", rel_path, method.group(1), f"{class_name}.{method.group(1)}", index + 1, f"{verb} {class_name}"
+            "api", rel_path, method.group(1), f"{class_name}.{method.group(1)}", index + 1, f"{verb} {url_pattern}"
         )
         nodes.append(node)
         for collaborator in collaborators:
@@ -144,6 +147,9 @@ def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list
         for table in _TABLE_RE.findall(match.group(2)):
             name = table.upper()
             node = _node("table", rel_path, name, name, line, name)
+            # A table's identity is the table itself, not the mapper file that mentions it -
+            # the same table referenced from another mapper must resolve to this same node.
+            node["id"] = f"gx-table--{name}"
             nodes.setdefault(node["id"], node)
             edges.append({"source": rel_path, "target": node["id"], "relation": relation, "resolved": True})
     return [nodes[key] for key in sorted(nodes)], edges
@@ -247,17 +253,18 @@ def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]])
                 target = None
             if target is None:
                 target = by_path.get(edge["target"])
-            if target is None and edge["relation"] == "requests":
-                # A screen's requested URL is meaningful even when it does not resolve to a
-                # scanned API node (e.g. no web.xml url-pattern to match against) - keep the
-                # literal URL rather than silently dropping the edge.
-                target = edge["target"]
-        if target is None or target == edge["source"]:
+        source = edge["source"]
+        if target is None or target == source:
             continue
-        edge_id = f"{edge['source']}->{target}:{edge['relation']}"
+        # IR invariant: an edge is only emitted when both endpoints are real nodes. A
+        # dangling reference (e.g. an unresolved symbol, or a raw file path left over from
+        # an unmatched mapper-to-DAO correction) must be dropped, not passed through.
+        if source not in by_id or target not in by_id:
+            continue
+        edge_id = f"{source}->{target}:{edge['relation']}"
         resolved[edge_id] = {
             "id": edge_id,
-            "source": edge["source"],
+            "source": source,
             "target": target,
             "relation": edge["relation"],
         }
@@ -273,6 +280,7 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
         candidates = [root / name for name in sorted(changed_files) if (root / name).suffix in suffixes]
 
     nodes: list[dict[str, Any]] = []
+    node_ids_seen: set[str] = set()
     raw_edges: list[dict[str, Any]] = []
     files: dict[str, list[str]] = {}
 
@@ -295,7 +303,12 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
             continue
         rel_path = _rel(path, root)
         files[rel_path] = sorted(node["id"] for node in file_nodes)
-        nodes.extend(file_nodes)
+        # A node id (e.g. a table identified by name alone) can be produced by more than one
+        # file - keep the first occurrence as the single node and let later files only add edges.
+        for node in file_nodes:
+            if node["id"] not in node_ids_seen:
+                node_ids_seen.add(node["id"])
+                nodes.append(node)
         raw_edges.extend(file_edges)
 
     nodes.sort(key=lambda node: node["id"])

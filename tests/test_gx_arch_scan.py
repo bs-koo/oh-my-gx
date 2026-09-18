@@ -198,5 +198,38 @@ class PackageCollisionEdgeTests(unittest.TestCase):
         self.assertNotIn((admin_login, auth_service), edge_pairs)
 
 
+class EdgeIntegrityTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_all_edge_endpoints_are_known_nodes(self):
+        for fixture in (FIXTURE, JSP_FIXTURE):
+            result = self.scan(fixture)
+            ids = {node["id"] for node in result["nodes"]}
+            for edge in result["edges"]:
+                self.assertIn(edge["source"], ids, f"{fixture}: {edge}")
+                self.assertIn(edge["target"], ids, f"{fixture}: {edge}")
+
+
+SHARED_TABLE_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-shared-table"
+
+
+class SharedTableNodeTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_same_table_across_mappers_is_one_node_with_two_edges(self):
+        result = self.scan(SHARED_TABLE_FIXTURE)
+        tables = [n for n in result["nodes"] if n["kind"] == "table"]
+        self.assertEqual(1, len(tables))
+        self.assertEqual("TB_BOARD", tables[0]["technical_label"])
+
+        table_id = tables[0]["id"]
+        incoming = [e for e in result["edges"] if e["target"] == table_id]
+        self.assertEqual(2, len(incoming))
+        sources = {e["source"] for e in incoming}
+        self.assertEqual(2, len(sources))
+
+
 if __name__ == "__main__":
     unittest.main()
