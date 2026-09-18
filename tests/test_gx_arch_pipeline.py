@@ -42,6 +42,14 @@ class CompletionGateTests(unittest.TestCase):
             self.assertLess(text.index("## Step 5.5"), text.index("## Step 6"), path.name)
             self.assertLess(text.index("## Step 5:"), text.index("## Step 5.5"), path.name)
 
+    def test_no_question_tool_is_distinct_from_no_user(self):
+        for path in PHASES:
+            text = self._text(path)
+            self.assertIn("자연어로 묻고 실제 답을 기다린다", text, path.name)
+            self.assertIn("질문 도구가 없음", text, path.name)
+            self.assertIn("응답할 사용자가 없음", text, path.name)
+            self.assertIn("다른 조건이다", text, path.name)
+
 
 if __name__ == "__main__":
     unittest.main()
