@@ -34,8 +34,9 @@ class JavaSpringScanTests(unittest.TestCase):
 
     def test_api_node_preserves_http_path_as_technical_label(self):
         result = self.scan(FIXTURE)
-        api = [n for n in result["nodes"] if n["kind"] == "api"][0]
-        self.assertEqual("POST /api/auth/login", api["technical_label"])
+        api = [n for n in result["nodes"] if n["kind"] == "api" and n["label"] == "LoginController.login"]
+        self.assertTrue(api, "LoginController.login node not found")
+        self.assertEqual("POST /api/auth/login", api[0]["technical_label"])
 
     def test_edges_connect_api_to_service_to_repository(self):
         result = self.scan(FIXTURE)
@@ -71,6 +72,27 @@ class JavaSpringScanTests(unittest.TestCase):
         result = self.scan(FIXTURE)
         api_paths = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
         self.assertIn("GET /api/profile/me", api_paths, "Class-level @RequestMapping should prefix method path")
+
+    def test_method_level_request_mapping_no_double(self):
+        result = self.scan(FIXTURE)
+        api_paths = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
+        self.assertIn("ANY /legacy/ping", api_paths, "Method-level @RequestMapping should not double the path")
+        self.assertNotIn("ANY /legacy/ping/legacy/ping", api_paths, "Path must not double")
+
+    def test_sibling_methods_not_contaminated(self):
+        result = self.scan(FIXTURE)
+        legacy_nodes = [n for n in result["nodes"] if n["kind"] == "api" and "legacy" in n["evidence"][0]["file"].lower()]
+        api_paths = {node["technical_label"] for node in legacy_nodes}
+        self.assertIn("GET /a", api_paths, "@GetMapping(/a) should produce GET /a")
+        self.assertIn("ANY /b", api_paths, "@RequestMapping(/b) should produce ANY /b")
+        self.assertNotIn("GET /b/a", api_paths, "Sibling paths must not be contaminated")
+        self.assertNotIn("ANY /b/b", api_paths, "Sibling paths must not be contaminated")
+
+    def test_empty_method_path_uses_class_prefix_only(self):
+        result = self.scan(FIXTURE)
+        api_paths = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
+        self.assertIn("GET /api/profile", api_paths, "Empty method path should use class prefix alone")
+        self.assertNotIn("GET /api/profile/", api_paths, "Must not have trailing slash")
 
 
 if __name__ == "__main__":

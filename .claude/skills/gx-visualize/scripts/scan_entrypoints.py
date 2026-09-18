@@ -86,7 +86,8 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
     edges: list[dict[str, Any]] = []
 
     if kind == "controller":
-        class_mapping = _CLASS_MAPPING_RE.search(text)
+        class_text_before = text[: class_match.start()]
+        class_mapping = _CLASS_MAPPING_RE.search(class_text_before)
         class_prefix = class_mapping.group(1) if class_mapping else ""
 
         owner_ids: list[str] = []
