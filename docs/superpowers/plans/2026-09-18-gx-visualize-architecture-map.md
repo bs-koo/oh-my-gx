@@ -1755,7 +1755,7 @@ def test_layer_dir_named_api_still_yields_owning_domain(self):
     self.assertEqual(domain_of("src/main/java/com/sqisoft/gseed/api/controller/ApiController.java"), "api")
 
 def test_unknown_layout_falls_back_to_parent_dir(self):
-    self.assertEqual(domain_of("src/main/java/com/example/Foo.java"), "com")
+    self.assertEqual(domain_of("src/main/java/com/example/Foo.java"), "example")
 
 def test_domain_is_none_for_empty_path(self):
     self.assertIsNone(domain_of(""))
