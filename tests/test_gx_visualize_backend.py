@@ -14,6 +14,10 @@ SCRIPTS = ROOT / ".claude" / "skills" / "gx-visualize" / "scripts"
 DETECT_PATH = SCRIPTS / "detect_backend.py"
 RENDER_PATH = SCRIPTS / "render_archify.py"
 FIXTURE = ROOT / "tests" / "fixtures" / "gx-trace.valid.json"
+# service 뷰만 diagram_type()이 "architecture"를 반환해 Archify를 실제로 시도한다
+# (render_archify.py 판정 1) — validate-then-deliver 시퀀싱·폴백 체인·receipt 모양을
+# pin하는 아래 4개 테스트는 그래서 trace가 아니라 이 fixture를 쓴다.
+SERVICE_FIXTURE = ROOT / "tests" / "fixtures" / "gx-service.valid.json"
 PROJECT_FIXTURE = ROOT / "tests" / "fixtures" / "gx-visualize-project"
 
 
@@ -167,7 +171,7 @@ class VisualBackendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             result = self.renderer.render_archify(
-                FIXTURE,
+                SERVICE_FIXTURE,
                 root / "output",
                 self.fake_archify(root),
             )
@@ -178,14 +182,14 @@ class VisualBackendTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "valid")
         self.assertEqual([item["phase"] for item in receipt["attempts"]], ["validate", "deliver"])
         self.assertTrue(all(item["exit_code"] == 0 for item in receipt["attempts"]))
-        self.assertTrue(receipt["artifact_path"].endswith("trace.html"))
+        self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
     def test_nonzero_archify_validation_falls_back_and_retains_diagnostics(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             result = self.renderer.render_archify(
-                FIXTURE,
+                SERVICE_FIXTURE,
                 root / "output",
                 self.fake_archify(root, validation_exit=23),
             )
@@ -205,7 +209,7 @@ class VisualBackendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             result = self.renderer.render_archify(
-                FIXTURE,
+                SERVICE_FIXTURE,
                 root / "output",
                 self.fake_archify(root, deliver_exit=17),
             )
@@ -224,10 +228,10 @@ class VisualBackendTests(unittest.TestCase):
             script.write_text("raise SystemExit(0)\n", encoding="utf-8")
             output = root / "output"
             output.mkdir()
-            (output / "trace.html").write_text("stale", encoding="utf-8")
+            (output / "service.html").write_text("stale", encoding="utf-8")
 
             result = self.renderer.render_archify(
-                FIXTURE,
+                SERVICE_FIXTURE,
                 output,
                 [sys.executable, str(script)],
             )

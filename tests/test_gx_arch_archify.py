@@ -32,6 +32,16 @@ KIND_TO_TYPE_AND_COL = {
 }
 
 
+TRACE_IR = {
+    "schema_version": 1,
+    "view": "trace",
+    "locale": "ko-KR",
+    "title": "추적 맵",
+    "nodes": [{"id": "n1", "kind": "requirement", "label": "요구사항", "status": "verified", "evidence": []}],
+    "edges": [],
+}
+
+
 def _single_node_ir(kind: str) -> dict:
     return {
         "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
@@ -147,6 +157,29 @@ class ArchifyCommandTests(unittest.TestCase):
 
     def test_sequence_view_maps_to_sequence_diagram_type(self):
         self.assertEqual("sequence", self.m.diagram_type("sequence"))
+
+    def test_non_service_or_sequence_views_have_no_diagram_type(self):
+        # Archify는 service/sequence만 지원한다 — 나머지 뷰는 애초에 시도 대상이 아니다.
+        for view in ("trace", "progress", "impact"):
+            self.assertIsNone(self.m.diagram_type(view))
+
+    def test_non_service_view_skips_archify_subprocess_entirely(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ir_path = root / "trace.json"
+            ir_path.write_text(json.dumps(TRACE_IR, ensure_ascii=False), encoding="utf-8")
+            fake = _fake_archify(root)
+            out = root / "out"
+            self.m.render_archify(ir_path, out, ["python", str(fake)], project_root=root)
+
+            # fake_archify.py는 실행될 때만 argv.log를 만든다 — 파일이 없다는 것 자체가
+            # subprocess가 한 번도 뜨지 않았다는 증거다.
+            self.assertFalse((root / "argv.log").exists())
+
+            receipt = json.loads((out / "trace.receipt.json").read_text(encoding="utf-8"))
+            self.assertEqual("not_applicable", receipt["status"])
+            self.assertEqual("not_applicable", receipt["attempts"][0]["status"])
+            self.assertIsNone(receipt["attempts"][0]["command"])
 
     def test_validate_and_deliver_use_real_archify_signature(self):
         with TemporaryDirectory() as tmp:

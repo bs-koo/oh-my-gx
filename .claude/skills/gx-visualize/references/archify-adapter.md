@@ -15,16 +15,16 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 
 ## Archify 명령 계약
 
-`render_archify(ir_path, output_dir, archify_command)`는 같은 기본 argv에 다음 두 호출을 순서대로 추가한다.
+`diagram_type(view)`이 `service` → `architecture`, `sequence` → `sequence`로만 값을 반환한다. 그 외 뷰(`trace`/`progress`/`impact`)는 `None`을 반환하고, `render_archify`는 이를 **적용 대상 아님**으로 취급해 Archify subprocess를 아예 띄우지 않는다 — 이 뷰들의 kind 어휘는 5계층 grid 매핑 대상이 아니라서 시도해도 항상 레이아웃 검증에서 실패하기 때문이다 (근거: `docs/reports/2026-09-18-archify-ir-schema.md` §3.2, §5). 이때 receipt의 첫 `attempts` 항목은 `status: "not_applicable"`이고 `command`/`exit_code`는 `null`이다 — 실패가 아니라 애초에 시도하지 않았다는 뜻이다. 최상위 `status`도 `"not_applicable"`로 기록되고, 곧바로 폴백 렌더러가 산출물을 만든다.
+
+`diagram-type`이 있는 경우(`service`/`sequence`)에만 아래 두 호출을 순서대로 추가한다. 입력은 원본 GX IR이 아니라 `to_archify.py`가 변환한 Archify 문서다 — GX IR(`nodes`/`edges`)과 Archify 스키마(`components`/`connections`)는 필드 이름을 공유하지 않는다.
 
 ```text
-<archify_command> validate <diagram-type> <ir_path> --json
-<archify_command> deliver  <diagram-type> <ir_path> <view.html> --json
+<archify_command> validate <diagram-type> <converted.archify.json> --json
+<archify_command> deliver  <diagram-type> <converted.archify.json> <view.html> --json
 ```
 
-`diagram-type`은 view에서 파생한다 — `service` → `architecture`, `sequence` → `sequence`.
-
-`--repo-root`는 `architecture`에만 적용된다. IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
+`--repo-root`는 `architecture`에만 적용되고, 변환된 문서가 `component.sources`를 포함할 때만 붙는다(`render_archify`가 프로젝트의 실제 git HEAD/origin에서 계산 — 얻을 수 없으면 `sources`/`meta.repository`를 함께 비운다). IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
 
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.
 
@@ -33,6 +33,8 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 ## 폴백과 진실성
 
 Archify의 검증 또는 전달이 실패하면 `mermaid`, 이어서 `static`을 시도한다. 기존 `render_fallback.py`가 성공한 HTML과 검증 필드를 사용하고, 최종 receipt의 `status`를 `fallback`으로 기록한다. 최초 Archify 실패 진단과 이후 모든 시도는 삭제하지 않는다. 따라서 최종 `backend`는 실제 HTML을 만든 백엔드이며, 실패한 Archify를 성공으로 표시하지 않는다.
+
+뷰가 애초에 Archify 대상이 아니어서(위 "적용 대상 아님") 같은 폴백 체인을 타는 경우, 최상위 `status`는 `fallback`이 아니라 `not_applicable`이다 — Archify가 실패한 게 아니라 한 번도 시도되지 않았다는 사실을 구분해서 남긴다.
 
 폴백 receipt의 최상위 `command`와 `exit_code`는 성공한 사전 단계가 아니라 폴백을 유발한 마지막 실패 Archify 시도를 나타낸다. 전체 실행 순서와 각 결과의 정본은 항상 `attempts` 배열이다.
 

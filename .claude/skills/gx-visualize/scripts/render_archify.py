@@ -108,8 +108,16 @@ def _view(ir_path: Path) -> str:
 _DIAGRAM_TYPES = {"service": "architecture", "sequence": "sequence"}
 
 
-def diagram_type(view: str) -> str:
-    return _DIAGRAM_TYPES.get(view, "architecture")
+def diagram_type(view: str) -> str | None:
+    """Return the Archify diagram type for `view`, or None if Archify does not serve it.
+
+    Archify's architecture grid only has a mapping for the service view's 5-tier kind
+    vocabulary (screen/api/service/repository/table); trace/progress/impact carry an
+    unrelated kind vocabulary that collapses onto a single grid column and commonly
+    breaches Archify's fixed component width. None tells render_archify to skip the
+    Archify subprocess entirely rather than spend two calls guaranteed to fail.
+    """
+    return _DIAGRAM_TYPES.get(view)
 
 
 def _run(command: list[str], phase: str, artifact_path: Path) -> dict[str, Any]:
@@ -153,12 +161,20 @@ def _write_receipt(path: Path, payload: dict[str, Any]) -> None:
     )
 
 
+def _last_failed_archify_attempt(attempts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return next(
+        (attempt for attempt in reversed(attempts) if attempt["backend"] == "archify" and attempt["status"] == "failed"),
+        None,
+    )
+
+
 def _fallback(
     ir_path: Path,
     output_dir: Path,
     receipt_path: Path,
     attempts: list[dict[str, Any]],
     project_root: Path | str | None = None,
+    status: str = "fallback",
 ) -> dict[str, str]:
     html_path = output_dir / f"{_view(ir_path)}.html"
     for backend in ("mermaid", "static"):
@@ -195,39 +211,60 @@ def _fallback(
                 "artifact_path": result["html_path"],
             }
         )
-        failed_archify = next(
-            attempt
-            for attempt in reversed(attempts)
-            if attempt["backend"] == "archify" and attempt["status"] == "failed"
-        )
+        failed_archify = _last_failed_archify_attempt(attempts)
         payload = {
             **fallback_receipt,
-            "status": "fallback",
+            "status": status,
             "backend": backend,
             "artifact_path": result["html_path"],
-            "command": failed_archify["command"],
-            "exit_code": failed_archify["exit_code"],
+            "command": failed_archify["command"] if failed_archify else None,
+            "exit_code": failed_archify["exit_code"] if failed_archify else None,
             "attempts": attempts,
         }
         _write_receipt(receipt_path, payload)
         return {**result, "receipt_path": str(receipt_path)}
 
     html_path.unlink(missing_ok=True)
-    failed_archify = next(
-        attempt
-        for attempt in reversed(attempts)
-        if attempt["backend"] == "archify" and attempt["status"] == "failed"
-    )
+    failed_archify = _last_failed_archify_attempt(attempts)
     failed = {
         "status": "failed",
         "backend": "static",
         "artifact_path": None,
-        "command": failed_archify["command"],
-        "exit_code": failed_archify["exit_code"],
+        "command": failed_archify["command"] if failed_archify else None,
+        "exit_code": failed_archify["exit_code"] if failed_archify else None,
         "attempts": attempts,
     }
     _write_receipt(receipt_path, failed)
     raise RuntimeError("Archify, Mermaid, and static rendering all failed")
+
+
+def _skip_archify(
+    ir_path: Path,
+    output_dir: Path,
+    receipt_path: Path,
+    view: str,
+    project_root: Path | str | None = None,
+) -> dict[str, str]:
+    """Render via the fallback chain without ever invoking Archify.
+
+    Used when diagram_type(view) is None — Archify has no mapping for this view, so
+    spawning validate/deliver would waste two subprocess calls on a document guaranteed
+    to fail layout validation. The receipt records this as not_applicable, not failed:
+    no Archify attempt actually happened.
+    """
+    attempts = [
+        {
+            "backend": "archify",
+            "phase": "validate",
+            "status": "not_applicable",
+            "command": None,
+            "exit_code": None,
+            "stdout": "",
+            "stderr": f"Archify does not support the '{view}' view; only service/sequence views are attempted.",
+            "artifact_path": None,
+        }
+    ]
+    return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, status="not_applicable")
 
 
 def render_archify(
@@ -269,9 +306,12 @@ def render_archify(
         _write_receipt(receipt_path, failed_receipt)
         raise ValueError(f"IR validation failed; see {receipt_path}")
 
+    kind = diagram_type(view)
+    if kind is None:
+        return _skip_archify(ir_path, output_dir, receipt_path, view, project_root=project_root)
+
     command = _normalize_command(archify_command)
 
-    kind = diagram_type(view)
     repository = _git_repository_evidence(project_root) if project_root is not None else None
     archify_payload = output_dir / f"{view}.archify.json"
     archify_document = _to_archify_module().to_archify(
