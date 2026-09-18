@@ -24,6 +24,8 @@ Archify는 선택 의존성이다. 어댑터는 패키지를 설치하거나 네
 
 `diagram-type`은 view에서 파생한다 — `service` → `architecture`, `sequence` → `sequence`.
 
+`--repo-root`는 `architecture`에만 적용된다. IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
+
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.
 
 새 실행을 시작하기 전에 대상 `{view}.html`을 제거한다. Archify와 두 폴백이 모두 실패한 경우에도 대상 HTML을 다시 제거해 이전 실행이나 부분 렌더의 stale artifact가 failed receipt와 함께 남지 않게 한다.
