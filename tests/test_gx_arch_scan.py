@@ -166,6 +166,14 @@ class JspLegacyScanTests(unittest.TestCase):
         blob = json.dumps(result, ensure_ascii=False)
         self.assertNotIn("SELECT BOARD_ID", blob)
 
+    def test_unannotated_serviceimpl_class_classifies_as_service(self):
+        result = self.scan(JSP_FIXTURE)
+        services = [n for n in result["nodes"] if n["kind"] == "service"]
+        self.assertTrue(
+            any(n["label"] == "BoardServiceImpl" for n in services),
+            "Annotation-free *ServiceImpl class should classify as a service node",
+        )
+
 
 COLLISION_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-collision"
 
@@ -229,6 +237,26 @@ class SharedTableNodeTests(unittest.TestCase):
         self.assertEqual(2, len(incoming))
         sources = {e["source"] for e in incoming}
         self.assertEqual(2, len(sources))
+
+
+PATH_COLLISION_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-path-collision"
+
+
+class PathCollisionEdgeTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_ambiguous_path_produces_no_requests_edge(self):
+        result = self.scan(PATH_COLLISION_FIXTURE)
+        apis = [n for n in result["nodes"] if n["kind"] == "api"]
+        self.assertEqual(2, len(apis), "expected both the Spring and Servlet api nodes for /board/list.do")
+
+        requests_edges = [e for e in result["edges"] if e["relation"] == "requests"]
+        self.assertEqual(
+            0,
+            len(requests_edges),
+            "a path shared by two unrelated api nodes must not be guessed - the edge should be dropped",
+        )
 
 
 if __name__ == "__main__":

@@ -226,33 +226,42 @@ def _node_dir(by_id: dict[str, dict[str, Any]], node_id: str) -> str:
     return file.rsplit("/", 1)[0] if "/" in file else ""
 
 
+def _disambiguate(by_id: dict[str, dict[str, Any]], candidates: list[str], source: str) -> str | None:
+    """Resolve a symbol/path that may name more than one node.
+
+    A single candidate resolves outright. Multiple candidates are narrowed to the one(s)
+    sharing the source node's directory; if that still doesn't leave exactly one, the
+    reference is ambiguous and must not be guessed - a missing edge is safe, a wrongly
+    wired one is silent corruption.
+    """
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        source_dir = _node_dir(by_id, source)
+        same_dir = [c for c in candidates if _node_dir(by_id, c) == source_dir]
+        return same_dir[0] if len(same_dir) == 1 else None
+    return None
+
+
 def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_id = {node["id"]: node for node in nodes}
     by_symbol: dict[str, list[str]] = {}
     for node in nodes:
         by_symbol.setdefault(node["id"].split("--")[-1], []).append(node["id"])
-    by_path = {
-        node.get("technical_label", "").split(" ", 1)[-1]: node["id"]
-        for node in nodes
-        if node["kind"] == "api"
-    }
+    by_path: dict[str, list[str]] = {}
+    for node in nodes:
+        if node["kind"] == "api":
+            path = node.get("technical_label", "").split(" ", 1)[-1]
+            by_path.setdefault(path, []).append(node["id"])
 
     resolved: dict[str, dict[str, Any]] = {}
     for edge in raw_edges:
         if edge.get("resolved"):
             target = edge["target"]
         else:
-            candidates = by_symbol.get(edge["target"], [])
-            if len(candidates) == 1:
-                target = candidates[0]
-            elif len(candidates) > 1:
-                source_dir = _node_dir(by_id, edge["source"])
-                same_dir = [c for c in candidates if _node_dir(by_id, c) == source_dir]
-                target = same_dir[0] if len(same_dir) == 1 else None
-            else:
-                target = None
+            target = _disambiguate(by_id, by_symbol.get(edge["target"], []), edge["source"])
             if target is None:
-                target = by_path.get(edge["target"])
+                target = _disambiguate(by_id, by_path.get(edge["target"], []), edge["source"])
         source = edge["source"]
         if target is None or target == source:
             continue
