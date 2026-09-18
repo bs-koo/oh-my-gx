@@ -30,6 +30,7 @@ _CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?"([^"]*
 _METHOD_RE = re.compile(r"\b(?:public|protected)\s+[\w<>\[\],.\s]+?\s+(\w+)\s*\(")
 _CLASS_RE = re.compile(r"\b(?:class|interface)\s+(\w+)")
 _FIELD_RE = re.compile(r"\bprivate\s+(?:final\s+)?(\w+)\s+\w+\s*;")
+_COMMENT_OR_STRING_RE = re.compile(r'"(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/', re.DOTALL)
 
 
 def node_id(kind: str, rel_path: str, symbol: str) -> str:
@@ -58,6 +59,21 @@ def _node(kind: str, rel_path: str, symbol: str, label: str, line: int, technica
     return node
 
 
+def _strip_comments(text: str) -> str:
+    """Blank out comments and preserve string literals, keeping all offsets and line breaks.
+
+    String literals are returned untouched so that "http://..." is never mistaken for a comment.
+    Replaces every non-newline character in comments with a space to preserve line numbers.
+    """
+    def _blank(match: re.Match[str]) -> str:
+        chunk = match.group(0)
+        if chunk.startswith('"'):
+            return chunk
+        return "".join("\n" if ch == "\n" else " " for ch in chunk)
+
+    return _COMMENT_OR_STRING_RE.sub(_blank, text)
+
+
 def _class_kind(text: str) -> str | None:
     if "@RestController" in text or "@Controller" in text:
         return "controller"
@@ -70,23 +86,24 @@ def _class_kind(text: str) -> str | None:
 
 def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     text = path.read_text(encoding="utf-8")
-    lines = text.splitlines()
+    stripped_text = _strip_comments(text)
+    lines = stripped_text.splitlines()
     rel_path = _rel(path, root)
-    kind = _class_kind(text)
+    kind = _class_kind(stripped_text)
     if kind is None:
         return [], []
 
-    class_match = _CLASS_RE.search(text)
+    class_match = _CLASS_RE.search(stripped_text)
     if class_match is None:
         return [], []
     class_name = class_match.group(1)
-    class_line = text[: class_match.start()].count("\n") + 1
+    class_line = stripped_text[: class_match.start()].count("\n") + 1
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
 
     if kind == "controller":
-        class_text_before = text[: class_match.start()]
+        class_text_before = stripped_text[: class_match.start()]
         class_mapping = _CLASS_MAPPING_RE.search(class_text_before)
         class_prefix = class_mapping.group(1) if class_mapping else ""
 
@@ -114,14 +131,14 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
             node = _node("api", rel_path, method_name, f"{class_name}.{method_name}", index + 1, f"{verb} {http_path}")
             nodes.append(node)
             owner_ids.append(node["id"])
-        collaborators = _FIELD_RE.findall(text)
+        collaborators = _FIELD_RE.findall(stripped_text)
         for owner in owner_ids:
             for collaborator in collaborators:
                 edges.append({"source": owner, "target": collaborator, "relation": "calls"})
     else:
         nodes.append(_node(kind, rel_path, class_name, class_name, class_line))
         source = nodes[0]["id"]
-        for collaborator in _FIELD_RE.findall(text):
+        for collaborator in _FIELD_RE.findall(stripped_text):
             edges.append({"source": source, "target": collaborator, "relation": "calls"})
 
     return nodes, edges

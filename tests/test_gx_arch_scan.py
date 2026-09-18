@@ -94,6 +94,24 @@ class JavaSpringScanTests(unittest.TestCase):
         self.assertIn("GET /api/profile", api_paths, "Empty method path should use class prefix alone")
         self.assertNotIn("GET /api/profile/", api_paths, "Must not have trailing slash")
 
+    def test_comment_containing_class_does_not_break_scoping(self):
+        result = self.scan(FIXTURE)
+        doc_nodes = [n for n in result["nodes"] if n["kind"] == "api" and "DocController" in n["label"]]
+        api_paths = {node["technical_label"] for node in doc_nodes}
+        self.assertIn("GET /api/profile/me", api_paths, "Javadoc 'class' should not break class-level annotation scoping")
+
+    def test_commented_out_annotation_produces_no_node(self):
+        result = self.scan(FIXTURE)
+        all_labels = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
+        self.assertNotIn("ANY /ghost", all_labels, "Commented-out @GetMapping should not produce a node")
+        self.assertFalse(any("/ghost" in label for label in all_labels), "No node should reference /ghost")
+
+    def test_string_literal_with_double_slash_not_mangled(self):
+        result = self.scan(FIXTURE)
+        doc_nodes = [n for n in result["nodes"] if n["kind"] == "api" and "DocController" in n["label"]]
+        api_paths = {node["technical_label"] for node in doc_nodes}
+        self.assertIn("GET /api/profile/proxy", api_paths, "@GetMapping(/proxy) should work despite string containing //")
+
 
 if __name__ == "__main__":
     unittest.main()
