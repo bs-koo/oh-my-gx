@@ -67,10 +67,17 @@ def _status_badge(status: str) -> str:
     return f'<span class="status status-{_escape(status)}">{_escape(label)}</span>'
 
 
-def _legend() -> str:
+def _legend(nodes: list[dict[str, Any]]) -> str:
+    # 코드 스캐너는 상태를 알 수 없어 모든 노드가 unknown이다 - 범례에 그런 노드가
+    # 실제로 쓰는 상태만 보여준다. 아무것도 쓰이지 않으면(전부 unknown) 범례 자체가
+    # 의미 없으므로 섹션을 만들지 않는다.
+    used = {node["status"] for node in nodes} - {"unknown"}
+    if not used:
+        return ""
     items = "".join(
         f'<li>{_status_badge(status)}</li>'
-        for status in ("planned", "in_progress", "review", "verified", "blocked", "unknown")
+        for status in ("planned", "in_progress", "review", "verified", "blocked")
+        if status in used
     )
     return f'<section aria-labelledby="legend-title"><h2 id="legend-title">범례</h2><ul class="legend-list">{items}</ul></section>'
 
@@ -79,15 +86,20 @@ def _node_list(nodes: list[dict[str, Any]]) -> str:
     cards = []
     for node in nodes:
         technical = node.get("technical_label")
+        # technical_label이 label과 같으면(예: 테이블 노드는 둘 다 테이블명) 같은
+        # 이름을 두 번 찍는 대신 한 번만 보여준다.
         technical_html = (
             f'<p class="technical-label"><span class="sr-only">기술 식별자: </span><code>{_escape(technical)}</code></p>'
-            if technical is not None
+            if technical is not None and technical != node["label"]
             else ""
         )
+        # status가 unknown이면 배지를 찍지 않는다 - 코드 스캐너는 상태를 알 수 없어
+        # 모든 노드가 unknown이고, 그걸 다 찍으면 정보가 아니라 잡음이 된다.
+        status_html = "" if node["status"] == "unknown" else _status_badge(node["status"])
         cards.append(
             '<li><article class="node-card">'
             f'<span class="node-id">{_escape(node["id"])}</span> '
-            f'{_status_badge(node["status"])}'
+            f'{status_html}'
             f'<h3>{_escape(node["label"])}</h3>'
             f'<p>유형: {_escape(node["kind"])}</p>{technical_html}'
             '</article></li>'
@@ -151,9 +163,11 @@ def _mermaid_source(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
         # 기술 ID로 시작해 실제 이름을 가린다(버그 B, 2026-09-21 컨트롤러가 reb.html에서
         # 발견: "gx-api-webframework-public-src-main-java-..."가 라벨 맨 앞에 왔다).
         label_parts = [node["label"]]
-        if "technical_label" in node:
-            label_parts.append(node["technical_label"])
-        label_parts.append(STATUS_LABELS.get(node["status"], STATUS_LABELS["unknown"]))
+        technical = node.get("technical_label")
+        if technical is not None and technical != node["label"]:
+            label_parts.append(technical)
+        if node["status"] != "unknown":
+            label_parts.append(STATUS_LABELS[node["status"]])
         label = "#10;".join(_mermaid_text(part) for part in label_parts)
         lines.append(f'  {aliases[node["id"]]}["{label}"]')
     for edge in edges:
@@ -222,7 +236,7 @@ def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str |
     edges = _sorted_edges(ir)
     template = (TEMPLATE_DIR / "fallback.html").read_text(encoding="utf-8")
     css = (TEMPLATE_DIR / "fallback.css").read_text(encoding="utf-8")
-    static_content = "\n".join((_legend(), _node_list(nodes), _relationship_table(edges), _evidence_cards(nodes)))
+    static_content = "\n".join((_legend(nodes), _node_list(nodes), _relationship_table(edges), _evidence_cards(nodes)))
     mermaid_section = _mermaid_section(nodes, edges, mermaid_asset_href) if backend == "mermaid" else _no_diagram_section()
     summary = f'노드 {len(nodes)}개와 관계 {len(edges)}개 · {"Mermaid + 정적 폴백" if backend == "mermaid" else "정적 HTML"}'
     replacements = {

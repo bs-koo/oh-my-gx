@@ -177,6 +177,96 @@ class VisualFallbackRenderingTests(unittest.TestCase):
                 label = line.split('["', 1)[1]
                 self.assertFalse(label.startswith(node_id), f"{node_id}가 라벨 맨 앞에 남아 있다: {line}")
 
+    def test_unknown_status_badge_is_not_shown(self):
+        # 코드 스캐너는 상태를 알 수 없어 모든 노드가 unknown이다 - 그걸 다 찍으면
+        # "확인 필요"가 노드 수만큼 반복돼 정보가 아니라 잡음이 된다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"] = [
+                {"id": "N1", "kind": "service", "label": "UserService", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("UserService", html_text)
+        self.assertNotIn("확인 필요", html_text)
+
+    def test_legend_omitted_when_every_node_is_unknown(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"] = [
+                {"id": "N1", "kind": "service", "label": "UserService", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertNotIn("범례", html_text)
+
+    def test_legend_lists_only_statuses_actually_used(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"] = [
+                {"id": "N1", "kind": "service", "label": "확실한 노드", "status": "verified", "evidence": []},
+                {"id": "N2", "kind": "service", "label": "미상 노드", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("범례", html_text)
+        self.assertIn("검증됨", html_text)
+        self.assertNotIn("확인 필요", html_text)
+
+    def test_duplicate_table_label_shown_once_in_node_card(self):
+        # 테이블 노드는 label과 technical_label이 같은 테이블명이다 - "TB_ROLE TB_ROLE"
+        # 처럼 같은 이름을 두 번 찍지 않는다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"] = [
+                {
+                    "id": "T1", "kind": "table", "label": "TB_ROLE",
+                    "technical_label": "TB_ROLE", "status": "unknown", "evidence": [],
+                },
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertEqual(1, html_text.count("TB_ROLE"))
+
+    def test_duplicate_table_label_shown_once_in_mermaid_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"] = [
+                {
+                    "id": "T1", "kind": "table", "label": "TB_ROLE",
+                    "technical_label": "TB_ROLE", "status": "unknown", "evidence": [],
+                },
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "mermaid")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            source = self.mermaid_source(html_text)
+
+        self.assertEqual(1, source.count("TB_ROLE"))
+
     def test_template_tokens_in_title_and_labels_remain_literal_text(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

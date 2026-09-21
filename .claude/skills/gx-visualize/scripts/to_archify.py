@@ -140,11 +140,15 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
         "row": row,
         "col": col,
     }
-    size = _component_size(node["label"], node.get("technical_label", ""))
+    # technical_label이 label과 같으면(예: 테이블 노드는 둘 다 테이블명) 같은 이름을
+    # sublabel로 또 찍지 않는다 - 폭 계산도 실제로 찍히는 값 기준으로 맞춘다.
+    technical_label = node.get("technical_label")
+    sublabel = technical_label if technical_label is not None and technical_label != node["label"] else ""
+    size = _component_size(node["label"], sublabel)
     if size is not None:
         component["size"] = size
-    if "technical_label" in node:
-        component["sublabel"] = node["technical_label"]
+    if sublabel:
+        component["sublabel"] = sublabel
     if include_sources:
         sources = _sources(node.get("evidence", []))
         if sources is not None:

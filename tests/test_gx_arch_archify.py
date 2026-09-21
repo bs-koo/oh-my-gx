@@ -589,6 +589,13 @@ class ToArchifyTests(unittest.TestCase):
         ir = _ir_with_label("조회", technical="GET /a")
         self.assertNotIn("size", self.to_archify(ir, "architecture")[NODE_KEY][0])
 
+    def test_sublabel_omitted_when_identical_to_label(self):
+        # 테이블 노드는 label과 technical_label이 같은 테이블명이다 - "TB_ROLE TB_ROLE"
+        # 처럼 같은 이름을 sublabel로 또 내보내지 않는다.
+        ir = _ir_with_label("TB_ROLE", technical="TB_ROLE")
+        component = self.to_archify(ir, "architecture")[NODE_KEY][0]
+        self.assertNotIn("sublabel", component)
+
     def test_size_is_deterministic(self):
         ir = _ir_with_label("에너지 사용량 조회 API")
         self.assertEqual(self.to_archify(ir, "architecture"), self.to_archify(ir, "architecture"))
