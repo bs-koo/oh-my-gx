@@ -286,8 +286,7 @@ class ArchifyCommandTests(unittest.TestCase):
             self.assertNotEqual("archify", receipt["backend"])
 
     def test_git_absent_yields_no_repository_evidence(self):
-        # subprocess.run 자체가 없는 환경(git 미설치)을 흉내낸다 — merge_map.py의
-        # fingerprint() 테스트와 같은 방식.
+        # subprocess.run 자체가 없는 환경(git 미설치)을 흉내낸다.
         with TemporaryDirectory() as tmp:
             with mock.patch.object(self.m.subprocess, "run", side_effect=FileNotFoundError):
                 self.assertIsNone(self.m._git_repository_evidence(Path(tmp), ["a.java"]))

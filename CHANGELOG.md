@@ -4,7 +4,7 @@
 
 ### Added
 
-- `gx-visualize`(18번째 스킬)를 추가한다. GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환하며 `trace`·`progress`·`impact`(1차 필수)·`service`·`sequence`(계약 지원) 다섯 뷰를 지원한다. `--scope all`은 도메인별로 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`과 공유 `.scan-manifest.json`을 만들어 누적 아키텍처 맵으로 증분 갱신하고, 도메인마다 Archify 성공·폴백을 개별로 판정한다.
+- `gx-visualize`(18번째 스킬)를 추가한다. GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환하며 `trace`·`progress`·`impact`(1차 필수)·`service`·`sequence`(계약 지원) 다섯 뷰를 지원한다. `--scope all`은 도메인별로 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`을 만들어 누적 아키텍처 맵을 매 실행 전체 재스캔으로 갱신하고, 도메인마다 Archify 성공·폴백을 개별로 판정한다.
 - gx-dev·gx-tdd의 phase-complete에 구현 구조 시각화 제안 게이트(Step 5.5)를 추가한다. 전체 갱신·이번 세션분만·건너뛰기 중 선택을 물으며, 헤드리스(gx-ralph) 세션은 strict no-op이고 이 게이트의 실패·누락은 커밋·PR 단계를 막지 않는다.
 
 ### Fixed

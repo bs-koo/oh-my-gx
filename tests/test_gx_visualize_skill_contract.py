@@ -178,6 +178,10 @@ class AccumulatedMapContractTests(unittest.TestCase):
     def test_scope_all_states_full_rescan(self):
         self.assertIn("전체를 다시 스캔", self.skill)
 
+    def test_scan_failures_report_both_skipped_and_unresolved_edges(self):
+        self.assertIn("`skipped`", self.skill)
+        self.assertIn("`unresolved_edges`", self.skill)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,9 +32,12 @@ class CompletionGateTests(unittest.TestCase):
         for path in PHASES:
             self.assertIn("커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다", self._text(path), path.name)
 
-    def test_first_full_scan_warns_before_running(self):
+    def test_full_rescan_warns_before_running(self):
         for path in PHASES:
-            self.assertIn(".scan-manifest.json", self._text(path), path.name)
+            text = self._text(path)
+            self.assertNotIn(".scan-manifest.json", text, path.name)
+            self.assertNotIn("증분 갱신", text, path.name)
+            self.assertIn("저장소 규모에 따라 시간이 걸릴 수 있음", text, path.name)
 
     def test_step_order_places_gate_between_5_and_6(self):
         for path in PHASES:

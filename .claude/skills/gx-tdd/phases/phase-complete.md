@@ -221,7 +221,7 @@ AskUserQuestion(
     question: "이번 사이클에서 구현된 구조를 시각화할까요?",
     multiSelect: false,
     options: [
-      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵을 증분 갱신합니다 — docs/architecture/에 저장 (gx-visualize service --scope all)" },
+      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵 전체를 다시 스캔해 갱신합니다 — docs/architecture/에 저장 (gx-visualize service --scope all)" },
       { label: "이번 세션분만", description: "이번 사이클이 변경한 파일의 체인만 그립니다 — .dev/{slug}/visual/에 스냅샷 저장 (gx-visualize service --scope session)" },
       { label: "아니요", description: "시각화하지 않고 완료합니다" }
     ]
@@ -229,7 +229,7 @@ AskUserQuestion(
 )
 ```
 
-- **전체 갱신** → `${MAP_DIR}/.scan-manifest.json`(기본 `docs/architecture/`)이 없으면 최초 전체 스캔이라 오래 걸린다고 먼저 알리고 재확인한 뒤, `oh-my-gx:gx-visualize`를 `service --scope all`로 호출한다.
+- **전체 갱신** → `--scope all`은 매 실행 프로젝트 전체를 다시 스캔하므로 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알리고 재확인한 뒤, `oh-my-gx:gx-visualize`를 `service --scope all`로 호출한다.
 - **이번 세션분만** → `oh-my-gx:gx-visualize`를 `service --scope session`으로 호출하고 이번 사이클의 변경 파일 목록을 전달한다.
 - **아니요** → 건너뛴다.
 
