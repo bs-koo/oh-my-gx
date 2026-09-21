@@ -67,22 +67,26 @@ def _status_badge(status: str) -> str:
     return f'<span class="status status-{_escape(status)}">{_escape(label)}</span>'
 
 
-def _legend(nodes: list[dict[str, Any]]) -> str:
-    # 코드 스캐너는 상태를 알 수 없어 모든 노드가 unknown이다 - 범례에 그런 노드가
-    # 실제로 쓰는 상태만 보여준다. 아무것도 쓰이지 않으면(전부 unknown) 범례 자체가
+def _legend(nodes: list[dict[str, Any]], suppress_unknown_status: bool) -> str:
+    # service 뷰는 코드 스캐너가 상태를 알아낼 방법이 없어 모든 노드가 구조적으로
+    # unknown이다 - 그 뷰에서만 범례에서 뺀다. trace·progress·impact·sequence는
+    # 사람이 상태를 채우는 뷰라 unknown이 "아직 확인 안 됨"이라는 신호이므로 그대로
+    # 보여준다(suppress_unknown_status=False). 아무것도 쓰이지 않으면 범례 자체가
     # 의미 없으므로 섹션을 만들지 않는다.
-    used = {node["status"] for node in nodes} - {"unknown"}
+    used = {node["status"] for node in nodes}
+    if suppress_unknown_status:
+        used = used - {"unknown"}
     if not used:
         return ""
     items = "".join(
         f'<li>{_status_badge(status)}</li>'
-        for status in ("planned", "in_progress", "review", "verified", "blocked")
+        for status in ("planned", "in_progress", "review", "verified", "blocked", "unknown")
         if status in used
     )
     return f'<section aria-labelledby="legend-title"><h2 id="legend-title">범례</h2><ul class="legend-list">{items}</ul></section>'
 
 
-def _node_list(nodes: list[dict[str, Any]]) -> str:
+def _node_list(nodes: list[dict[str, Any]], suppress_unknown_status: bool) -> str:
     cards = []
     for node in nodes:
         technical = node.get("technical_label")
@@ -93,9 +97,11 @@ def _node_list(nodes: list[dict[str, Any]]) -> str:
             if technical is not None and technical != node["label"]
             else ""
         )
-        # status가 unknown이면 배지를 찍지 않는다 - 코드 스캐너는 상태를 알 수 없어
-        # 모든 노드가 unknown이고, 그걸 다 찍으면 정보가 아니라 잡음이 된다.
-        status_html = "" if node["status"] == "unknown" else _status_badge(node["status"])
+        # service 뷰에서만 unknown 배지를 찍지 않는다 - 코드 스캐너는 상태를 알 수
+        # 없어 그 뷰의 모든 노드가 unknown이고, 그걸 다 찍으면 정보가 아니라 잡음이
+        # 된다. 다른 뷰는 사람이 채운 unknown이 "확인 필요" 신호이므로 그대로 보여준다.
+        hide_status = suppress_unknown_status and node["status"] == "unknown"
+        status_html = "" if hide_status else _status_badge(node["status"])
         cards.append(
             '<li><article class="node-card">'
             f'<span class="node-id">{_escape(node["id"])}</span> '
@@ -155,7 +161,9 @@ def _evidence_cards(nodes: list[dict[str, Any]]) -> str:
     return '<section aria-labelledby="evidence-title"><h2 id="evidence-title">근거</h2><ul class="evidence-list">' + "".join(cards) + "</ul></section>"
 
 
-def _mermaid_source(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
+def _mermaid_source(
+    nodes: list[dict[str, Any]], edges: list[dict[str, Any]], suppress_unknown_status: bool
+) -> str:
     aliases = {node["id"]: f"n{index}" for index, node in enumerate(nodes)}
     lines = ["flowchart LR"]
     for node in nodes:
@@ -166,7 +174,8 @@ def _mermaid_source(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
         technical = node.get("technical_label")
         if technical is not None and technical != node["label"]:
             label_parts.append(technical)
-        if node["status"] != "unknown":
+        # service 뷰에서만 unknown 상태를 라벨에서 뺀다 - _node_list()와 같은 기준.
+        if not (suppress_unknown_status and node["status"] == "unknown"):
             label_parts.append(STATUS_LABELS[node["status"]])
         label = "#10;".join(_mermaid_text(part) for part in label_parts)
         lines.append(f'  {aliases[node["id"]]}["{label}"]')
@@ -200,9 +209,12 @@ _NO_DIAGRAM_NOTE = (
 
 
 def _mermaid_section(
-    nodes: list[dict[str, Any]], edges: list[dict[str, Any]], mermaid_asset_href: str | None = None
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    mermaid_asset_href: str | None,
+    suppress_unknown_status: bool,
 ) -> str:
-    source = _escape(_mermaid_source(nodes, edges))
+    source = _escape(_mermaid_source(nodes, edges, suppress_unknown_status))
     if mermaid_asset_href is None:
         # assets/mermaid.min.js를 확보하지 못했거나 시도하지 않은 호출 - 지금까지처럼
         # 소스만 보여주고 그림이 없다는 사실을 알린다. 없는데 있는 척하지 않는다.
@@ -236,8 +248,21 @@ def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str |
     edges = _sorted_edges(ir)
     template = (TEMPLATE_DIR / "fallback.html").read_text(encoding="utf-8")
     css = (TEMPLATE_DIR / "fallback.css").read_text(encoding="utf-8")
-    static_content = "\n".join((_legend(nodes), _node_list(nodes), _relationship_table(edges), _evidence_cards(nodes)))
-    mermaid_section = _mermaid_section(nodes, edges, mermaid_asset_href) if backend == "mermaid" else _no_diagram_section()
+    # service 뷰는 코드 스캐너가 상태를 알아낼 방법이 없어 모든 노드가 구조적으로
+    # unknown이다 - 그 뷰에서만 unknown 배지·범례 항목을 숨긴다. trace·progress·
+    # impact·sequence는 사람이 상태를 채우는 뷰라 unknown이 "확인 필요"라는 실행
+    # 가능한 신호이므로 그대로 보여준다(2026-09-21 리뷰 판정 AH).
+    suppress_unknown_status = ir.get("view") == "service"
+    static_content = "\n".join((
+        _legend(nodes, suppress_unknown_status),
+        _node_list(nodes, suppress_unknown_status),
+        _relationship_table(edges),
+        _evidence_cards(nodes),
+    ))
+    mermaid_section = (
+        _mermaid_section(nodes, edges, mermaid_asset_href, suppress_unknown_status)
+        if backend == "mermaid" else _no_diagram_section()
+    )
     summary = f'노드 {len(nodes)}개와 관계 {len(edges)}개 · {"Mermaid + 정적 폴백" if backend == "mermaid" else "정적 HTML"}'
     replacements = {
         "TITLE": _escape(ir["title"]),

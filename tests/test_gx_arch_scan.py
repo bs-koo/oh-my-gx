@@ -251,6 +251,16 @@ class ServiceInterfaceMergeTests(unittest.TestCase):
     def test_merge_is_deterministic(self):
         self.assertEqual(self.scan(SERVICE_IMPL_FIXTURE), self.scan(SERVICE_IMPL_FIXTURE))
 
+    def test_files_index_points_impl_file_at_the_merged_interface_id(self):
+        # UserServiceImpl.java는 병합 전 자신의 노드 id를 files에 기록했다 - 병합 후에도
+        # 그 항목이 옛 id를 그대로 가리키면 "이 파일이 어느 노드에 속하는가"가 끊긴다.
+        result = self.scan(SERVICE_IMPL_FIXTURE)
+        interface_node = next(
+            n for n in result["nodes"] if n["kind"] == "service" and n["label"] == "UserService"
+        )
+        impl_file = next(f for f in result["files"] if f.endswith("UserServiceImpl.java"))
+        self.assertEqual([interface_node["id"]], result["files"][impl_file])
+
 
 class EdgeIntegrityTests(unittest.TestCase):
     def setUp(self):

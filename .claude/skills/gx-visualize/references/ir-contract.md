@@ -6,6 +6,12 @@ GX 시각화 입력은 UTF-8 JSON 객체다. `schema_version`은 정수 `1`, `vi
 상태는 `planned`, `in_progress`, `review`, `verified`, `blocked`, `unknown` 중 하나다.
 한국어 표시명은 `label`, 코드 식별자는 선택적인 `technical_label`로 분리한다.
 
+`unknown`은 모든 view에서 유효한 상태값이지만 의미가 다르다 — `service`는 코드
+스캐너가 상태를 알아낼 방법이 없어 모든 노드가 구조적으로 `unknown`이므로
+`render_fallback.py`가 그 view에서만 배지·범례에서 뺀다. `trace`·`progress`·
+`impact`·`sequence`는 사람이 상태를 채우는 view라 `unknown`이 "아직 확인 안 됨"이라는
+실행 가능한 신호이므로 그대로 보여준다(스키마 필드 자체는 어느 view든 그대로 보존한다).
+
 노드 ID는 산출물의 공식 ID를 우선한다. 공식 ID가 없을 때 생성하는 ID는
 `gx-{kind}-{slug}` 규칙을 따른다. 모든 edge의 `source`와 `target`은 nodes에 존재해야
 하며 edge는 `id`, `source`, `target`, `relation`을 갖는다.

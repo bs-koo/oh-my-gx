@@ -177,12 +177,13 @@ class VisualFallbackRenderingTests(unittest.TestCase):
                 label = line.split('["', 1)[1]
                 self.assertFalse(label.startswith(node_id), f"{node_id}가 라벨 맨 앞에 남아 있다: {line}")
 
-    def test_unknown_status_badge_is_not_shown(self):
-        # 코드 스캐너는 상태를 알 수 없어 모든 노드가 unknown이다 - 그걸 다 찍으면
-        # "확인 필요"가 노드 수만큼 반복돼 정보가 아니라 잡음이 된다.
+    def test_unknown_status_badge_is_not_shown_in_service_view(self):
+        # service 뷰는 코드 스캐너가 상태를 알 수 없어 모든 노드가 구조적으로
+        # unknown이다 - 그걸 다 찍으면 "확인 필요"가 노드 수만큼 반복돼 정보가
+        # 아니라 잡음이 된다.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            ir_path, payload = self.write_ir(root)
+            ir_path, payload = self.write_ir(root, view="service")
             payload["nodes"] = [
                 {"id": "N1", "kind": "service", "label": "UserService", "status": "unknown", "evidence": []},
             ]
@@ -195,10 +196,28 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertIn("UserService", html_text)
         self.assertNotIn("확인 필요", html_text)
 
-    def test_legend_omitted_when_every_node_is_unknown(self):
+    def test_unknown_status_badge_is_shown_outside_service_view(self):
+        # trace·progress·impact는 사람이 상태를 채우는 뷰다 - unknown은 "아직 확인
+        # 안 됨"이라는 실행 가능한 신호이므로 service 뷰만의 억제를 여기까지 넓히면
+        # 안 된다(리뷰 판정 AH).
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            ir_path, payload = self.write_ir(root)
+            ir_path, payload = self.write_ir(root, view="trace")
+            payload["nodes"] = [
+                {"id": "N1", "kind": "requirement", "label": "확인 안 된 요구사항", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("확인 필요", html_text)
+
+    def test_legend_omitted_when_every_node_is_unknown_in_service_view(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root, view="service")
             payload["nodes"] = [
                 {"id": "N1", "kind": "service", "label": "UserService", "status": "unknown", "evidence": []},
             ]
@@ -210,10 +229,26 @@ class VisualFallbackRenderingTests(unittest.TestCase):
 
         self.assertNotIn("범례", html_text)
 
-    def test_legend_lists_only_statuses_actually_used(self):
+    def test_legend_shown_for_unknown_only_nodes_outside_service_view(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            ir_path, payload = self.write_ir(root)
+            ir_path, payload = self.write_ir(root, view="trace")
+            payload["nodes"] = [
+                {"id": "N1", "kind": "requirement", "label": "확인 안 된 요구사항", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("범례", html_text)
+        self.assertIn("확인 필요", html_text)
+
+    def test_legend_lists_only_statuses_actually_used_in_service_view(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root, view="service")
             payload["nodes"] = [
                 {"id": "N1", "kind": "service", "label": "확실한 노드", "status": "verified", "evidence": []},
                 {"id": "N2", "kind": "service", "label": "미상 노드", "status": "unknown", "evidence": []},
@@ -227,6 +262,38 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertIn("범례", html_text)
         self.assertIn("검증됨", html_text)
         self.assertNotIn("확인 필요", html_text)
+
+    def test_mermaid_label_hides_unknown_in_service_view(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root, view="service")
+            payload["nodes"] = [
+                {"id": "N1", "kind": "service", "label": "UserService", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "mermaid")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            source = self.mermaid_source(html_text)
+
+        self.assertNotIn("확인 필요", source)
+
+    def test_mermaid_label_shows_unknown_outside_service_view(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root, view="trace")
+            payload["nodes"] = [
+                {"id": "N1", "kind": "requirement", "label": "확인 안 된 요구사항", "status": "unknown", "evidence": []},
+            ]
+            payload["edges"] = []
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "mermaid")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            source = self.mermaid_source(html_text)
+
+        self.assertIn("확인 필요", source)
 
     def test_duplicate_table_label_shown_once_in_node_card(self):
         # 테이블 노드는 label과 technical_label이 같은 테이블명이다 - "TB_ROLE TB_ROLE"
