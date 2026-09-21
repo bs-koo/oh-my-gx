@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -253,6 +254,20 @@ class VisualBackendTests(unittest.TestCase):
         self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
+    def test_archify_command_json_array_round_trips_paths_with_spaces(self):
+        # I2: 이 환경의 실제 Archify command[0]은 C:\Program Files\nodejs\node.EXE처럼
+        # 공백을 포함한다. list2cmdline+shlex.split(posix=False) 왕복은 이 케이스에서
+        # 항등이 아니라서(공백 때문에 인용부호가 붙고 벗겨지지 않는다) 조용히 폴백을
+        # 유발한다(2026-09-18 최종 리뷰 I2, 실측: exit 0 + WinError 5). JSON 배열
+        # 직렬화는 공백과 무관하게 그대로 왕복해야 한다.
+        command = [r"C:\Program Files\nodejs\node.EXE", r"C:\Users\dev\archify.mjs"]
+
+        broken = shlex.split(subprocess.list2cmdline(command), posix=False)
+        self.assertNotEqual(broken, command, "list2cmdline/shlex 왕복이 이미 항등이면 이 테스트는 무의미하다")
+
+        serialized = json.dumps(command)
+        self.assertEqual(self.renderer._normalize_command(serialized), command)
+
     def test_archify_success_receipt_carries_ir_declared_missing_inputs(self):
         # I1: archify 성공 receipt는 별도로 조립되므로 missing_inputs를 깜빡하면 폴백
         # 경로(local_receipt를 그대로 펼치는 render_fallback.render)와 비대칭이 된다.
@@ -453,12 +468,19 @@ class VisualBackendTests(unittest.TestCase):
 
             receipt = json.loads((output / "trace.receipt.json").read_text(encoding="utf-8"))
 
-        self.assertFalse(marker.exists())
-        self.assertFalse(html_path.exists())
-        self.assertEqual(receipt["status"], "failed")
-        self.assertIsNone(receipt["backend"])
-        self.assertIn(".dev/feat-energy/missing.md", receipt["missing_inputs"])
-        self.assertTrue(receipt["errors"])
+            # 임시 디렉터리가 살아 있는 동안 확인한다 - with 블록 밖에서 확인하면
+            # TemporaryDirectory 정리로 경로 자체가 사라져 무엇을 확인하든 항상
+            # 통과하는 무의미한 검사가 된다(이 테스트에 실제로 있던 결함).
+            self.assertFalse(marker.exists())
+            # I8: 이번 IR 검증 실패가 지난 실행의 정상 HTML을 지우면 안 된다 - 새로
+            # 렌더를 시도하지도 못했으므로 이전 산출물이 그대로 남아야 한다
+            # (2026-09-18 최종 리뷰 I8).
+            self.assertTrue(html_path.exists())
+            self.assertEqual(html_path.read_text(encoding="utf-8"), "STALE")
+            self.assertEqual(receipt["status"], "failed")
+            self.assertIsNone(receipt["backend"])
+            self.assertIn(".dev/feat-energy/missing.md", receipt["missing_inputs"])
+            self.assertTrue(receipt["errors"])
 
     def test_cli_project_root_blocks_successful_archify_on_local_validation_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -487,11 +509,12 @@ class VisualBackendTests(unittest.TestCase):
             )
             receipt = json.loads((output / "trace.receipt.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(result.returncode, 1)
-        self.assertFalse(marker.exists())
-        self.assertFalse(html_path.exists())
-        self.assertEqual(receipt["status"], "failed")
-        self.assertIn(".dev/feat-energy/missing.md", receipt["missing_inputs"])
+            self.assertEqual(result.returncode, 1)
+            self.assertFalse(marker.exists())
+            self.assertTrue(html_path.exists())
+            self.assertEqual(html_path.read_text(encoding="utf-8"), "STALE")
+            self.assertEqual(receipt["status"], "failed")
+            self.assertIn(".dev/feat-energy/missing.md", receipt["missing_inputs"])
 
 
 if __name__ == "__main__":

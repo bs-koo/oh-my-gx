@@ -320,6 +320,18 @@ class ArchifyCommandTests(unittest.TestCase):
             self.assertEqual("local-only", evidence["link_mode"])
 
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
+    def test_credentialed_origin_url_has_userinfo_stripped(self):
+        # I6: 자격증명이 박힌 remote(CI 체크아웃의 x-access-token, 캐시된 PAT)에서
+        # --scope all을 돌리면 그 토큰이 커밋되는 {domain}.html에 그대로 들어간다
+        # (2026-09-18 최종 리뷰 I6, 설계서 §7). userinfo(`//user:pass@`)를 벗겨야 한다.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _init_git_repo(root, origin="https://x-access-token:ghp_secret123@github.com/example/repo.git")
+            evidence = self.m._git_repository_evidence(root, ["a.txt"])
+            self.assertEqual("https://github.com/example/repo.git", evidence["url"])
+            self.assertNotIn("ghp_secret123", evidence["url"])
+
+    @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
     def test_modified_cited_path_yields_no_repository_evidence(self):
         # 인용된 파일이 커밋 이후 수정됐으면 그 줄이 커밋 시점과 다를 수 있다 —
         # Archify는 커밋된 리비전만 검증하므로 잘못된 근거를 정직해 보이게 만들 위험이 있다.

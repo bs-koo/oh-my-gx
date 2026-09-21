@@ -301,6 +301,73 @@ class UnresolvedEdgeReportingTests(unittest.TestCase):
         self.assertEqual(result["unresolved_edges"], [])
 
 
+class DaoStemCollisionTests(unittest.TestCase):
+    """dao_by_stem은 같은 단순명(stem) DAO가 여러 개면 경로 사전순 마지막이 조용히
+    이기는 무방비 dict 덮어쓰기였다(2026-09-18 최종 리뷰 M5) - namespace의 완전한
+    클래스명으로 가르고, 그래도 못 가르면 엣지를 버리고 unresolved_edges에 남긴다."""
+
+    def setUp(self):
+        self.scan = _module().scan
+
+    def _write_dao(self, root: Path, package: str) -> None:
+        path = root.joinpath(*package.split("."), "BoardDAO.java")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f"package {package};\n\npublic class BoardDAO {{\n    public Object selectBoard() {{\n        return null;\n    }}\n}}\n",
+            encoding="utf-8",
+        )
+
+    def test_namespace_disambiguates_dao_stem_collision(self):
+        # 리뷰어 재현: com/sqi/a/BoardDAO.java·com/sqi/b/BoardDAO.java가 있고 매퍼
+        # namespace가 com.sqi.a.BoardDAO를 가리키면 반드시 a로 배선돼야 한다.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_dao(root, "com.sqi.a")
+            self._write_dao(root, "com.sqi.b")
+            mapper = root / "mappers" / "BoardMapper.xml"
+            mapper.parent.mkdir(parents=True, exist_ok=True)
+            mapper.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<mapper namespace="com.sqi.a.BoardDAO">\n'
+                '  <select id="selectBoard" resultType="map">\n'
+                "    SELECT BOARD_ID, TITLE FROM TB_BOARD WHERE USE_YN = 'Y'\n"
+                "  </select>\n"
+                "</mapper>\n",
+                encoding="utf-8",
+            )
+            result = self.scan(root)
+
+        reads_edges = [e for e in result["edges"] if e["relation"] == "reads"]
+        self.assertEqual(1, len(reads_edges), result)
+        self.assertIn("com-sqi-a-BoardDAO", reads_edges[0]["source"])
+        self.assertNotIn("com-sqi-b-BoardDAO", reads_edges[0]["source"])
+        self.assertEqual([], result["unresolved_edges"])
+
+    def test_unresolvable_dao_stem_collision_is_reported_not_wrongly_wired(self):
+        # namespace가 없고 stem만으로는 둘 중 하나를 고를 수 없으면 - 지어내지 않고
+        # 버린 뒤 unresolved_edges에 남긴다. 잘못 배선하는 것보다 안전하다.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_dao(root, "com.sqi.a")
+            self._write_dao(root, "com.sqi.b")
+            mapper = root / "mappers" / "BoardMapper.xml"
+            mapper.parent.mkdir(parents=True, exist_ok=True)
+            mapper.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                "<mapper>\n"
+                '  <select id="selectBoard" resultType="map">\n'
+                "    SELECT BOARD_ID, TITLE FROM TB_BOARD WHERE USE_YN = 'Y'\n"
+                "  </select>\n"
+                "</mapper>\n",
+                encoding="utf-8",
+            )
+            result = self.scan(root)
+
+        self.assertEqual([], [e for e in result["edges"] if e["relation"] == "reads"])
+        self.assertEqual(1, len(result["unresolved_edges"]), result)
+        self.assertEqual("reads", result["unresolved_edges"][0]["relation"])
+
+
 class LegacyEncodingTests(unittest.TestCase):
     """오래된 한국어 JSP·Java 코드베이스는 CP949로 저장된 파일이 섞여 있는 경우가 흔하다
     (실측: GSEED Gseed_Web_Renew, JSP 81개 중 2개가 CP949). utf-8로만 읽으면

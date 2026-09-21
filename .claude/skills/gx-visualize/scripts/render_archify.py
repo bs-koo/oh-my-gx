@@ -17,13 +17,53 @@ from typing import Any
 
 Command = str | os.PathLike[str] | Sequence[str | os.PathLike[str]]
 _FULL_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
+_URL_USERINFO_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.-]*://)[^/@]+@")
+
+
+def _strip_userinfo(url: str) -> str:
+    """Remove an embedded `//user:pass@` credential from a URL before it reaches HTML/receipts.
+
+    A remote checked out with credentials in the URL (CI's `x-access-token:<PAT>@...`, a
+    developer's cached PAT) would otherwise copy that secret into meta.repository and the
+    rendered {domain}.html verbatim (2026-09-18 final review I6, design §7). `git remote
+    get-url` can also return an SSH shorthand (`git@host:org/repo.git`) with no `//`,
+    which this leaves untouched — that `user@` is the SSH syntax itself, not an embedded
+    secret.
+    """
+    return _URL_USERINFO_RE.sub(r"\1", url)
+
+
+def _json_list_command(command: str) -> list[str] | None:
+    """Parse `command` as a JSON array of strings, or return None if it isn't one.
+
+    detect_backend()/ensure_archify() hand back `command` as a **list**, and CLI callers
+    must serialize it to a single `--archify-command` string. The obvious serializations
+    are not round-trip safe on Windows: `shlex.split(s, posix=False)` does not undo
+    `subprocess.list2cmdline()`'s quoting once any argv element (e.g. an install path
+    under "Program Files") contains a space, so the executable is split apart and the
+    subprocess fails with WinError 5 while exit code 0 hides it (2026-09-18 final review
+    I2). A JSON array round-trips exactly regardless of embedded spaces, so callers that
+    serialize with `json.dumps(command)` are unaffected by shell-quoting rules at all.
+    """
+    stripped = command.strip()
+    if not stripped.startswith("["):
+        return None
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, list) and parsed and all(isinstance(item, str) for item in parsed):
+        return parsed
+    return None
 
 
 def _normalize_command(command: Command) -> list[str]:
     if isinstance(command, os.PathLike):
         return [os.fspath(command)]
     if isinstance(command, str):
-        parts = shlex.split(command, posix=os.name != "nt")
+        parts = _json_list_command(command)
+        if parts is None:
+            parts = shlex.split(command, posix=os.name != "nt")
     else:
         parts = [os.fspath(part) for part in command]
     if not parts or any(not part for part in parts):
@@ -110,7 +150,7 @@ def _git_repository_evidence(project_root: Path | str, cited_paths: list[str]) -
     url = origin.stdout.strip()
     if not _FULL_SHA_RE.match(sha) or not url:
         return None
-    return {"url": url, "revision": sha.lower(), "link_mode": "local-only"}
+    return {"url": _strip_userinfo(url), "revision": sha.lower(), "link_mode": "local-only"}
 
 
 def _render_fallback(
@@ -326,10 +366,13 @@ def render_archify(
     stem = output_name if output_name is not None else view
     html_path = output_dir / f"{stem}.html"
     receipt_path = output_dir / f"{stem}.receipt.json"
-    html_path.unlink(missing_ok=True)
 
     local_receipt = _validator_module().validate(ir_path, project_root=project_root)
     if local_receipt["status"] != "valid":
+        # 이전에 성공적으로 렌더된 {stem}.html은 여기서 지우지 않는다 - 이번 IR 검증
+        # 실패는 새 산출물을 만들 수 없다는 뜻일 뿐, 지난 실행의 정상 그림을 무효로
+        # 만들지 않는다. SKILL.md가 이미 약속하는 "검증 실패 시 이전 IR을 덮어쓰지
+        # 않는다"와 같은 원칙을 HTML에도 지킨다(2026-09-18 최종 리뷰 I8).
         failed_receipt = {
             **local_receipt,
             "backend": None,
@@ -351,6 +394,10 @@ def render_archify(
         }
         _write_receipt(receipt_path, failed_receipt)
         raise ValueError(f"IR validation failed; see {receipt_path}")
+
+    # 검증을 통과해 새로 렌더를 시도하는 경우에만 이전 산출물을 지운다 - 곧바로
+    # Archify 또는 폴백이 같은 이름에 새 HTML을 쓴다.
+    html_path.unlink(missing_ok=True)
 
     kind = diagram_type(view)
     if kind is None:

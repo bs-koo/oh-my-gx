@@ -274,25 +274,39 @@ def _disambiguate(by_id: dict[str, dict[str, Any]], candidates: list[str], sourc
     return None
 
 
-def _resolve_mapper_source(edge: dict[str, Any], dao_by_stem: dict[str, str]) -> str:
+def _resolve_mapper_source(
+    edge: dict[str, Any], dao_by_stem: dict[str, list[str]], dao_by_path: dict[str, str]
+) -> str:
     """Resolve a mapper XML's edge source to the repository node it belongs to.
 
     eGovFrame 관례(`Board_SQL.xml` + `BoardDao.java`)는 파일명 치환만으로는 맞지 않는다 -
-    매퍼의 `<mapper namespace="...">`가 실제 DAO의 완전한 클래스명을 담고 있으므로 그
-    마지막 세그먼트를 먼저 본다. 앞에서 맞으면 뒤는 보지 않는다:
-    1. namespace의 마지막 세그먼트
-    2. 기존 `stem.replace("Mapper", "DAO")` 치환
-    3. 원래 stem
-    어느 것도 맞지 않으면 지어내지 않고 원래 경로를 그대로 반환한다 - 뒤에서
-    `_resolve_edges`가 이를 미해소로 판정해 `unresolved_edges`에 담는다.
+    매퍼의 `<mapper namespace="...">`가 실제 DAO의 완전한 클래스명을 담고 있다. 같은
+    단순명(stem)의 DAO가 여러 개면(예: `com/sqi/a/BoardDAO.java`·`com/sqi/b/BoardDAO.java`)
+    dao_by_stem만으로는 경로 사전순 마지막이 조용히 이긴다 - namespace의 완전한
+    클래스명이 그 충돌을 가르는 정답 키다(2026-09-18 최종 리뷰 M5). 앞에서 하나로
+    좁혀지면 뒤는 보지 않는다:
+    1. namespace 전체를 경로로 바꿔 저장소 경로와 정확히(또는 접미사로) 일치하는 DAO
+    2. 기존 `stem.replace("Mapper", "DAO")` 치환 - 후보가 둘 이상이면 고르지 않는다
+    3. 원래 stem - 역시 후보가 둘 이상이면 고르지 않는다
+    어느 것도 하나로 좁혀지지 않으면 지어내지 않고 원래 경로를 그대로 반환한다 -
+    `_disambiguate`와 같은 원칙("a missing edge is safe, a wrongly wired one is silent
+    corruption")이다. 뒤에서 `_resolve_edges`가 이를 미해소로 판정해 `unresolved_edges`에
+    담는다.
     """
     namespace = edge.get("namespace")
     if namespace:
-        candidate = dao_by_stem.get(namespace.rsplit(".", 1)[-1])
-        if candidate is not None:
-            return candidate
+        suffix = namespace.replace(".", "/") + ".java"
+        matches = {node_id for path, node_id in dao_by_path.items() if path == suffix or path.endswith("/" + suffix)}
+        if len(matches) == 1:
+            return next(iter(matches))
+        if len(matches) > 1:
+            return edge["source"]
     stem = Path(edge["source"]).stem
-    return dao_by_stem.get(stem.replace("Mapper", "DAO"), dao_by_stem.get(stem, edge["source"]))
+    for candidate_stem in (stem.replace("Mapper", "DAO"), stem):
+        candidates = dao_by_stem.get(candidate_stem)
+        if candidates:
+            return candidates[0] if len(candidates) == 1 else edge["source"]
+    return edge["source"]
 
 
 def _resolve_edges(
@@ -394,10 +408,15 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
 
     nodes.sort(key=lambda node: node["id"])
 
-    dao_by_stem = {node["id"].split("--")[-1]: node["id"] for node in nodes if node["kind"] == "repository"}
+    dao_by_stem: dict[str, list[str]] = {}
+    dao_by_path: dict[str, str] = {}
+    for node in nodes:
+        if node["kind"] == "repository":
+            dao_by_stem.setdefault(node["id"].split("--")[-1], []).append(node["id"])
+            dao_by_path[node["evidence"][0]["file"]] = node["id"]
     for edge in raw_edges:
         if isinstance(edge["source"], str) and edge["source"].endswith(".xml"):
-            edge["source"] = _resolve_mapper_source(edge, dao_by_stem)
+            edge["source"] = _resolve_mapper_source(edge, dao_by_stem, dao_by_path)
 
     edges, unresolved_edges = _resolve_edges(nodes, raw_edges)
 
