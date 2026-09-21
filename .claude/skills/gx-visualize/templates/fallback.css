@@ -59,6 +59,12 @@ th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; 
 th { background: #eef2f8; }
 .mermaid-source { overflow-x: auto; border-radius: 10px; padding: 16px; background: #101828; color: #e6edf7; }
 .fallback-note { color: var(--muted); }
+.domain-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.domain-card { border: 1px solid var(--line); border-left-width: 6px; border-radius: 12px; padding: 16px; }
+.domain-card.domain-diagram { border-left-color: var(--verified); }
+.domain-card.domain-table { border-left-color: var(--review); }
+.domain-card.domain-failed { border-left-color: var(--blocked); }
+.domain-kind { color: var(--muted); font-weight: 700; }
 .evidence-list { display: grid; gap: 12px; }
 .evidence-card p { margin: 4px 0; }
 footer { padding: 8px 0 40px; font-size: .9rem; }

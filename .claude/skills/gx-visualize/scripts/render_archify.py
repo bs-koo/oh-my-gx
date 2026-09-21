@@ -160,10 +160,12 @@ def _render_fallback(
     project_root: Path | str | None = None,
     output_name: str | None = None,
     snapshot_banner: bool = False,
+    html_dir: Path | str | None = None,
 ) -> dict[str, str]:
     return _fallback_module().render(
         ir_path, output_dir, backend,
         project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+        html_dir=html_dir,
     )
 
 
@@ -252,16 +254,22 @@ def _fallback(
     status: str = "fallback",
     output_name: str | None = None,
     snapshot_banner: bool = False,
+    html_dir: Path | str | None = None,
 ) -> dict[str, str]:
-    html_path = output_dir / f"{output_name if output_name is not None else _view(ir_path)}.html"
+    html_dir_actual = Path(html_dir) if html_dir is not None else output_dir
+    html_path = html_dir_actual / f"{output_name if output_name is not None else _view(ir_path)}.html"
     for backend in ("mermaid", "static"):
         try:
             if project_root is None:
-                result = _render_fallback(ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner)
+                result = _render_fallback(
+                    ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner,
+                    html_dir=html_dir,
+                )
             else:
                 result = _render_fallback(
                     ir_path, output_dir, backend,
                     project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+                    html_dir=html_dir,
                 )
         except Exception as exc:  # preserve diagnostics and continue the explicit chain
             attempts.append(
@@ -326,6 +334,7 @@ def _skip_archify(
     project_root: Path | str | None = None,
     output_name: str | None = None,
     snapshot_banner: bool = False,
+    html_dir: Path | str | None = None,
 ) -> dict[str, str]:
     """Render via the fallback chain without ever invoking Archify.
 
@@ -349,7 +358,7 @@ def _skip_archify(
     return _fallback(
         ir_path, output_dir, receipt_path, attempts,
         project_root=project_root, status="not_applicable", output_name=output_name,
-        snapshot_banner=snapshot_banner,
+        snapshot_banner=snapshot_banner, html_dir=html_dir,
     )
 
 
@@ -360,6 +369,7 @@ def render_archify(
     project_root: Path | str | None = None,
     output_name: str | None = None,
     snapshot_banner: bool = False,
+    html_dir: Path | str | None = None,
 ) -> dict[str, str]:
     """Validate and deliver with Archify, then fall back without hiding failures.
 
@@ -374,13 +384,20 @@ def render_archify(
     HTML - the fallback chain forwards it to render_fallback.render(); the Archify
     success path below injects it into Archify's own HTML after delivery, since Archify
     has no concept of this GX-only banner.
+
+    `html_dir`, when given, writes `{stem}.html`(Archify 성공 시)와 폴백 HTML을 거기에
+    쓴다 — `.receipt.json`·`.archify.json`은 여전히 `output_dir`에 남는다. `--scope all`은
+    이걸로 `${MAP_DIR}/domains/`와 `${MAP_DIR}/receipts/`를 분리한다. 생략하면
+    `output_dir`과 같아 기존 평평한 구조 그대로다.
     """
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    html_dir_actual = Path(html_dir) if html_dir is not None else output_dir
+    html_dir_actual.mkdir(parents=True, exist_ok=True)
     view = _view(ir_path)
     stem = output_name if output_name is not None else view
-    html_path = output_dir / f"{stem}.html"
+    html_path = html_dir_actual / f"{stem}.html"
     receipt_path = output_dir / f"{stem}.receipt.json"
 
     local_receipt = _validator_module().validate(ir_path, project_root=project_root)
@@ -420,6 +437,7 @@ def render_archify(
         return _skip_archify(
             ir_path, output_dir, receipt_path, view,
             project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            html_dir=html_dir,
         )
 
     command = _normalize_command(archify_command)
@@ -441,6 +459,7 @@ def render_archify(
         return _fallback(
             ir_path, output_dir, receipt_path, attempts,
             project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            html_dir=html_dir,
         )
 
     deliver_command = [*command, "deliver", kind, str(archify_payload), str(html_path), "--json", *repo_root_args]
@@ -453,6 +472,7 @@ def render_archify(
         return _fallback(
             ir_path, output_dir, receipt_path, attempts,
             project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            html_dir=html_dir,
         )
 
     if snapshot_banner:
@@ -494,6 +514,7 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
     parser.add_argument("--snapshot-banner", action="store_true")
+    parser.add_argument("--html-dir", type=Path)
     args = parser.parse_args()
     try:
         result = render_archify(
@@ -503,6 +524,7 @@ def main() -> int:
             project_root=args.project_root,
             output_name=args.output_name,
             snapshot_banner=args.snapshot_banner,
+            html_dir=args.html_dir,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(str(exc))

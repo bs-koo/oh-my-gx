@@ -98,6 +98,20 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 
 두 산출물을 **한 폴더에 섞지 않는다**. 세션 출력은 갱신되지 않으므로 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다.
 
+`--scope all`의 `${MAP_DIR}/`는 폴더로 정리한다 — **`아키텍처-맵.html` 하나만 열면 전체가 보인다.**
+
+```text
+${MAP_DIR}/
+  아키텍처-맵.html              ← 인덱스. 이것만 열면 된다
+  domains/{domain}.html          도메인별 그림·표
+  ir/{domain}.ir.json            GX IR (사람이 읽는 정본)
+  receipts/{domain}.receipt.json 영수증
+  receipts/{domain}.archify.json 중간 산출물(Archify를 시도한 도메인만)
+  assets/mermaid.min.js          폴백 도메인이 하나라도 있을 때만
+```
+
+도메인이 8개 x 파일 4종 = 32개가 평평하게 쌓이면 사람이 무엇부터 볼지 알 수 없다(2026-09-21 사용자 리뷰). `--scope session`은 파일이 2~3개뿐이라 이 정리가 필요 없다 — 지금처럼 평평하게 둔다.
+
 `--scope session` HTML 상단에는 **스냅샷 배너**를 넣는다 — 생성 시각과 `git rev-parse --short HEAD` 결과, 그리고 "이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다". `--scope all`에는 넣지 않는다. `scripts/render_archify.py`·`scripts/render_fallback.py`에 `--snapshot-banner`를 전달하면 `<body>` 직후에 이 배너를 삽입한다 — `--scope session` 호출에만 이 플래그를 준다.
 
 ### 도메인 분할 (`--scope all`)
@@ -105,6 +119,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 실제 저장소 규모(86노드)를 한 장으로 그리면 Archify 검증이 대량으로 실패하고, 애초에 사람이 읽을 수도 없다(설계서 §5.7). 그래서 `--scope all`은 `scripts/split_domains.py`의 `split_by_domain()`으로 노드를 도메인별로 나눠 각각 별도 문서로 그린다. `--scope session`은 분할하지 않는다 — 세션 diff는 이미 작아서 나눌 필요가 없다.
 
 - 파일명은 `{domain}.ir.json`·`{domain}.html`이다(예: `auth.ir.json`, `auth.html`). `--scope all`에는 기존 `service.json`·`service.html` 단일 파일 규칙을 더 이상 적용하지 않는다. `scripts/render_archify.py`·`scripts/render_fallback.py`는 기본적으로 IR의 `view`(항상 `service`)로 파일명을 짓기 때문에, 도메인마다 그대로 호출하면 전부 `service.html`을 서로 덮어쓴다 — 도메인별로 렌더할 때는 반드시 `--output-name {domain}`을 전달해 `{domain}.html`·`{domain}.receipt.json`을 받는다. 이 인자를 생략하면 기존 `{view}.*` 단일 문서 동작이 그대로 유지된다(예: `--scope session`).
+- 도메인 IR JSON은 직접 `${MAP_DIR}/ir/{domain}.ir.json`에 쓴다. `output_dir` 인자에는 `${MAP_DIR}/receipts`를 주고(`.receipt.json`·`.archify.json`이 여기 남는다), `--html-dir ${MAP_DIR}/domains`를 추가로 전달한다 — 예: `python scripts/render_archify.py ${MAP_DIR}/ir/auth.ir.json ${MAP_DIR}/receipts --archify-command '[...]' --output-name auth --html-dir ${MAP_DIR}/domains`. `--html-dir`를 생략하면 `output_dir`과 같아 기존 평평한 구조 그대로다(`--scope session`은 생략한다).
 - 테이블 노드는 경로로 도메인을 판정하지 않고, 자신을 참조하는 모든 도메인에 복제된다. 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않으므로 조용히 지우지 않고 관련된 각 도메인 IR의 `missing_inputs`에 `cross-domain-edge`로 남기며, 보고에 건수를 포함한다.
 - **도메인마다 개별로 Archify에 넣어 판정한다 — 전부 성공 아니면 전부 실패로 묶지 않는다.** 한 저장소 안에서 어떤 도메인은 그림이 나오고 어떤 도메인은 표(폴백)로 떨어지는 것이 정상이며, 그 사실을 보고에 드러낸다. 실패한 도메인만 mermaid → static으로 폴백하고, 통과한 도메인의 그림은 그대로 둔다.
 - `--domain`을 주면 그 도메인만 그린다. 생략하면 `split_by_domain()`이 찾은 전 도메인을 각각 그린다.
@@ -112,8 +127,9 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 1. `--scope all`이면 프로젝트 전체를 `scripts/scan_entrypoints.py`로 스캔한다. `--scope session`이면 호출자가 `--input-path`로 반복 전달한 이번 사이클 변경 파일 목록(gx-dev·gx-tdd phase-complete Step 5.5가 이미 파악한 목록) 중 `.java`·`.jsp`·`.xml`만 골라 `scan_entrypoints.py`의 `--changed-file`로 하나씩 넘겨 그 파일들만 스캔한다. 전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알린다. `scan()`은 UTF-8로 읽지 못한 소스를 CP949로 재시도한다(오래된 한국어 JSP·Java 코드베이스에 흔하다). 둘 다 실패한 파일은 크래시시키지 않고 결과의 `skipped`에 담아 건너뛴다 — 조용히 버리지 않고 사용자에게 보고한다. 관계를 해소하지 못한 엣지(대상 매퍼·서비스·API를 찾지 못함)는 `unresolved_edges`에 `source`·`target`·`relation`으로 담아 함께 보고한다 — "노드가 없다"(`skipped`)와 "관계를 해소하지 못했다"(`unresolved_edges`)는 다른 사실이다. SQL 본문은 여기에도 담지 않는다. `--scope all`의 도메인 분할 이후에는 `split_by_domain()`이 두 값을 실행 순간에만 보이고 사라지지 않도록 관련 파일 경로가 속한 도메인의 IR에 각각 담아 보존한다.
 2. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
 3. `--scope all`이면 `split_by_domain()`으로 스캔 결과를 도메인별 IR로 나눈다. `--scope session`은 분할하지 않는다 — 스냅샷이므로 나눌 필요가 없다.
-4. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.
-5. 생성된 경로를 보고한다 — `--scope all`은 도메인마다 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 둘 다 단발성 산출물이며 커밋하지 않는다.
+4. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/ir/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.
+5. `--scope all`이면 도메인 렌더가 모두 끝난 뒤 `python scripts/build_index.py ${MAP_DIR} --project-root <PROJECT_ROOT>`로 `${MAP_DIR}/아키텍처-맵.html`을 만든다. `--scope session`은 인덱스를 만들지 않는다.
+6. 생성된 경로를 보고한다 — `--scope all`은 `${MAP_DIR}/아키텍처-맵.html`(먼저 이것을 안내한다)과 도메인마다 `${MAP_DIR}/ir/{domain}.ir.json`·`${MAP_DIR}/domains/{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 둘 다 단발성 산출물이며 커밋하지 않는다.
 
 스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않는다. `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
 

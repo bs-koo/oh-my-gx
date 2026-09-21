@@ -267,6 +267,7 @@ def render(
     project_root: Path | str | None = None,
     output_name: str | None = None,
     snapshot_banner: bool = False,
+    html_dir: Path | str | None = None,
 ) -> dict[str, str]:
     """Validate and render an IR document, returning stable artifact paths.
 
@@ -278,6 +279,11 @@ def render(
     `snapshot_banner`, when true, inserts the `--scope session` snapshot banner (생성
     시각·커밋 해시·갱신되지 않는다는 고지) into the rendered HTML. `--scope all` 호출은
     이 인자를 생략(기본 False)한다 - 누적 맵에는 배너를 넣지 않는다.
+
+    `html_dir`, when given, writes `{stem}.html` there instead of `output_dir` while
+    `.receipt.json` stays in `output_dir` — `--scope all`은 이걸로 `${MAP_DIR}/domains/`와
+    `${MAP_DIR}/receipts/`를 분리한다(2026-09-21 사용자 리뷰: 32개 파일이 평평하게 쌓여
+    "뭐가 뭔지 모르겠다"는 지적). 생략하면 `output_dir`과 같아 기존 평평한 구조 그대로다.
     """
     if backend not in BACKENDS:
         raise ValueError(f"backend must be one of: {', '.join(sorted(BACKENDS))}")
@@ -285,6 +291,8 @@ def render(
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    html_dir = Path(html_dir) if html_dir is not None else output_dir
+    html_dir.mkdir(parents=True, exist_ok=True)
     validator = _validator_module()
     receipt = validator.validate(ir_path, project_root=project_root)
     view = _input_view(ir_path, validator.VIEWS)
@@ -298,13 +306,13 @@ def render(
         encoding="utf-8",
     )
     if receipt["status"] != "valid":
-        (output_dir / f"{stem}.html").unlink(missing_ok=True)
+        (html_dir / f"{stem}.html").unlink(missing_ok=True)
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
     document = _render_document(ir, backend)
     if snapshot_banner:
         document = inject_snapshot_banner(document, snapshot_banner_html(project_root))
-    html_path = output_dir / f"{stem}.html"
+    html_path = html_dir / f"{stem}.html"
     html_path.write_text(document, encoding="utf-8")
     return {"html_path": str(html_path), "backend": backend, "receipt_path": str(receipt_path)}
 
@@ -317,12 +325,13 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
     parser.add_argument("--snapshot-banner", action="store_true")
+    parser.add_argument("--html-dir", type=Path)
     args = parser.parse_args()
     try:
         result = render(
             args.ir_path, args.output_dir, args.backend,
             project_root=args.project_root, output_name=args.output_name,
-            snapshot_banner=args.snapshot_banner,
+            snapshot_banner=args.snapshot_banner, html_dir=args.html_dir,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc))

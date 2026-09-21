@@ -298,6 +298,27 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertIn("단위테스트", html_text)
         self.assertIn("B12", html_text)
 
+    def test_html_dir_writes_html_separately_from_receipt_dir(self):
+        # `--scope all`은 이걸로 `${MAP_DIR}/domains/`(html)와 `${MAP_DIR}/receipts/`
+        # (receipt)를 분리한다 - 32개 파일이 평평하게 쌓인다는 지적(2026-09-21)의 수정.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = self.renderer.render(
+                FIXTURE, root / "receipts", "static", output_name="auth", html_dir=root / "domains",
+            )
+
+            self.assertEqual(result["html_path"], str(root / "domains" / "auth.html"))
+            self.assertEqual(result["receipt_path"], str(root / "receipts" / "auth.receipt.json"))
+            self.assertTrue((root / "domains" / "auth.html").is_file())
+            self.assertTrue((root / "receipts" / "auth.receipt.json").is_file())
+            self.assertFalse((root / "receipts" / "auth.html").exists())
+
+    def test_html_dir_omitted_keeps_flat_layout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(FIXTURE, Path(temporary), "static")
+
+        self.assertEqual(Path(result["html_path"]).parent, Path(result["receipt_path"]).parent)
+
 
 if __name__ == "__main__":
     unittest.main()
