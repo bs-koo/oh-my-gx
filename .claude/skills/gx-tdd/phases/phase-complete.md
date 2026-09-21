@@ -208,6 +208,35 @@ PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제
 ## Step 5: 진행 상태 완료
 `${DEV_DIR}/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
 
+## Step 5.5: 구현 구조 시각화 제안
+
+**헤드리스 판정 먼저**: ARGS에 `--non-interactive`가 있거나 `${DEV_DIR}/ralph.lock`이 존재하면 이 절 전체를 **strict no-op**으로 건너뛴다. 질문하지 않고 기존 완료 출력을 바꾸지 않는다 — 응답할 사용자가 없다. (gx-ralph 루프는 완료 처리를 gx-ralph-iterate Step 5.5에서 직접 수행하고 phase-complete를 거치지 않으므로, 이 판정은 현재 도달하지 않는 향후 진입 경로를 위한 예약이다.)
+
+대화형 세션이면 아래를 질문한다. 구조화된 질문 도구가 없는 세션에서는 같은 선택지를 **자연어로 묻고 실제 답을 기다린다** — 도구가 없다는 이유로 건너뛰지 않는다. "질문 도구가 없음"과 "응답할 사용자가 없음"은 다른 조건이다: 앞의 것은 묻는 방식만 바뀌고, 뒤의 것만 strict no-op이다.
+
+```
+AskUserQuestion(
+  questions: [{
+    header: "구조 시각화",
+    question: "이번 사이클에서 구현된 구조를 시각화할까요?",
+    multiSelect: false,
+    options: [
+      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵 전체를 다시 스캔해 갱신합니다 — .dev/architecture/에 저장 (gx-visualize service --scope all)" },
+      { label: "이번 세션분만", description: "이번 사이클이 변경한 파일의 체인만 그립니다 — .dev/{slug}/visual/에 스냅샷 저장 (gx-visualize service --scope session)" },
+      { label: "아니요", description: "시각화하지 않고 완료합니다" }
+    ]
+  }]
+)
+```
+
+- **전체 갱신** → `--scope all`은 매 실행 프로젝트 전체를 다시 스캔하므로 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알리고 재확인한 뒤, `oh-my-gx:gx-visualize`를 `service --scope all`로 호출한다.
+- **이번 세션분만** → `oh-my-gx:gx-visualize`를 `service --scope session`으로 호출하고 이번 사이클의 변경 파일 목록을 전달한다.
+- **아니요** → 건너뛴다.
+
+호출 결과의 `view`·`backend`·`html_path`·`validation_status`·`missing_inputs`를 그대로 보고한다. 검증된 HTML이 없으면 `visualization_status: failed`로 보고하고 경로를 성공처럼 제시하지 않는다.
+
+이 절의 실패·누락·fallback은 **커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다.** Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
+
 ## Step 6: 다음 단계
 
 PR이 생성되었으면 완료이다. **PR 머지는 절대 실행하지 않는다** — 머지는 리뷰어가 직접 수행한다.

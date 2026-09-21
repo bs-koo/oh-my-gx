@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.34.0 (2026-09-18)
+
+### Added
+
+- `gx-visualize`(18번째 스킬)를 추가한다. GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환하며 `trace`·`progress`·`impact`·`service`(1차 필수)와 `sequence`(후속 범위) 다섯 뷰를 다룬다. `--scope all`은 도메인별로 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`을 만들어 누적 아키텍처 맵을 매 실행 전체 재스캔으로 갱신하고, 도메인마다 Archify 성공·폴백을 개별로 판정한다.
+- gx-dev·gx-tdd의 phase-complete에 구현 구조 시각화 제안 게이트(Step 5.5)를 추가한다. 전체 갱신·이번 세션분만·건너뛰기 중 선택을 물으며, 헤드리스(gx-ralph) 세션은 strict no-op이고 이 게이트의 실패·누락은 커밋·PR 단계를 막지 않는다.
+
+### Fixed
+
+- Archify CLI 시그니처를 실제 명령 형식(validate/deliver)으로 수정하고, 탐지 프로브를 지원되지 않는 `--version`에서 `doctor`로 바꾼다. Archify가 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로 1회 자동 설치를 시도한 뒤, 실패해도 예외 없이 Mermaid → 정적 HTML로 폴백한다.
+- `--scope all`에서 도메인별 HTML·receipt 파일명이 서로 덮어쓰지 않도록 `--output-name`을 추가한다.
+- 소스 스캔·근거 검증이 CP949 인코딩 파일(오래된 한국어 JSP·Java 코드베이스)에서 죽지 않도록 폴백을 추가한다.
+
 ## v1.33.0 (2026-09-15)
 
 ### Added
