@@ -207,6 +207,51 @@ class PackageCollisionEdgeTests(unittest.TestCase):
         self.assertNotIn((admin_login, auth_service), edge_pairs)
 
 
+SERVICE_IMPL_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-service-impl"
+
+
+class ServiceInterfaceMergeTests(unittest.TestCase):
+    """컨트롤러는 인터페이스를 주입받고 실제 로직은 `{X}Impl`에 있다(eGov·Spring 관례).
+    합치지 않으면 인터페이스는 막다른 길, 구현체는 컨트롤러에서 닿지 않는 별개의
+    덩어리로 남아 화면 -> API -> 서비스 -> 저장소 -> 테이블 체인이 끊긴다."""
+
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_service_impl_merges_into_its_interface(self):
+        result = self.scan(SERVICE_IMPL_FIXTURE)
+        labels = {n["label"] for n in result["nodes"] if n["kind"] == "service"}
+        self.assertIn("UserService", labels)
+        self.assertNotIn("UserServiceImpl", labels)
+
+    def test_merged_service_keeps_the_impl_outgoing_edges(self):
+        result = self.scan(SERVICE_IMPL_FIXTURE)
+        by_id = {n["id"]: n for n in result["nodes"]}
+        edges = {
+            (by_id[e["source"]]["label"], e["relation"], by_id[e["target"]]["label"])
+            for e in result["edges"]
+        }
+        # 체인이 끊기지 않는다: Controller -> UserService(합쳐진 인터페이스) -> UserMapper
+        self.assertIn(("UserController.login", "calls", "UserService"), edges)
+        self.assertIn(("UserService", "calls", "UserMapper"), edges)
+
+    def test_merged_service_keeps_both_files_as_evidence(self):
+        result = self.scan(SERVICE_IMPL_FIXTURE)
+        node = next(n for n in result["nodes"] if n["kind"] == "service" and n["label"] == "UserService")
+        files = {e["file"] for e in node["evidence"]}
+        self.assertTrue(any(f.endswith("UserService.java") for f in files), files)
+        self.assertTrue(any(f.endswith("UserServiceImpl.java") for f in files), files)
+
+    def test_impl_without_interface_stays_as_is(self):
+        # 짝이 되는 인터페이스가 스캔되지 않은 *Impl은 지어내지 않고 그대로 둔다
+        result = self.scan(SERVICE_IMPL_FIXTURE)
+        labels = {n["label"] for n in result["nodes"] if n["kind"] == "service"}
+        self.assertIn("OrphanServiceImpl", labels)
+
+    def test_merge_is_deterministic(self):
+        self.assertEqual(self.scan(SERVICE_IMPL_FIXTURE), self.scan(SERVICE_IMPL_FIXTURE))
+
+
 class EdgeIntegrityTests(unittest.TestCase):
     def setUp(self):
         self.scan = _module().scan

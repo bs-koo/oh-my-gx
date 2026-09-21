@@ -249,6 +249,62 @@ def _scan_java(path: Path, root: Path) -> tuple[list[dict[str, Any]], list[dict[
     return nodes, edges
 
 
+def _merge_service_impls(
+    nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """서비스 인터페이스와 구현체(`{X}` / `{X}Impl`)를 하나의 노드로 합친다.
+
+    eGov·Spring 관례상 컨트롤러는 인터페이스를 주입받고 실제 로직은 `{X}Impl`에
+    있다. 스캐너는 파일 단위로 노드를 만들기 때문에 둘은 원래 서로 다른 노드이고
+    그 사이에는 엣지가 없다 - 합치지 않으면 컨트롤러가 가리키는 인터페이스는
+    막다른 길이 되고, 구현체가 호출하는 저장소 쪽은 컨트롤러에서 닿지 않는 별개의
+    덩어리로 남아 체인이 끊긴다.
+
+    살아남는 노드는 인터페이스(`{X}`)다 - ID가 안정적이고 컨트롤러가 필드 타입으로
+    가리키는 대상이다. 라벨이 같은 이름의 서비스 노드가 둘 이상이면(패키지가 다른
+    동명 클래스) 어느 쌍인지 확정할 수 없으므로 합치지 않는다 - `_disambiguate`와
+    같은 원칙("a missing edge is safe, a wrongly wired one is silent corruption")이다.
+    """
+    service_nodes = [n for n in nodes if n["kind"] == "service"]
+    by_label: dict[str, list[dict[str, Any]]] = {}
+    for node in service_nodes:
+        by_label.setdefault(node["label"], []).append(node)
+
+    id_map: dict[str, str] = {}
+    label_map: dict[str, str] = {}
+    for node in sorted(service_nodes, key=lambda n: n["id"]):
+        label = node["label"]
+        if not label.endswith("Impl") or len(by_label[label]) != 1:
+            continue
+        interface_label = label[: -len("Impl")]
+        candidates = by_label.get(interface_label)
+        if not candidates or len(candidates) != 1:
+            continue  # 짝이 되는 인터페이스가 없거나 이름이 겹친다 - 지어내지 않는다
+        interface_node = candidates[0]
+        interface_node["evidence"] = sorted(
+            interface_node["evidence"] + node["evidence"],
+            key=lambda e: (e["file"], e["line"]),
+        )
+        id_map[node["id"]] = interface_node["id"]
+        label_map[label] = interface_label
+
+    if not id_map:
+        return nodes, id_map
+
+    def _remap(value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        if value in id_map:
+            return id_map[value]
+        return label_map.get(value, value)
+
+    for edge in raw_edges:
+        edge["source"] = _remap(edge["source"])
+        edge["target"] = _remap(edge["target"])
+
+    return [node for node in nodes if node["id"] not in id_map], id_map
+
+
 def _node_dir(by_id: dict[str, dict[str, Any]], node_id: str) -> str:
     node = by_id.get(node_id)
     if node is None:
@@ -407,6 +463,11 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
         raw_edges.extend(file_edges)
 
     nodes.sort(key=lambda node: node["id"])
+
+    nodes, service_merge_map = _merge_service_impls(nodes, raw_edges)
+    if service_merge_map:
+        for rel_path, ids in files.items():
+            files[rel_path] = sorted({service_merge_map.get(nid, nid) for nid in ids})
 
     dao_by_stem: dict[str, list[str]] = {}
     dao_by_path: dict[str, str] = {}
