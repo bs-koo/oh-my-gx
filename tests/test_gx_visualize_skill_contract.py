@@ -170,6 +170,14 @@ class AccumulatedMapContractTests(unittest.TestCase):
     def test_session_and_accumulated_outputs_are_not_mixed(self):
         self.assertIn("한 폴더에 섞지 않는다", self.skill)
 
+    def test_scope_all_does_not_promise_incremental_merge(self):
+        self.assertNotIn("증분 갱신", self.skill)
+        self.assertNotIn("merge_map", self.skill)
+        self.assertNotIn(".scan-manifest.json", self.skill)
+
+    def test_scope_all_states_full_rescan(self):
+        self.assertIn("전체를 다시 스캔", self.skill)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,7 @@
 
 - 진입점 체인 기반 결정적 코드 스캐너 (Java Spring / JSP·Servlet)
 - 스캔 결과를 GX IR로 변환하고 `context/`·설계서에서 한국어 도메인 라벨 보강
-- 누적 맵의 git 지속화와 파일 지문 기반 증분 갱신
+- 누적 맵의 git 지속화와 파일 지문 기반 증분 갱신 — **2026-09-21 폐기 (Task 11)**: 매 실행 전체 재스캔으로 대체. §5.2 참고
 - Archify 백엔드 수리 (명령 시그니처 + IR 변환기)
 - `gx-dev`·`gx-tdd` phase-complete의 시각화 제안 게이트
 
@@ -68,19 +68,18 @@
             ↓  scan.raw.json  (technical_label만, 한국어 없음)
 [보강]  스킬(LLM)이 context/*/glossary.md·design.md로 한국어 label 부여
             ↓  후보 IR
-[병합]  merge_map.py  (이전 IR + 후보 IR + manifest)
-          변경 파일의 노드만 교체, 사라진 파일의 노드 제거
-            ↓  service.ir.json
-[검증]  validate_ir.py  — edge 참조 무결성이 병합 사고를 잡는다
+[분할]  split_domains.py  (도메인별 IR로 분리)
+            ↓  {domain}.ir.json
+[검증]  validate_ir.py  — edge 참조 무결성을 확인한다
             ↓
 [렌더]  archify → mermaid → static
             ↓
 docs/architecture/
-  service.ir.json         정본 (커밋)
-  service.html            렌더 결과 (커밋)
-  sequence-{도메인}.ir.json / .html
-  .scan-manifest.json     파일별 지문 (커밋)
+  {domain}.ir.json        정본 (커밋, 도메인별)
+  {domain}.html           렌더 결과 (커밋, 도메인별)
 ```
+
+> **2026-09-21 폐기** — 위 다이어그램은 최초 설계 당시(병합·매니페스트 기반 증분 갱신)를 반영한다. 실측(전체 3.155초 vs 증분 관문 126.9초)과 C1(무손실 누적 IR 부재)로 사용자가 증분 폐기를 결정했다(Task 11). 현재 `--scope all`은 매 실행 프로젝트 전체를 다시 스캔하고, `merge_map.py`와 `.scan-manifest.json`은 존재하지 않는다. 위 도식은 현재 파이프라인이다 — 병합·매니페스트 단계가 사라진 이유의 기록은 §5.2·§5.3에 남긴다.
 
 ### 5.1 산출물 위치 — scope가 위치를 결정한다
 
@@ -102,6 +101,8 @@ docs/architecture/
 **알려진 비용**: self-contained HTML은 브랜치마다 수백 KB가 `.dev/`에 축적된다. 실제 크기를 측정한 뒤 억제 수단이 필요한지 판단한다 — 측정 전에 설정 항목을 추가하지 않는다.
 
 ### 5.2 스캔 매니페스트
+
+> **2026-09-21 폐기** — 실측(전체 3.155초 vs 증분 관문 126.9초)과 C1(무손실 누적 IR 부재)로 사용자가 증분 폐기를 결정했다(Task 11). `.scan-manifest.json`은 더 이상 생성되지 않으며 `--scope all`은 매 실행 전체를 다시 스캔한다. 아래는 폐기된 설계이며, 왜 이런 구조를 시도했는지의 기록으로 남긴다.
 
 ```json
 {
@@ -256,12 +257,12 @@ cellW  = max(150, maxWidth - gapX + 8)
 
 1. `scan_entrypoints.py`가 Java Spring 픽스처에서 screen·api·service·repository·table 노드를 각각 file:line 근거와 함께 추출한다.
 2. 같은 입력을 두 번 스캔하면 노드 ID와 정렬 순서가 동일하다.
-3. `merge_map.py`가 변경 파일의 노드만 교체하고, 삭제된 파일의 노드와 그 노드를 가리키는 edge를 함께 제거한다.
+3. ~~`merge_map.py`가 변경 파일의 노드만 교체하고, 삭제된 파일의 노드와 그 노드를 가리키는 edge를 함께 제거한다.~~ **폐기 (Task 11, 사용자 결정 2026-09-21)** — §5.2 참고.
 4. 병합 결과가 `validate_ir.py` 검증을 통과한다. 끊긴 edge가 남으면 검증이 실패하고 기존 IR이 보존된다.
 5. `to_archify.py`가 GX IR을 Archify `architecture`·`sequence` 입력으로 변환하고, `render_archify.py`가 실제 CLI 시그니처로 호출한다.
 6. Archify 미설치 환경에서 mermaid 또는 static HTML과 영수증이 생성된다.
 7. `gx-dev`·`gx-tdd`의 complete가 대화형에서 시각화를 제안하고, `ralph.lock` 존재 시 질문 없이 건너뛴다.
-8. 비-git 프로젝트에서 mtime+size 지문으로 증분 갱신이 동작한다.
+8. ~~비-git 프로젝트에서 mtime+size 지문으로 증분 갱신이 동작한다.~~ **폐기 (Task 11, 사용자 결정 2026-09-21)** — §5.2 참고.
 9. `--scope session`은 `${DEV_DIR}/visual/`에, `--scope all`은 `docs/architecture/`에 쓴다. 세션 출력이 누적 맵을 덮어쓰지 않는다.
 10. `--scope session` HTML에 생성 시각과 커밋 해시 스냅샷 배너가 있고, `--scope all` HTML에는 없다.
 11. `sync-codex-resources.py --check`와 `lint-consistency.sh`가 통과한다.
