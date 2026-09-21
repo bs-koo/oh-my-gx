@@ -147,7 +147,10 @@ def _mermaid_source(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
     aliases = {node["id"]: f"n{index}" for index, node in enumerate(nodes)}
     lines = ["flowchart LR"]
     for node in nodes:
-        label_parts = [node["id"], node["label"]]
+        # 노드 ID는 넣지 않는다 - 노드 목록 카드에 이미 있고, 여기 넣으면 라벨이 긴
+        # 기술 ID로 시작해 실제 이름을 가린다(버그 B, 2026-09-21 컨트롤러가 reb.html에서
+        # 발견: "gx-api-webframework-public-src-main-java-..."가 라벨 맨 앞에 왔다).
+        label_parts = [node["label"]]
         if "technical_label" in node:
             label_parts.append(node["technical_label"])
         label_parts.append(STATUS_LABELS.get(node["status"], STATUS_LABELS["unknown"]))
@@ -159,9 +162,21 @@ def _mermaid_source(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
     return "\n".join(lines)
 
 
+# Mermaid의 flowchart 문법을 깨뜨릴 수 있는 문자만 인코딩한다: `"`(따옴표 라벨을 조기
+# 종료), `#`·`;`(Mermaid 자신의 십진 엔티티 문법), `|`(파이프로 구분되는 엣지 라벨의
+# 끝), 줄바꿈(각 statement가 한 줄이어야 한다). 그 외 ASCII·한글은 원문 그대로 남긴다
+# - 예전에는 모든 문자를 `#{ord};`로 인코딩해 "g" 하나까지 "#103;"가 되었고, 화면에는
+# "#103;#120;..." 같은 읽을 수 없는 문자열이 떴다(버그 A, 2026-09-21 컨트롤러가
+# reb.html에서 발견).
+_MERMAID_UNSAFE_CHARS = frozenset('"#;|\n\r')
+
+
 def _mermaid_text(value: Any) -> str:
-    """Encode user text entirely as Mermaid decimal entities."""
-    return "".join(f"#{ord(character)};" for character in str(value))
+    """Encode only the characters Mermaid's flowchart grammar cannot take literally."""
+    return "".join(
+        f"#{ord(character)};" if character in _MERMAID_UNSAFE_CHARS else character
+        for character in str(value)
+    )
 
 
 _NO_DIAGRAM_NOTE = (

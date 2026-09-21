@@ -1,6 +1,7 @@
 import importlib.util
 import html
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -112,27 +113,69 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertNotIn("<script>alert(1)</script>", html_text)
         self.assertEqual(receipt["backend"], "mermaid")
 
-    def test_mermaid_source_encodes_all_user_text_without_grammar_injection(self):
+    def test_mermaid_source_preserves_ascii_and_korean_text_verbatim(self):
+        # 버그 A(2026-09-21 컨트롤러가 reb.html에서 발견): 예전에는 모든 문자를
+        # #{ord};로 인코딩해 "gx-api-webframework-..." 같은 라벨이 화면에
+        # "#103;#120;..."로 떴다. Mermaid 문법에 꼭 필요한 문자만 인코딩하고 나머지
+        # ASCII·한글은 원문 그대로 남아야 사람이 읽을 수 있다.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             ir_path, payload = self.write_ir(root)
-            payload["nodes"][0]["label"] = 'A\n  injected["가짜"] --> n9'
-            payload["nodes"][0]["technical_label"] = 'C:\\work\\file" |[]{}()'
-            payload["edges"][0]["relation"] = '연결\n  injected --> n1| "\\[]{}()'
+            payload["nodes"][0]["label"] = "에너지 사용량 조회 API"
+            payload["nodes"][0]["technical_label"] = "EnergyUsageService.findByPeriod"
             ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
             result = self.renderer.render(ir_path, root / "output", "mermaid")
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
             source = self.mermaid_source(html_text)
 
-            self.assertEqual(len(source.splitlines()), 4)
-            self.assertNotIn("injected", source)
-            self.assertNotIn("C:\\work", source)
-            self.assertNotIn(' |[]{}()', source)
-            self.assertIn("#65;#10;#32;#32;", source)
-            self.assertIn("#67;#58;#92;#119;", source)
-            self.assertIn("#34;#32;#124;#91;#93;#123;#125;#40;#41;", source)
-            self.assertIn("#50672;#44208;#10;#32;#32;", source)
+        self.assertIn("에너지 사용량 조회 API", source)
+        self.assertIn("EnergyUsageService.findByPeriod", source)
+        self.assertNotIn("#51060;", source)  # '에'가 인코딩되면 나타날 코드포인트
+
+    def test_mermaid_source_escapes_only_grammar_breaking_characters(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path, payload = self.write_ir(root)
+            payload["nodes"][0]["label"] = 'A\n  injected["가짜"] --> n9'
+            payload["edges"][0]["relation"] = '연결| "\\[]{}()'
+            ir_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            result = self.renderer.render(ir_path, root / "output", "mermaid")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            source = self.mermaid_source(html_text)
+
+        # 줄바꿈은 여전히 인코딩된다 - 각 statement는 한 줄이어야 한다(2 노드 + 1
+        # 헤더 + 1 엣지 = 4줄을 유지해야 새 줄이 실제로 삽입되지 않았다는 뜻이다).
+        self.assertEqual(len(source.splitlines()), 4)
+        # 따옴표는 라벨을 조기 종료시키므로 여전히 인코딩된다
+        self.assertNotIn('"가짜"', source)
+        self.assertIn("#34;가짜#34;", source)
+        # 엣지 라벨의 파이프는 `-->|...|` 구분자와 충돌하므로 여전히 인코딩된다
+        self.assertIn("#124;", source)
+        # 대괄호·중괄호·소괄호·백슬래시·한글은 인용된 라벨 안에서 안전하므로
+        # 원문 그대로 남는다
+        self.assertIn("injected[", source)
+        self.assertIn("--> n9", source)
+        self.assertIn("\\[]{}()", source)
+        self.assertIn("연결", source)
+
+    def test_mermaid_label_does_not_lead_with_the_node_id(self):
+        # 버그 B(2026-09-21 컨트롤러가 reb.html에서 발견): 라벨이 긴 기술 ID로
+        # 시작해 실제 이름을 가렸다. ID는 노드 목록 카드에 이미 있으므로 Mermaid
+        # 라벨에서는 뺀다.
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(FIXTURE, Path(temporary), "mermaid")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            source = self.mermaid_source(html_text)
+
+        self.assertIn("에너지 사용량을 기간별로 조회한다", source)
+        for node_id in ("AN-02-001", "AN-03-001", "DE-13-001"):
+            for line in source.splitlines():
+                if f'["' not in line:
+                    continue
+                label = line.split('["', 1)[1]
+                self.assertFalse(label.startswith(node_id), f"{node_id}가 라벨 맨 앞에 남아 있다: {line}")
 
     def test_template_tokens_in_title_and_labels_remain_literal_text(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -360,6 +403,15 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         _, html_text, _ = self.render("mermaid")
         self.assertIn("다이어그램은 생성되지 않았습니다", html_text)
         self.assertNotIn('<pre class="mermaid">', html_text)
+
+    def test_node_card_heading_css_wraps_long_tokens(self):
+        # 버그 C(2026-09-21 컨트롤러가 reb.html에서 발견): RebController.download...
+        # 같은 긴 토큰이 h3에 overflow-wrap이 없어 옆 카드를 침범했다.
+        css_path = MODULE_PATH.parent.parent / "templates" / "fallback.css"
+        css_text = css_path.read_text(encoding="utf-8")
+        match = re.search(r"\.node-card h3\s*\{[^}]*\}", css_text)
+        self.assertIsNotNone(match)
+        self.assertIn("overflow-wrap: anywhere", match.group(0))
 
 
 class EnsureMermaidAssetTests(unittest.TestCase):

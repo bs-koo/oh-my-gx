@@ -43,7 +43,7 @@ section { margin: 0 0 24px; padding: 24px; border: 1px solid var(--line); border
 .legend-list { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .node-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .node-card, .evidence-card { border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-.node-card h3 { margin: 8px 0 4px; }
+.node-card h3 { margin: 8px 0 4px; overflow-wrap: anywhere; }
 .node-id, code { font-family: ui-monospace, "Cascadia Code", monospace; overflow-wrap: anywhere; }
 .node-id { font-weight: 800; color: var(--accent); }
 .technical-label { color: var(--muted); }
