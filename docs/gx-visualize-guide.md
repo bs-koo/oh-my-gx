@@ -120,6 +120,8 @@ gx-visualize progress --backend static
 
 두 산출물은 한 폴더에 섞이지 않습니다. `--scope session` HTML에는 생성 시각과 커밋 해시가 담긴 스냅샷 배너가 붙고, `--scope all`에는 붙지 않습니다.
 
+두 산출물 모두 커밋하지 않는 단발성이지만 디스크에는 실제로 쌓입니다 — 실측(SEF, 8도메인): 도메인당 약 800KB, 실행당 합계 약 4.70MB. `--scope all`은 매 실행 전체를 다시 만들므로 오래된 산출물이 자동으로 갱신·대체됩니다.
+
 ### `--scope all`의 산출물은 도메인별입니다
 
 실제 저장소 규모를 한 장으로 그리면 Archify 검증이 대량으로 실패하고 사람이 읽기도 어렵습니다. 그래서 `--scope all`은 노드를 도메인별로 나눠 각각 별도 문서로 그립니다 — 파일명은 `{domain}.ir.json`·`{domain}.html`(예: `auth.ir.json`, `auth.html`)입니다. `--scope session`은 분할하지 않습니다. `--domain`을 주면 그 도메인만 그리고, 생략하면 찾은 전 도메인을 각각 그립니다.

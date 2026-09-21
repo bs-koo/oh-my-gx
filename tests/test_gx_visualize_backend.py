@@ -254,6 +254,24 @@ class VisualBackendTests(unittest.TestCase):
         self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
+    def test_archify_success_html_carries_snapshot_banner_when_requested(self):
+        # I7: Archify가 만든 HTML은 배너 개념을 모른다 - render_archify()가 전달 후
+        # 직접 삽입해야 한다. 폴백 경로와 달리 별도 코드 경로라 따로 확인한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = self.renderer.render_archify(
+                SERVICE_FIXTURE,
+                root / "output",
+                self.fake_archify(root),
+                snapshot_banner=True,
+            )
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertEqual(result["backend"], "archify")
+        self.assertIn("생성 시각", html_text)
+        self.assertIn("갱신되지 않습니다", html_text)
+        self.assertIn("Archify 결과", html_text)
+
     def test_archify_command_json_array_round_trips_paths_with_spaces(self):
         # I2: 이 환경의 실제 Archify command[0]은 C:\Program Files\nodejs\node.EXE처럼
         # 공백을 포함한다. list2cmdline+shlex.split(posix=False) 왕복은 이 케이스에서
@@ -388,10 +406,10 @@ class VisualBackendTests(unittest.TestCase):
             root = Path(temporary)
             real_fallback = self.renderer._render_fallback
 
-            def render_or_fail(ir_path, output_dir, backend, output_name=None):
+            def render_or_fail(ir_path, output_dir, backend, output_name=None, snapshot_banner=False):
                 if backend == "mermaid":
                     raise RuntimeError("mermaid unavailable")
-                return real_fallback(ir_path, output_dir, backend, output_name=output_name)
+                return real_fallback(ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner)
 
             with mock.patch.object(
                 self.renderer,

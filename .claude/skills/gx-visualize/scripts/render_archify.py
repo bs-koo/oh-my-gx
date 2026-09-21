@@ -159,8 +159,12 @@ def _render_fallback(
     backend: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
+    snapshot_banner: bool = False,
 ) -> dict[str, str]:
-    return _fallback_module().render(ir_path, output_dir, backend, project_root=project_root, output_name=output_name)
+    return _fallback_module().render(
+        ir_path, output_dir, backend,
+        project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+    )
 
 
 def _view(ir_path: Path) -> str:
@@ -247,14 +251,18 @@ def _fallback(
     project_root: Path | str | None = None,
     status: str = "fallback",
     output_name: str | None = None,
+    snapshot_banner: bool = False,
 ) -> dict[str, str]:
     html_path = output_dir / f"{output_name if output_name is not None else _view(ir_path)}.html"
     for backend in ("mermaid", "static"):
         try:
             if project_root is None:
-                result = _render_fallback(ir_path, output_dir, backend, output_name=output_name)
+                result = _render_fallback(ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner)
             else:
-                result = _render_fallback(ir_path, output_dir, backend, project_root=project_root, output_name=output_name)
+                result = _render_fallback(
+                    ir_path, output_dir, backend,
+                    project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+                )
         except Exception as exc:  # preserve diagnostics and continue the explicit chain
             attempts.append(
                 {
@@ -317,6 +325,7 @@ def _skip_archify(
     view: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
+    snapshot_banner: bool = False,
 ) -> dict[str, str]:
     """Render via the fallback chain without ever invoking Archify.
 
@@ -340,6 +349,7 @@ def _skip_archify(
     return _fallback(
         ir_path, output_dir, receipt_path, attempts,
         project_root=project_root, status="not_applicable", output_name=output_name,
+        snapshot_banner=snapshot_banner,
     )
 
 
@@ -349,6 +359,7 @@ def render_archify(
     archify_command: Command,
     project_root: Path | str | None = None,
     output_name: str | None = None,
+    snapshot_banner: bool = False,
 ) -> dict[str, str]:
     """Validate and deliver with Archify, then fall back without hiding failures.
 
@@ -358,6 +369,11 @@ def render_archify(
     (e.g. one per domain under `--scope all`) doesn't have each render overwrite the
     last. `view` itself still decides Archify eligibility (`diagram_type`); only the
     on-disk filenames change. Omit it to keep the existing `{view}.*` behavior.
+
+    `snapshot_banner`, when true, inserts the `--scope session` snapshot banner into the
+    HTML - the fallback chain forwards it to render_fallback.render(); the Archify
+    success path below injects it into Archify's own HTML after delivery, since Archify
+    has no concept of this GX-only banner.
     """
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
@@ -401,7 +417,10 @@ def render_archify(
 
     kind = diagram_type(view)
     if kind is None:
-        return _skip_archify(ir_path, output_dir, receipt_path, view, project_root=project_root, output_name=output_name)
+        return _skip_archify(
+            ir_path, output_dir, receipt_path, view,
+            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+        )
 
     command = _normalize_command(archify_command)
 
@@ -419,7 +438,10 @@ def render_archify(
     validate_command = [*command, "validate", kind, str(archify_payload), "--json", *repo_root_args]
     attempts = [_run(validate_command, "validate", html_path)]
     if attempts[-1]["status"] == "failed":
-        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, output_name=output_name)
+        return _fallback(
+            ir_path, output_dir, receipt_path, attempts,
+            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+        )
 
     deliver_command = [*command, "deliver", kind, str(archify_payload), str(html_path), "--json", *repo_root_args]
     attempts.append(_run(deliver_command, "deliver", html_path))
@@ -428,7 +450,21 @@ def render_archify(
             attempts[-1]["status"] = "failed"
             attempts[-1]["stderr"] = "Archify returned success without a non-empty artifact"
         html_path.unlink(missing_ok=True)
-        return _fallback(ir_path, output_dir, receipt_path, attempts, project_root=project_root, output_name=output_name)
+        return _fallback(
+            ir_path, output_dir, receipt_path, attempts,
+            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+        )
+
+    if snapshot_banner:
+        # Archify가 만든 HTML은 이 스킬의 배너 개념을 모른다 - 전달 후 그 산출물에
+        # 직접 삽입한다. render_fallback.render()가 쓰는 것과 같은 함수라 폴백
+        # 경로와 동일한 방식으로 붙는다(2026-09-18 최종 리뷰 I7).
+        fallback_module = _fallback_module()
+        banner = fallback_module.snapshot_banner_html(project_root)
+        html_path.write_text(
+            fallback_module.inject_snapshot_banner(html_path.read_text(encoding="utf-8"), banner),
+            encoding="utf-8",
+        )
 
     receipt = {
         "status": "valid",
@@ -457,6 +493,7 @@ def main() -> int:
     parser.add_argument("--archify-command", required=True)
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
+    parser.add_argument("--snapshot-banner", action="store_true")
     args = parser.parse_args()
     try:
         result = render_archify(
@@ -465,6 +502,7 @@ def main() -> int:
             args.archify_command,
             project_root=args.project_root,
             output_name=args.output_name,
+            snapshot_banner=args.snapshot_banner,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(str(exc))

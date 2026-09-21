@@ -510,6 +510,34 @@ class ToArchifyTests(unittest.TestCase):
         conn = self.to_archify(_ir_normal_chain(), "architecture")[EDGE_KEY][0]
         self.assertNotIn("fromSide", conn)
 
+    def test_edge_labels_are_translated_to_korean(self):
+        # M7: 대상 독자에 비개발 이해관계자가 포함되므로 calls/reads/writes/requests를
+        # 영어 그대로 두지 않는다(2026-09-18 최종 리뷰 M7).
+        ir = {
+            "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+            "nodes": [
+                {"id": "a", "kind": "api", "label": "a", "evidence": []},
+                {"id": "b", "kind": "repository", "label": "b", "evidence": []},
+            ],
+            "edges": [{"id": "a->b", "source": "a", "target": "b", "relation": "reads"}],
+        }
+        conn = self.to_archify(ir, "architecture")[EDGE_KEY][0]
+        self.assertEqual("조회", conn["label"])
+        self.assertNotIn("reads", conn["label"])
+
+    def test_unknown_relation_label_is_not_invented(self):
+        # 알려진 4종(calls/reads/writes/requests) 밖의 관계는 지어내지 않고 원문을 둔다.
+        ir = {
+            "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+            "nodes": [
+                {"id": "a", "kind": "api", "label": "a", "evidence": []},
+                {"id": "b", "kind": "repository", "label": "b", "evidence": []},
+            ],
+            "edges": [{"id": "a->b", "source": "a", "target": "b", "relation": "owns"}],
+        }
+        conn = self.to_archify(ir, "architecture")[EDGE_KEY][0]
+        self.assertEqual("owns", conn["label"])
+
     def test_cited_paths_collects_and_dedupes_code_evidence_files(self):
         # render_archify가 git dirty 검사를 이 목록에만 국한하므로(ruling 4, 라운드 2),
         # to_archify()가 실제로 sources에 실을 파일과 정확히 같아야 한다.

@@ -8,6 +8,8 @@ import html
 import importlib.util
 import json
 import re
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -201,6 +203,52 @@ def _render_document(ir: dict[str, Any], backend: str) -> str:
     return TEMPLATE_TOKEN.sub(lambda match: replacements[match.group(1)], template)
 
 
+_BODY_TAG_RE = re.compile(r"<body[^>]*>", re.IGNORECASE)
+
+
+def _short_head(project_root: Path | str | None) -> str | None:
+    if project_root is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(project_root), capture_output=True, text=True, shell=False, check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    sha = result.stdout.strip()
+    return sha or None
+
+
+def snapshot_banner_html(project_root: Path | str | None) -> str:
+    """Build the `--scope session` snapshot banner - SKILL.md의 세 가지 요구사항을 그대로 담는다:
+    생성 시각, `git rev-parse --short HEAD`, "갱신되지 않는다" 고지(2026-09-18 최종 리뷰 I7).
+    """
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sha = _short_head(project_root)
+    revision_text = f" · 커밋 {_escape(sha)}" if sha else ""
+    return (
+        '<p class="snapshot-banner" role="note">'
+        f'생성 시각: {_escape(generated_at)}{revision_text}'
+        " · 이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다.</p>"
+    )
+
+
+def inject_snapshot_banner(document: str, banner_html: str) -> str:
+    """Insert `banner_html` right after the opening `<body>` tag of `document`.
+
+    Both render_fallback.render()과 render_archify.render_archify()가 이 함수를 공유해
+    폴백 산출물과 Archify 산출물 양쪽에 같은 방식으로 배너를 붙인다 - 렌더러마다 다른
+    HTML 구조에 각자 배너 절차를 만들지 않는다.
+    """
+    match = _BODY_TAG_RE.search(document)
+    if match is None:
+        return document
+    return document[: match.end()] + banner_html + document[match.end() :]
+
+
 def _input_view(ir_path: Path, allowed_views: set[str]) -> str:
     """Return a valid input view when readable, otherwise the stable default."""
     try:
@@ -218,6 +266,7 @@ def render(
     backend: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
+    snapshot_banner: bool = False,
 ) -> dict[str, str]:
     """Validate and render an IR document, returning stable artifact paths.
 
@@ -225,6 +274,10 @@ def render(
     `{view}.receipt.json`) with `{output_name}.*` — see render_archify.render_archify()
     for why (shared `output_dir`, several documents of the same `view`). Omit it to keep
     the existing `{view}.*` behavior.
+
+    `snapshot_banner`, when true, inserts the `--scope session` snapshot banner (생성
+    시각·커밋 해시·갱신되지 않는다는 고지) into the rendered HTML. `--scope all` 호출은
+    이 인자를 생략(기본 False)한다 - 누적 맵에는 배너를 넣지 않는다.
     """
     if backend not in BACKENDS:
         raise ValueError(f"backend must be one of: {', '.join(sorted(BACKENDS))}")
@@ -248,8 +301,11 @@ def render(
         (output_dir / f"{stem}.html").unlink(missing_ok=True)
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
+    document = _render_document(ir, backend)
+    if snapshot_banner:
+        document = inject_snapshot_banner(document, snapshot_banner_html(project_root))
     html_path = output_dir / f"{stem}.html"
-    html_path.write_text(_render_document(ir, backend), encoding="utf-8")
+    html_path.write_text(document, encoding="utf-8")
     return {"html_path": str(html_path), "backend": backend, "receipt_path": str(receipt_path)}
 
 
@@ -260,11 +316,13 @@ def main() -> int:
     parser.add_argument("--backend", choices=sorted(BACKENDS), default="mermaid")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
+    parser.add_argument("--snapshot-banner", action="store_true")
     args = parser.parse_args()
     try:
         result = render(
             args.ir_path, args.output_dir, args.backend,
             project_root=args.project_root, output_name=args.output_name,
+            snapshot_banner=args.snapshot_banner,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc))

@@ -83,7 +83,7 @@
 
 ### 5.1 산출물 위치 — scope가 위치를 결정한다
 
-`--scope`가 출력 디렉터리를 가른다. 파일명은 기존 `{view}.json`·`{view}.html` 규칙을 그대로 쓴다.
+`--scope`가 출력 디렉터리를 가른다. `--scope session`의 파일명은 기존 `{view}.json`·`{view}.html` 규칙을 그대로 쓴다. `--scope all`은 도메인별로 나뉘므로 `{domain}.ir.json`·`{domain}.html`이다(§5.7).
 
 | scope | 위치 | 성격 | 독자 |
 |---|---|---|---|
@@ -243,14 +243,14 @@ cellW  = max(150, maxWidth - gapX + 8)
 ## 6. 실패 처리
 
 - 스캔이 0개 노드를 반환하면 빈 IR을 쓰지 않고 `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
-- 병합 후 검증 실패 시 이전 `service.ir.json`을 덮어쓰지 않는다.
+- 검증 실패 시 이전 `{domain}.ir.json`(`--scope all`) 또는 `service.json`(`--scope session`)을 덮어쓰지 않는다. (2026-09-21 정정: 병합 단계는 폐기됐다 — §5.2 참고)
 - 모든 백엔드 실패 시 stale HTML을 제거하고 `failed` 영수증을 남긴다.
 - 파이프라인 안에서 호출된 시각화의 실패는 `visualization_status: failed`로만 보고하고 파이프라인을 실패시키지 않는다.
 
 ## 7. 보안·개인정보
 
-- 출력은 프로젝트 내부 경로에만 저장한다.
-- 노드 label·HTML·영수증에 커넥션 문자열, 토큰, 개인정보를 복사하지 않는다.
+- 출력은 프로젝트 내부 경로에만 저장한다. **현재 코드는 이를 강제하지 않는다** — `--output`·`--map-dir`에 프로젝트 밖 경로를 줘도 경고 없이 그 경로에 쓴다(실측: 스크래치패드 경로로 확인, 2026-09-18 최종 리뷰 M8). 근거(evidence) 파일 경로의 confinement는 `validate_ir.py`가 실제로 강제한다 — 이 문장이 다루는 것은 `--output`·`--map-dir` 자체다. `--output`은 기존 동작이라 이번 계획에서 코드를 바꾸지 않았다.
+- 노드 label·HTML·영수증에 커넥션 문자열, 토큰, 개인정보를 복사하지 않는다. `meta.repository.url`은 origin URL에서 userinfo(`//user:pass@`)를 벗긴 뒤에만 싣는다(2026-09-18 최종 리뷰 I6).
 - SQL 본문은 IR에 싣지 않는다. 테이블명만 추출한다.
 
 ## 8. 수용 기준

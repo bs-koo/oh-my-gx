@@ -89,7 +89,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 
 ## 누적 아키텍처 맵
 
-`--scope`가 출력 위치를 가른다. 파일명은 기존 `{view}.json`·`{view}.html` 규칙 그대로다.
+`--scope`가 출력 위치를 가른다. `--scope session`의 파일명은 기존 `{view}.json`·`{view}.html` 규칙 그대로다. `--scope all`은 도메인별로 나뉘므로 이 규칙을 쓰지 않는다 — 아래 "도메인 분할" 절을 따른다.
 
 | scope | 위치 | 성격 |
 |---|---|---|
@@ -98,7 +98,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 
 두 산출물을 **한 폴더에 섞지 않는다**. 세션 출력은 갱신되지 않으므로 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다.
 
-`--scope session` HTML 상단에는 **스냅샷 배너**를 넣는다 — 생성 시각과 `git rev-parse --short HEAD` 결과, 그리고 "이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다". `--scope all`에는 넣지 않는다.
+`--scope session` HTML 상단에는 **스냅샷 배너**를 넣는다 — 생성 시각과 `git rev-parse --short HEAD` 결과, 그리고 "이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다". `--scope all`에는 넣지 않는다. `scripts/render_archify.py`·`scripts/render_fallback.py`에 `--snapshot-banner`를 전달하면 `<body>` 직후에 이 배너를 삽입한다 — `--scope session` 호출에만 이 플래그를 준다.
 
 ### 도메인 분할 (`--scope all`)
 

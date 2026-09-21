@@ -1080,7 +1080,8 @@
         <h3 class="display-sm">visualize</h3>
         <p>GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 바꿉니다. 직접 호출 외에 "시각화 포함", "구조를 그림으로 보여줘", "요구사항 추적 맵을 시각화해줘", "변경 영향도를 시각화해줘" 같은 자연어도 명시 요청으로 인식합니다.</p>
         <ul class="feature-list">
-          <li><strong>1차 필수 뷰</strong> — trace · progress · impact (요구사항 연결 · Phase 상태 · 변경 영향)</li>
+          <li><strong>1차 필수 뷰</strong> — trace · progress · impact · service (요구사항 연결 · Phase 상태 · 변경 영향 · 서비스 구조)</li>
+          <li><strong>service 뷰</strong> — 화면 → API → 서비스 → 리포지토리 → 테이블 진입점 체인을 코드에서 직접 스캔하고, 모든 노드에 실제 <code>file:line</code> 근거를 붙입니다</li>
           <li><strong>백엔드 순서</strong> — <code>Archify → Mermaid → 정적 HTML</code>. Archify가 없거나 실행에 실패하면 자동 설치를 1회 시도한 뒤 폴백합니다</li>
           <li>기본 출력은 <code>.dev/{branch-slug}/visual/</code>, <code>--scope all</code>의 누적 맵은 도메인별로 <code>.dev/architecture/</code>에 쌓입니다 — 둘 다 단발성 산출물이며 커밋하지 않습니다</li>
           <li>정적 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다</li>

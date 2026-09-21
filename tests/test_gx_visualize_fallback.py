@@ -226,6 +226,41 @@ class VisualFallbackRenderingTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "backend"):
                 self.renderer.render(FIXTURE, Path(temporary), "canvas")
 
+    def test_snapshot_banner_is_absent_by_default(self):
+        # I7 이전에는 만들 수단 자체가 없었다 - 기본값(False)에서는 여전히 없어야 한다
+        # (수용 기준 10은 --scope session 전용, --scope all은 넣지 않는다).
+        _, html_text, _ = self.render("static")
+        self.assertNotIn("갱신되지 않습니다", html_text)
+
+    def test_snapshot_banner_carries_the_three_required_facts(self):
+        # SKILL.md:101/설계서 §5.1이 요구하는 세 가지: 생성 시각, 커밋 해시, 갱신되지
+        # 않는다는 고지(2026-09-18 최종 리뷰 I7, 수용 기준 10).
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary)
+            result = self.renderer.render(FIXTURE, output_dir, "static", snapshot_banner=True)
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("생성 시각", html_text)
+        self.assertIn("갱신되지 않습니다", html_text)
+
+    def test_snapshot_banner_includes_short_head_in_a_git_project(self):
+        # FIXTURE의 근거 파일은 자기 자신(같은 디렉터리)을 가리키므로, evidence
+        # confinement가 깨지지 않도록 project_root도 같은 디렉터리(tests/fixtures/,
+        # 실제 oh-my-gx git 저장소 내부)로 준다 - git이 상위로 올라가 HEAD를 찾는다.
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary)
+            result = self.renderer.render(
+                FIXTURE, output_dir, "static", project_root=FIXTURE.parent, snapshot_banner=True,
+            )
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("커밋", html_text)
+
+    def test_snapshot_banner_is_inserted_right_after_the_body_tag(self):
+        banner = self.renderer.snapshot_banner_html(None)
+        injected = self.renderer.inject_snapshot_banner("<html><body><p>본문</p></body></html>", banner)
+        self.assertEqual(f"<html><body>{banner}<p>본문</p></body></html>", injected)
+
     def test_project_root_is_forwarded_when_rendering_real_dev_visual_ir(self):
         ir_path = PROJECT_FIXTURE / ".dev" / "feat-energy" / "visual" / "trace.json"
         with tempfile.TemporaryDirectory() as temporary:

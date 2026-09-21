@@ -152,10 +152,22 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
     return component
 
 
+_RELATION_LABEL_KO = {
+    # scan_entrypoints.py가 내는 4가지 관계뿐이다(service 뷰만 Archify로 간다). 대상
+    # 독자에 비개발 이해관계자가 포함되므로 한국어로 바꾼다 - Archify의 "한국어 UI 크롬
+    # 불가" 제약은 범례 제목에 대한 것이고 엣지 라벨은 자유 문자열이라 그 밖이다
+    # (2026-09-18 최종 리뷰 M7). 목록에 없는 관계는 지어내지 않고 원문 그대로 둔다.
+    "calls": "호출",
+    "reads": "조회",
+    "writes": "저장",
+    "requests": "요청",
+}
+
+
 def _connection(edge: dict[str, Any], node_col: dict[str, int], row_of: dict[str, int]) -> dict[str, Any]:
     connection: dict[str, Any] = {"from": edge["source"], "to": edge["target"]}
     if "relation" in edge:
-        connection["label"] = edge["relation"]
+        connection["label"] = _RELATION_LABEL_KO.get(edge["relation"], edge["relation"])
     source, target = edge["source"], edge["target"]
     # 같은 열 안의 엣지(예: service -> service, repository -> repository)는 Archify의
     # clean-flow/endpoint-side-direction 규칙이 거부한다(실측: auth 모듈 2건). 같은 열
