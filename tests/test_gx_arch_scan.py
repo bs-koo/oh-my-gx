@@ -260,6 +260,47 @@ class PathCollisionEdgeTests(unittest.TestCase):
         )
 
 
+EGOV_MAPPER_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-egov-mapper"
+IBATIS_MAPPER_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-ibatis-mapper"
+UNRESOLVED_MAPPER_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-unresolved-mapper"
+
+
+class EgovMapperNamespaceTests(unittest.TestCase):
+    """eGovFrame 관례: Board_SQL.xml + BoardDao.java. 파일명 치환(stem.replace("Mapper", "DAO"))으로는
+    맞지 않는다 - 매퍼의 namespace 속성이 실제 DAO를 가리킨다."""
+
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_egov_mapper_xml_resolves_via_namespace(self):
+        result = self.scan(EGOV_MAPPER_FIXTURE)
+        edges = [(e["source"], e["target"], e["relation"]) for e in result["edges"]]
+        # BoardDao -> TB_BOARD 의 reads 엣지가 실제로 해소돼야 한다
+        self.assertTrue(any(r == "reads" for _, _, r in edges), edges)
+
+    def test_ibatis_sqlmap_xml_resolves_via_namespace(self):
+        # 실측(GSEED Gseed_Web_Renew): 매퍼 11개 전부 MyBatis3 <mapper>가 아니라
+        # iBATIS 2.0 <sqlMap namespace="BoardDao">(점 없는 짧은 이름) 관례를 쓴다.
+        result = self.scan(IBATIS_MAPPER_FIXTURE)
+        edges = [(e["source"], e["target"], e["relation"]) for e in result["edges"]]
+        self.assertTrue(any(r == "reads" for _, _, r in edges), edges)
+
+
+class UnresolvedEdgeReportingTests(unittest.TestCase):
+    def setUp(self):
+        self.scan = _module().scan
+
+    def test_unresolved_edges_are_reported_not_silently_dropped(self):
+        # 대상 DAO(MissingDao)가 존재하지 않아 해소되지 않는 엣지 - 버리되 그 사실을 보고한다.
+        result = self.scan(UNRESOLVED_MAPPER_FIXTURE)
+        self.assertIn("unresolved_edges", result)
+        self.assertGreater(len(result["unresolved_edges"]), 0)
+
+    def test_resolved_scan_reports_no_unresolved_edges(self):
+        result = self.scan(FIXTURE)
+        self.assertEqual(result["unresolved_edges"], [])
+
+
 class LegacyEncodingTests(unittest.TestCase):
     """오래된 한국어 JSP·Java 코드베이스는 CP949로 저장된 파일이 섞여 있는 경우가 흔하다
     (실측: GSEED Gseed_Web_Renew, JSP 81개 중 2개가 CP949). utf-8로만 읽으면

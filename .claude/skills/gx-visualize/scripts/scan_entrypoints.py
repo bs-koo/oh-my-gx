@@ -35,6 +35,7 @@ _NEW_FIELD_RE = re.compile(r"\bprivate\s+final\s+(\w+)\s+\w+\s*=\s*new\s+\w+")
 _FORM_ACTION_RE = re.compile(r'<form[^>]*\saction\s*=\s*"([^"]+)"', re.IGNORECASE)
 _STATEMENT_RE = re.compile(r"<(select|insert|update|delete)\b[^>]*>(.*?)</\1>", re.DOTALL | re.IGNORECASE)
 _TABLE_RE = re.compile(r"\b(?:FROM|JOIN|INTO|UPDATE)\s+([A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
+_MAPPER_NAMESPACE_RE = re.compile(r"<(?:mapper|sqlMap)\b[^>]*\bnamespace\s*=\s*\"([^\"]+)\"")
 
 _WRITE_STATEMENTS = {"insert", "update", "delete"}
 _CLASS_RE = re.compile(r"\b(?:class|interface)\s+(\w+)")
@@ -162,6 +163,8 @@ def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list
     if text is None:
         return None
     rel_path = _rel(path, root)
+    namespace_match = _MAPPER_NAMESPACE_RE.search(text)
+    namespace = namespace_match.group(1) if namespace_match else None
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
     for match in _STATEMENT_RE.finditer(text):
@@ -175,7 +178,9 @@ def _scan_mapper_xml(path: Path, root: Path) -> tuple[list[dict[str, Any]], list
             # the same table referenced from another mapper must resolve to this same node.
             node["id"] = f"gx-table--{name}"
             nodes.setdefault(node["id"], node)
-            edges.append({"source": rel_path, "target": node["id"], "relation": relation, "resolved": True})
+            edges.append(
+                {"source": rel_path, "target": node["id"], "relation": relation, "resolved": True, "namespace": namespace}
+            )
     return [nodes[key] for key in sorted(nodes)], edges
 
 
@@ -269,7 +274,30 @@ def _disambiguate(by_id: dict[str, dict[str, Any]], candidates: list[str], sourc
     return None
 
 
-def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _resolve_mapper_source(edge: dict[str, Any], dao_by_stem: dict[str, str]) -> str:
+    """Resolve a mapper XML's edge source to the repository node it belongs to.
+
+    eGovFrame 관례(`Board_SQL.xml` + `BoardDao.java`)는 파일명 치환만으로는 맞지 않는다 -
+    매퍼의 `<mapper namespace="...">`가 실제 DAO의 완전한 클래스명을 담고 있으므로 그
+    마지막 세그먼트를 먼저 본다. 앞에서 맞으면 뒤는 보지 않는다:
+    1. namespace의 마지막 세그먼트
+    2. 기존 `stem.replace("Mapper", "DAO")` 치환
+    3. 원래 stem
+    어느 것도 맞지 않으면 지어내지 않고 원래 경로를 그대로 반환한다 - 뒤에서
+    `_resolve_edges`가 이를 미해소로 판정해 `unresolved_edges`에 담는다.
+    """
+    namespace = edge.get("namespace")
+    if namespace:
+        candidate = dao_by_stem.get(namespace.rsplit(".", 1)[-1])
+        if candidate is not None:
+            return candidate
+    stem = Path(edge["source"]).stem
+    return dao_by_stem.get(stem.replace("Mapper", "DAO"), dao_by_stem.get(stem, edge["source"]))
+
+
+def _resolve_edges(
+    nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     by_id = {node["id"]: node for node in nodes}
     by_symbol: dict[str, list[str]] = {}
     for node in nodes:
@@ -281,6 +309,7 @@ def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]])
             by_path.setdefault(path, []).append(node["id"])
 
     resolved: dict[str, dict[str, Any]] = {}
+    unresolved: dict[str, dict[str, Any]] = {}
     for edge in raw_edges:
         if edge.get("resolved"):
             target = edge["target"]
@@ -289,12 +318,20 @@ def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]])
             if target is None:
                 target = _disambiguate(by_id, by_path.get(edge["target"], []), edge["source"])
         source = edge["source"]
-        if target is None or target == source:
+        if target is None:
+            # 심볼·경로 어느 쪽으로도 대상을 찾지 못했다 - "노드가 없다"가 아니라
+            # "관계를 해소하지 못했다"는 사실이므로 조용히 버리지 않고 보고한다.
+            key = f"{source}->{edge['target']}:{edge['relation']}"
+            unresolved[key] = {"source": source, "target": edge["target"], "relation": edge["relation"]}
+            continue
+        if target == source:
             continue
         # IR invariant: an edge is only emitted when both endpoints are real nodes. A
-        # dangling reference (e.g. an unresolved symbol, or a raw file path left over from
-        # an unmatched mapper-to-DAO correction) must be dropped, not passed through.
+        # dangling reference (e.g. a raw file path left over from an unmatched
+        # mapper-to-DAO correction) must be dropped from `edges`, but still reported.
         if source not in by_id or target not in by_id:
+            key = f"{source}->{target}:{edge['relation']}"
+            unresolved[key] = {"source": source, "target": target, "relation": edge["relation"]}
             continue
         edge_id = f"{source}->{target}:{edge['relation']}"
         resolved[edge_id] = {
@@ -303,7 +340,7 @@ def _resolve_edges(nodes: list[dict[str, Any]], raw_edges: list[dict[str, Any]])
             "target": target,
             "relation": edge["relation"],
         }
-    return [resolved[key] for key in sorted(resolved)]
+    return [resolved[key] for key in sorted(resolved)], [unresolved[key] for key in sorted(unresolved)]
 
 
 def scan(project_root: Path | str, changed_files: list[str] | None = None) -> dict[str, Any]:
@@ -360,12 +397,14 @@ def scan(project_root: Path | str, changed_files: list[str] | None = None) -> di
     dao_by_stem = {node["id"].split("--")[-1]: node["id"] for node in nodes if node["kind"] == "repository"}
     for edge in raw_edges:
         if isinstance(edge["source"], str) and edge["source"].endswith(".xml"):
-            stem = Path(edge["source"]).stem.replace("Mapper", "DAO")
-            edge["source"] = dao_by_stem.get(stem, dao_by_stem.get(Path(edge["source"]).stem, edge["source"]))
+            edge["source"] = _resolve_mapper_source(edge, dao_by_stem)
+
+    edges, unresolved_edges = _resolve_edges(nodes, raw_edges)
 
     return {
         "nodes": nodes,
-        "edges": _resolve_edges(nodes, raw_edges),
+        "edges": edges,
+        "unresolved_edges": unresolved_edges,
         "files": dict(sorted(files.items())),
         "skipped": sorted(skipped),
     }
