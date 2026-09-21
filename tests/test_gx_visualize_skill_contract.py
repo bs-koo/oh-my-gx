@@ -186,6 +186,24 @@ class AccumulatedMapContractTests(unittest.TestCase):
         self.assertIn("`skipped`", self.skill)
         self.assertIn("`unresolved_edges`", self.skill)
 
+    def test_documented_render_commands_pass_project_root(self):
+        """IR을 넘기는 렌더 예시는 전부 --project-root를 포함해야 한다.
+
+        검증기는 근거 경로를 project_root 기준으로 해석한다. 이 인자가 빠진
+        명령을 문서에 그대로 두면, 문서를 따른 실행자가 "evidence file does
+        not exist"로 실패하고 그림이 만들어지지 않는다 — 실제로 발생했다.
+        """
+        import re
+
+        commands = re.findall(
+            r"`(python scripts/render_(?:archify|fallback)\.py[^`]*)`", self.skill
+        )
+        self.assertTrue(commands, "렌더 예시 명령을 찾지 못했다")
+        for command in commands:
+            if ".ir.json" not in command and "{view}.json" not in command:
+                continue  # IR을 넘기지 않는 보조 호출(--ensure-mermaid-asset 등)
+            self.assertIn("--project-root", command, command)
+
 
 if __name__ == "__main__":
     unittest.main()
