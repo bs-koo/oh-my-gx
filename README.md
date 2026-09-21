@@ -398,7 +398,7 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 
 기본 출력은 `.dev/{branch-slug}/visual/`이며, `--backend auto`는 `Archify → Mermaid → 정적 HTML` 순으로 실행 가능한 렌더러를 고릅니다. Archify가 없거나 실행에 실패하면 사용자에게 묻지 않고 1회 자동 설치를 시도한 뒤, 그래도 안 되면 Mermaid, 다시 안 되면 정적 HTML로 폴백합니다. 정적 파일명·코드 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다.
 
-`--scope all`은 `docs/architecture/`에 도메인별로 누적 아키텍처 맵을 매 실행 전체 재스캔으로 갱신합니다. 뷰별 입력·출력 계약, 도메인 분할 규칙, 실패 시 문제 해결은 [docs/gx-visualize-guide.md](docs/gx-visualize-guide.md)를 참고하세요.
+`--scope all`은 `.dev/architecture/`에 도메인별로 누적 아키텍처 맵을 매 실행 전체 재스캔으로 갱신합니다. 뷰별 입력·출력 계약, 도메인 분할 규칙, 실패 시 문제 해결은 [docs/gx-visualize-guide.md](docs/gx-visualize-guide.md)를 참고하세요.
 
 ### commit / pull-request
 

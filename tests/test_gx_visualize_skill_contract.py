@@ -136,8 +136,12 @@ class AccumulatedMapContractTests(unittest.TestCase):
     def test_scope_flag_is_documented(self):
         self.assertIn("--scope session|all", self.skill)
 
-    def test_map_dir_default_is_docs_architecture(self):
-        self.assertIn("docs/architecture/", self.skill)
+    def test_map_dir_default_is_not_committed_location(self):
+        self.assertIn(".dev/architecture/", self.skill)
+        self.assertNotIn("docs/architecture/", self.skill)
+
+    def test_outputs_are_not_promised_as_commit_targets(self):
+        self.assertNotIn("커밋 대상", self.skill)
 
     def test_service_view_is_promoted(self):
         self.assertNotIn("계약 지원 뷰", self.skill)

@@ -1082,7 +1082,7 @@
         <ul class="feature-list">
           <li><strong>1차 필수 뷰</strong> — trace · progress · impact (요구사항 연결 · Phase 상태 · 변경 영향)</li>
           <li><strong>백엔드 순서</strong> — <code>Archify → Mermaid → 정적 HTML</code>. Archify가 없거나 실행에 실패하면 자동 설치를 1회 시도한 뒤 폴백합니다</li>
-          <li>기본 출력은 <code>.dev/{branch-slug}/visual/</code>, <code>--scope all</code>의 누적 맵은 도메인별로 <code>docs/architecture/</code>에 쌓입니다</li>
+          <li>기본 출력은 <code>.dev/{branch-slug}/visual/</code>, <code>--scope all</code>의 누적 맵은 도메인별로 <code>.dev/architecture/</code>에 쌓입니다 — 둘 다 단발성 산출물이며 커밋하지 않습니다</li>
           <li>정적 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다</li>
         </ul>
         <p>자세한 뷰별 계약은 <code>docs/gx-visualize-guide.md</code>를 참고하세요.</p>

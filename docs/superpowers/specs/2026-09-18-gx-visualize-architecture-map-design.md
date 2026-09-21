@@ -74,9 +74,9 @@
             ↓
 [렌더]  archify → mermaid → static
             ↓
-docs/architecture/
-  {domain}.ir.json        정본 (커밋, 도메인별)
-  {domain}.html           렌더 결과 (커밋, 도메인별)
+.dev/architecture/
+  {domain}.ir.json        정본 (단발성, 도메인별)
+  {domain}.html           렌더 결과 (단발성, 도메인별)
 ```
 
 > **2026-09-21 폐기** — 위 다이어그램은 최초 설계 당시(병합·매니페스트 기반 증분 갱신)를 반영한다. 실측(전체 3.155초 vs 증분 관문 126.9초)과 C1(무손실 누적 IR 부재)로 사용자가 증분 폐기를 결정했다(Task 11). 현재 `--scope all`은 매 실행 프로젝트 전체를 다시 스캔하고, `merge_map.py`와 `.scan-manifest.json`은 존재하지 않는다. 위 도식은 현재 파이프라인이다 — 병합·매니페스트 단계가 사라진 이유의 기록은 §5.2·§5.3에 남긴다.
@@ -88,7 +88,7 @@ docs/architecture/
 | scope | 위치 | 성격 | 독자 |
 |---|---|---|---|
 | `session` | `${DEV_DIR}/visual/` | 그 시점 **스냅샷**, 갱신하지 않음 | PR 리뷰어 — 해당 PR diff에 함께 올라간다 |
-| `all` | `docs/architecture/` (기본값, `--map-dir`로 변경) | **매 실행 전체 재스캔**으로 갱신 (2026-09-21 폐기: 증분 갱신 → §5.2) | 사업부 전체, 신규 투입자 |
+| `all` | `.dev/architecture/` (기본값, `--map-dir`로 변경) | **매 실행 전체 재스캔**으로 갱신 (2026-09-21 폐기: 증분 갱신 → §5.2) | 사업부 전체, 신규 투입자 |
 
 둘을 한 폴더에 섞지 않는다. 세션 산출물은 갱신되지 않으므로, 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다. 폴더를 분리하면 이 혼동이 구조적으로 발생하지 않는다.
 
@@ -263,6 +263,6 @@ cellW  = max(150, maxWidth - gapX + 8)
 6. Archify 미설치 환경에서 mermaid 또는 static HTML과 영수증이 생성된다.
 7. `gx-dev`·`gx-tdd`의 complete가 대화형에서 시각화를 제안하고, `ralph.lock` 존재 시 질문 없이 건너뛴다.
 8. ~~비-git 프로젝트에서 mtime+size 지문으로 증분 갱신이 동작한다.~~ **폐기 (Task 11, 사용자 결정 2026-09-21)** — §5.2 참고.
-9. `--scope session`은 `${DEV_DIR}/visual/`에, `--scope all`은 `docs/architecture/`에 쓴다. 세션 출력이 누적 맵을 덮어쓰지 않는다.
+9. `--scope session`은 `${DEV_DIR}/visual/`에, `--scope all`은 `.dev/architecture/`에 쓴다. 세션 출력이 누적 맵을 덮어쓰지 않는다.
 10. `--scope session` HTML에 생성 시각과 커밋 해시 스냅샷 배너가 있고, `--scope all` HTML에는 없다.
 11. `sync-codex-resources.py --check`와 `lint-consistency.sh`가 통과한다.

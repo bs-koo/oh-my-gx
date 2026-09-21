@@ -27,7 +27,7 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--input-
 - `--output`: 프로젝트 안의 출력 디렉터리. 외부 경로를 쓰려면 사용자의 명시적 경로가 있어야 한다.
 - `--project-root`: evidence 경로를 해석하고 가둘 명시적 프로젝트 루트. 파이프라인 호출은 항상 `PROJECT_ROOT`를 전달한다.
 - `--scope`: `service`·`sequence` 뷰의 출력 위치를 가른다. 기본값은 `session`. 자세한 내용은 [누적 아키텍처 맵](#누적-아키텍처-맵)을 읽는다.
-- `--map-dir`: `--scope all`의 출력 디렉터리. 기본값은 `docs/architecture/`.
+- `--map-dir`: `--scope all`의 출력 디렉터리. 기본값은 `.dev/architecture/`.
 - `--domain`: `context/{도메인}/`로 라벨을 보강하고, `--scope all`에서는 **그릴 도메인 선택**도 겸한다. 생략하면 스캔 대상 파일 경로에서 도메인을 추정하고 전 도메인을 그린다.
 - 잘못된 view나 backend는 허용 목록을 보여 주고 렌더링 전에 실패한다.
 
@@ -94,7 +94,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 | scope | 위치 | 성격 |
 |---|---|---|
 | `session` | `${DEV_DIR}/visual/` | 그 시점 스냅샷, 갱신하지 않는다 |
-| `all` | `${MAP_DIR}/` (기본 `docs/architecture/`, `--map-dir`로 변경) | 매 실행 전체를 다시 스캔, 도메인별로 분할 |
+| `all` | `${MAP_DIR}/` (기본 `.dev/architecture/`, `--map-dir`로 변경) | 매 실행 전체를 다시 스캔, 도메인별로 분할 |
 
 두 산출물을 **한 폴더에 섞지 않는다**. 세션 출력은 갱신되지 않으므로 누적 맵과 같은 위치에 두면 낡은 그림을 최신으로 오인하게 된다.
 
@@ -113,7 +113,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 2. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
 3. `--scope all`이면 `split_by_domain()`으로 스캔 결과를 도메인별 IR로 나눈다. `--scope session`은 분할하지 않는다 — 스냅샷이므로 나눌 필요가 없다.
 4. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.
-5. 커밋 대상을 보고한다 — `--scope all`은 도메인마다 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 영수증은 어느 쪽도 커밋하지 않는다.
+5. 생성된 경로를 보고한다 — `--scope all`은 도메인마다 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 둘 다 단발성 산출물이며 커밋하지 않는다.
 
 스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않는다. `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
 

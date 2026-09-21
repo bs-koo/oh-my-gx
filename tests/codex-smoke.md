@@ -63,7 +63,7 @@ Claude companion을 설치하지 않은 임시 소비 프로젝트에서 `--advi
 
 | ID | 입력·환경 | 필수 증거 | 상태 |
 |---|---|---|---|
-| V1 | Codex `/skills`에서 gx-visualize 발견 후, 임의 Git 프로젝트에서 `gx-visualize service --scope all` 실행 | `docs/architecture/`에 도메인별 `{domain}.ir.json`·`{domain}.html` 생성(프로젝트 전체를 매 실행 재스캔, 증분·매니페스트 없음); 도메인마다 개별 판정(일부 Archify 통과·일부 폴백 공존이 정상) | 미실행 |
+| V1 | Codex `/skills`에서 gx-visualize 발견 후, 임의 Git 프로젝트에서 `gx-visualize service --scope all` 실행 | `.dev/architecture/`에 도메인별 `{domain}.ir.json`·`{domain}.html` 생성(프로젝트 전체를 매 실행 재스캔, 증분·매니페스트 없음, 커밋하지 않음); 도메인마다 개별 판정(일부 Archify 통과·일부 폴백 공존이 정상) | 미실행 |
 | V2 | Archify가 설치되지 않았거나 자동 설치가 실패하는 격리 환경에서 `gx-visualize --backend auto` 실행 | 실패한 Archify 시도가 receipt의 attempts에 기록됨; Mermaid → 정적 HTML로 폴백해 표가 생성됨; report에 그림(다이어그램) 부재가 명시됨 | 미실행 |
 | V3 | Archify·Mermaid·static 백엔드가 모두 실패하는 환경에서 실행 | `html_path: null`; `visualization_status: failed`; 재실행 명령 반환; 이전 stale HTML이 남지 않음 | 미실행 |
 | V4 | gx-dev 또는 gx-tdd phase-complete 대화형 세션이 Step 5.5(구조 시각화 제안)에 도달 | `AskUserQuestion` 자리에 실제 제공되는 질문 도구로 대응했는지, 실제 사용자 응답을 기다렸는지 기록; 동기 질문 도구가 현재 모드에 없을 때의 처리 방식(자연어 질문 등)을 기록 | 미실행 |

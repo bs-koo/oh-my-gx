@@ -257,7 +257,7 @@ AskUserQuestion(
     question: "이번 사이클에서 구현된 구조를 시각화할까요?",
     multiSelect: false,
     options: [
-      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵 전체를 다시 스캔해 갱신합니다 — docs/architecture/에 저장 (gx-visualize service --scope all)" },
+      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵 전체를 다시 스캔해 갱신합니다 — .dev/architecture/에 저장 (gx-visualize service --scope all)" },
       { label: "이번 세션분만", description: "이번 사이클이 변경한 파일의 체인만 그립니다 — .dev/{slug}/visual/에 스냅샷 저장 (gx-visualize service --scope session)" },
       { label: "아니요", description: "시각화하지 않고 완료합니다" }
     ]

@@ -116,7 +116,7 @@ gx-visualize progress --backend static
 | scope | 위치 | 성격 |
 |---|---|---|
 | `session` | `.dev/{branch-slug}/visual/` | 그 시점 스냅샷, 갱신하지 않음 |
-| `all` | `docs/architecture/`(`--map-dir`로 변경 가능) | 매 실행 전체를 다시 스캔, 도메인별로 분할 |
+| `all` | `.dev/architecture/`(`--map-dir`로 변경 가능) | 매 실행 전체를 다시 스캔, 도메인별로 분할 |
 
 두 산출물은 한 폴더에 섞이지 않습니다. `--scope session` HTML에는 생성 시각과 커밋 해시가 담긴 스냅샷 배너가 붙고, `--scope all`에는 붙지 않습니다.
 
