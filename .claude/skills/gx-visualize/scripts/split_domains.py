@@ -102,6 +102,23 @@ def split_by_domain(ir: dict[str, Any]) -> dict[str, dict[str, Any]]:
         if edge.get("source") in members and edge.get("target") in members
     }
 
+    # scan()이 남기는 skipped(읽기 실패 파일)·unresolved_edges(관계 미해소)는 실행 순간의
+    # 스캔 결과에만 있고 merge 단계가 없는 이 파이프라인에서는 도메인 IR에 옮기지 않으면
+    # 그대로 사라진다 - 나중에 그 도메인 IR만 열어본 사람은 어떤 파일이 빠졌는지, 어떤
+    # 관계가 해소되지 않았는지 알 수 없다(2026-09-18 최종 리뷰 M6). 두 값 모두 파일
+    # 경로(스킵) 또는 소스 노드(미해소 엣지)로 도메인을 추정할 수 있으므로, 지어내지 않고
+    # domain_of()로 실제 관련 있는 도메인에만 배분한다 - 무관한 도메인 IR에 전체 목록을
+    # 그대로 복제하면 "이 도메인과 상관없는 진단"이 섞여 오히려 신뢰를 떨어뜨린다.
+    skipped = ir.get("skipped", [])
+    unresolved_edges = ir.get("unresolved_edges", [])
+
+    def _unresolved_domain(source: Any) -> str | None:
+        if not isinstance(source, str):
+            return None
+        if source in node_domain:
+            return node_domain[source]
+        return domain_of(source)
+
     parts: dict[str, dict[str, Any]] = {}
     for domain in sorted(domain_names):
         member_ids = members_by_domain[domain]
@@ -115,10 +132,20 @@ def split_by_domain(ir: dict[str, Any]) -> dict[str, dict[str, Any]]:
             elif (source_in or target_in) and edge["id"] not in fully_contained:
                 dropped.append("cross-domain-edge")
 
-        part = {key: value for key, value in ir.items() if key not in ("nodes", "edges", "missing_inputs")}
+        part = {
+            key: value
+            for key, value in ir.items()
+            if key not in ("nodes", "edges", "missing_inputs", "skipped", "unresolved_edges")
+        }
         part["nodes"] = [nodes_by_id[node_id] for node_id in sorted(member_ids)]
         part["edges"] = sorted(domain_edges, key=lambda edge: edge["id"])
         part["missing_inputs"] = list(ir.get("missing_inputs", [])) + dropped
+        domain_skipped = [path for path in skipped if domain_of(path) == domain]
+        if domain_skipped:
+            part["skipped"] = domain_skipped
+        domain_unresolved = [edge for edge in unresolved_edges if _unresolved_domain(edge.get("source")) == domain]
+        if domain_unresolved:
+            part["unresolved_edges"] = domain_unresolved
         parts[domain] = part
 
     return parts

@@ -253,6 +253,34 @@ class VisualBackendTests(unittest.TestCase):
         self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
+    def test_archify_success_receipt_carries_ir_declared_missing_inputs(self):
+        # I1: archify 성공 receipt는 별도로 조립되므로 missing_inputs를 깜빡하면 폴백
+        # 경로(local_receipt를 그대로 펼치는 render_fallback.render)와 비대칭이 된다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ir_path = root / "service.json"
+            ir_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "view": "service",
+                        "locale": "ko-KR",
+                        "title": "t",
+                        "nodes": [{"id": "n1", "kind": "api", "label": "a", "status": "unknown", "evidence": []}],
+                        "edges": [],
+                        "missing_inputs": ["cross-domain-edge"],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            result = self.renderer.render_archify(ir_path, root / "output", self.fake_archify(root))
+            receipt = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(result["backend"], "archify")
+        self.assertEqual(receipt["status"], "valid")
+        self.assertEqual(receipt["missing_inputs"], ["cross-domain-edge"])
+
     def test_output_name_scopes_separate_domain_renders_to_distinct_files(self):
         # 판정 Y: 도메인마다 같은 output_dir에 같은 view("service")의 IR을 렌더할 때
         # output_name이 없으면 둘 다 service.html로 서로를 덮어쓴다. --output-name을

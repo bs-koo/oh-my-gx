@@ -161,14 +161,26 @@ def _mermaid_text(value: Any) -> str:
     return "".join(f"#{ord(character)};" for character in str(value))
 
 
+_NO_DIAGRAM_NOTE = (
+    '다이어그램은 생성되지 않았습니다. 아래는 같은 IR의 노드 목록과 관계 표입니다.'
+    ' 그림을 보려면 Archify가 필요합니다: npx -y skills add tt-a1i/archify -g'
+)
+
+
 def _mermaid_section(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
     source = _escape(_mermaid_source(nodes, edges))
     return (
         '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">Mermaid 다이어그램 소스</h2>'
-        '<p class="fallback-note">다이어그램은 생성되지 않았습니다. 아래는 같은 IR의 노드 목록과 관계 표입니다.'
-        ' 그림을 보려면 Archify가 필요합니다: npx -y skills add tt-a1i/archify -g</p>'
+        f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
         f'<pre class="mermaid-source"><code>{source}</code></pre></section>'
     )
+
+
+def _no_diagram_section() -> str:
+    # static 백엔드는 Mermaid 소스조차 없다 - 그림 부재 문구가 _mermaid_section() 안에만
+    # 있으면 --backend static HTML에는 0건이 된다(설계서 §5.5.2는 두 폴백 모두에서 그림
+    # 부재 명시를 요구한다, 2026-09-18 최종 리뷰 M4).
+    return f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
 
 
 def _render_document(ir: dict[str, Any], backend: str) -> str:
@@ -177,7 +189,7 @@ def _render_document(ir: dict[str, Any], backend: str) -> str:
     template = (TEMPLATE_DIR / "fallback.html").read_text(encoding="utf-8")
     css = (TEMPLATE_DIR / "fallback.css").read_text(encoding="utf-8")
     static_content = "\n".join((_legend(), _node_list(nodes), _relationship_table(edges), _evidence_cards(nodes)))
-    mermaid_section = _mermaid_section(nodes, edges) if backend == "mermaid" else ""
+    mermaid_section = _mermaid_section(nodes, edges) if backend == "mermaid" else _no_diagram_section()
     summary = f'노드 {len(nodes)}개와 관계 {len(edges)}개 · {"Mermaid + 정적 폴백" if backend == "mermaid" else "정적 HTML"}'
     replacements = {
         "TITLE": _escape(ir["title"]),

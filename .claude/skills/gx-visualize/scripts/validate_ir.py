@@ -206,6 +206,13 @@ def validate(path: Path | str, project_root: Path | str | None = None) -> dict[s
             if isinstance(value, str) and value not in node_ids:
                 errors.append((f"{base}.{field}", f"references missing node {value!r}"))
 
+    # IR 자신이 선언한 missing_inputs(예: split_domains.py가 남기는 cross-domain-edge)를
+    # 합친다 - 이 필드를 소유한 건 검증기지만, IR이 이미 아는 누락을 조용히 덮어써 [](빈
+    # 배열)로 보고하면 정직성 채널이 정직성을 깨뜨린다(2026-09-18 최종 리뷰 I1).
+    declared_missing_inputs = payload.get("missing_inputs")
+    if isinstance(declared_missing_inputs, list):
+        missing_inputs.update(item for item in declared_missing_inputs if isinstance(item, str))
+
     errors.sort(key=lambda item: (item[0], item[1]))
     warnings.sort(key=lambda item: (item[0], item[1]))
     return _receipt("failed" if errors else "valid", [f"{p}: {m}" for p, m in errors], [f"{p}: {m}" for p, m in warnings], node_count, edge_count, sorted(missing_inputs))

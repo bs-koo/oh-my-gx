@@ -390,6 +390,10 @@ def render_archify(
         "command": deliver_command,
         "exit_code": attempts[-1]["exit_code"],
         "attempts": attempts,
+        # 폴백 경로(render_fallback.render)는 local_receipt를 그대로 펼쳐 missing_inputs를
+        # 이어받는다 - archify 성공 receipt는 별도로 조립되므로 여기서 명시적으로 옮겨야
+        # 두 경로가 대칭이 된다(2026-09-18 최종 리뷰 I1).
+        "missing_inputs": local_receipt["missing_inputs"],
     }
     _write_receipt(receipt_path, receipt)
     return {

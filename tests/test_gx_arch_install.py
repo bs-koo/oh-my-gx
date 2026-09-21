@@ -199,6 +199,18 @@ class EnsureArchifyInstallTests(unittest.TestCase):
         self.assertIn("다이어그램은 생성되지 않았습니다", html_text)
         self.assertIn("npx -y skills add tt-a1i/archify -g", html_text)
 
+    def test_static_backend_html_also_states_no_diagram_was_produced(self):
+        # M4: 정직성 문구가 _mermaid_section() 안에만 있으면 --backend static 렌더에는
+        # 0건이 된다(설계서 §5.5.2는 두 폴백 모두에서 그림 부재 명시를 요구한다).
+        fallback = load_module("gx_arch_install_render_fallback_static", FALLBACK_PATH)
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary)
+            result = fallback.render(FIXTURE, output_dir, "static")
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("다이어그램은 생성되지 않았습니다", html_text)
+        self.assertNotIn("Mermaid 다이어그램 소스", html_text)
+
 
 if __name__ == "__main__":
     unittest.main()

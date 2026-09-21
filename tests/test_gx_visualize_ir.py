@@ -229,6 +229,28 @@ class VisualIrValidationTests(unittest.TestCase):
             receipt = self.assert_failed(payload, root)
             self.assertEqual(receipt["missing_inputs"], ["missing.md"])
 
+    def test_receipt_carries_ir_declared_missing_inputs(self):
+        # split_domains.py는 cross-domain-edge 등을 IR 최상위 missing_inputs에 남긴다 -
+        # 검증기가 근거 파일 부재로 계산한 자신의 집합으로 그 값을 덮어써서는 안 된다
+        # (2026-09-18 최종 리뷰 I1).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            payload = self.base_ir()
+            payload["missing_inputs"] = ["cross-domain-edge", "cross-domain-edge"]
+            receipt = validator.validate(self.write_ir(payload, root))
+            self.assertEqual(receipt["status"], "valid")
+            self.assertEqual(receipt["missing_inputs"], ["cross-domain-edge"])
+
+    def test_receipt_does_not_report_empty_when_ir_has_declared_entries(self):
+        # 실측된 결함: user 도메인 IR은 missing_inputs 9건을 선언했는데 영수증은 []를
+        # 보고했다(같은 리뷰) - 빈 배열로 덮어쓰지 않는지 못박는다.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            payload = self.base_ir()
+            payload["missing_inputs"] = ["cross-domain-edge"]
+            receipt = validator.validate(self.write_ir(payload, root))
+            self.assertNotEqual(receipt["missing_inputs"], [])
+
     def test_unhashable_values_and_boolean_schema_version_return_receipts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

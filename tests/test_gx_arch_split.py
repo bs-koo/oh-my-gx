@@ -117,6 +117,49 @@ class SplitByDomainTests(unittest.TestCase):
     def test_split_is_deterministic(self):
         self.assertEqual(split_by_domain(ir_two_domains()), split_by_domain(ir_two_domains()))
 
+    def test_skipped_files_are_attributed_to_their_domain(self):
+        # scan()의 skipped(읽기 실패 파일)를 도메인 분할 후에도 보존한다 - 그대로 두면
+        # 나중에 그 도메인 IR만 읽는 사람은 어떤 파일이 인코딩 때문에 빠졌는지 알 수
+        # 없다(2026-09-18 최종 리뷰 M6). 무관한 도메인에 전체 목록을 복제하지 않는다.
+        ir = ir_two_domains()
+        ir["skipped"] = [
+            "src/main/java/com/sqisoft/gx/auth/service/BrokenAuth.java",
+            "src/main/java/com/sqisoft/gx/code/service/BrokenCode.java",
+        ]
+        parts = split_by_domain(ir)
+        self.assertEqual(parts["auth"]["skipped"], ["src/main/java/com/sqisoft/gx/auth/service/BrokenAuth.java"])
+        self.assertEqual(parts["code"]["skipped"], ["src/main/java/com/sqisoft/gx/code/service/BrokenCode.java"])
+
+    def test_unresolved_edges_are_attributed_to_the_source_domain(self):
+        # scan()의 unresolved_edges(관계 미해소)도 같은 이유로 보존한다.
+        ir = ir_two_domains()
+        ir["unresolved_edges"] = [
+            {"source": "n-auth", "target": "AuthMapper", "relation": "reads"},
+            {"source": "n-code", "target": "CodeMapper", "relation": "writes"},
+        ]
+        parts = split_by_domain(ir)
+        self.assertEqual(parts["auth"]["unresolved_edges"], [{"source": "n-auth", "target": "AuthMapper", "relation": "reads"}])
+        self.assertEqual(parts["code"]["unresolved_edges"], [{"source": "n-code", "target": "CodeMapper", "relation": "writes"}])
+
+    def test_unresolved_edge_with_raw_path_source_falls_back_to_domain_of(self):
+        # 매퍼 XML -> DAO 해소에 실패한 미해소 엣지의 source는 노드 id가 아니라 원본 XML
+        # 상대경로로 남는다(scan_entrypoints.py) - 이 경우도 domain_of()로 도메인을
+        # 추정할 수 있다.
+        ir = ir_two_domains()
+        ir["unresolved_edges"] = [
+            {"source": "src/main/resources/auth/mapper/AuthMapper.xml", "target": "gx-table--TB_AUTH", "relation": "reads"},
+        ]
+        parts = split_by_domain(ir)
+        self.assertEqual(parts["auth"]["unresolved_edges"], ir["unresolved_edges"])
+        self.assertNotIn("unresolved_edges", parts["code"])
+
+    def test_no_skipped_or_unresolved_edges_omits_the_keys(self):
+        # 아무것도 없으면 빈 리스트를 억지로 채우지 않는다 - 키 부재 자체가 "없음"이다.
+        parts = split_by_domain(ir_two_domains())
+        for part in parts.values():
+            self.assertNotIn("skipped", part)
+            self.assertNotIn("unresolved_edges", part)
+
 
 if __name__ == "__main__":
     unittest.main()
