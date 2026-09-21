@@ -128,8 +128,9 @@ ${MAP_DIR}/
 2. 스캔 결과의 `label`은 기술 식별자다. `context/{도메인}/glossary.md`와 `${DEV_DIR}/design.md`를 읽어 **한국어 라벨**로 바꾼다. API path·테이블명·클래스명은 `technical_label`에 원문 그대로 보존한다. 근거가 없으면 기술 식별자를 그대로 둔다 — 도메인 용어를 지어내지 않는다.
 3. `--scope all`이면 `split_by_domain()`으로 스캔 결과를 도메인별 IR로 나눈다. `--scope session`은 분할하지 않는다 — 스냅샷이므로 나눌 필요가 없다.
 4. `--scope all`은 도메인별로, `--scope session`은 단일 문서로 `scripts/validate_ir.py`를 실행해 검증한다. **검증에 실패한 도메인의 이전 `${MAP_DIR}/ir/{domain}.ir.json`은 덮어쓰지 않는다** — 다른 도메인의 갱신에는 영향을 주지 않는다.
-5. `--scope all`이면 도메인 렌더가 모두 끝난 뒤 `python scripts/build_index.py ${MAP_DIR} --project-root <PROJECT_ROOT>`로 `${MAP_DIR}/아키텍처-맵.html`을 만든다. `--scope session`은 인덱스를 만들지 않는다.
-6. 생성된 경로를 보고한다 — `--scope all`은 `${MAP_DIR}/아키텍처-맵.html`(먼저 이것을 안내한다)과 도메인마다 `${MAP_DIR}/ir/{domain}.ir.json`·`${MAP_DIR}/domains/{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 둘 다 단발성 산출물이며 커밋하지 않는다.
+5. `--scope all`이면 렌더 결과(각 도메인의 receipt) 중 하나라도 `backend: mermaid`이면(Archify가 실패해 폴백한 도메인) `python scripts/render_fallback.py --ensure-mermaid-asset ${MAP_DIR}/assets`로 공유 자산을 1회 확보한다. 이미 도메인 8개 전부를 Archify로만 시도한 뒤 판정하므로, mermaid로 떨어진 도메인이 하나도 없으면 이 단계와 `assets/` 폴더 생성 자체를 건너뛴다(3.4MB를 불필요하게 받지 않는다). 확보에 성공하면(`available: true`) 그 mermaid 도메인들만 `python scripts/render_fallback.py ${MAP_DIR}/ir/{domain}.ir.json ${MAP_DIR}/receipts --backend mermaid --output-name {domain} --html-dir ${MAP_DIR}/domains --mermaid-asset-href ../assets/mermaid.min.js`로 재렌더한다(Archify를 다시 시도하지 않는다) — 이제 소스 대신 실제 다이어그램이 브라우저에 그려진다. 확보에 실패하면(`available: false`) 재렌더하지 않는다 — 이미 4번에서 만든, 소스만 보여주는 HTML이 정직한 최종 상태다. 확보 시도(성공·실패 모두)는 `ensure_mermaid_asset()`이 반환한 `attempts`를 보고에 포함한다.
+6. `--scope all`이면 도메인 렌더가 모두 끝난 뒤 `python scripts/build_index.py ${MAP_DIR} --project-root <PROJECT_ROOT>`로 `${MAP_DIR}/아키텍처-맵.html`을 만든다. `--scope session`은 인덱스를 만들지 않는다.
+7. 생성된 경로를 보고한다 — `--scope all`은 `${MAP_DIR}/아키텍처-맵.html`(먼저 이것을 안내한다)과 도메인마다 `${MAP_DIR}/ir/{domain}.ir.json`·`${MAP_DIR}/domains/{domain}.html`, `--scope session`은 `${DEV_DIR}/visual/service.json`·`service.html`. 둘 다 단발성 산출물이며 커밋하지 않는다.
 
 스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않는다. `missing_inputs`에 언어 감지 실패를 기록하고 중단한다.
 
@@ -154,7 +155,7 @@ ${MAP_DIR}/
 - `validation_status`: `verified|fallback|failed`
 - `missing_inputs`: 정렬된 누락 논리 입력 목록
 
-저수준 validator/renderer receipt의 `valid|fallback|not_applicable|failed`는 [GX 산출물 매핑](references/gx-mapping.md)의 표에 따라 report의 `verified|fallback|failed`로 정규화한다 — `not_applicable`(Archify가 대상 view가 아니어서 애초에 시도하지 않음)도 `fallback`으로 올린다. `backend`는 요청값이나 최초 시도가 아니라 실제 HTML 생성자를 보고한다. `backend`가 `archify`가 아니면 실제 그림(다이어그램)은 생성되지 않았다는 사실을 report에 명시한다 — `mermaid`는 소스 코드만, `static`은 노드·관계 표만 보여준다.
+저수준 validator/renderer receipt의 `valid|fallback|not_applicable|failed`는 [GX 산출물 매핑](references/gx-mapping.md)의 표에 따라 report의 `verified|fallback|failed`로 정규화한다 — `not_applicable`(Archify가 대상 view가 아니어서 애초에 시도하지 않음)도 `fallback`으로 올린다. `backend`는 요청값이나 최초 시도가 아니라 실제 HTML 생성자를 보고한다. `backend`가 `archify`가 아니면 실제 상황을 report에 명시한다 — `mermaid`는 `assets/mermaid.min.js`를 확보했을 때만 브라우저에서 실제 다이어그램을 그리고(소스는 `<details>`로 접어 함께 보존), 확보하지 못했거나 애초에 시도하지 않았으면(예: `--scope session`) 소스 코드만 보여준다. `static`은 언제나 노드·관계 표만 보여준다.
 
 ## 실패 계약
 

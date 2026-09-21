@@ -58,6 +58,9 @@ table { width: 100%; border-collapse: collapse; }
 th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }
 th { background: #eef2f8; }
 .mermaid-source { overflow-x: auto; border-radius: 10px; padding: 16px; background: #101828; color: #e6edf7; }
+.mermaid { overflow-x: auto; }
+.mermaid svg { max-width: 100%; height: auto; }
+details > summary { cursor: pointer; font-weight: 700; margin: 12px 0 8px; }
 .fallback-note { color: var(--muted); }
 .domain-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 .domain-card { border: 1px solid var(--line); border-left-width: 6px; border-radius: 12px; padding: 16px; }

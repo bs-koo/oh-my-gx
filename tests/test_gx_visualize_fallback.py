@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -318,6 +319,119 @@ class VisualFallbackRenderingTests(unittest.TestCase):
             result = self.renderer.render(FIXTURE, Path(temporary), "static")
 
         self.assertEqual(Path(result["html_path"]).parent, Path(result["receipt_path"]).parent)
+
+    def test_fallback_html_renders_mermaid_not_just_source(self):
+        # 사용자 요청 2(2026-09-21): 폴백 도메인도 그림이 보여야 한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(
+                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+            )
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn('<pre class="mermaid">', html_text)
+        self.assertIn("mermaid.initialize(", html_text)
+
+    def test_fallback_references_shared_asset_not_inline(self):
+        # 실측 mermaid.min.js는 3.4MB다 - href로만 참조하고 내용을 인라인하지 않는다.
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(
+                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+            )
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn('<script src="../assets/mermaid.min.js"></script>', html_text)
+        self.assertLess(len(html_text), 50_000)
+
+    def test_source_is_still_available_but_collapsed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.renderer.render(
+                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+            )
+            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+
+        self.assertIn("<details>", html_text)
+        self.assertIn("<summary>", html_text)
+        self.assertIn('class="mermaid-source"', html_text)
+        self.assertGreater(html_text.index('class="mermaid-source"'), html_text.index("<details>"))
+
+    def test_mermaid_asset_href_omitted_keeps_source_only_fallback(self):
+        # "지금처럼" - 자산 href를 안 주면(호출자가 확보를 시도하지 않았거나 실패한
+        # 경우) 기존 동작(소스만, Archify 설치 안내) 그대로다.
+        _, html_text, _ = self.render("mermaid")
+        self.assertIn("다이어그램은 생성되지 않았습니다", html_text)
+        self.assertNotIn('<pre class="mermaid">', html_text)
+
+
+class EnsureMermaidAssetTests(unittest.TestCase):
+    """ensure_mermaid_asset(): 폴백 도메인이 공유하는 mermaid.min.js를 1회 확보한다.
+
+    실제 네트워크를 쓰지 않도록 curl은 가짜 실행 파일로 대체한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.renderer = load_renderer()
+
+    @staticmethod
+    def _fake_run_writing(payload: bytes, *, returncode: int = 0):
+        def fake_run(argv, **kwargs):
+            out_path = Path(argv[argv.index("-o") + 1])
+            out_path.write_bytes(payload)
+            return mock.Mock(returncode=returncode, stderr="")
+
+        return fake_run
+
+    def test_download_success_writes_asset_and_records_attempt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            assets_dir = Path(temporary) / "assets"
+            with mock.patch.object(self.renderer.shutil, "which", return_value="curl"):
+                with mock.patch.object(
+                    self.renderer.subprocess, "run", side_effect=self._fake_run_writing(b"x" * 600_000)
+                ) as run:
+                    result = self.renderer.ensure_mermaid_asset(assets_dir)
+
+            self.assertTrue(result["available"])
+            self.assertTrue((assets_dir / "mermaid.min.js").is_file())
+            self.assertEqual((assets_dir / "mermaid.min.js").stat().st_size, 600_000)
+            self.assertEqual(len(result["attempts"]), 1)
+            self.assertEqual(result["attempts"][0]["phase"], "download")
+            self.assertEqual(run.call_args.kwargs.get("timeout"), 90)
+
+    def test_already_cached_asset_is_reused_without_downloading(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            assets_dir = Path(temporary)
+            assets_dir.mkdir(exist_ok=True)
+            (assets_dir / "mermaid.min.js").write_bytes(b"x" * 600_000)
+            with mock.patch.object(self.renderer.subprocess, "run") as run:
+                result = self.renderer.ensure_mermaid_asset(assets_dir)
+
+        run.assert_not_called()
+        self.assertTrue(result["available"])
+        self.assertEqual(result["attempts"], [])
+
+    def test_missing_curl_records_attempt_without_raising(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            assets_dir = Path(temporary) / "assets"
+            with mock.patch.object(self.renderer.shutil, "which", return_value=None):
+                result = self.renderer.ensure_mermaid_asset(assets_dir)
+
+        self.assertFalse(result["available"])
+        self.assertIsNone(result["path"])
+        self.assertEqual(len(result["attempts"]), 1)
+        self.assertIn("curl", result["attempts"][0]["stderr"])
+
+    def test_undersized_download_is_treated_as_failure(self):
+        # 잘렸거나 오류 페이지를 받은 다운로드를 성공으로 착각하지 않는다.
+        with tempfile.TemporaryDirectory() as temporary:
+            assets_dir = Path(temporary) / "assets"
+            with mock.patch.object(self.renderer.shutil, "which", return_value="curl"):
+                with mock.patch.object(
+                    self.renderer.subprocess, "run", side_effect=self._fake_run_writing(b"not the real file")
+                ):
+                    result = self.renderer.ensure_mermaid_asset(assets_dir)
+
+            self.assertFalse(result["available"])
+            self.assertFalse((assets_dir / "mermaid.min.js").exists())
 
 
 if __name__ == "__main__":

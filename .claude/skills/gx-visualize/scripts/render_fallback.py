@@ -8,6 +8,7 @@ import html
 import importlib.util
 import json
 import re
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -169,12 +170,28 @@ _NO_DIAGRAM_NOTE = (
 )
 
 
-def _mermaid_section(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
+def _mermaid_section(
+    nodes: list[dict[str, Any]], edges: list[dict[str, Any]], mermaid_asset_href: str | None = None
+) -> str:
     source = _escape(_mermaid_source(nodes, edges))
+    if mermaid_asset_href is None:
+        # assets/mermaid.min.js를 확보하지 못했거나 시도하지 않은 호출 - 지금까지처럼
+        # 소스만 보여주고 그림이 없다는 사실을 알린다. 없는데 있는 척하지 않는다.
+        return (
+            '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">Mermaid 다이어그램 소스</h2>'
+            f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
+            f'<pre class="mermaid-source"><code>{source}</code></pre></section>'
+        )
+    # 브라우저에서 실제로 그림을 렌더한다(사용자 요청 2, 2026-09-21) - 소스는 사라지지
+    # 않고 <details>로 접어 확인용으로 남긴다.
     return (
-        '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">Mermaid 다이어그램 소스</h2>'
-        f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
-        f'<pre class="mermaid-source"><code>{source}</code></pre></section>'
+        '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">아키텍처 다이어그램</h2>'
+        f'<pre class="mermaid">{source}</pre>'
+        f'<script src="{_escape(mermaid_asset_href)}"></script>'
+        '<script>mermaid.initialize({startOnLoad: true});</script>'
+        '<details><summary>Mermaid 소스 보기</summary>'
+        f'<pre class="mermaid-source"><code>{source}</code></pre></details>'
+        '</section>'
     )
 
 
@@ -185,13 +202,13 @@ def _no_diagram_section() -> str:
     return f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
 
 
-def _render_document(ir: dict[str, Any], backend: str) -> str:
+def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str | None = None) -> str:
     nodes = _sorted_nodes(ir)
     edges = _sorted_edges(ir)
     template = (TEMPLATE_DIR / "fallback.html").read_text(encoding="utf-8")
     css = (TEMPLATE_DIR / "fallback.css").read_text(encoding="utf-8")
     static_content = "\n".join((_legend(), _node_list(nodes), _relationship_table(edges), _evidence_cards(nodes)))
-    mermaid_section = _mermaid_section(nodes, edges) if backend == "mermaid" else _no_diagram_section()
+    mermaid_section = _mermaid_section(nodes, edges, mermaid_asset_href) if backend == "mermaid" else _no_diagram_section()
     summary = f'노드 {len(nodes)}개와 관계 {len(edges)}개 · {"Mermaid + 정적 폴백" if backend == "mermaid" else "정적 HTML"}'
     replacements = {
         "TITLE": _escape(ir["title"]),
@@ -268,6 +285,7 @@ def render(
     output_name: str | None = None,
     snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
+    mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
     """Validate and render an IR document, returning stable artifact paths.
 
@@ -284,6 +302,12 @@ def render(
     `.receipt.json` stays in `output_dir` — `--scope all`은 이걸로 `${MAP_DIR}/domains/`와
     `${MAP_DIR}/receipts/`를 분리한다(2026-09-21 사용자 리뷰: 32개 파일이 평평하게 쌓여
     "뭐가 뭔지 모르겠다"는 지적). 생략하면 `output_dir`과 같아 기존 평평한 구조 그대로다.
+
+    `mermaid_asset_href`, when given, renders an actual `<pre class="mermaid">` diagram
+    that loads Mermaid from this href (`--scope all`이 도메인들과 공유하는
+    `${MAP_DIR}/assets/mermaid.min.js`) instead of showing only the Mermaid source text.
+    생략하면(기본값) 지금까지처럼 소스만 보여준다 - 자산을 못 구했을 때도 이 경로를
+    그대로 쓴다.
     """
     if backend not in BACKENDS:
         raise ValueError(f"backend must be one of: {', '.join(sorted(BACKENDS))}")
@@ -309,7 +333,7 @@ def render(
         (html_dir / f"{stem}.html").unlink(missing_ok=True)
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
-    document = _render_document(ir, backend)
+    document = _render_document(ir, backend, mermaid_asset_href=mermaid_asset_href)
     if snapshot_banner:
         document = inject_snapshot_banner(document, snapshot_banner_html(project_root))
     html_path = html_dir / f"{stem}.html"
@@ -317,21 +341,84 @@ def render(
     return {"html_path": str(html_path), "backend": backend, "receipt_path": str(receipt_path)}
 
 
+_MERMAID_ASSET_NAME = "mermaid.min.js"
+_MERMAID_ASSET_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+# 실측 3.4MB(2026-09-21)에 한참 못 미치면 다운로드가 잘렸거나 오류 페이지를 받은
+# 것으로 본다 - 손상된 파일을 "확보 성공"으로 착각하지 않는다.
+_MERMAID_ASSET_MIN_BYTES = 500_000
+
+
+def ensure_mermaid_asset(assets_dir: Path | str) -> dict[str, Any]:
+    """폴백 도메인들이 공유하는 `mermaid.min.js`를 `assets_dir`에 1회 확보한다.
+
+    Archify 자동 설치(detect_backend.ensure_archify)와 같은 결: 이미 받아 둔 자산이
+    있으면 재다운로드하지 않고(여러 도메인이 같은 assets_dir를 공유), 없으면 curl로
+    1회 내려받는다. 실패해도 예외를 던지지 않고 attempts에 시도를 기록만 한다 -
+    호출자는 `available`이 False면 `mermaid_asset_href` 없이 렌더해 지금까지처럼
+    소스만 보여주는 경로로 폴백한다(없는데 있는 척하지 않는다).
+    """
+    assets_dir = Path(assets_dir)
+    target = assets_dir / _MERMAID_ASSET_NAME
+    attempts: list[dict[str, Any]] = []
+
+    if target.is_file() and target.stat().st_size >= _MERMAID_ASSET_MIN_BYTES:
+        return {"available": True, "path": str(target), "attempts": attempts}
+
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    curl = shutil.which("curl")
+    if curl is None:
+        attempts.append(
+            {"phase": "download", "command": None, "exit_code": None, "stderr": "curl executable not found on PATH"}
+        )
+        return {"available": False, "path": None, "attempts": attempts}
+
+    tmp_path = assets_dir / f".{_MERMAID_ASSET_NAME}.download"
+    argv = [curl, "-fsSL", "--max-time", "60", "-o", str(tmp_path), _MERMAID_ASSET_URL]
+    try:
+        result = subprocess.run(
+            argv, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False, timeout=90,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        tmp_path.unlink(missing_ok=True)
+        attempts.append({"phase": "download", "command": argv, "exit_code": None, "stderr": str(exc)})
+        return {"available": False, "path": None, "attempts": attempts}
+
+    attempts.append(
+        {"phase": "download", "command": argv, "exit_code": result.returncode, "stderr": (result.stderr or "").strip()}
+    )
+    if result.returncode != 0 or not tmp_path.is_file() or tmp_path.stat().st_size < _MERMAID_ASSET_MIN_BYTES:
+        tmp_path.unlink(missing_ok=True)
+        return {"available": False, "path": None, "attempts": attempts}
+
+    tmp_path.replace(target)
+    return {"available": True, "path": str(target), "attempts": attempts}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="GX 시각화 IR을 self-contained HTML로 렌더링합니다.")
-    parser.add_argument("ir_path", type=Path)
-    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("ir_path", type=Path, nargs="?")
+    parser.add_argument("output_dir", type=Path, nargs="?")
     parser.add_argument("--backend", choices=sorted(BACKENDS), default="mermaid")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
     parser.add_argument("--snapshot-banner", action="store_true")
     parser.add_argument("--html-dir", type=Path)
+    parser.add_argument("--mermaid-asset-href")
+    parser.add_argument("--ensure-mermaid-asset", type=Path, metavar="ASSETS_DIR")
     args = parser.parse_args()
+
+    if args.ensure_mermaid_asset is not None:
+        print(json.dumps(ensure_mermaid_asset(args.ensure_mermaid_asset), ensure_ascii=False, sort_keys=True))
+        return 0
+    if args.ir_path is None or args.output_dir is None:
+        parser.error("ir_path와 output_dir는 --ensure-mermaid-asset이 없으면 필수입니다.")
+
     try:
         result = render(
             args.ir_path, args.output_dir, args.backend,
             project_root=args.project_root, output_name=args.output_name,
             snapshot_banner=args.snapshot_banner, html_dir=args.html_dir,
+            mermaid_asset_href=args.mermaid_asset_href,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc))

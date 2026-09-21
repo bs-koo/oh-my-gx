@@ -407,13 +407,14 @@ class VisualBackendTests(unittest.TestCase):
             real_fallback = self.renderer._render_fallback
 
             def render_or_fail(
-                ir_path, output_dir, backend, output_name=None, snapshot_banner=False, html_dir=None,
+                ir_path, output_dir, backend, output_name=None, snapshot_banner=False,
+                html_dir=None, mermaid_asset_href=None,
             ):
                 if backend == "mermaid":
                     raise RuntimeError("mermaid unavailable")
                 return real_fallback(
                     ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner,
-                    html_dir=html_dir,
+                    html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
                 )
 
             with mock.patch.object(
