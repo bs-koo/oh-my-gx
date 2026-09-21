@@ -1876,6 +1876,166 @@ git commit -m "feat: 아키텍처 맵을 도메인별로 분할하고 변환기 
 
 ---
 
+### Task 11: 증분 폐기와 eGov 매퍼 해소
+
+최종 전체 브랜치 리뷰의 Critical 1건과 Important 1건을 닫는다. 둘 다 **사용자가 직접 결정한 방향**이며, 리뷰어가 실측 근거를 남겼다(`final-review-report.md` §2 C1·I3, §5 선택지 B).
+
+**Files:**
+- Modify: `.claude/skills/gx-visualize/SKILL.md`
+- Modify: `.claude/skills/gx-visualize/scripts/scan_entrypoints.py`
+- Modify: `docs/gx-visualize-guide.md`
+- Modify: `docs/superpowers/specs/2026-09-18-gx-visualize-architecture-map-design.md`
+- Test: `tests/test_gx_arch_scan.py`, `tests/test_gx_visualize_skill_contract.py`
+- 삭제 후보: `.claude/skills/gx-visualize/scripts/merge_map.py`, `tests/test_gx_arch_merge.py`
+
+---
+
+#### 1단위: `--scope all`의 증분 갱신을 폐기한다 (사용자 결정)
+
+**왜.** 리뷰어 실측 — 전체 스캔 **3.155초**(SEF, 웜, cProfile) vs 증분의 관문 `changed_paths` **126.9초**. 현재 구조의 증분은 이득이 아니라 순손실이다. 게다가 병합 입력인 무손실 누적 IR이 도메인 분할 이후 디스크에 존재하지 않아(C1) 증분을 반복하면 교차 엣지가 영구 소실된다(실측: GSEED 368→130, 65% 소실).
+
+사용자가 이 측정값을 보고 **증분 폐기**를 선택했다. 원래 증분을 원한 이유가 "매번 전체를 생성하는 것보다 낫다"였는데 전체 생성이 3초임이 드러났다.
+
+- [ ] **Step 1: 실패 테스트를 쓴다**
+
+`tests/test_gx_visualize_skill_contract.py`에 추가한다.
+
+```python
+def test_scope_all_does_not_promise_incremental_merge(self):
+    self.assertNotIn("증분 갱신", self.skill)
+    self.assertNotIn("merge_map", self.skill)
+    self.assertNotIn(".scan-manifest.json", self.skill)
+
+def test_scope_all_states_full_rescan(self):
+    self.assertIn("전체를 다시 스캔", self.skill)
+```
+
+- [ ] **Step 2: 실패를 확인한다**
+
+Run: `python -m unittest tests.test_gx_visualize_skill_contract -v` → FAIL
+
+- [ ] **Step 3: SKILL.md의 누적 맵 절차를 고친다**
+
+`## 누적 아키텍처 맵` 절에서:
+- 표의 `all` 행 "항상 최신, 증분 갱신, 도메인별로 분할" → 증분 문구를 빼고 "매 실행 전체를 다시 스캔, 도메인별로 분할"로 바꾼다
+- 절차 1번(`changed_paths`)과 4번(`merge_map` 병합)을 제거하고, 1번을 "프로젝트 전체를 `scripts/scan_entrypoints.py`로 스캔한다"로 다시 쓴다
+- 6번 커밋 대상에서 `.scan-manifest.json`을 뺀다
+- 2번의 "매니페스트가 없으면 전체를 스캔하고, 이것이 최초 전체 스캔임을 사용자에게 먼저 알린다"는 **유지하되** 매니페스트 전제를 빼고 "전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알린다"로 고친다
+- `--scope session`이 무엇으로 대상 파일을 정하는지 **명시적으로 다시 쓴다.** 지금은 `changed_paths`에 의존한다고 적혀 있다. 파이프라인이 이미 이번 사이클의 변경 파일을 알고 있으므로 그것을 쓴다 — `--input-path` 반복 전달 또는 호출자가 넘긴 목록. **네가 실제 계약을 확인하고 정확히 써라. 추측하지 마라**
+
+- [ ] **Step 4: 죽은 코드를 정리한다**
+
+`merge_map.py`와 `tests/test_gx_arch_merge.py`가 이 변경으로 **아무 데서도 쓰이지 않게 되는지 먼저 확인하라** — 저장소 전체를 grep해 다른 참조(다른 스킬·훅·스크립트·문서)가 없는지 본다.
+
+- 완전히 미사용이면 **두 파일을 삭제한다.** 이 저장소 규칙은 "본인의 변경으로 사용되지 않게 된 것은 제거하라"다
+- 어딘가 남아 쓰이면 **삭제하지 말고** 무엇이 쓰는지 보고하라
+- 판단 근거(grep 결과)를 보고서에 남겨라
+
+- [ ] **Step 5: 설계서와 수용 기준을 정정한다**
+
+설계서 `docs/superpowers/specs/2026-09-18-gx-visualize-architecture-map-design.md`:
+- §5.2(스캔 매니페스트)·§5.3(노드 ID 안정성 중 지문 부분)에 **폐기 표시**를 단다. 삭제하지 말고 "2026-09-21 폐기 — 실측(전체 3.155초 vs 증분 관문 126.9초)과 C1(무손실 누적 IR 부재)로 사용자가 증분 폐기를 결정했다"를 적는다. 왜 그런 설계였는지의 기록은 남는 편이 낫다
+- §5의 다이어그램·산출물 설명에 `service.ir.json 정본`·매니페스트가 남아 있으면 현재 상태(도메인별 IR, 매니페스트 없음)로 갱신한다
+
+계획서 `docs/superpowers/plans/2026-09-18-gx-visualize-architecture-map.md`의 수용 기준 표에서 **3번·8번을 폐기로 표시**한다(행을 지우지 말고 "폐기 (Task 11, 사용자 결정)"로).
+
+- [ ] **Step 6: 가이드를 고친다**
+
+`docs/gx-visualize-guide.md`에서 증분 갱신·매니페스트·mtime 지문 서술을 전체 재스캔으로 바꾼다.
+
+- [ ] **Step 7: 커밋 (1단위)**
+
+```bash
+git add .claude/skills/gx-visualize/SKILL.md docs/gx-visualize-guide.md docs/superpowers tests/test_gx_visualize_skill_contract.py
+git commit -m "refactor: 누적 맵의 증분 갱신을 폐기하고 전체 재스캔으로 단순화한다"
+```
+(삭제 파일이 있으면 `git rm`한 경로도 함께 스테이징한다)
+
+---
+
+#### 2단위: eGov 매퍼 해소와 해소 실패 엣지 보고 (사용자 결정)
+
+**왜.** 리뷰어 실측 — GSEED(`D:\SQ\GSEED\source\Gseed_Web_Renew`)에서 `reads` 338·`writes` 109·`requests` 6 = **453건이 무보고 폐기**되고 306노드 중 91개(30%)가 고립 박스다. **screen 83개 전부·table 8개 전부 엣지 0.** 설계서 헤드라인 체인 "화면 → API → 서비스 → 리포지토리 → 테이블"의 양쪽 끝이 끊긴 그림이 나오는데, 끊겼다는 사실을 알려 주는 문구가 없다.
+
+원인은 리뷰어가 특정했다: `scan_entrypoints.py:360-364`의 매퍼→DAO 보정이 `Path(...).stem.replace("Mapper", "DAO")` 치환 하나(+원래 stem 폴백)에만 의존한다. eGovFrame 관례는 `X_SQL.xml` + `XDao.java`라서 `Board_SQL`이 그대로 남아 `BoardDao`와 맞지 않는다.
+
+GSEED 실측 근거:
+```
+노드를 만든 매퍼 XML: src/main/java/com/sqisoft/gseed/board/dao/Board_SQL.xml 외 10개
+repository 심볼: ApiDao AuthorDao BoardDao CertiDao CmmCdDao FileDao
+                 GreenDao MainDao MemberDao SampleDao StatusDao EgovComAbstractDAO
+```
+
+- [ ] **Step 8: 실패 테스트를 쓴다**
+
+`tests/test_gx_arch_scan.py`에 추가한다. 픽스처는 **eGov 관례를 그대로 재현**한다 — `X_SQL.xml`에 `<mapper namespace="...">`를 두고 별도 `XDao.java`를 둔다.
+
+```python
+def test_egov_mapper_xml_resolves_via_namespace(self):
+    # eGovFrame 관례: Board_SQL.xml + BoardDao.java. 파일명 치환으로는 맞지 않는다.
+    # 매퍼의 namespace 속성이 실제 DAO를 가리킨다.
+    result = scan(fixture_root)
+    ids = {n["id"] for n in result["nodes"]}
+    edges = [(e["source"], e["target"], e["relation"]) for e in result["edges"]]
+    # BoardDao -> TB_BOARD 의 reads 엣지가 실제로 해소돼야 한다
+    self.assertTrue(any(r == "reads" for _, _, r in edges), edges)
+
+def test_unresolved_edges_are_reported_not_silently_dropped(self):
+    # 대상을 찾지 못한 엣지는 버리되 그 사실을 보고한다.
+    result = scan(fixture_with_dangling_edge)
+    self.assertIn("unresolved_edges", result)
+    self.assertGreater(len(result["unresolved_edges"]), 0)
+
+def test_resolved_scan_reports_no_unresolved_edges(self):
+    self.assertEqual(scan(clean_fixture)["unresolved_edges"], [])
+```
+
+- [ ] **Step 9: 실패를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_scan -v` → FAIL
+
+- [ ] **Step 10: 매퍼 namespace 해소를 구현한다**
+
+`_scan_mapper_xml`(또는 해당 위치)에서 매퍼 XML의 **`<mapper namespace="...">` 속성을 읽는다.** namespace는 보통 완전한 클래스명(`com.sqisoft.gseed.board.dao.BoardDao`)이므로 마지막 세그먼트가 DAO·Mapper 심볼이다.
+
+해소 순서를 정한다 (앞에서 맞으면 뒤는 보지 않는다):
+1. `namespace`의 마지막 세그먼트가 스캔된 repository 심볼과 일치하면 그것
+2. 기존 `stem.replace("Mapper", "DAO")` 치환
+3. 원래 stem
+
+`namespace`가 없거나 어느 것도 맞지 않으면 **지어내지 마라** — 미해소로 남긴다.
+
+- [ ] **Step 11: 해소 실패 엣지를 보고한다**
+
+`scan_entrypoints.py:292-298`이 해소 실패 엣지를 `continue`로 버린다. 버리는 것 자체는 유지하되 **어떤 엣지가 왜 버려졌는지 `scan()` 결과에 담는다.** `scan()`이 이미 읽기 실패 파일에 대해 `skipped`를 반환하는 관례가 있으니 같은 모양으로 `unresolved_edges`를 더한다.
+
+각 항목에 최소한 `source`·`target`·`relation`을 담아 사용자가 무엇이 빠졌는지 알 수 있게 한다. **SQL 본문을 담지 마라**(설계서 §8).
+
+`SKILL.md`에 이 값을 보고하라는 한 문장을 더한다 — `skipped`와 같은 자리. "노드가 없다"와 "관계를 해소하지 못했다"는 다른 사실이다.
+
+- [ ] **Step 12: 테스트를 실행해 통과를 확인한다**
+
+Run: `python -m unittest tests.test_gx_arch_scan -v` → PASS
+
+- [ ] **Step 13: 실제 프로젝트로 종단 확인한다 (읽기 전용)**
+
+`D:\SQ\GSEED\source\Gseed_Web_Renew`를 스캔하고 **수정 전후를 비교해 보고하라**:
+- 해소된 엣지 수와 relation 분포 (수정 전: `{'calls': 368}`만)
+- `unresolved_edges` 건수와 relation 분포
+- 고립 노드 수 (수정 전: 306 중 91개, screen 83 전부·table 8 전부)
+- `D:\SQ\kereb-grep-2025-admin\sqisoft-sef-2024`도 함께 돌려 **회귀가 없는지** 확인하라 (수정 전: 86노드·86엣지)
+
+**두 저장소에 절대 쓰지 마라 — 읽기만 한다.**
+
+- [ ] **Step 14: 커밋 (2단위)**
+
+```bash
+git add .claude/skills/gx-visualize/scripts/scan_entrypoints.py .claude/skills/gx-visualize/SKILL.md tests/test_gx_arch_scan.py tests/fixtures
+git commit -m "fix: eGov 관례 매퍼를 namespace로 해소하고 미해소 엣지를 보고한다"
+```
+
+---
+
 ## Self-review
 
 **스펙 커버리지**
@@ -1884,12 +2044,12 @@ git commit -m "feat: 아키텍처 맵을 도메인별로 분할하고 변환기 
 |---|---|
 | 1. Java Spring 노드 추출 | Task 1 |
 | 2. 결정적 노드 ID·정렬 | Task 1 (Step 2의 `test_scan_is_deterministic`) |
-| 3. 변경분 교체·삭제 노드 제거 | Task 3 |
+| 3. 변경분 교체·삭제 노드 제거 | ~~Task 3~~ **폐기 (Task 11, 사용자 결정 2026-09-21)** |
 | 4. 병합 후 검증·기존 IR 보존 | Task 3 + Task 6 Step 4의 5번 항목 |
 | 5. Archify 변환·실제 시그니처 | Task 4, Task 5 |
 | 6. 미설치 시 폴백 | Task 4 (`test_failed_archify_still_produces_fallback_html`) |
 | 7. complete 제안·헤드리스 skip | Task 7 |
-| 8. 비-git mtime 지문 | Task 3 (`test_non_git_fingerprint_changes_with_content`) |
+| 8. 비-git mtime 지문 | ~~Task 3~~ **폐기 (Task 11, 사용자 결정 2026-09-21)** |
 | 9. scope별 출력 위치 분리 | Task 6 (`test_session_scope_writes_to_dev_dir`, `test_all_scope_writes_to_map_dir`) |
 | 10. 세션 HTML 스냅샷 배너 | Task 6 (`test_session_html_carries_snapshot_banner`) |
 | 11. 동기화·린트 통과 | Task 9 |
