@@ -43,7 +43,16 @@ def _json_list_command(command: str) -> list[str] | None:
     under "Program Files") contains a space, so the executable is split apart and the
     subprocess fails with WinError 5 while exit code 0 hides it (2026-09-18 final review
     I2). A JSON array round-trips exactly regardless of embedded spaces, so callers that
-    serialize with `json.dumps(command)` are unaffected by shell-quoting rules at all.
+    serialize with `json.dumps(command)` and pass the result to this process directly
+    (`subprocess.run([..., "--archify-command", json.dumps(command)], shell=False)`) are
+    unaffected by Windows' own quoting rules.
+
+    That guarantee starts only once the string reaches this process intact. Handing the
+    same string to an actual shell first (a Bash tool call, a PowerShell invocation) lets
+    that shell re-parse and corrupt it before argparse ever sees it — differently in each
+    shell (T15, 2026-09-18 최종 리뷰 이후). `--archify-command` is optional for exactly
+    this reason: the normal path omits it and lets `render_archify()` self-discover via
+    `detect_backend.ensure_archify()`, so no command string has to survive a shell at all.
     """
     stripped = command.strip()
     if not stripped.startswith("["):
@@ -99,6 +108,29 @@ def _to_archify_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _detect_backend_module():
+    path = Path(__file__).with_name("detect_backend.py")
+    spec = importlib.util.spec_from_file_location("gx_visualize_detect_backend", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Archify 탐지 모듈을 불러올 수 없습니다: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _discover_archify_command() -> dict[str, Any]:
+    """Resolve an Archify command via detect_backend.ensure_archify() when none is given.
+
+    `--archify-command`가 필수였을 때는 호출자가 셸을 거쳐 JSON 배열 문자열을
+    넘겨야 했고, 그 문자열이 git-bash와 PowerShell에서 각각 다르게 깨졌다(T15,
+    2026-09-18 최종 리뷰 이후 열 번째 "문서화된 흐름이 실제 환경에서 동작하지
+    않는" 결함). ensure_archify()는 이미 같은 명령을 스스로 찾을 줄 알므로,
+    셸을 통과하는 문자열 자체를 없애는 쪽이 이스케이프 규칙을 정교하게 만드는
+    것보다 근본적이다.
+    """
+    return _detect_backend_module().ensure_archify()
 
 
 def _git_repository_evidence(project_root: Path | str, cited_paths: list[str]) -> dict[str, str] | None:
@@ -246,6 +278,47 @@ def _last_failed_archify_attempt(attempts: list[dict[str, Any]]) -> dict[str, An
     )
 
 
+def _discovery_attempt_entries(ensure_result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert ensure_archify()'s outcome into receipt-shaped attempt entries.
+
+    Records that self-discovery ran, and how it went, in the receipt's `attempts` —
+    "어떤 경로로 명령을 얻었는지가 진단에 필요하다"(T15). Tagged "archify-discovery"
+    rather than "archify" so `_last_failed_archify_attempt` (which looks for a failed
+    *invocation* of Archify itself) does not mistake a discovery failure for a
+    validate/deliver failure.
+    """
+    entries = [
+        {
+            "backend": "archify-discovery",
+            "phase": attempt.get("phase", "discover"),
+            "status": "valid" if attempt.get("exit_code") == 0 else "failed",
+            "command": attempt.get("command"),
+            "exit_code": attempt.get("exit_code"),
+            "stdout": "",
+            "stderr": attempt.get("stderr", ""),
+            "artifact_path": None,
+        }
+        for attempt in ensure_result.get("attempts", [])
+    ]
+    entries.append(
+        {
+            "backend": "archify-discovery",
+            "phase": "discover",
+            "status": "valid" if ensure_result.get("available") else "failed",
+            "command": ensure_result.get("command"),
+            "exit_code": None,
+            "stdout": "",
+            "stderr": (
+                ""
+                if ensure_result.get("available")
+                else "Archify 자기 탐색 실패 - 설치된 archify.mjs를 찾지 못했거나 doctor 점검을 통과하지 못했습니다"
+            ),
+            "artifact_path": None,
+        }
+    )
+    return entries
+
+
 def _fallback(
     ir_path: Path,
     output_dir: Path,
@@ -371,7 +444,7 @@ def _skip_archify(
 def render_archify(
     ir_path: Path | str,
     output_dir: Path | str,
-    archify_command: Command,
+    archify_command: Command | None = None,
     project_root: Path | str | None = None,
     output_name: str | None = None,
     snapshot_banner: bool = False,
@@ -399,6 +472,11 @@ def render_archify(
 
     `mermaid_asset_href`는 Mermaid로 폴백했을 때만 쓰인다 - render_fallback.render()로
     그대로 전달된다.
+
+    `archify_command`를 생략(None)하면 `detect_backend.ensure_archify()`로 스스로
+    명령을 찾는다 - 정상 경로다. 명시하면 그 값을 지금까지와 동일하게 그대로 쓴다.
+    자기 탐색이 실패하면(`available: False`) 예외 없이 폴백 체인(mermaid → static)으로
+    넘어가며, 탐색 시도 기록은 receipt의 `attempts`에 `archify-discovery`로 남는다.
     """
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
@@ -450,6 +528,23 @@ def render_archify(
             html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
         )
 
+    discovery_attempts: list[dict[str, Any]] = []
+    if archify_command is None:
+        # 정상 경로 - `--archify-command`를 생략하면 ensure_archify()로 스스로
+        # 찾는다. 이전에는 호출자가 여기서 확정된 명령을 셸을 거쳐 JSON 배열
+        # 문자열로 다시 넘겨야 했고, 그 문자열이 git-bash·PowerShell에서 각각
+        # 다르게 깨졌다(2026-09-18 최종 리뷰 이후 T15). 셸을 통과하는 문자열
+        # 자체를 없애는 쪽이 이스케이프 규칙을 정교하게 만드는 것보다 근본적이다.
+        ensure_result = _discover_archify_command()
+        discovery_attempts = _discovery_attempt_entries(ensure_result)
+        if not ensure_result.get("available"):
+            return _fallback(
+                ir_path, output_dir, receipt_path, discovery_attempts,
+                project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+                html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
+            )
+        archify_command = ensure_result["command"]
+
     command = _normalize_command(archify_command)
 
     to_archify_module = _to_archify_module()
@@ -464,7 +559,7 @@ def render_archify(
     repo_root_args = ["--repo-root", str(project_root)] if repository is not None else []
 
     validate_command = [*command, "validate", kind, str(archify_payload), "--json", *repo_root_args]
-    attempts = [_run(validate_command, "validate", html_path)]
+    attempts = [*discovery_attempts, _run(validate_command, "validate", html_path)]
     if attempts[-1]["status"] == "failed":
         return _fallback(
             ir_path, output_dir, receipt_path, attempts,
@@ -520,7 +615,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Archify를 시도하고 GX HTML 폴백을 생성합니다.")
     parser.add_argument("ir_path", type=Path)
     parser.add_argument("output_dir", type=Path)
-    parser.add_argument("--archify-command", required=True)
+    parser.add_argument("--archify-command")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
     parser.add_argument("--snapshot-banner", action="store_true")

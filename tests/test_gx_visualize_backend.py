@@ -286,6 +286,73 @@ class VisualBackendTests(unittest.TestCase):
         serialized = json.dumps(command)
         self.assertEqual(self.renderer._normalize_command(serialized), command)
 
+    def test_archify_command_is_optional_and_self_discovered(self):
+        # --archify-command 없이 호출하면 ensure_archify()로 스스로 찾는다
+        # (스텁으로 대체해 네트워크·실제 설치 없이 확인). T15: 필수였던 시절엔
+        # 호출자가 셸을 거쳐 JSON 배열 문자열을 넘겨야 했고 그 문자열이
+        # git-bash·PowerShell에서 각각 다르게 깨졌다 - 생략이 정상 경로다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            command = self.fake_archify(root)
+            with mock.patch.object(
+                self.renderer,
+                "_discover_archify_command",
+                return_value={"available": True, "command": command, "attempts": []},
+            ) as discover:
+                result = self.renderer.render_archify(SERVICE_FIXTURE, root / "output")
+            receipt = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+
+        discover.assert_called_once_with()
+        self.assertEqual(result["backend"], "archify")
+        self.assertEqual(receipt["status"], "valid")
+        discovery_entries = [a for a in receipt["attempts"] if a["backend"] == "archify-discovery"]
+        self.assertTrue(discovery_entries, "자기 탐색을 썼다는 사실이 receipt attempts에 남아야 한다")
+        self.assertEqual(discovery_entries[-1]["status"], "valid")
+
+    def test_explicit_archify_command_still_wins(self):
+        # 명시하면 그 값을 쓴다 - 기존 동작·기존 테스트가 깨지면 안 된다. 자기
+        # 탐색이 아예 호출되지 않는다는 것도 함께 확인한다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            command = self.fake_archify(root)
+            with mock.patch.object(
+                self.renderer,
+                "_discover_archify_command",
+                side_effect=AssertionError("archify_command을 명시했으면 자기 탐색을 호출하면 안 된다"),
+            ):
+                result = self.renderer.render_archify(SERVICE_FIXTURE, root / "output", command)
+
+        self.assertEqual(result["backend"], "archify")
+
+    def test_self_discovery_failure_falls_back_honestly(self):
+        # 찾지도 설치하지도 못하면 예외 없이 폴백하고 시도 기록을 영수증에 남긴다.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ensure_result = {
+                "available": False,
+                "command": None,
+                "attempts": [
+                    {
+                        "phase": "install",
+                        "command": ["npx", "-y", "skills", "add", "tt-a1i/archify", "-g"],
+                        "exit_code": 1,
+                        "stderr": "network blocked",
+                    }
+                ],
+            }
+            with mock.patch.object(
+                self.renderer, "_discover_archify_command", return_value=ensure_result,
+            ):
+                result = self.renderer.render_archify(SERVICE_FIXTURE, root / "output")
+            receipt = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+
+        self.assertIn(result["backend"], {"mermaid", "static"})
+        self.assertEqual(receipt["status"], "fallback")
+        discovery_entries = [a for a in receipt["attempts"] if a["backend"] == "archify-discovery"]
+        self.assertTrue(discovery_entries)
+        self.assertTrue(any(a["status"] == "failed" for a in discovery_entries))
+        self.assertTrue(any("network blocked" in a["stderr"] for a in discovery_entries))
+
     def test_archify_success_receipt_carries_ir_declared_missing_inputs(self):
         # I1: archify 성공 receipt는 별도로 조립되므로 missing_inputs를 깜빡하면 폴백
         # 경로(local_receipt를 그대로 펼치는 render_fallback.render)와 비대칭이 된다.

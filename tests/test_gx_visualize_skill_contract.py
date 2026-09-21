@@ -204,6 +204,19 @@ class AccumulatedMapContractTests(unittest.TestCase):
                 continue  # IR을 넘기지 않는 보조 호출(--ensure-mermaid-asset 등)
             self.assertIn("--project-root", command, command)
 
+    def test_documented_render_commands_do_not_pass_json_through_shell(self):
+        """render_archify.py 정상 경로 예시는 셸에서 깨지는 --archify-command를 요구하지 않는다.
+
+        --archify-command는 생략하면 render_archify.py가 ensure_archify()로 스스로
+        찾는다(T15) - 문서의 정상 경로 명령에 이 인자가 JSON 배열 문자열로 남아
+        있으면, 문서를 따라 셸(Bash 도구·PowerShell)로 실행하는 실행자가 다시 같은
+        손상 경로를 밟는다.
+        """
+        commands = re.findall(r"`(python scripts/render_archify\.py[^`]*)`", self.skill)
+        self.assertTrue(commands, "render_archify.py 예시 명령을 찾지 못했다")
+        for command in commands:
+            self.assertNotIn("--archify-command", command, command)
+
 
 if __name__ == "__main__":
     unittest.main()
