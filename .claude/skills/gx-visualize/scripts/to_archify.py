@@ -56,13 +56,13 @@ _LABEL_FIT_MARGIN = 8
 _SUBLABEL_WIDTH_PER_UNIT = 6
 _SUBLABEL_MIN_SCALE = 0.6
 
-# 그리드 칸 간격 기본값. 같은 행에서 옆 열까지의 폭(stepX = cellW + gapX)이 컴포넌트
-# 폭보다 _MIN_COLUMN_GAP 이상 넉넉해야 한다. renderers/architecture/render-architecture.mjs의
-# rectsOverlap(a, b, 8)만 피하면(8px) 연결선이 Archify 최소 길이(24px)보다 짧아지고 관계
-# 라벨이 박스와 겹친다 - 2026-09-28 실측으로 kereb user 도메인과 세션 그래프가 이 때문에
-# 실패했고, 40px에서 통과했다(설계서 §5.8.3).
+# 그리드 칸 폭은 가장 넓은 컴포넌트 이상이어야 한다. 칸보다 넓은 박스는 옆 칸 쪽으로
+# 넘치고, 여러 연결선이 한 대상으로 모이는 세로 구간의 관계 라벨이 그 박스와 겹친다
+# (layout/constraint). 2026-09-28 실측: 엔드포인트 3개 중 가운데가 [신규] 접두사로
+# 넓어지자 실패했고, 칸 폭을 가장 넓은 박스에 맞추자 통과했다 - 그전 공식(겹치지 않을
+# 만큼 8px, 이어서 열 간격 40px)은 이 경우를 막지 못했다(설계서 §5.8.3). 칸 폭이 박스
+# 이상이면 옆 열과의 여백은 최소 gapX(90px)가 된다.
 _DEFAULT_LAYOUT = {"mode": "grid", "cols": 5, "gapX": 90, "gapY": 50, "cellW": 150, "cellH": 64}
-_MIN_COLUMN_GAP = 40
 
 # renderers/shared/utils.mjs의 textUnits()가 전각으로 판정하는 코드포인트 범위를
 # 그대로 옮긴 것이다 — 한글 음절(AC00-D7A3)이 포함되어 한글 라벨은 문자당 2 units다.
@@ -233,9 +233,8 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
 
     layout = dict(_DEFAULT_LAYOUT)
     max_width = max((c["size"][0] for c in components if "size" in c), default=_DEFAULT_COMPONENT_WIDTH)
-    required_cell_w = max_width - layout["gapX"] + _MIN_COLUMN_GAP
-    if required_cell_w > layout["cellW"]:
-        layout["cellW"] = required_cell_w
+    if max_width > layout["cellW"]:
+        layout["cellW"] = max_width
 
     meta: dict[str, Any] = {"title": ir.get("title", ""), "locale": "en"}
     if repository is not None:

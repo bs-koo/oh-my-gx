@@ -72,6 +72,35 @@ def _fan_in_ir():
             "nodes": nodes, "edges": edges}
 
 
+def _middle_marked_fan_in_ir():
+    """엔드포인트 3개가 서비스 하나로 모이고, 가운데 엔드포인트만 [신규]로 넓어진 가장 흔한 변경 모양."""
+    api_ids = ["gx-api-detail", "gx-api-export", "gx-api-list"]
+    nodes = [
+        {"id": "gx-api-detail", "kind": "api", "label": "UserController.detail",
+         "technical_label": "GET /api/users/detail", "status": "unknown"},
+        {"id": "gx-api-export", "kind": "api", "label": "UserController.export",
+         "technical_label": "GET /api/users/export", "status": "unknown", "change": "added"},
+        {"id": "gx-api-list", "kind": "api", "label": "UserController.list",
+         "technical_label": "GET /api/users/list", "status": "unknown"},
+        {"id": "gx-service-user", "kind": "service", "label": "UserService", "status": "unknown"},
+        {"id": "gx-repository-user", "kind": "repository", "label": "UserMapper", "status": "unknown"},
+        {"id": "gx-table--TB_USER", "kind": "table", "label": "TB_USER", "technical_label": "TB_USER", "status": "unknown"},
+    ]
+    edges = [
+        {"id": f"{api_id}->gx-service-user:calls", "source": api_id, "target": "gx-service-user", "relation": "calls"}
+        for api_id in api_ids
+    ]
+    edges[1]["change"] = "added"
+    edges += [
+        {"id": "gx-repository-user->gx-table--TB_USER:reads", "source": "gx-repository-user",
+         "target": "gx-table--TB_USER", "relation": "reads"},
+        {"id": "gx-service-user->gx-repository-user:calls", "source": "gx-service-user",
+         "target": "gx-repository-user", "relation": "calls"},
+    ]
+    return {"schema_version": 1, "view": "service", "locale": "ko-KR", "title": "user 도메인 구조",
+            "nodes": nodes, "edges": edges}
+
+
 TRACE_IR = {
     "schema_version": 1,
     "view": "trace",
@@ -673,14 +702,15 @@ class ToArchifyTests(unittest.TestCase):
         self.assertEqual([connection.get("variant") for connection in connections], ["emphasis", None])
 
     def test_very_long_label_widens_grid_step_to_keep_separation(self):
-        # 열 사이 간격이 8px뿐이면 연결선이 Archify 최소 길이(24px)보다 짧아지고 관계
-        # 라벨이 박스와 겹친다(2026-09-28 실측: user 도메인·세션 그래프). 40px을 보장한다.
+        # 칸 폭이 가장 넓은 박스보다 좁으면 넓은 박스가 칸을 넘쳐, 여러 API가 한 서비스로
+        # 모이는 세로 연결선의 관계 라벨이 그 박스와 겹친다(2026-09-28 실측: 엔드포인트
+        # 3개 중 가운데가 [신규]로 넓어진 경우). 칸 폭 >= 가장 넓은 박스를 보장한다.
         ir = _ir_with_label("가" * 25)
         out = self.to_archify(ir, "architecture")
         layout = out["layout"]
         for component in out[NODE_KEY]:
             width = component["size"][0] if "size" in component else 120
-            self.assertGreaterEqual(layout["cellW"] + layout["gapX"] - width, 40)
+            self.assertGreaterEqual(layout["cellW"], width)
 
 
 @unittest.skipUnless(ARCHIFY_MJS.is_file() and shutil.which("node"), "real Archify not installed")
@@ -696,6 +726,20 @@ class RealArchifyLayoutTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         document = module.to_archify(_fan_in_ir(), "architecture")
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "user.archify.json"
+            path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            result = subprocess.run(
+                [shutil.which("node"), str(ARCHIFY_MJS), "validate", "architecture", str(path), "--json"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:])
+
+    def test_middle_marked_fan_in_passes_real_validation(self):
+        spec = importlib.util.spec_from_file_location("gx_to_archify_real_middle", TO_ARCHIFY)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        document = module.to_archify(_middle_marked_fan_in_ir(), "architecture")
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / "user.archify.json"
             path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
