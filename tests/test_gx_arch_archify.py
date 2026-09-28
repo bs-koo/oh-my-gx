@@ -31,6 +31,46 @@ KIND_TO_TYPE_AND_COL = {
     "table": ("database", 4),
 }
 
+ARCHIFY_MJS = Path.home() / ".agents" / "skills" / "archify" / "bin" / "archify.mjs"
+
+
+def _fan_in_ir():
+    """kereb user 도메인 모양: API 8개가 서비스 하나로 모이고, 매퍼가 테이블 둘을 읽고 쓴다."""
+    nodes = []
+    for index in range(8):
+        node = {
+            "id": f"gx-api-{index}", "kind": "api", "status": "unknown",
+            "label": f"UserAdminController.updateUserStatus{index}",
+            "technical_label": f"POST /adm/v1/users/{{userId}}/update-status-{index}",
+        }
+        if index == 0:
+            node["change"] = "added"
+        nodes.append(node)
+    nodes += [
+        {"id": "gx-service-user", "kind": "service", "label": "UserService", "status": "unknown", "change": "changed"},
+        {"id": "gx-repository-user", "kind": "repository", "label": "UserMapper", "status": "unknown"},
+        {"id": "gx-table--TB_USER", "kind": "table", "label": "TB_USER", "technical_label": "TB_USER", "status": "unknown"},
+        {"id": "gx-table--TB_ROLE", "kind": "table", "label": "TB_ROLE", "technical_label": "TB_ROLE", "status": "unknown"},
+    ]
+    edges = [
+        {"id": f"gx-api-{index}->gx-service-user:calls", "source": f"gx-api-{index}",
+         "target": "gx-service-user", "relation": "calls"}
+        for index in range(8)
+    ]
+    edges[0]["change"] = "added"
+    edges += [
+        {"id": "gx-service-user->gx-repository-user:calls", "source": "gx-service-user",
+         "target": "gx-repository-user", "relation": "calls"},
+        {"id": "gx-repository-user->gx-table--TB_USER:reads", "source": "gx-repository-user",
+         "target": "gx-table--TB_USER", "relation": "reads"},
+        {"id": "gx-repository-user->gx-table--TB_USER:writes", "source": "gx-repository-user",
+         "target": "gx-table--TB_USER", "relation": "writes"},
+        {"id": "gx-repository-user->gx-table--TB_ROLE:reads", "source": "gx-repository-user",
+         "target": "gx-table--TB_ROLE", "relation": "reads"},
+    ]
+    return {"schema_version": 1, "view": "service", "locale": "ko-KR", "title": "user 도메인 구조",
+            "nodes": nodes, "edges": edges}
+
 
 TRACE_IR = {
     "schema_version": 1,
@@ -600,15 +640,70 @@ class ToArchifyTests(unittest.TestCase):
         ir = _ir_with_label("에너지 사용량 조회 API")
         self.assertEqual(self.to_archify(ir, "architecture"), self.to_archify(ir, "architecture"))
 
+    def test_added_and_changed_nodes_carry_a_visible_label_prefix(self):
+        ir = _ir_with_label("UserController.list")
+        ir["nodes"][0]["change"] = "added"
+        component = self.to_archify(ir, "architecture")[NODE_KEY][0]
+        self.assertEqual(component["label"], "[신규] UserController.list")
+        self.assertNotIn("tag", component)  # tag는 sources가 있으면 화면에 보이지 않는다
+        ir["nodes"][0]["change"] = "changed"
+        self.assertEqual(self.to_archify(ir, "architecture")[NODE_KEY][0]["label"], "[변경] UserController.list")
+
+    def test_prefix_is_counted_in_the_component_width(self):
+        ir = _ir_with_label("가" * 14)
+        plain = self.to_archify(ir, "architecture")[NODE_KEY][0]["size"][0]
+        ir["nodes"][0]["change"] = "added"
+        marked = self.to_archify(ir, "architecture")[NODE_KEY][0]["size"][0]
+        self.assertGreater(marked, plain)
+
+    def test_added_edges_are_emphasized_and_others_are_not(self):
+        ir = {
+            "schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+            "nodes": [
+                {"id": "a", "kind": "api", "label": "A.x", "status": "unknown"},
+                {"id": "b", "kind": "service", "label": "B", "status": "unknown"},
+                {"id": "c", "kind": "service", "label": "C", "status": "unknown"},
+            ],
+            "edges": [
+                {"id": "a->b:calls", "source": "a", "target": "b", "relation": "calls", "change": "added"},
+                {"id": "a->c:calls", "source": "a", "target": "c", "relation": "calls"},
+            ],
+        }
+        connections = self.to_archify(ir, "architecture")[EDGE_KEY]
+        self.assertEqual([connection.get("variant") for connection in connections], ["emphasis", None])
+
     def test_very_long_label_widens_grid_step_to_keep_separation(self):
-        # 한글 25자 라벨 → cellW(150)+gapX(90)-8=232px 상한을 넘으므로 cellW가 함께 올라가야
-        # 같은 행 옆 칸 컴포넌트와 8px 미만으로 겹치는 rectsOverlap 실패를 피한다.
+        # 열 사이 간격이 8px뿐이면 연결선이 Archify 최소 길이(24px)보다 짧아지고 관계
+        # 라벨이 박스와 겹친다(2026-09-28 실측: user 도메인·세션 그래프). 40px을 보장한다.
         ir = _ir_with_label("가" * 25)
         out = self.to_archify(ir, "architecture")
         layout = out["layout"]
         for component in out[NODE_KEY]:
             width = component["size"][0] if "size" in component else 120
-            self.assertGreaterEqual(layout["cellW"] + layout["gapX"] - width, 8)
+            self.assertGreaterEqual(layout["cellW"] + layout["gapX"] - width, 40)
+
+
+@unittest.skipUnless(ARCHIFY_MJS.is_file() and shutil.which("node"), "real Archify not installed")
+class RealArchifyLayoutTests(unittest.TestCase):
+    """가짜 실행 파일로는 레이아웃 규칙을 잡을 수 없다 - 실제 Archify 검증기로 확인한다.
+
+    2026-09-28 실측: 이 모양(API 8개 → 서비스 1개, [신규]·[변경] 라벨)은 열 간격 8px에서
+    clean-flow/edge-through-node·endpoint-side-direction으로 실패하고 40px에서 통과한다.
+    """
+
+    def test_fan_in_domain_with_change_marks_passes_real_validation(self):
+        spec = importlib.util.spec_from_file_location("gx_to_archify_real", TO_ARCHIFY)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        document = module.to_archify(_fan_in_ir(), "architecture")
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "user.archify.json"
+            path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            result = subprocess.run(
+                [shutil.which("node"), str(ARCHIFY_MJS), "validate", "architecture", str(path), "--json"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:])
 
 
 if __name__ == "__main__":

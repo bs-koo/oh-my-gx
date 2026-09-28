@@ -56,10 +56,13 @@ _LABEL_FIT_MARGIN = 8
 _SUBLABEL_WIDTH_PER_UNIT = 6
 _SUBLABEL_MIN_SCALE = 0.6
 
-# 그리드 칸 간격 기본값. renderers/architecture/render-architecture.mjs:384-392의
-# rectsOverlap(a, b, 8)이 모든 컴포넌트 쌍에 적용되므로, 같은 행에서 옆 열과 맞닿는
-# 폭(stepX = cellW + gapX)이 컴포넌트 폭보다 8px 이상 넉넉해야 한다.
+# 그리드 칸 간격 기본값. 같은 행에서 옆 열까지의 폭(stepX = cellW + gapX)이 컴포넌트
+# 폭보다 _MIN_COLUMN_GAP 이상 넉넉해야 한다. renderers/architecture/render-architecture.mjs의
+# rectsOverlap(a, b, 8)만 피하면(8px) 연결선이 Archify 최소 길이(24px)보다 짧아지고 관계
+# 라벨이 박스와 겹친다 - 2026-09-28 실측으로 kereb user 도메인과 세션 그래프가 이 때문에
+# 실패했고, 40px에서 통과했다(설계서 §5.8.3).
 _DEFAULT_LAYOUT = {"mode": "grid", "cols": 5, "gapX": 90, "gapY": 50, "cellW": 150, "cellH": 64}
+_MIN_COLUMN_GAP = 40
 
 # renderers/shared/utils.mjs의 textUnits()가 전각으로 판정하는 코드포인트 범위를
 # 그대로 옮긴 것이다 — 한글 음절(AC00-D7A3)이 포함되어 한글 라벨은 문자당 2 units다.
@@ -133,10 +136,11 @@ def cited_paths(ir: dict[str, Any]) -> list[str]:
 
 
 def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) -> dict[str, Any]:
+    label = CHANGE_PREFIX.get(node.get("change"), "") + node["label"]
     component: dict[str, Any] = {
         "id": node["id"],
         "type": KIND_TO_TYPE.get(node.get("kind"), "external"),
-        "label": node["label"],
+        "label": label,
         "row": row,
         "col": col,
     }
@@ -144,7 +148,7 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
     # sublabel로 또 찍지 않는다 - 폭 계산도 실제로 찍히는 값 기준으로 맞춘다.
     technical_label = node.get("technical_label")
     sublabel = technical_label if technical_label is not None and technical_label != node["label"] else ""
-    size = _component_size(node["label"], sublabel)
+    size = _component_size(label, sublabel)
     if size is not None:
         component["size"] = size
     if sublabel:
@@ -154,6 +158,11 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
         if sources is not None:
             component["sources"] = sources
     return component
+
+
+# 이번 변경 표시(설계서 §5.8.2). Archify의 `tag`는 검증은 통과하지만 sources가 있는
+# 컴포넌트에서는 화면에 보이지 않았다(2026-09-28 헤드리스 캡처) - 라벨 접두사로 표시한다.
+CHANGE_PREFIX = {"added": "[신규] ", "changed": "[변경] "}
 
 
 _RELATION_LABEL_KO = {
@@ -172,6 +181,8 @@ def _connection(edge: dict[str, Any], node_col: dict[str, int], row_of: dict[str
     connection: dict[str, Any] = {"from": edge["source"], "to": edge["target"]}
     if "relation" in edge:
         connection["label"] = _RELATION_LABEL_KO.get(edge["relation"], edge["relation"])
+    if edge.get("change") == "added":
+        connection["variant"] = "emphasis"
     source, target = edge["source"], edge["target"]
     # 같은 열 안의 엣지(예: service -> service, repository -> repository)는 Archify의
     # clean-flow/endpoint-side-direction 규칙이 거부한다(실측: auth 모듈 2건). 같은 열
@@ -222,7 +233,7 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
 
     layout = dict(_DEFAULT_LAYOUT)
     max_width = max((c["size"][0] for c in components if "size" in c), default=_DEFAULT_COMPONENT_WIDTH)
-    required_cell_w = max_width - layout["gapX"] + _LABEL_FIT_MARGIN
+    required_cell_w = max_width - layout["gapX"] + _MIN_COLUMN_GAP
     if required_cell_w > layout["cellW"]:
         layout["cellW"] = required_cell_w
 
