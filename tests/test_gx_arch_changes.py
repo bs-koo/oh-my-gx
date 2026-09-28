@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO / ".claude" / "skills" / "gx-visualize" / "scripts"
@@ -268,6 +269,18 @@ class ChangeMarkingTests(unittest.TestCase):
             self._compute(root)
             after = subprocess.run(status, cwd=root, capture_output=True, text=True, check=True).stdout
         self.assertEqual(before, after)
+
+    def test_base_tree_extraction_failure_is_reported_not_raised(self):
+        # 2026-09-28 최종 리뷰 M1: Windows 백신·인덱서가 임시 폴더 정리를 막아
+        # PermissionError를 던져도 맵 전체가 트레이스백으로 끝나면 안 된다(§6).
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _repo_on_feature_branch(root)
+            with mock.patch.object(self.changes, "extract_base_tree", side_effect=PermissionError("locked")):
+                head, summary = self._compute(root)
+        self.assertFalse(summary["available"])
+        self.assertIn("locked", summary["reason"])
+        self.assertFalse(any("change" in node for node in head["nodes"]))
 
 
 if __name__ == "__main__":

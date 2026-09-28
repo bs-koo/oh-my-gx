@@ -41,6 +41,7 @@ validator = _load("validate_ir")
 archify_renderer = _load("render_archify")
 fallback_renderer = _load("render_fallback")
 index_builder = _load("build_index")
+backend_detector = _load("detect_backend")
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -99,7 +100,12 @@ def _overall_status(domains: list[dict[str, Any]]) -> str:
 
 
 def _render_domain(
-    name: str, part: dict[str, Any], map_dir: Path, project_root: Path, archify_command: Any
+    name: str,
+    part: dict[str, Any],
+    map_dir: Path,
+    project_root: Path,
+    archify_command: Any,
+    archify_discovery: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     ir_path = map_dir / "ir" / f"{name}{IR_SUFFIX}"
     receipts_dir = map_dir / "receipts"
@@ -128,6 +134,7 @@ def _render_domain(
         result = archify_renderer.render_archify(
             ir_path, receipts_dir, archify_command,
             project_root=project_root, output_name=name, html_dir=map_dir / "domains",
+            archify_discovery=archify_discovery,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         entry["errors"] = [str(exc)]
@@ -159,7 +166,7 @@ def _rerender_with_mermaid_asset(entry: dict[str, Any], map_dir: Path, project_r
             project_root=project_root, output_name=entry["domain"],
             html_dir=map_dir / "domains", mermaid_asset_href=MERMAID_ASSET_HREF,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         entry.setdefault("errors", []).append(f"Mermaid 자산으로 다시 그리지 못했습니다: {exc}")
     finally:
         receipt_path.write_text(preserved, encoding="utf-8")
@@ -175,8 +182,10 @@ def build_map(
 ) -> dict[str, Any]:
     """`project_root`의 아키텍처 맵을 `map_dir`(기본 `<project_root>/.dev/architecture`)에 만든다.
 
-    `archify_command`는 테스트용이다 - 생략하면 render_archify가 스스로 Archify를 찾는다.
-    CLI에는 노출하지 않는다: 셸을 거친 명령 문자열이 깨지는 경로를 다시 열지 않는다(T15).
+    `archify_command`는 테스트용이다 - 생략하면 도메인 루프 전에 ensure_archify()를 한 번
+    불러 모든 도메인이 그 결과를 쓴다(2026-09-28 최종 리뷰 I1 - 도메인마다 재탐색·재설치를
+    막는다). CLI에는 노출하지 않는다: 셸을 거친 명령 문자열이 깨지는 경로를 다시 열지
+    않는다(T15).
     """
     root = Path(project_root).resolve()
     map_dir = Path(map_dir) if map_dir is not None else root / DEFAULT_MAP_DIR
@@ -240,12 +249,15 @@ def build_map(
     domain_meta = None
     if changes is not None:
         domain_meta = {key: changes[key] for key in ("available", "base_ref", "base_commit", "reason") if key in changes}
+    # Archify 탐지·설치는 실행당 한 번만 - 도메인마다 다시 부르면 사내망이 막힌
+    # 환경에서 도메인 수만큼 설치 시도가 되풀이된다(2026-09-28 최종 리뷰 I1).
+    discovery = backend_detector.ensure_archify() if archify_command is None else None
     for name in sorted(parts):
         part = parts[name]
         part["title"] = f"{name} 도메인 구조"
         if domain_meta is not None:
             part["meta"] = {"changes": domain_meta}
-        report["domains"].append(_render_domain(name, part, map_dir, root, archify_command))
+        report["domains"].append(_render_domain(name, part, map_dir, root, archify_command, discovery))
 
     mermaid_domains = [entry for entry in report["domains"] if entry["backend"] == "mermaid"]
     if mermaid_domains:

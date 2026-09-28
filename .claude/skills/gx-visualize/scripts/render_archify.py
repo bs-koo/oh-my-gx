@@ -446,6 +446,7 @@ def render_archify(
     output_name: str | None = None,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
+    archify_discovery: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Validate and deliver with Archify, then fall back without hiding failures.
 
@@ -471,6 +472,9 @@ def render_archify(
     명령을 찾는다 - 정상 경로다. 명시하면 그 값을 지금까지와 동일하게 그대로 쓴다.
     자기 탐색이 실패하면(`available: False`) 예외 없이 폴백 체인(mermaid → static)으로
     넘어가며, 탐색 시도 기록은 receipt의 `attempts`에 `archify-discovery`로 남는다.
+    여러 IR을 연달아 그리는 호출자(build_map.py)는 `ensure_archify()`를 한 번 부른
+    결과를 `archify_discovery`로 넘겨 도메인마다 설치를 다시 시도하지 않는다(설계서
+    §5.5.1 "설치는 1회만").
     """
     ir_path = Path(ir_path)
     output_dir = Path(output_dir)
@@ -529,7 +533,9 @@ def render_archify(
         # 문자열로 다시 넘겨야 했고, 그 문자열이 git-bash·PowerShell에서 각각
         # 다르게 깨졌다(2026-09-18 최종 리뷰 이후 T15). 셸을 통과하는 문자열
         # 자체를 없애는 쪽이 이스케이프 규칙을 정교하게 만드는 것보다 근본적이다.
-        ensure_result = _discover_archify_command()
+        # `archify_discovery`가 주어지면 이미 얻은 ensure_archify() 결과이므로
+        # 다시 탐색하지 않는다(2026-09-28 최종 리뷰 I1 - 도메인마다 재탐색 방지).
+        ensure_result = archify_discovery if archify_discovery is not None else _discover_archify_command()
         discovery_attempts = _discovery_attempt_entries(ensure_result)
         if not ensure_result.get("available"):
             return _fallback(

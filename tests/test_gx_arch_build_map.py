@@ -291,6 +291,27 @@ class BuildMapTests(unittest.TestCase):
                 self.module.main()
         self.assertEqual(raised.exception.code, 2)
 
+    def test_archify_discovery_runs_once_per_run_not_once_per_domain(self):
+        # 2026-09-28 최종 리뷰 I1: archify_command를 생략(기본 경로)하면 도메인 루프
+        # 전에 ensure_archify()를 한 번만 부르고, 그 결과를 모든 도메인이 공유한다.
+        _project(self.root)
+        assets = self.map_dir / "assets"
+        assets.mkdir(parents=True)
+        (assets / "mermaid.min.js").write_bytes(b"/*mermaid*/" + b" " * 600_000)  # 다운로드 없이 확보된 상태
+        blocked = {
+            "available": False,
+            "command": None,
+            "attempts": [{"phase": "install", "command": ["npx"], "exit_code": 1, "stderr": "blocked"}],
+        }
+        with mock.patch.object(self.module.backend_detector, "ensure_archify", return_value=blocked) as ensure:
+            report = self.module.build_map(self.root, self.map_dir)
+        ensure.assert_called_once()
+        self.assertEqual({entry["domain"] for entry in report["domains"]}, {"code", "user"})
+        for entry in report["domains"]:
+            self.assertNotEqual(entry["backend"], "archify")
+            receipt = json.loads((self.map_dir / "receipts" / f"{entry['domain']}.receipt.json").read_text(encoding="utf-8"))
+            self.assertIn("archify-discovery", [attempt["backend"] for attempt in receipt["attempts"]])
+
 
 if __name__ == "__main__":
     unittest.main()

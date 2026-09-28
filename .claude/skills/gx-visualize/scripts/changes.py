@@ -149,9 +149,14 @@ def compute_changes(project_root: Path | str, since_ref: str, head: dict[str, An
     """기준 시점 트리를 스캔해 `head`에 변경을 표시한다. 기준을 정할 수 없으면 표시 없이 이유를 반환한다."""
     try:
         base = resolve_base(project_root, since_ref)
-        with tempfile.TemporaryDirectory(prefix="gx-visualize-base-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="gx-visualize-base-", ignore_cleanup_errors=True) as temporary:
             base_scan = _scanner().scan(extract_base_tree(base, Path(temporary)))
     except ChangeBaseError as exc:
         return {"available": False, "base_ref": since_ref, "reason": str(exc)}
+    except (OSError, ValueError, UnicodeError) as exc:
+        # Windows 백신·인덱서가 임시 폴더의 파일을 잠그면 정리·읽기·쓰기가 이 예외들로
+        # 실패할 수 있다 - 변경 표시 실패가 맵 생성 자체를 실패시키지 않는다(설계서 §6,
+        # 2026-09-28 최종 리뷰 M1).
+        return {"available": False, "base_ref": since_ref, "reason": f"기준 커밋의 소스를 준비하지 못했습니다: {exc}"}
     summary = mark_changes(head, base_scan)
     return {"available": True, "base_ref": since_ref, "base_commit": base["commit"][:7], **summary}
