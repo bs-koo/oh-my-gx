@@ -10,7 +10,6 @@ import json
 import re
 import shutil
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +31,8 @@ EVIDENCE_LABELS = {
     "design": "설계 근거",
     "inferred": "추정",
 }
+# 이번 변경 표시(설계서 §5.8.2). 노드 배지·Mermaid 라벨·관계 표·인덱스가 같은 단어를 쓴다.
+CHANGE_LABELS = {"added": "신규", "changed": "변경"}
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
 TEMPLATE_TOKEN = re.compile(r"\{\{(TITLE|SUMMARY|CSS|MERMAID_SECTION|STATIC_CONTENT)\}\}")
 
@@ -65,6 +66,13 @@ def _sorted_edges(ir: dict[str, Any]) -> list[dict[str, Any]]:
 def _status_badge(status: str) -> str:
     label = STATUS_LABELS.get(status, STATUS_LABELS["unknown"])
     return f'<span class="status status-{_escape(status)}">{_escape(label)}</span>'
+
+
+def _change_badge(change: Any) -> str:
+    label = CHANGE_LABELS.get(change) if isinstance(change, str) else None
+    if label is None:
+        return ""
+    return f'<span class="change change-{_escape(change)}">{_escape(label)}</span>'
 
 
 def _legend(nodes: list[dict[str, Any]], suppress_unknown_status: bool) -> str:
@@ -105,7 +113,7 @@ def _node_list(nodes: list[dict[str, Any]], suppress_unknown_status: bool) -> st
         cards.append(
             '<li><article class="node-card">'
             f'<span class="node-id">{_escape(node["id"])}</span> '
-            f'{status_html}'
+            f'{_change_badge(node.get("change"))}{status_html}'
             f'<h3>{_escape(node["label"])}</h3>'
             f'<p>유형: {_escape(node["kind"])}</p>{technical_html}'
             '</article></li>'
@@ -120,14 +128,15 @@ def _relationship_table(edges: list[dict[str, Any]]) -> str:
         f'<td><code>{_escape(edge["source"])}</code></td>'
         f'<td>{_escape(edge["relation"])}</td>'
         f'<td><code>{_escape(edge["target"])}</code></td>'
+        f'<td>{_escape(CHANGE_LABELS.get(edge.get("change"), ""))}</td>'
         "</tr>"
         for edge in edges
     )
     if not rows:
-        rows = '<tr><td colspan="4">표시할 관계가 없습니다.</td></tr>'
+        rows = '<tr><td colspan="5">표시할 관계가 없습니다.</td></tr>'
     return (
         '<section aria-labelledby="relations-title"><h2 id="relations-title">관계</h2>'
-        '<div class="table-wrap"><table><thead><tr><th>관계 ID</th><th>출발</th><th>관계</th><th>도착</th>'
+        '<div class="table-wrap"><table><thead><tr><th>관계 ID</th><th>출발</th><th>관계</th><th>도착</th><th>이번 변경</th>'
         f'</tr></thead><tbody>{rows}</tbody></table></div></section>'
     )
 
@@ -170,7 +179,9 @@ def _mermaid_source(
         # 노드 ID는 넣지 않는다 - 노드 목록 카드에 이미 있고, 여기 넣으면 라벨이 긴
         # 기술 ID로 시작해 실제 이름을 가린다(버그 B, 2026-09-21 컨트롤러가 reb.html에서
         # 발견: "gx-api-webframework-public-src-main-java-..."가 라벨 맨 앞에 왔다).
-        label_parts = [node["label"]]
+        change_label = CHANGE_LABELS.get(node.get("change"))
+        label_parts = [f"[{change_label}]"] if change_label else []
+        label_parts.append(node["label"])
         technical = node.get("technical_label")
         if technical is not None and technical != node["label"]:
             label_parts.append(technical)
@@ -182,6 +193,19 @@ def _mermaid_source(
     for edge in edges:
         relation = _mermaid_text(edge["relation"])
         lines.append(f'  {aliases[edge["source"]]} -->|{relation}| {aliases[edge["target"]]}')
+    # 이번 변경 표시 - 채움색은 classDef, 새 관계는 linkStyle 순번으로 굵게 한다. 줄 끝에
+    # `;`를 붙이지 않는다: `#15803d;` 같은 꼴은 Mermaid가 엔티티로 해석한다.
+    added = [aliases[node["id"]] for node in nodes if node.get("change") == "added"]
+    changed = [aliases[node["id"]] for node in nodes if node.get("change") == "changed"]
+    if added:
+        lines.append("  classDef gxAdded fill:#dcfce7,stroke:#15803d,stroke-width:3px,color:#14532d")
+        lines.append(f"  class {','.join(added)} gxAdded")
+    if changed:
+        lines.append("  classDef gxChanged fill:#fef3c7,stroke:#b45309,stroke-width:3px,color:#78350f")
+        lines.append(f"  class {','.join(changed)} gxChanged")
+    for index, edge in enumerate(edges):
+        if edge.get("change") == "added":
+            lines.append(f"  linkStyle {index} stroke:#15803d,stroke-width:3px")
     return "\n".join(lines)
 
 
@@ -293,26 +317,39 @@ def _short_head(project_root: Path | str | None) -> str | None:
     return sha or None
 
 
-def snapshot_banner_html(project_root: Path | str | None) -> str:
-    """Build the `--scope session` snapshot banner - SKILL.md의 세 가지 요구사항을 그대로 담는다:
-    생성 시각, `git rev-parse --short HEAD`, "갱신되지 않는다" 고지(2026-09-18 최종 리뷰 I7).
+def change_banner_html(ir: dict[str, Any]) -> str:
+    """`meta.changes`가 켜진 IR에 '이번 변경' 배너를 만든다. 표시가 꺼져 있으면 빈 문자열.
+
+    Archify가 만든 HTML에도 같은 배너를 넣으므로(render_archify) fallback.css에 기대지 않고
+    인라인 스타일만 쓴다. 변경이 없는 도메인에도 배너를 넣는다 - 표시 기능이 켜져 있었다는
+    사실이 보여야 '표시 없음'을 '변경 없음'으로 읽을 수 있다(설계서 §5.8.2).
     """
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    sha = _short_head(project_root)
-    revision_text = f" · 커밋 {_escape(sha)}" if sha else ""
+    meta = ir.get("meta")
+    changes = meta.get("changes") if isinstance(meta, dict) else None
+    if not isinstance(changes, dict) or not changes.get("available"):
+        return ""
+    nodes = ir.get("nodes", [])
+    added = sum(1 for node in nodes if node.get("change") == "added")
+    changed = sum(1 for node in nodes if node.get("change") == "changed")
+    base = f'{changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
+    if added or changed:
+        text = f"이번 변경 — 기준 {base} 이후 신규 {added}개 · 변경 {changed}개. 그림의 [신규]·[변경] 표시와 굵은 선을 확인하세요."
+        colors = "background:#dcfce7;color:#14532d;"
+    else:
+        text = f"이번 변경 — 기준 {base} 이후 이 도메인에는 구조 변경이 없습니다."
+        colors = "background:#f1f5f9;color:#334155;"
     return (
-        '<p class="snapshot-banner" role="note">'
-        f'생성 시각: {_escape(generated_at)}{revision_text}'
-        " · 이 그림은 해당 시점의 스냅샷이며 갱신되지 않습니다.</p>"
+        f'<p class="change-banner" role="note" style="margin:0;padding:10px 16px;{colors}'
+        f'font:600 14px/1.5 system-ui,sans-serif;">{_escape(text)}</p>'
     )
 
 
-def inject_snapshot_banner(document: str, banner_html: str) -> str:
+def inject_banner(document: str, banner_html: str) -> str:
     """Insert `banner_html` right after the opening `<body>` tag of `document`.
 
-    Both render_fallback.render()과 render_archify.render_archify()가 이 함수를 공유해
-    폴백 산출물과 Archify 산출물 양쪽에 같은 방식으로 배너를 붙인다 - 렌더러마다 다른
-    HTML 구조에 각자 배너 절차를 만들지 않는다.
+    render()와 render_archify.render_archify()가 이 함수를 공유해 폴백 산출물과 Archify
+    산출물 양쪽에 같은 방식으로 배너를 붙인다 - 렌더러마다 다른 HTML 구조에 각자 배너
+    절차를 만들지 않는다.
     """
     match = _BODY_TAG_RE.search(document)
     if match is None:
@@ -337,7 +374,6 @@ def render(
     backend: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
-    snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
@@ -348,9 +384,9 @@ def render(
     for why (shared `output_dir`, several documents of the same `view`). Omit it to keep
     the existing `{view}.*` behavior.
 
-    `snapshot_banner`, when true, inserts the `--scope session` snapshot banner (생성
-    시각·커밋 해시·갱신되지 않는다는 고지) into the rendered HTML. `--scope all` 호출은
-    이 인자를 생략(기본 False)한다 - 누적 맵에는 배너를 넣지 않는다.
+    IR에 `meta.changes`가 켜져 있으면 '이번 변경' 배너(change_banner_html)를 `<body>` 바로
+    뒤에 넣는다. 인자가 아니라 IR 데이터가 배너를 정한다 - build_map.py가 변경 표시를
+    요청한 실행에서만 meta.changes를 채운다.
 
     `html_dir`, when given, writes `{stem}.html` there instead of `output_dir` while
     `.receipt.json` stays in `output_dir` — `--scope all`은 이걸로 `${MAP_DIR}/domains/`와
@@ -388,8 +424,9 @@ def render(
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
     document = _render_document(ir, backend, mermaid_asset_href=mermaid_asset_href)
-    if snapshot_banner:
-        document = inject_snapshot_banner(document, snapshot_banner_html(project_root))
+    banner = change_banner_html(ir)
+    if banner:
+        document = inject_banner(document, banner)
     html_path = html_dir / f"{stem}.html"
     html_path.write_text(document, encoding="utf-8")
     return {"html_path": str(html_path), "backend": backend, "receipt_path": str(receipt_path)}
@@ -455,7 +492,6 @@ def main() -> int:
     parser.add_argument("--backend", choices=sorted(BACKENDS), default="mermaid")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
-    parser.add_argument("--snapshot-banner", action="store_true")
     parser.add_argument("--html-dir", type=Path)
     parser.add_argument("--mermaid-asset-href")
     parser.add_argument("--ensure-mermaid-asset", type=Path, metavar="ASSETS_DIR")
@@ -471,8 +507,7 @@ def main() -> int:
         result = render(
             args.ir_path, args.output_dir, args.backend,
             project_root=args.project_root, output_name=args.output_name,
-            snapshot_banner=args.snapshot_banner, html_dir=args.html_dir,
-            mermaid_asset_href=args.mermaid_asset_href,
+            html_dir=args.html_dir, mermaid_asset_href=args.mermaid_asset_href,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc))

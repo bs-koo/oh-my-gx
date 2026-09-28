@@ -53,6 +53,10 @@ section { margin: 0 0 24px; padding: 24px; border: 1px solid var(--line); border
 .status-review { color: var(--review); }
 .status-blocked { color: var(--blocked); }
 .status-planned, .status-unknown { color: var(--planned); }
+.change { display: inline-block; border-radius: 999px; padding: 2px 9px; margin-right: 6px; font-size: .85rem; font-weight: 800; }
+.change-added { background: #dcfce7; color: #14532d; }
+.change-changed { background: #fef3c7; color: #78350f; }
+.domain-card.domain-changed { box-shadow: 0 0 0 3px #86efac; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }

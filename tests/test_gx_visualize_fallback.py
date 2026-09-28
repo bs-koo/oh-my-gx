@@ -427,40 +427,68 @@ class VisualFallbackRenderingTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "backend"):
                 self.renderer.render(FIXTURE, Path(temporary), "canvas")
 
-    def test_snapshot_banner_is_absent_by_default(self):
-        # I7 이전에는 만들 수단 자체가 없었다 - 기본값(False)에서는 여전히 없어야 한다
-        # (수용 기준 10은 --scope session 전용, --scope all은 넣지 않는다).
-        _, html_text, _ = self.render("static")
-        self.assertNotIn("갱신되지 않습니다", html_text)
+    CHANGES_META = {"changes": {"available": True, "base_ref": "main", "base_commit": "abc1234"}}
 
-    def test_snapshot_banner_carries_the_three_required_facts(self):
-        # SKILL.md:101/설계서 §5.1이 요구하는 세 가지: 생성 시각, 커밋 해시, 갱신되지
-        # 않는다는 고지(2026-09-18 최종 리뷰 I7, 수용 기준 10).
+    def marked_ir(self, root, meta=None):
+        nodes = [
+            {"id": "A-new", "kind": "api", "label": "새 API", "status": "unknown", "evidence": [], "change": "added"},
+            {"id": "B-old", "kind": "service", "label": "기존 서비스", "status": "unknown", "evidence": []},
+            {"id": "C-changed", "kind": "repository", "label": "바뀐 저장소", "status": "unknown", "evidence": [], "change": "changed"},
+        ]
+        edges = [
+            {"id": "A-new->B-old:calls", "source": "A-new", "target": "B-old", "relation": "calls", "change": "added"},
+            {"id": "B-old->C-changed:calls", "source": "B-old", "target": "C-changed", "relation": "calls"},
+        ]
+        overrides = {"view": "service", "nodes": nodes, "edges": edges}
+        if meta is not None:
+            overrides["meta"] = meta
+        return self.write_ir(root, **overrides)[0]
+
+    def test_change_marks_render_as_badges_and_a_table_column(self):
         with tempfile.TemporaryDirectory() as temporary:
-            output_dir = Path(temporary)
-            result = self.renderer.render(FIXTURE, output_dir, "static", snapshot_banner=True)
+            root = Path(temporary)
+            result = self.renderer.render(self.marked_ir(root), root / "out", "static")
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+        self.assertIn('<span class="change change-added">신규</span>', html_text)
+        self.assertIn('<span class="change change-changed">변경</span>', html_text)
+        self.assertIn("<th>이번 변경</th>", html_text)
 
-        self.assertIn("생성 시각", html_text)
-        self.assertIn("갱신되지 않습니다", html_text)
-
-    def test_snapshot_banner_includes_short_head_in_a_git_project(self):
-        # FIXTURE의 근거 파일은 자기 자신(같은 디렉터리)을 가리키므로, evidence
-        # confinement가 깨지지 않도록 project_root도 같은 디렉터리(tests/fixtures/,
-        # 실제 oh-my-gx git 저장소 내부)로 준다 - git이 상위로 올라가 HEAD를 찾는다.
+    def test_mermaid_source_colors_new_nodes_and_thickens_new_edges(self):
         with tempfile.TemporaryDirectory() as temporary:
-            output_dir = Path(temporary)
-            result = self.renderer.render(
-                FIXTURE, output_dir, "static", project_root=FIXTURE.parent, snapshot_banner=True,
-            )
-            html_text = Path(result["html_path"]).read_text(encoding="utf-8")
+            root = Path(temporary)
+            result = self.renderer.render(self.marked_ir(root), root / "out", "mermaid")
+            source = self.mermaid_source(Path(result["html_path"]).read_text(encoding="utf-8"))
+        # 노드는 ID 순(A-new=n0, B-old=n1, C-changed=n2), 엣지도 ID 순이다.
+        self.assertIn('n0["[신규]#10;새 API"]', source)
+        self.assertIn("class n0 gxAdded", source)
+        self.assertIn("class n2 gxChanged", source)
+        self.assertIn("linkStyle 0 stroke:#15803d,stroke-width:3px", source)
+        self.assertNotIn("linkStyle 1", source)
+        self.assertNotRegex(source, r"classDef[^\n]*;")  # Mermaid 엔티티(#..;)로 오인되지 않게
 
-        self.assertIn("커밋", html_text)
+    def test_change_banner_appears_only_when_marking_was_requested(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            marked = self.renderer.render(self.marked_ir(root, meta=self.CHANGES_META), root / "a", "static")
+            marked_html = Path(marked["html_path"]).read_text(encoding="utf-8")
+            plain = self.renderer.render(self.marked_ir(root), root / "b", "static")
+            plain_html = Path(plain["html_path"]).read_text(encoding="utf-8")
+        self.assertIn("기준 main (abc1234) 이후 신규 1개 · 변경 1개", marked_html)
+        self.assertNotIn("change-banner", plain_html)
 
-    def test_snapshot_banner_is_inserted_right_after_the_body_tag(self):
-        banner = self.renderer.snapshot_banner_html(None)
-        injected = self.renderer.inject_snapshot_banner("<html><body><p>본문</p></body></html>", banner)
-        self.assertEqual(f"<html><body>{banner}<p>본문</p></body></html>", injected)
+    def test_change_banner_says_so_when_a_domain_did_not_change(self):
+        ir = {"nodes": [{"id": "a", "label": "x"}], "meta": self.CHANGES_META}
+        self.assertIn("구조 변경이 없습니다", self.renderer.change_banner_html(ir))
+        skipped = {"nodes": [], "meta": {"changes": {"available": False, "reason": "git 아님"}}}
+        self.assertEqual(self.renderer.change_banner_html(skipped), "")
+
+    def test_banner_is_inserted_right_after_the_body_tag(self):
+        injected = self.renderer.inject_banner("<html><body><p>본문</p></body></html>", "<p>배너</p>")
+        self.assertEqual("<html><body><p>배너</p><p>본문</p></body></html>", injected)
+
+    def test_snapshot_banner_is_gone(self):
+        self.assertFalse(hasattr(self.renderer, "snapshot_banner_html"))
+        self.assertNotIn("snapshot_banner", self.renderer.render.__code__.co_varnames)
 
     def test_project_root_is_forwarded_when_rendering_real_dev_visual_ir(self):
         ir_path = PROJECT_FIXTURE / ".dev" / "feat-energy" / "visual" / "trace.json"

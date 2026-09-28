@@ -191,13 +191,12 @@ def _render_fallback(
     backend: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
-    snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
     return _fallback_module().render(
         ir_path, output_dir, backend,
-        project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+        project_root=project_root, output_name=output_name,
         html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
     )
 
@@ -327,7 +326,6 @@ def _fallback(
     project_root: Path | str | None = None,
     status: str = "fallback",
     output_name: str | None = None,
-    snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
@@ -340,13 +338,13 @@ def _fallback(
         try:
             if project_root is None:
                 result = _render_fallback(
-                    ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner,
+                    ir_path, output_dir, backend, output_name=output_name,
                     html_dir=html_dir, mermaid_asset_href=backend_asset_href,
                 )
             else:
                 result = _render_fallback(
                     ir_path, output_dir, backend,
-                    project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+                    project_root=project_root, output_name=output_name,
                     html_dir=html_dir, mermaid_asset_href=backend_asset_href,
                 )
         except Exception as exc:  # preserve diagnostics and continue the explicit chain
@@ -411,7 +409,6 @@ def _skip_archify(
     view: str,
     project_root: Path | str | None = None,
     output_name: str | None = None,
-    snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
@@ -437,7 +434,7 @@ def _skip_archify(
     return _fallback(
         ir_path, output_dir, receipt_path, attempts,
         project_root=project_root, status="not_applicable", output_name=output_name,
-        snapshot_banner=snapshot_banner, html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
+        html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
     )
 
 
@@ -447,7 +444,6 @@ def render_archify(
     archify_command: Command | None = None,
     project_root: Path | str | None = None,
     output_name: str | None = None,
-    snapshot_banner: bool = False,
     html_dir: Path | str | None = None,
     mermaid_asset_href: str | None = None,
 ) -> dict[str, str]:
@@ -460,10 +456,8 @@ def render_archify(
     last. `view` itself still decides Archify eligibility (`diagram_type`); only the
     on-disk filenames change. Omit it to keep the existing `{view}.*` behavior.
 
-    `snapshot_banner`, when true, inserts the `--scope session` snapshot banner into the
-    HTML - the fallback chain forwards it to render_fallback.render(); the Archify
-    success path below injects it into Archify's own HTML after delivery, since Archify
-    has no concept of this GX-only banner.
+    IR에 `meta.changes`가 켜져 있으면 Archify가 만든 HTML에도 '이번 변경' 배너를 넣는다 -
+    Archify는 이 배너를 모르므로 전달 후 render_fallback.inject_banner()로 삽입한다.
 
     `html_dir`, when given, writes `{stem}.html`(Archify 성공 시)와 폴백 HTML을 거기에
     쓴다 — `.receipt.json`·`.archify.json`은 여전히 `output_dir`에 남는다. `--scope all`은
@@ -524,7 +518,7 @@ def render_archify(
     if kind is None:
         return _skip_archify(
             ir_path, output_dir, receipt_path, view,
-            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            project_root=project_root, output_name=output_name,
             html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
         )
 
@@ -540,7 +534,7 @@ def render_archify(
         if not ensure_result.get("available"):
             return _fallback(
                 ir_path, output_dir, receipt_path, discovery_attempts,
-                project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+                project_root=project_root, output_name=output_name,
                 html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
             )
         archify_command = ensure_result["command"]
@@ -563,7 +557,7 @@ def render_archify(
     if attempts[-1]["status"] == "failed":
         return _fallback(
             ir_path, output_dir, receipt_path, attempts,
-            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            project_root=project_root, output_name=output_name,
             html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
         )
 
@@ -576,18 +570,17 @@ def render_archify(
         html_path.unlink(missing_ok=True)
         return _fallback(
             ir_path, output_dir, receipt_path, attempts,
-            project_root=project_root, output_name=output_name, snapshot_banner=snapshot_banner,
+            project_root=project_root, output_name=output_name,
             html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
         )
 
-    if snapshot_banner:
-        # Archify가 만든 HTML은 이 스킬의 배너 개념을 모른다 - 전달 후 그 산출물에
-        # 직접 삽입한다. render_fallback.render()가 쓰는 것과 같은 함수라 폴백
-        # 경로와 동일한 방식으로 붙는다(2026-09-18 최종 리뷰 I7).
-        fallback_module = _fallback_module()
-        banner = fallback_module.snapshot_banner_html(project_root)
+    # Archify HTML은 이 스킬의 변경 표시 배너를 모른다 - 전달 후 직접 삽입한다.
+    # render_fallback.render()와 같은 함수라 두 경로의 배너가 같다(설계서 §5.8.2).
+    fallback_module = _fallback_module()
+    banner = fallback_module.change_banner_html(ir_document)
+    if banner:
         html_path.write_text(
-            fallback_module.inject_snapshot_banner(html_path.read_text(encoding="utf-8"), banner),
+            fallback_module.inject_banner(html_path.read_text(encoding="utf-8"), banner),
             encoding="utf-8",
         )
 
@@ -618,7 +611,6 @@ def main() -> int:
     parser.add_argument("--archify-command")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--output-name")
-    parser.add_argument("--snapshot-banner", action="store_true")
     parser.add_argument("--html-dir", type=Path)
     parser.add_argument("--mermaid-asset-href")
     args = parser.parse_args()
@@ -629,7 +621,6 @@ def main() -> int:
             args.archify_command,
             project_root=args.project_root,
             output_name=args.output_name,
-            snapshot_banner=args.snapshot_banner,
             html_dir=args.html_dir,
             mermaid_asset_href=args.mermaid_asset_href,
         )

@@ -254,22 +254,20 @@ class VisualBackendTests(unittest.TestCase):
         self.assertTrue(receipt["artifact_path"].endswith("service.html"))
         self.assertIn("Archify 결과", html_text)
 
-    def test_archify_success_html_carries_snapshot_banner_when_requested(self):
-        # I7: Archify가 만든 HTML은 배너 개념을 모른다 - render_archify()가 전달 후
-        # 직접 삽입해야 한다. 폴백 경로와 달리 별도 코드 경로라 따로 확인한다.
+    def test_archify_success_html_carries_change_banner_when_ir_has_changes(self):
+        # Archify가 만든 HTML은 이 스킬의 배너를 모른다 - render_archify()가 전달 후 넣는다.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            result = self.renderer.render_archify(
-                SERVICE_FIXTURE,
-                root / "output",
-                self.fake_archify(root),
-                snapshot_banner=True,
-            )
+            ir = json.loads(SERVICE_FIXTURE.read_text(encoding="utf-8"))
+            ir["nodes"][0]["change"] = "added"
+            ir["meta"] = {"changes": {"available": True, "base_ref": "main", "base_commit": "abc1234"}}
+            ir_path = root / SERVICE_FIXTURE.name  # 근거가 자기 파일명을 가리키므로 이름을 유지한다
+            ir_path.write_text(json.dumps(ir, ensure_ascii=False), encoding="utf-8")
+            result = self.renderer.render_archify(ir_path, root / "output", self.fake_archify(root))
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
 
         self.assertEqual(result["backend"], "archify")
-        self.assertIn("생성 시각", html_text)
-        self.assertIn("갱신되지 않습니다", html_text)
+        self.assertIn("신규 1개", html_text)
         self.assertIn("Archify 결과", html_text)
 
     def test_archify_command_json_array_round_trips_paths_with_spaces(self):
@@ -474,13 +472,12 @@ class VisualBackendTests(unittest.TestCase):
             real_fallback = self.renderer._render_fallback
 
             def render_or_fail(
-                ir_path, output_dir, backend, output_name=None, snapshot_banner=False,
-                html_dir=None, mermaid_asset_href=None,
+                ir_path, output_dir, backend, output_name=None, html_dir=None, mermaid_asset_href=None,
             ):
                 if backend == "mermaid":
                     raise RuntimeError("mermaid unavailable")
                 return real_fallback(
-                    ir_path, output_dir, backend, output_name=output_name, snapshot_banner=snapshot_banner,
+                    ir_path, output_dir, backend, output_name=output_name,
                     html_dir=html_dir, mermaid_asset_href=mermaid_asset_href,
                 )
 
