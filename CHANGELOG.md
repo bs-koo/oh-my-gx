@@ -1,17 +1,21 @@
 # Changelog
 
-## v1.34.0 (2026-09-18)
+## v1.34.0 (2026-09-28)
 
 ### Added
 
-- `gx-visualize`(18번째 스킬)를 추가한다. GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환하며 `trace`·`progress`·`impact`·`service`(1차 필수)와 `sequence`(후속 범위) 다섯 뷰를 다룬다. `--scope all`은 도메인별로 `${MAP_DIR}/{domain}.ir.json`·`{domain}.html`을 만들어 누적 아키텍처 맵을 매 실행 전체 재스캔으로 갱신하고, 도메인마다 Archify 성공·폴백을 개별로 판정한다.
-- gx-dev·gx-tdd의 phase-complete에 구현 구조 시각화 제안 게이트(Step 5.5)를 추가한다. 전체 갱신·이번 세션분만·건너뛰기 중 선택을 물으며, 헤드리스(gx-ralph) 세션은 strict no-op이고 이 게이트의 실패·누락은 커밋·PR 단계를 막지 않는다.
+- `gx-visualize`(18번째 스킬)를 추가한다. GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환하며 `trace`·`progress`·`impact`·`service`(1차 필수)와 `sequence`(후속 범위) 다섯 뷰를 다룬다.
+- `service` 뷰는 코드를 직접 스캔해 진입점 체인(화면 → API → 서비스 → 저장소 → 테이블)을 도메인별 아키텍처 맵으로 그린다. `python scripts/build_map.py <프로젝트>` 명령 하나가 스캔부터 인덱스까지 수행하고, `.dev/architecture/아키텍처-맵.html` 하나만 열면 전체가 보인다. 도메인마다 Archify 성공·Mermaid 폴백을 개별로 판정하고, Mermaid 도메인도 브라우저에서 실제 그림으로 그린다.
+- `--changed-since <ref>`로 기준 이후 새로 생기거나 바뀐 구조를 `[신규]`·`[변경]`으로 표시한다. 기준 커밋을 같은 스캐너로 스캔해 노드 ID로 비교하므로 줄이 밀려도 오판하지 않는다.
+- gx-dev·gx-tdd의 phase-complete에 구조 시각화 제안(Step 5.5)을 추가한다. "아키텍처 맵 갱신"을 고르면 그 사이클의 변경을 표시한 전체 맵을 만든다. 헤드리스 세션은 strict no-op이고, 이 단계의 실패는 커밋·PR을 막지 않는다.
 
 ### Fixed
 
-- Archify CLI 시그니처를 실제 명령 형식(validate/deliver)으로 수정하고, 탐지 프로브를 지원되지 않는 `--version`에서 `doctor`로 바꾼다. Archify가 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로 1회 자동 설치를 시도한 뒤, 실패해도 예외 없이 Mermaid → 정적 HTML로 폴백한다.
-- `--scope all`에서 도메인별 HTML·receipt 파일명이 서로 덮어쓰지 않도록 `--output-name`을 추가한다.
-- 소스 스캔·근거 검증이 CP949 인코딩 파일(오래된 한국어 JSP·Java 코드베이스)에서 죽지 않도록 폴백을 추가한다.
+- Archify CLI 시그니처를 실제 명령 형식(validate/deliver)으로 고치고, 탐지를 `doctor`로 바꾼다. Archify가 없으면 묻지 않고 1회 자동 설치를 시도하며, 실패해도 Mermaid → 정적 HTML로 폴백한다. 렌더러가 Archify 명령을 스스로 찾으므로 셸을 거친 인자가 깨지지 않는다.
+- 서비스 인터페이스와 `{X}Impl` 구현체, 이름이 `*Facade`인 클래스를 체인에 넣어 컨트롤러에서 저장소까지 끊기지 않게 한다.
+- Archify 레이아웃의 칸 폭을 가장 넓은 박스 이상으로 잡아, 여러 API가 한 서비스로 모이는 도메인과 새 엔드포인트로 박스가 넓어진 경우도 Archify로 그린다(kreb admin 실측: 도메인 8개 중 7개).
+- 오래된 한국어 코드베이스의 CP949 소스에서 스캔·검증이 죽지 않게 한다.
+- gx-commit이 시각화 산출물(`.dev/architecture`, `.dev/*/visual/*`)을 스테이징하지 않는다.
 
 ## v1.33.0 (2026-09-15)
 
