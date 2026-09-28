@@ -23,6 +23,7 @@
         "label": {"type": "string", "minLength": 1},
         "technical_label": {"type": "string"},
         "status": {"enum": ["planned", "in_progress", "review", "verified", "blocked", "unknown"]},
+        "change": {"enum": ["added", "changed"]},
         "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
       }
     },
@@ -68,7 +69,8 @@
         "id": {"type": "string", "minLength": 1},
         "source": {"type": "string", "minLength": 1},
         "target": {"type": "string", "minLength": 1},
-        "relation": {"type": "string", "minLength": 1}
+        "relation": {"type": "string", "minLength": 1},
+        "change": {"enum": ["added"]}
       }
     }
   }

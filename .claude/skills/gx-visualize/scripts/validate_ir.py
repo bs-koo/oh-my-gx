@@ -14,6 +14,11 @@ VIEWS = {"trace", "progress", "impact", "service", "sequence"}
 EVIDENCE_KINDS = {"artifact", "code", "test", "command", "design", "inferred"}
 LOCATOR_TYPES = {"xlsx", "pdf"}
 
+# 변경 표시(설계서 §5.8.1). 노드는 신규·변경, 엣지는 신규만 있다 - 엣지 ID가 양 끝과
+# 관계로 정해지므로 "바뀐 엣지"는 "사라진 엣지 + 새 엣지"로 나타난다.
+NODE_CHANGES = {"added", "changed"}
+EDGE_CHANGES = {"added"}
+
 _FALLBACK_ENCODING = "cp949"
 
 
@@ -125,6 +130,8 @@ def validate(path: Path | str, project_root: Path | str | None = None) -> dict[s
             errors.append((f"{base}.status", f"must be one of {', '.join(sorted(STATUSES))}"))
         if "technical_label" in node and not isinstance(node["technical_label"], str):
             errors.append((f"{base}.technical_label", "must be a string"))
+        if "change" in node and (not isinstance(node["change"], str) or node["change"] not in NODE_CHANGES):
+            errors.append((f"{base}.change", f"must be one of {', '.join(sorted(NODE_CHANGES))}"))
         evidence = node.get("evidence", [])
         if not isinstance(evidence, list):
             errors.append((f"{base}.evidence", "must be an array"))
@@ -201,6 +208,8 @@ def validate(path: Path | str, project_root: Path | str | None = None) -> dict[s
                 errors.append((f"{base}.id", f"duplicate edge id {edge_id!r}; first declared at $.edges[{edge_ids[edge_id]}].id"))
             else:
                 edge_ids[edge_id] = index
+        if "change" in edge and (not isinstance(edge["change"], str) or edge["change"] not in EDGE_CHANGES):
+            errors.append((f"{base}.change", f"must be one of {', '.join(sorted(EDGE_CHANGES))}"))
         for field in ("source", "target"):
             value = edge.get(field)
             if isinstance(value, str) and value not in node_ids:
