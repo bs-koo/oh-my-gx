@@ -278,7 +278,7 @@ cellW  = max(150, maxWidth - gapX + 8)    ← 2026-09-28 대체: max(150, maxWid
 - **Facade**: 이름이 `*Facade`인 클래스를 service 계층으로 인식하고, `facade` 폴더를 계층 폴더로 본다. kereb reb 도메인의 컨트롤러 API 11개는 `@Component RebFacade`를 거쳐 서비스로 가는데, 이 클래스가 노드가 아니어서 11개 모두 고립됐다(미해소 관계 11건). 폴더를 계층으로 보지 않으면 `facade`가 가짜 도메인이 되어 엣지가 도메인 경계에서 잘린다. 이름 규칙으로 한정한 이유: `@Component`에는 유틸(엑셀 헬퍼 등)도 많아서 전부 넣으면 D3(진입점 체인만)에 어긋난다.
 - **단일 명령**: `scripts/build_map.py`가 스캔 → 변경 표시 → (선택) 라벨 → 분할 → 도메인별 검증·렌더 → Mermaid 자산 → 인덱스를 한 번에 수행하고 JSON 보고를 낸다. 콜드런에서 모델이 단계를 손으로 잇느라 13~24분이 걸렸고, 분할 단계는 실행 명령이 없어 매번 연결 코드를 새로 짰다.
 - **라벨 보강 규칙**: `--labels <json>`은 스캔 라벨과 **정확히 일치하는** 항목만 바꾼다. 콜드런에서 "용어집으로 한국어 라벨을 붙인다"는 지시에 매칭 규칙이 없어 실행할 수 없었다. 라벨은 변경 판정 **뒤에** 적용한다 — 먼저 적용하면 기준 스캔과 `technical_label`이 달라져 라벨을 붙인 노드가 모두 "변경"으로 표시된다.
-- **커밋 제외**: oh-my-gx 자체는 `.gitignore`로 산출물을 제외하지만, 소비 프로젝트는 setup 정책상 `.dev/`를 커밋한다. 그래서 gx-commit이 `.dev/architecture`와 `.dev/*/visual/*`을 스테이징에서 뺀다. `.dev/*/visual`(끝의 `/*` 없이)은 git pathspec에서 하위 파일과 매치되지 않는다 — 실측.
+- **커밋 제외**: oh-my-gx 자체는 `.gitignore`로 산출물을 제외하지만, 소비 프로젝트는 setup 정책상 `.dev/`를 커밋한다. 그래서 gx-commit이 `.dev/architecture`와 `.dev/*/visual/*`을 스테이징에서 뺀다. `.dev/*/visual`(끝의 `/*` 없이)은 git pathspec에서 하위 파일과 매치되지 않는다 — 실측. gx-ralph-iterate의 헤드리스 커밋도 같은 pathspec으로 unstage한다 — 랄프 루프 도중 `service` 뷰를 실행한 작업 트리라면 gx-commit을 거치지 않고 바로 커밋되기 때문이다.
 
 #### 5.8.4 보고 계약 (`service` 뷰)
 
