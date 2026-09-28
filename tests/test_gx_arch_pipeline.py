@@ -16,11 +16,27 @@ class CompletionGateTests(unittest.TestCase):
         for path in PHASES:
             self.assertIn("Step 5.5", self._text(path), path.name)
 
-    def test_gate_offers_session_and_full_scope(self):
+    def test_gate_offers_only_the_full_map_with_change_marks(self):
         for path in PHASES:
             text = self._text(path)
-            self.assertIn("--scope session", text, path.name)
-            self.assertIn("--scope all", text, path.name)
+            self.assertNotIn("--scope", text, path.name)
+            self.assertNotIn("세션분", text, path.name)
+            self.assertIn("--changed-since ${BASE_BRANCH}", text, path.name)
+            self.assertIn("--project-root ${PROJECT_ROOT}", text, path.name)
+
+    def test_svn_projects_skip_change_marks_honestly(self):
+        for path in PHASES:
+            text = self._text(path)
+            self.assertIn("svn이면", text, path.name)
+            self.assertIn("변경 표시 없이", text, path.name)
+
+    def test_both_pipelines_keep_the_same_gate_text(self):
+        # 의도적 중복(maintenance-notes)이 어긋나지 않게 두 절을 통째로 비교한다.
+        sections = []
+        for path in PHASES:
+            text = self._text(path)
+            sections.append(text[text.index("## Step 5.5") : text.index("## Step 6")])
+        self.assertEqual(sections[0], sections[1])
 
     def test_headless_sessions_skip_without_asking(self):
         for path in PHASES:

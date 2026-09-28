@@ -254,22 +254,20 @@ AskUserQuestion(
 AskUserQuestion(
   questions: [{
     header: "구조 시각화",
-    question: "이번 사이클에서 구현된 구조를 시각화할까요?",
+    question: "이번 사이클에서 구현된 구조를 아키텍처 맵에 표시할까요?",
     multiSelect: false,
     options: [
-      { label: "전체 갱신 + 이번 반영", description: "누적 아키텍처 맵 전체를 다시 스캔해 갱신합니다 — .dev/architecture/에 저장 (gx-visualize service --scope all)" },
-      { label: "이번 세션분만", description: "이번 사이클이 변경한 파일의 체인만 그립니다 — .dev/{slug}/visual/에 스냅샷 저장 (gx-visualize service --scope session)" },
+      { label: "아키텍처 맵 갱신", description: "프로젝트 전체를 다시 스캔해 .dev/architecture/를 갱신하고, 이번 사이클에서 새로 생기거나 바뀐 구조를 [신규]·[변경]으로 표시합니다" },
       { label: "아니요", description: "시각화하지 않고 완료합니다" }
     ]
   }]
 )
 ```
 
-- **전체 갱신** → `--scope all`은 매 실행 프로젝트 전체를 다시 스캔하므로 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알리고 재확인한 뒤, `oh-my-gx:gx-visualize`를 `service --scope all`로 호출한다.
-- **이번 세션분만** → `oh-my-gx:gx-visualize`를 `service --scope session`으로 호출하고 이번 사이클의 변경 파일 목록을 전달한다.
+- **아키텍처 맵 갱신** → 프로젝트 전체를 다시 스캔하므로 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알린 뒤, `oh-my-gx:gx-visualize`를 `service --project-root ${PROJECT_ROOT} --changed-since ${BASE_BRANCH}`로 호출한다. 선택이 곧 동의이므로 다시 묻지 않는다. **svn이면** `--changed-since`를 넘기지 않는다 — 변경 표시는 git 기준 시점이 필요하다. 이때는 맵을 변경 표시 없이 갱신했다고 함께 보고한다.
 - **아니요** → 건너뛴다.
 
-호출 결과의 `view`·`backend`·`html_path`·`validation_status`·`missing_inputs`를 그대로 보고한다. 검증된 HTML이 없으면 `visualization_status: failed`로 보고하고 경로를 성공처럼 제시하지 않는다.
+호출 결과의 `index_path`·`validation_status`, 도메인별 `backend`·`validation_status`, `changes`(신규·변경·삭제 수 또는 생략 이유)를 그대로 보고한다. `index_path`가 없으면 `visualization_status: failed`로 보고하고 경로를 성공처럼 제시하지 않는다.
 
 이 절의 실패·누락·fallback은 **커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다.** Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
 

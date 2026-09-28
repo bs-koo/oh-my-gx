@@ -75,7 +75,6 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
         skill = self.read(SKILL)
         for phrase, view in (
             ("변경 영향도", "impact"),
-            ("구조", "service"),
             ("서비스 관계", "service"),
             ("호출 순서", "sequence"),
             ("진행", "progress"),
@@ -84,6 +83,7 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
             ("요구사항", "trace"),
         ):
             self.assertIn(f"`{phrase}` → `{view}`", skill)
+        self.assertIn("`구조`·`전체 구조`·`아키텍처` → `service`", skill)
         for phase, view in (("design", "service"), ("review", "impact"), ("그 외", "progress")):
             self.assertIn(f"`{phase}` → `{view}`", skill)
         self.assertIn("모호하면 사용자에게 view를 질문", skill)
@@ -133,9 +133,6 @@ class AccumulatedMapContractTests(unittest.TestCase):
             ROOT / ".claude" / "skills" / "gx-visualize" / "SKILL.md"
         ).read_text(encoding="utf-8")
 
-    def test_scope_flag_is_documented(self):
-        self.assertIn("--scope session|all", self.skill)
-
     def test_map_dir_default_is_not_committed_location(self):
         self.assertIn(".dev/architecture/", self.skill)
         self.assertNotIn("docs/architecture/", self.skill)
@@ -162,17 +159,31 @@ class AccumulatedMapContractTests(unittest.TestCase):
     def test_empty_scan_must_not_write_empty_ir(self):
         self.assertIn("0개 노드", self.skill)
 
-    def test_session_scope_writes_to_dev_dir(self):
-        self.assertIn("`session` | `${DEV_DIR}/visual/`", self.skill)
+    def test_session_scope_is_gone(self):
+        self.assertNotIn("--scope", self.skill)
+        self.assertNotIn("세션분", self.skill)
+        self.assertNotIn("스냅샷 배너", self.skill)
 
-    def test_all_scope_writes_to_map_dir(self):
-        self.assertIn("`all` | `${MAP_DIR}/`", self.skill)
+    def test_service_view_runs_one_documented_command(self):
+        self.assertIn("python scripts/build_map.py <PROJECT_ROOT>", self.skill)
+        self.assertTrue((SKILL_DIR / "scripts" / "build_map.py").is_file())
 
-    def test_session_html_carries_snapshot_banner(self):
-        self.assertIn("스냅샷 배너", self.skill)
+    def test_change_marking_is_documented(self):
+        for text in ("--changed-since", "[신규]", "[변경]", "커밋하지 않은 변경도 현재 쪽에 포함"):
+            self.assertIn(text, self.skill)
 
-    def test_session_and_accumulated_outputs_are_not_mixed(self):
-        self.assertIn("한 폴더에 섞지 않는다", self.skill)
+    def test_labels_require_exact_glossary_match(self):
+        self.assertIn("--labels", self.skill)
+        self.assertIn("정확히 같은 이름", self.skill)
+
+    def test_service_report_is_per_domain(self):
+        for field in ("`index_path`", "`domains[]`", "`changes`", "`cross_domain_edge_count`"):
+            self.assertIn(field, self.skill)
+
+    def test_mapping_no_longer_requires_codemap_for_service(self):
+        mapping = MAPPING.read_text(encoding="utf-8")
+        self.assertRegex(mapping, r"(?m)^\| `service` \| 진입점 체인 스캔")
+        self.assertNotIn("`codemap|design`", mapping)
 
     def test_scope_all_does_not_promise_incremental_merge(self):
         self.assertNotIn("증분 갱신", self.skill)

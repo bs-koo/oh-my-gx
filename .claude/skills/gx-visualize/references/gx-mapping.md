@@ -17,7 +17,7 @@
 | `self-check` | `self-check.md`, `trust-ledger.md` | 검증·Gate 근거 카드 | `progress` |
 | `context` | 프로젝트 `context/`의 명시적 아키텍처 자료 | 확인된 경계·용어·관계 | `service` |
 | `call-evidence` | 설계서의 sequence, 코드·테스트의 명시된 호출 근거 | 순서 edge와 파일·라인 근거 | `sequence` |
-| 진입점 체인 스캔 | `scripts/scan_entrypoints.py`의 스캔 결과 | `service`/`sequence` 뷰의 screen·api·service·repository·table 노드와 code 근거 | `service`, `sequence` |
+| `entrypoint-scan` (진입점 체인 스캔) | `scripts/scan_entrypoints.py`의 스캔 결과 | `service`/`sequence` 뷰의 screen·api·service·repository·table 노드와 code 근거 | `service`, `sequence` |
 
 각 evidence는 [IR 계약](ir-contract.md)에 따라 실제 파일과 텍스트 line 또는 비텍스트 locator를 가리킨다. source가 관계를 선언하지 않으면 이름의 유사성만으로 edge를 만들지 않는다.
 
@@ -28,10 +28,10 @@
 | `trace` | `prd`, `design`, `DE-08`, `DE-13` | `codemap` | 누락 그룹을 기록하고 확인 가능한 체인만 생성 |
 | `progress` | `state` | `summary`, `self-check` | 상태 정본이 없으면 failed, 보조 누락은 부분 표시 |
 | `impact` | `diff` | `codemap`, `design` | diff가 없으면 failed, 근거가 있는 변경만 표시 |
-| `service` | `codemap` 또는 `design` | `DE-08`, `context` | 둘 다 없으면 failed; 런타임 토폴로지는 추정하지 않음 |
+| `service` | 진입점 체인 스캔(`entrypoint-scan`) | `context` | 스캔이 0개 노드면 failed; 런타임 토폴로지는 추정하지 않음 |
 | `sequence` | `design` 또는 `call-evidence` | `codemap` | 둘 다 없으면 failed; 호출 순서를 추정하지 않음 |
 
-`collect_inputs`는 찾은 파일을 프로젝트 루트 상대경로로 `files`에 넣는다. `missing_inputs`에는 충족되지 않은 필수 논리 그룹만 넣고, 보조 그룹은 `missing_inputs`에 넣지 않는다. `A 또는 B` 필수 조건은 후보 중 하나 이상을 찾으면 충족이며, 모두 없을 때만 표의 합성 그룹명(`codemap|design`, `design|call-evidence`)을 넣는다. 두 배열은 중복을 제거하고 사전순으로 정렬한다.
+`collect_inputs`는 찾은 파일을 프로젝트 루트 상대경로로 `files`에 넣는다. `missing_inputs`에는 충족되지 않은 필수 논리 그룹만 넣고, 보조 그룹은 `missing_inputs`에 넣지 않는다. `A 또는 B` 필수 조건은 후보 중 하나 이상을 찾으면 충족이며, 모두 없을 때만 표의 합성 그룹명(`design|call-evidence`)을 넣는다. 두 배열은 중복을 제거하고 사전순으로 정렬한다.
 
 ## 영수증 상태 정규화
 
