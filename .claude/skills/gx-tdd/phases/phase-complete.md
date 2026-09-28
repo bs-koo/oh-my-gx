@@ -221,7 +221,7 @@ AskUserQuestion(
     question: "이번 사이클에서 구현된 구조를 아키텍처 맵에 표시할까요?",
     multiSelect: false,
     options: [
-      { label: "아키텍처 맵 갱신", description: "프로젝트 전체를 다시 스캔해 .dev/architecture/를 갱신하고, 이번 사이클에서 새로 생기거나 바뀐 구조를 [신규]·[변경]으로 표시합니다" },
+      { label: "아키텍처 맵 갱신", description: "프로젝트 전체를 다시 스캔해 .dev/architecture/를 갱신하고, 이번 사이클에서 새로 생기거나 바뀐 구조를 신규·변경으로 표시합니다" },
       { label: "아니요", description: "시각화하지 않고 완료합니다" }
     ]
   }]
