@@ -30,6 +30,9 @@ DIAGRAM_BACKENDS = {"archify", "mermaid"}
 BACKEND_LABELS = {"archify": "그림", "mermaid": "표 + 그림", "static": "표"}
 STATUS_LABELS = {"valid": "통과", "fallback": "폴백", "not_applicable": "폴백", "failed": "실패"}
 
+# "이번 변경" 절에 도메인마다 보여 줄 항목 수. 나머지는 "외 N개"로 센다.
+MAX_LISTED = 8
+
 
 def _escape(value: Any) -> str:
     return html.escape(str(value), quote=True)
@@ -69,7 +72,7 @@ def _evidence_files(ir: dict[str, Any]) -> set[str]:
     return files
 
 
-def _collect_domains(map_dir: Path) -> list[dict[str, Any]]:
+def _collect_domains(map_dir: Path, change_labels: dict[str, str]) -> list[dict[str, Any]]:
     ir_dir = map_dir / "ir"
     receipts_dir = map_dir / "receipts"
     domains: list[dict[str, Any]] = []
@@ -81,6 +84,12 @@ def _collect_domains(map_dir: Path) -> list[dict[str, Any]]:
         edges = ir.get("edges", [])
         missing_inputs = ir.get("missing_inputs", [])
         unresolved_edges = ir.get("unresolved_edges", [])
+        change_nodes = sorted(
+            (node["change"], str(node.get("label", "")))
+            for node in (nodes if isinstance(nodes, list) else [])
+            if isinstance(node, dict) and node.get("change") in change_labels
+        )
+        meta = ir.get("meta") if isinstance(ir.get("meta"), dict) else {}
         domains.append(
             {
                 "domain": domain,
@@ -91,6 +100,10 @@ def _collect_domains(map_dir: Path) -> list[dict[str, Any]]:
                 "backend": receipt.get("backend"),
                 "status": receipt.get("status"),
                 "evidence_files": _evidence_files(ir),
+                "added": sum(1 for change, _ in change_nodes if change == "added"),
+                "changed": sum(1 for change, _ in change_nodes if change == "changed"),
+                "change_nodes": change_nodes,
+                "changes_meta": meta.get("changes") if isinstance(meta.get("changes"), dict) else None,
             }
         )
     return domains
@@ -111,21 +124,73 @@ def _domain_card(entry: dict[str, Any]) -> str:
     backend_text = backend if backend else "없음"
     missing_text = "누락 없음" if entry["missing_count"] == 0 else f'누락 입력 {entry["missing_count"]}건'
     unresolved_text = "누락 없음" if entry["unresolved_count"] == 0 else f'미해소 관계 {entry["unresolved_count"]}건'
+    has_changes = bool(entry["added"] or entry["changed"])
+    changed_class = " domain-changed" if has_changes else ""
+    change_html = (
+        f'<p class="change-line">이번 변경: 신규 {entry["added"]}개 · 변경 {entry["changed"]}개</p>'
+        if has_changes else ""
+    )
     return (
-        f'<li><article class="domain-card domain-{css_class}">'
+        f'<li><article class="domain-card domain-{css_class}{changed_class}">'
         f'<h3>{_escape(domain)}</h3>'
         f'<p class="domain-kind">{_escape(diagram_label)} · 백엔드 <code>{_escape(backend_text)}</code> · {_escape(status_label)}</p>'
         f'<p>노드 {entry["node_count"]}개 · 관계 {entry["edge_count"]}개</p>'
         f'<p>{_escape(missing_text)} · {_escape(unresolved_text)}</p>'
+        f"{change_html}"
         f'<p><a href="domains/{_escape(domain)}.html">{_escape(domain)}.html 열기</a></p>'
         "</article></li>"
     )
 
 
-def build_index(map_dir: Path | str, project_root: Path | str | None = None) -> Path:
-    """`map_dir`의 `ir/`·`receipts/`를 읽어 `아키텍처-맵.html` 인덱스를 만들고 그 경로를 반환한다."""
+def _listed(items: list[str]) -> str:
+    rest = len(items) - MAX_LISTED
+    return ", ".join(items[:MAX_LISTED]) + (f" 외 {rest}개" if rest > 0 else "")
+
+
+def _change_section(domains: list[dict[str, Any]], changes: Any, change_labels: dict[str, str]) -> str:
+    """인덱스 맨 위의 '이번 변경' 절. 변경 표시를 요청하지 않은 실행(changes 없음)에는 만들지 않는다."""
+    if not isinstance(changes, dict):
+        return ""
+    heading = '<section aria-labelledby="changes-title"><h2 id="changes-title">이번 변경</h2>'
+    if not changes.get("available"):
+        reason = changes.get("reason") or "기준 시점을 정할 수 없습니다"
+        return f'{heading}<p class="fallback-note">변경 표시를 생략했습니다: {_escape(reason)}</p></section>'
+    base = f'{changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
+    items = [
+        f'<li><a href="domains/{_escape(entry["domain"])}.html">{_escape(entry["domain"])}</a> — '
+        f'신규 {entry["added"]}개 · 변경 {entry["changed"]}개: '
+        f'{_escape(_listed([f"[{change_labels[change]}] {label}" for change, label in entry["change_nodes"]]))}</li>'
+        for entry in domains
+        if entry["change_nodes"]
+    ]
+    parts = [heading]
+    if items:
+        parts.append(f"<p>기준 {_escape(base)} 이후 구조가 바뀐 곳입니다.</p>")
+        parts.append(f'<ul class="change-summary">{"".join(items)}</ul>')
+    else:
+        parts.append(f"<p>기준 {_escape(base)} 이후 구조 변경이 없습니다.</p>")
+    removed = changes.get("removed") if isinstance(changes.get("removed"), list) else []
+    if removed:
+        names = _listed([str(item.get("label", "")) for item in removed if isinstance(item, dict)])
+        parts.append(f"<p>삭제된 항목 {len(removed)}개 (그림에는 없습니다): {_escape(names)}</p>")
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def build_index(
+    map_dir: Path | str, project_root: Path | str | None = None, changes: dict[str, Any] | None = None
+) -> Path:
+    """`map_dir`의 `ir/`·`receipts/`를 읽어 `아키텍처-맵.html` 인덱스를 만들고 그 경로를 반환한다.
+
+    `changes`는 build_map.py가 넘기는 전체 변경 요약(삭제 목록 포함)이다. 생략하면 도메인
+    IR의 `meta.changes`에서 기준 정보만 읽는다 - 삭제 목록은 도메인 IR에 없으므로 인덱스만
+    따로 다시 만들면 삭제 목록이 빠진다.
+    """
     map_dir = Path(map_dir)
-    domains = _collect_domains(map_dir)
+    fallback = _fallback_module()
+    domains = _collect_domains(map_dir, fallback.CHANGE_LABELS)
+    if changes is None:
+        changes = next((entry["changes_meta"] for entry in domains if entry["changes_meta"]), None)
 
     node_total = sum(entry["node_count"] for entry in domains)
     edge_total = sum(entry["edge_count"] for entry in domains)
@@ -134,20 +199,25 @@ def build_index(map_dir: Path | str, project_root: Path | str | None = None) -> 
     evidence_files: set[str] = set()
     for entry in domains:
         evidence_files |= entry.pop("evidence_files")
+        entry.pop("changes_meta")
 
-    fallback = _fallback_module()
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sha = fallback._short_head(project_root)
     revision_text = f" · 커밋 {_escape(sha)}" if sha else ""
+    change_text = ""
+    if isinstance(changes, dict) and changes.get("available"):
+        change_text = f' · 이번 변경 기준 {changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
     summary = (
         f"도메인 {len(domains)}개 · 근거로 인용된 소스 파일 {len(evidence_files)}개 · "
         f"노드 {node_total}개 · 관계 {edge_total}개 · 그림 {diagram_count}개 · 표 {table_only_count}개 · "
-        f"생성 시각 {generated_at}{revision_text}"
+        f"생성 시각 {generated_at}{revision_text}{change_text}"
     )
 
     if domains:
         cards = "".join(_domain_card(entry) for entry in domains)
-        body = f'<section aria-labelledby="domains-title"><h2 id="domains-title">도메인</h2><ul class="domain-list">{cards}</ul></section>'
+        body = _change_section(domains, changes, fallback.CHANGE_LABELS) + (
+            f'<section aria-labelledby="domains-title"><h2 id="domains-title">도메인</h2><ul class="domain-list">{cards}</ul></section>'
+        )
     else:
         body = '<p class="fallback-note">생성된 도메인 산출물이 없습니다.</p>'
 
