@@ -104,6 +104,8 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 python scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-since <REF>] [--domain <DOMAIN>] [--labels <LABELS_JSON>]
 ```
 
+스킬 호출의 인자는 이 명령에 이렇게 옮긴다. `--project-root <PROJECT_ROOT>`는 첫 번째 위치 인자 `<PROJECT_ROOT>`가 된다 — `build_map.py`에는 `--project-root` 플래그가 없다. `--map-dir`·`--changed-since`·`--domain`·`--labels`는 이름 그대로 넘긴다. `--map-dir`를 생략하면 `<PROJECT_ROOT>/.dev/architecture/`에 쓴다.
+
 이 명령이 스캔 → 변경 표시 → 라벨 적용 → 도메인 분할 → 도메인별 검증·렌더(Archify, 실패하면 Mermaid → static) → Mermaid 자산 확보 → 인덱스 생성을 모두 수행하고 JSON 보고를 stdout에 낸다. 단계를 손으로 나눠 실행하거나 중간 파일을 직접 만들지 않는다. 종료 코드는 `validation_status`가 `failed`면 1, 아니면 0이다.
 
 - `--changed-since <REF>`: `<REF>`와 HEAD의 공통 조상 이후 새로 생기거나 바뀐 구조를 표시한다. gx-dev·gx-tdd Step 5.5는 `BASE_BRANCH`를 넘긴다. 단독 호출에서는 사용자가 "이번 브랜치에서 바뀐 것"처럼 비교 기준을 말했을 때만 넘기고, 아니면 생략한다. git 저장소가 아니거나 기준을 정할 수 없으면 맵은 그대로 만들고 표시만 생략하며, 보고의 `changes.reason`에 이유가 남는다.
@@ -153,9 +155,9 @@ ${MAP_DIR}/
 | 필드 | 내용 |
 |---|---|
 | `view` | `service` |
-| `map_dir`, `index_path` | 출력 폴더와 `아키텍처-맵.html` 경로. 실패 시 `index_path`는 `null` |
+| `map_dir`, `index_path` | 출력 폴더와 `아키텍처-맵.html` 경로. 스캔이 0개 노드이거나 `--domain`의 도메인을 찾지 못하면 `index_path`는 `null`이다 — 도메인 하나가 실패해도 인덱스는 만들어진다 |
 | `validation_status` | 도메인 하나라도 `failed`거나 도메인이 없으면 `failed`, 아니면 `fallback`이 하나라도 있으면 `fallback`, 전부 Archify면 `verified` |
-| `domains[]` | 도메인마다 `domain`, `backend`, `validation_status`, `html_path`, `ir_path`, `receipt_path`, `missing_inputs`, `added`, `changed` |
+| `domains[]` | 도메인마다 `domain`, `backend`, `validation_status`, `html_path`, `ir_path`, `receipt_path`, `missing_inputs`, `added`, `changed`, 실패한 도메인에는 `errors` |
 | `changes` | `--changed-since`가 없으면 `null`. 있으면 `available`, `base_ref`, 그리고 `base_commit`·`added`·`changed`·`added_edges`·`removed[]` 또는 `reason` |
 | `cross_domain_edge_count` | 어느 도메인 그림에도 담기지 못한 엣지 수 |
 | `unresolved_edge_count`, `skipped` | 스캔 진단 |

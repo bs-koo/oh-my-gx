@@ -528,7 +528,7 @@ class VisualFallbackRenderingTests(unittest.TestCase):
         self.assertIn("B12", html_text)
 
     def test_html_dir_writes_html_separately_from_receipt_dir(self):
-        # `--scope all`은 이걸로 `${MAP_DIR}/domains/`(html)와 `${MAP_DIR}/receipts/`
+        # `service` 맵(build_map.py)은 이걸로 `${MAP_DIR}/domains/`(html)와 `${MAP_DIR}/receipts/`
         # (receipt)를 분리한다 - 32개 파일이 평평하게 쌓인다는 지적(2026-09-21)의 수정.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

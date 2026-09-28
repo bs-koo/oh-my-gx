@@ -391,7 +391,7 @@ class ArchifyCommandTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("git"), "git not available on PATH")
     def test_credentialed_origin_url_has_userinfo_stripped(self):
         # I6: 자격증명이 박힌 remote(CI 체크아웃의 x-access-token, 캐시된 PAT)에서
-        # --scope all을 돌리면 그 토큰이 커밋되는 {domain}.html에 그대로 들어간다
+        # service 맵(build_map.py)을 만들면 그 토큰이 {domain}.html에 그대로 들어간다
         # (2026-09-18 최종 리뷰 I6, 설계서 §7). userinfo(`//user:pass@`)를 벗겨야 한다.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -717,8 +717,9 @@ class ToArchifyTests(unittest.TestCase):
 class RealArchifyLayoutTests(unittest.TestCase):
     """가짜 실행 파일로는 레이아웃 규칙을 잡을 수 없다 - 실제 Archify 검증기로 확인한다.
 
-    2026-09-28 실측: 이 모양(API 8개 → 서비스 1개, [신규]·[변경] 라벨)은 열 간격 8px에서
-    clean-flow/edge-through-node·endpoint-side-direction으로 실패하고 40px에서 통과한다.
+    2026-09-28 실측: API 8개가 서비스 1개로 모이는 모양은 열 간격 8px에서, 엔드포인트 3개 중
+    가운데만 [신규]로 넓어진 모양은 칸이 가장 넓은 박스보다 좁을 때 실패했다. 칸 폭을 가장
+    넓은 박스 이상으로 잡으면 둘 다 통과한다(설계서 §5.8.3).
     """
 
     def test_fan_in_domain_with_change_marks_passes_real_validation(self):

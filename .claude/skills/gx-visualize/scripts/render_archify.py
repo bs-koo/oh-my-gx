@@ -452,7 +452,7 @@ def render_archify(
     `output_name`, when given, replaces the view-derived filename stem (`{view}.html`,
     `{view}.receipt.json`, `{view}.archify.json`) with `{output_name}.*` — so a caller
     rendering several IR documents that share the same `view` into one `output_dir`
-    (e.g. one per domain under `--scope all`) doesn't have each render overwrite the
+    (e.g. one per domain in the service map built by build_map.py) doesn't have each render overwrite the
     last. `view` itself still decides Archify eligibility (`diagram_type`); only the
     on-disk filenames change. Omit it to keep the existing `{view}.*` behavior.
 
@@ -460,7 +460,7 @@ def render_archify(
     Archify는 이 배너를 모르므로 전달 후 render_fallback.inject_banner()로 삽입한다.
 
     `html_dir`, when given, writes `{stem}.html`(Archify 성공 시)와 폴백 HTML을 거기에
-    쓴다 — `.receipt.json`·`.archify.json`은 여전히 `output_dir`에 남는다. `--scope all`은
+    쓴다 — `.receipt.json`·`.archify.json`은 여전히 `output_dir`에 남는다. `service` 맵(build_map.py)은
     이걸로 `${MAP_DIR}/domains/`와 `${MAP_DIR}/receipts/`를 분리한다. 생략하면
     `output_dir`과 같아 기존 평평한 구조 그대로다.
 

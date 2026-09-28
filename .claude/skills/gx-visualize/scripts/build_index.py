@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the single entry-point index HTML for the accumulated architecture map.
 
-`--scope all`이 도메인마다 `domains/{domain}.html`을 따로 만들면(실측: SEF 8도메인)
+`service` 뷰(build_map.py)가 도메인마다 `domains/{domain}.html`을 따로 만들면(실측: SEF 8도메인)
 사용자는 32개 파일 중 무엇부터 열어야 할지 모른다(2026-09-21 사용자 리뷰: "파일이
 너무 많아서 뭐가 뭔지도 잘 모르겠어"). 이 스크립트는 `ir/`와 `receipts/`를 읽어
 `아키텍처-맵.html` 한 장으로 요약한다 - 파일 목록이 아니라 도메인마다 판단에 필요한

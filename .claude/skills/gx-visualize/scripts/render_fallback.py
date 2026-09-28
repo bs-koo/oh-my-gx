@@ -389,12 +389,12 @@ def render(
     요청한 실행에서만 meta.changes를 채운다.
 
     `html_dir`, when given, writes `{stem}.html` there instead of `output_dir` while
-    `.receipt.json` stays in `output_dir` — `--scope all`은 이걸로 `${MAP_DIR}/domains/`와
+    `.receipt.json` stays in `output_dir` — `service` 맵(build_map.py)은 이걸로 `${MAP_DIR}/domains/`와
     `${MAP_DIR}/receipts/`를 분리한다(2026-09-21 사용자 리뷰: 32개 파일이 평평하게 쌓여
     "뭐가 뭔지 모르겠다"는 지적). 생략하면 `output_dir`과 같아 기존 평평한 구조 그대로다.
 
     `mermaid_asset_href`, when given, renders an actual `<pre class="mermaid">` diagram
-    that loads Mermaid from this href (`--scope all`이 도메인들과 공유하는
+    that loads Mermaid from this href (`service` 맵의 도메인들이 공유하는
     `${MAP_DIR}/assets/mermaid.min.js`) instead of showing only the Mermaid source text.
     생략하면(기본값) 지금까지처럼 소스만 보여준다 - 자산을 못 구했을 때도 이 경로를
     그대로 쓴다.

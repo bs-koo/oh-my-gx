@@ -228,6 +228,12 @@ class AccumulatedMapContractTests(unittest.TestCase):
         for command in commands:
             self.assertNotIn("--archify-command", command, command)
 
+    def test_skill_arguments_map_onto_the_build_map_command(self):
+        # 2026-09-28 콜드런: Step 5.5의 `--project-root`를 build_map.py에 그대로 넘기면
+        # "unrecognized arguments"로 실패했다 - 대응 규칙이 문서에 있어야 한다.
+        self.assertIn("첫 번째 위치 인자 `<PROJECT_ROOT>`", self.skill)
+        self.assertIn("`<PROJECT_ROOT>/.dev/architecture/`", self.skill)
+
 
 if __name__ == "__main__":
     unittest.main()
