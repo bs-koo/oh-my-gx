@@ -6,6 +6,13 @@ GX 시각화 입력은 UTF-8 JSON 객체다. `schema_version`은 정수 `1`, `vi
 상태는 `planned`, `in_progress`, `review`, `verified`, `blocked`, `unknown` 중 하나다.
 한국어 표시명은 `label`, 코드 식별자는 선택적인 `technical_label`로 분리한다.
 
+노드는 선택적인 `change`(`added` 또는 `changed`), edge는 선택적인 `change`(`added`)를
+가질 수 있다 — `service` 뷰가 두 스캔을 비교해 이번 사이클에 새로 생기거나 바뀐 구조를
+표시한다(설계서 §5.8). 최상위 `meta.changes`는 `available`과 `base_ref`를 항상 갖고,
+`available`이 참이면 `base_commit`을, 거짓이면 `reason`을 갖는다 — `build_map.py`가
+`compute_changes()` 결과를 도메인 IR에 싣고, 렌더러(`render_fallback.py`)가 이 값으로
+'이번 변경' 배너를 만든다.
+
 `unknown`은 모든 view에서 유효한 상태값이지만 의미가 다르다 — `service`는 코드
 스캐너가 상태를 알아낼 방법이 없어 모든 노드가 구조적으로 `unknown`이므로
 `render_fallback.py`가 그 view에서만 배지·범례에서 뺀다. `trace`·`progress`·

@@ -234,6 +234,11 @@ class AccumulatedMapContractTests(unittest.TestCase):
         self.assertIn("첫 번째 위치 인자 `<PROJECT_ROOT>`", self.skill)
         self.assertIn("`<PROJECT_ROOT>/.dev/architecture/`", self.skill)
 
+    def test_long_running_map_command_has_a_timeout_instruction(self):
+        # 2026-09-28 최종 리뷰 I2: 참조 저장소 실측 145초가 Bash 기본 제한 120초를 넘는다.
+        self.assertIn("600000ms", self.skill)
+        self.assertIn("같은 명령을 다시 실행한다", self.skill)
+
 
 if __name__ == "__main__":
     unittest.main()

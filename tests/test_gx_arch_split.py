@@ -19,8 +19,6 @@ _scan_module = importlib.util.module_from_spec(_scan_spec)
 _scan_spec.loader.exec_module(_scan_module)
 FACADE_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-facade"
 
-LAYER_DIRS = ("controller", "service", "repository", "dao", "mapper", "web", "api")
-
 
 def _node(node_id: str, file: str, kind: str = "service") -> dict:
     return {

@@ -238,7 +238,7 @@ def build_index(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="누적 아키텍처 맵의 인덱스 HTML(아키텍처-맵.html)을 만듭니다.")
+    parser = argparse.ArgumentParser(description="아키텍처 맵의 인덱스 HTML(아키텍처-맵.html)을 만듭니다.")
     parser.add_argument("map_dir", type=Path)
     parser.add_argument("--project-root", type=Path)
     args = parser.parse_args()

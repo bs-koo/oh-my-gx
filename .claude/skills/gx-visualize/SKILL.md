@@ -88,7 +88,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 2. [IR 계약](references/ir-contract.md)에 맞춰 `{view}.json`을 만든다. 공식 ID와 한국어 표시명을 보존하고, 텍스트는 실제 파일·라인, XLSX/PDF는 실제 파일·locator를 쓴다.
 3. `scripts/validate_ir.py {view}.json --project-root <PROJECT_ROOT>`로 IR을 검증한다. renderer API와 CLI에도 같은 `project_root`를 전달한다. 실패하면 성공 HTML을 만들거나 이전 HTML을 재사용하지 않는다.
 4. `auto`이면 `scripts/detect_backend.py`의 `ensure_archify()`가 Archify 설치를 확인하고, 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로 1회 자동 설치를 시도한 뒤 그 결과로 `detect_backend()`가 실행 가능한 백엔드를 확정한다. 설치 성공은 exit code가 아니라 `doctor` 결과로 판정하며, 설치·재탐지가 모두 실패해도 예외 없이 폴백(Mermaid → static)으로 넘어간다.
-5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. 렌더 명령은 `python scripts/render_archify.py ${DEV_DIR}/visual/{view}.json ${DEV_DIR}/visual --project-root <PROJECT_ROOT>`다 — `--archify-command`는 생략한다(스크립트가 4번과 같은 `ensure_archify()`로 스스로 찾는다). 명시적 override는 테스트용이며, 그 값이 셸을 거치며 깨질 수 있다([선택 어댑터 계약](references/archify-adapter.md#archify-명령-계약)). Archify가 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
+5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. 렌더 명령은 `python scripts/render_archify.py <OUTPUT_DIR>/{view}.json <OUTPUT_DIR> --project-root <PROJECT_ROOT>`다(`<OUTPUT_DIR>`는 `--output` 또는 기본 출력 폴더) — `--archify-command`는 생략한다(스크립트가 4번과 같은 `ensure_archify()`로 스스로 찾는다). 명시적 override는 테스트용이며, 그 값이 셸을 거치며 깨질 수 있다([선택 어댑터 계약](references/archify-adapter.md#archify-명령-계약)). Archify가 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
 6. HTML이 존재하고 비어 있지 않으며 IR·receipt의 view와 경로가 일치하는지 확인한다.
 7. 아래 출력 계약으로 결과를 보고한다. 전체 예시는 [trace 요청 예시](examples/trace-request.md)를 참고한다.
 
@@ -104,13 +104,15 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 python scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-since <REF>] [--domain <DOMAIN>] [--labels <LABELS_JSON>]
 ```
 
-스킬 호출의 인자는 이 명령에 이렇게 옮긴다. `--project-root <PROJECT_ROOT>`는 첫 번째 위치 인자 `<PROJECT_ROOT>`가 된다 — `build_map.py`에는 `--project-root` 플래그가 없다. `--map-dir`·`--changed-since`·`--domain`·`--labels`는 이름 그대로 넘긴다. `--map-dir`를 생략하면 `<PROJECT_ROOT>/.dev/architecture/`에 쓴다.
+스킬 호출의 인자는 이 명령에 이렇게 옮긴다. `--project-root <PROJECT_ROOT>`는 첫 번째 위치 인자 `<PROJECT_ROOT>`가 된다 — `build_map.py`에는 `--project-root` 플래그가 없다. `--map-dir`·`--changed-since`·`--domain`·`--labels`는 이름 그대로 넘긴다. `--map-dir`를 생략하면 `<PROJECT_ROOT>/.dev/architecture/`에 쓴다. 상대경로 `--map-dir`는 명령을 실행한 현재 폴더 기준이므로 절대경로로 넘긴다.
+
+이 명령은 도메인마다 Archify 검증·전달을 거쳐 몇 분이 걸릴 수 있다(kreb admin 도메인 8개 실측 약 2분 30초). 명령 실행의 시간 제한을 10분(600000ms)으로 두거나 백그라운드로 실행하고 끝날 때까지 기다린다. 제한에 걸려 끊겼으면 같은 명령을 다시 실행한다 — 매번 전체를 다시 만들므로 결과는 같다.
 
 이 명령이 스캔 → 변경 표시 → 라벨 적용 → 도메인 분할 → 도메인별 검증·렌더(Archify, 실패하면 Mermaid → static) → Mermaid 자산 확보 → 인덱스 생성을 모두 수행하고 JSON 보고를 stdout에 낸다. 단계를 손으로 나눠 실행하거나 중간 파일을 직접 만들지 않는다. 종료 코드는 `validation_status`가 `failed`면 1, 아니면 0이다.
 
-- `--changed-since <REF>`: `<REF>`와 HEAD의 공통 조상 이후 새로 생기거나 바뀐 구조를 표시한다. gx-dev·gx-tdd Step 5.5는 `BASE_BRANCH`를 넘긴다. 단독 호출에서는 사용자가 "이번 브랜치에서 바뀐 것"처럼 비교 기준을 말했을 때만 넘기고, 아니면 생략한다. git 저장소가 아니거나 기준을 정할 수 없으면 맵은 그대로 만들고 표시만 생략하며, 보고의 `changes.reason`에 이유가 남는다.
-- `--labels <LABELS_JSON>`: 한국어 라벨을 붙일 때만 쓴다. `context/{도메인}/glossary.md`를 읽고, 스캔 라벨과 **정확히 같은 이름**이 용어집에 있는 항목만 `{"스캔 라벨": "한국어 라벨"}` JSON 파일로 만든다. 스캔 라벨은 클래스명(`UserService`) 또는 `클래스.메서드`(`UserController.login`)이고, `python scripts/scan_entrypoints.py <PROJECT_ROOT>` 출력의 `label`에서 확인한다. 부분 일치·추측으로 항목을 만들지 않는다 — 근거가 없으면 이 인자를 생략하고 기술 식별자를 그대로 둔다. 원래 이름은 `technical_label`에 보존된다.
-- `--domain <DOMAIN>`: 그 도메인만 다시 그린다. 다른 도메인의 산출물은 그대로 둔다.
+- `--changed-since <REF>`: `<REF>`와 HEAD의 공통 조상 이후 새로 생기거나 바뀐 구조를 표시한다. gx-dev·gx-tdd Step 5.5는 `BASE_BRANCH`를 넘긴다. 단독 호출에서는 사용자가 "이번 브랜치에서 바뀐 것"처럼 비교 기준을 말했을 때만 넘기고, 아니면 생략한다. git 저장소가 아니거나 기준을 정할 수 없으면 맵은 그대로 만들고 표시만 생략하며, 보고의 `changes.reason`에 이유가 남는다. 사용자가 비교를 원하지만 기준 브랜치를 말하지 않았으면 추측하지 말고 묻는다.
+- `--labels <LABELS_JSON>`: 한국어 라벨을 붙일 때만 쓴다. `context/{도메인}/glossary.md`를 읽고, 스캔 라벨과 **정확히 같은 이름**이 용어집에 있는 항목만 `{"스캔 라벨": "한국어 라벨"}` JSON 파일로 만들어 `${MAP_DIR}/labels.json`에 쓴다(커밋 제외 위치 — 프로젝트 루트에 두면 커밋된다). 스캔 라벨은 클래스명(`UserService`) 또는 `클래스.메서드`(`UserController.login`)이다. `python scripts/scan_entrypoints.py <PROJECT_ROOT> --output <MAP_DIR>/scan.json`로 파일에 써서 그 `label`을 읽거나, 이전 실행의 `${MAP_DIR}/ir/*.ir.json`에서 읽는다(stdout으로 읽지 않는다 — 큰 저장소에서 출력이 크고 콘솔 인코딩이 깨질 수 있다). 부분 일치·추측으로 항목을 만들지 않는다 — 근거가 없으면 이 인자를 생략하고 기술 식별자를 그대로 둔다. 클래스 노드는 원래 이름이 `technical_label`에 남는다. API 노드는 `technical_label`이 HTTP 경로라 그대로 두므로 `클래스.메서드` 이름은 그림에서 사라진다.
+- `--domain <DOMAIN>`: 그 도메인만 다시 만든다. 다른 도메인 페이지와 인덱스의 변경 표시는 이전 실행 그대로 남으므로, 전체의 변경 표시가 필요하면 `--domain` 없이 실행한다.
 - `--map-dir <MAP_DIR>`: 출력 폴더. 프로젝트 밖 경로는 사용자가 명시했을 때만 쓴다.
 
 ### 출력 구조 — `아키텍처-맵.html` 하나만 열면 된다
