@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-java"
+FACADE_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-facade"
 SCRIPT = REPO / ".claude" / "skills" / "gx-visualize" / "scripts" / "scan_entrypoints.py"
 
 
@@ -448,6 +449,29 @@ class LegacyEncodingTests(unittest.TestCase):
             result = self.scan(root)  # must not raise
         self.assertEqual([], result["nodes"])
         self.assertEqual(["broken.jsp"], result["skipped"])
+
+
+class FacadeScanTests(unittest.TestCase):
+    def setUp(self):
+        self.result = _module().scan(FACADE_FIXTURE)
+        self.by_label = {node["label"]: node for node in self.result["nodes"]}
+
+    def test_component_facade_becomes_a_service_node(self):
+        self.assertEqual(self.by_label["RebFacade"]["kind"], "service")
+
+    def test_chain_runs_through_the_facade(self):
+        pairs = {(edge["source"], edge["target"]) for edge in self.result["edges"]}
+        api = self.by_label["RebController.list"]["id"]
+        facade = self.by_label["RebFacade"]["id"]
+        service = self.by_label["RebService"]["id"]
+        self.assertIn((api, facade), pairs)
+        self.assertIn((facade, service), pairs)
+        self.assertNotIn("RebFacade", {edge["target"] for edge in self.result["unresolved_edges"]})
+
+    def test_other_component_utilities_stay_out_of_the_map(self):
+        # D3: 진입점 체인만 - @Component 유틸까지 넣지 않는다.
+        self.assertNotIn("ExcelSupport", self.by_label)
+        self.assertIn("ExcelSupport", {edge["target"] for edge in self.result["unresolved_edges"]})
 
 
 if __name__ == "__main__":

@@ -12,6 +12,13 @@ _spec.loader.exec_module(_module)
 domain_of = _module.domain_of
 split_by_domain = _module.split_by_domain
 
+_scan_spec = importlib.util.spec_from_file_location(
+    "gx_split_test_scan", REPO / ".claude" / "skills" / "gx-visualize" / "scripts" / "scan_entrypoints.py"
+)
+_scan_module = importlib.util.module_from_spec(_scan_spec)
+_scan_spec.loader.exec_module(_scan_module)
+FACADE_FIXTURE = REPO / "tests" / "fixtures" / "gx-arch-facade"
+
 LAYER_DIRS = ("controller", "service", "repository", "dao", "mapper", "web", "api")
 
 
@@ -86,6 +93,18 @@ class DomainOfTests(unittest.TestCase):
 
     def test_domain_is_none_for_empty_path(self):
         self.assertIsNone(domain_of(""))
+
+    def test_facade_folder_is_a_layer_not_a_domain(self):
+        self.assertEqual(domain_of("src/main/java/com/sqi/reb/facade/RebFacade.java"), "reb")
+
+    def test_facade_chain_stays_in_its_domain(self):
+        # facade를 계층으로 보지 않으면 "facade" 가짜 도메인이 생겨 api→facade 엣지가 잘린다.
+        result = _scan_module.scan(FACADE_FIXTURE)
+        ir = {"schema_version": 1, "view": "service", "locale": "ko-KR", "title": "t",
+              "nodes": result["nodes"], "edges": result["edges"]}
+        parts = split_by_domain(ir)
+        self.assertEqual(sorted(parts), ["reb"])
+        self.assertNotIn("cross-domain-edge", parts["reb"]["missing_inputs"])
 
 
 class SplitByDomainTests(unittest.TestCase):

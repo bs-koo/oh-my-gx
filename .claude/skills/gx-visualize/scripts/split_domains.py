@@ -13,7 +13,7 @@ from typing import Any
 
 # 계층 폴더 이름. `api`는 계층 이름이자 도메인 이름일 수 있어(예: .../gseed/api/
 # controller/ApiController.java) 파일명에 가장 가까운 계층 폴더만 계층으로 소비한다.
-LAYER_DIRS = ("controller", "service", "repository", "dao", "mapper", "web", "api")
+LAYER_DIRS = ("controller", "service", "facade", "repository", "dao", "mapper", "web", "api")
 
 
 def domain_of(path: str) -> str | None:
