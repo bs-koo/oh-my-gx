@@ -479,8 +479,28 @@ class VisualFallbackRenderingTests(unittest.TestCase):
     def test_change_banner_says_so_when_a_domain_did_not_change(self):
         ir = {"nodes": [{"id": "a", "label": "x"}], "meta": self.CHANGES_META}
         self.assertIn("구조 변경이 없습니다", self.renderer.change_banner_html(ir))
+        # 2026-09-28 최종 리뷰 M3: 표시를 생략한 실행도 도메인 페이지에 배너로 알린다 -
+        # 인덱스를 거치지 않고 도메인 페이지를 바로 연 사람이 "표시 없음"을 "변경 없음"으로
+        # 읽지 않게 한다.
         skipped = {"nodes": [], "meta": {"changes": {"available": False, "reason": "git 아님"}}}
-        self.assertEqual(self.renderer.change_banner_html(skipped), "")
+        skipped_banner = self.renderer.change_banner_html(skipped)
+        self.assertIn("이번 변경 표시를 생략했습니다", skipped_banner)
+        self.assertIn("git 아님", skipped_banner)
+        no_marking = {"nodes": [{"id": "a", "label": "x"}]}
+        self.assertEqual(self.renderer.change_banner_html(no_marking), "")
+
+    def test_change_banner_escapes_user_supplied_ref_and_reason(self):
+        ir = {
+            "nodes": [{"id": "a", "label": "x"}],
+            "meta": {"changes": {"available": True, "base_ref": "<script>x</script>", "base_commit": "abc1234"}},
+        }
+        banner = self.renderer.change_banner_html(ir)
+        self.assertNotIn("<script>", banner)
+        self.assertIn("&lt;script&gt;", banner)
+        skipped = {"nodes": [], "meta": {"changes": {"available": False, "reason": "<script>x</script>"}}}
+        skipped_banner = self.renderer.change_banner_html(skipped)
+        self.assertNotIn("<script>", skipped_banner)
+        self.assertIn("&lt;script&gt;", skipped_banner)
 
     def test_banner_is_inserted_right_after_the_body_tag(self):
         injected = self.renderer.inject_banner("<html><body><p>본문</p></body></html>", "<p>배너</p>")

@@ -8,11 +8,11 @@
 |---|---|---|
 | `screen` | — | `**/*.jsp` 파일 |
 | `api` | `@RequestMapping`·`@GetMapping`·`@PostMapping`·`@PutMapping`·`@DeleteMapping`·`@PatchMapping`이 붙은 메서드 | `HttpServlet` 상속 클래스의 `doGet`·`doPost` |
-| `service` | `@Service` 클래스, 이름이 `*Facade`인 클래스 | `*Service`·`*ServiceImpl`·`*Facade` 클래스 |
+| `service` | `@Service` 클래스, 이름이 `*Facade`·`*FacadeImpl`인 클래스 | `*Service`·`*ServiceImpl`·`*Facade`·`*FacadeImpl` 클래스 |
 | `repository` | `@Repository`·`@Mapper` 클래스·인터페이스 | `*DAO`·`*Dao` 클래스 |
 | `table` | MyBatis XML의 `<select>`·`<insert>`·`<update>`·`<delete>` 본문에서 추출한 테이블명 | 동일 |
 
-**Facade.** 컨트롤러와 여러 서비스 사이에 `@Component` Facade를 두는 구조가 있다(kereb reb: `RebController → RebFacade → 서비스들`). Facade가 노드가 아니면 컨트롤러 API가 모두 고립된다. `@Component`에는 유틸(엑셀 헬퍼 등)도 많아 어노테이션으로는 가를 수 없으므로 **이름이 `Facade`로 끝나는 클래스만** 서비스 계층으로 본다. `facade` 폴더는 `controller`·`service`처럼 계층 폴더로 취급한다 — 도메인은 그 앞 세그먼트다.
+**Facade.** 컨트롤러와 여러 서비스 사이에 `@Component` Facade를 두는 구조가 있다(kereb reb: `RebController → RebFacade → 서비스들`). Facade가 노드가 아니면 컨트롤러 API가 모두 고립된다. `@Component`에는 유틸(엑셀 헬퍼 등)도 많아 어노테이션으로는 가를 수 없으므로 **이름이 `Facade`·`FacadeImpl`로 끝나는 클래스만** 서비스 계층으로 본다. 인터페이스 `XFacade` + 구현 `XFacadeImpl`도 기존 Impl 병합이 한 노드로 합친다. `facade` 폴더는 `controller`·`service`처럼 계층 폴더로 취급한다 — 도메인은 그 앞 세그먼트다.
 
 ## edge relation 값
 

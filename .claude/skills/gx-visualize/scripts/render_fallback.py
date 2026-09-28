@@ -318,26 +318,34 @@ def _short_head(project_root: Path | str | None) -> str | None:
 
 
 def change_banner_html(ir: dict[str, Any]) -> str:
-    """`meta.changes`가 켜진 IR에 '이번 변경' 배너를 만든다. 표시가 꺼져 있으면 빈 문자열.
+    """`meta.changes`가 켜진 IR에 '이번 변경' 배너를 만든다. `meta.changes`가 아예 없으면
+    (= `--changed-since` 없이 실행) 빈 문자열.
 
     Archify가 만든 HTML에도 같은 배너를 넣으므로(render_archify) fallback.css에 기대지 않고
     인라인 스타일만 쓴다. 변경이 없는 도메인에도 배너를 넣는다 - 표시 기능이 켜져 있었다는
-    사실이 보여야 '표시 없음'을 '변경 없음'으로 읽을 수 있다(설계서 §5.8.2).
+    사실이 보여야 '표시 없음'을 '변경 없음'으로 읽을 수 있다(설계서 §5.8.2). 표시를
+    생략한 실행(`available: False`)도 중립색 배너로 알린다 - 인덱스를 거치지 않고 도메인
+    페이지를 연 사람이 '표시 없음'을 '변경 없음'으로 읽지 않게 한다(2026-09-28 최종 리뷰 M3).
     """
     meta = ir.get("meta")
     changes = meta.get("changes") if isinstance(meta, dict) else None
-    if not isinstance(changes, dict) or not changes.get("available"):
+    if not isinstance(changes, dict):
         return ""
-    nodes = ir.get("nodes", [])
-    added = sum(1 for node in nodes if node.get("change") == "added")
-    changed = sum(1 for node in nodes if node.get("change") == "changed")
-    base = f'{changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
-    if added or changed:
-        text = f"이번 변경 — 기준 {base} 이후 신규 {added}개 · 변경 {changed}개. 그림의 [신규]·[변경] 표시와 굵은 선을 확인하세요."
-        colors = "background:#dcfce7;color:#14532d;"
-    else:
-        text = f"이번 변경 — 기준 {base} 이후 이 도메인에는 구조 변경이 없습니다."
+    if not changes.get("available"):
+        reason = changes.get("reason") or "이유가 기록되지 않았습니다"
+        text = f"이번 변경 표시를 생략했습니다 — {reason}"
         colors = "background:#f1f5f9;color:#334155;"
+    else:
+        nodes = ir.get("nodes", [])
+        added = sum(1 for node in nodes if node.get("change") == "added")
+        changed = sum(1 for node in nodes if node.get("change") == "changed")
+        base = f'{changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
+        if added or changed:
+            text = f"이번 변경 — 기준 {base} 이후 신규 {added}개 · 변경 {changed}개. 그림의 [신규]·[변경] 표시와 굵은 선을 확인하세요."
+            colors = "background:#dcfce7;color:#14532d;"
+        else:
+            text = f"이번 변경 — 기준 {base} 이후 이 도메인에는 구조 변경이 없습니다."
+            colors = "background:#f1f5f9;color:#334155;"
     return (
         f'<p class="change-banner" role="note" style="margin:0;padding:10px 16px;{colors}'
         f'font:600 14px/1.5 system-ui,sans-serif;">{_escape(text)}</p>'

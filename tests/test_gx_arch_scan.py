@@ -474,5 +474,70 @@ class FacadeScanTests(unittest.TestCase):
         self.assertIn("ExcelSupport", {edge["target"] for edge in self.result["unresolved_edges"]})
 
 
+class FacadeImplMergeTests(unittest.TestCase):
+    """인터페이스 `XFacade` + 구현 `XFacadeImpl`도 기존 Impl 병합(_merge_service_impls)이
+    하나로 합쳐야 한다(2026-09-28 최종 리뷰 M8) - 병합되지 않으면 인터페이스는 막다른
+    길로 남고 구현체가 부르는 서비스 쪽은 컨트롤러에서 닿지 않는다."""
+
+    def setUp(self):
+        self.scan = _module().scan
+
+    def _write(self, root: Path, relative: str, text: str) -> None:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def test_facade_impl_merges_into_its_interface_and_chain_reaches_the_service(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "com/sqi/reb/facade/RebFacade.java", (
+                "package com.sqi.reb.facade;\n\n"
+                "public interface RebFacade {\n"
+                "    String list();\n"
+                "}\n"
+            ))
+            self._write(root, "com/sqi/reb/facade/RebFacadeImpl.java", (
+                "package com.sqi.reb.facade;\n\n"
+                "@Component\n"
+                "public class RebFacadeImpl implements RebFacade {\n"
+                "    private final RebService rebService;\n\n"
+                "    public String list() {\n"
+                "        return rebService.list();\n"
+                "    }\n"
+                "}\n"
+            ))
+            self._write(root, "com/sqi/reb/service/RebService.java", (
+                "package com.sqi.reb.service;\n\n"
+                "@Service\n"
+                "public class RebService {\n"
+                "    public String list() {\n"
+                "        return \"\";\n"
+                "    }\n"
+                "}\n"
+            ))
+            self._write(root, "com/sqi/reb/controller/RebController.java", (
+                "package com.sqi.reb.controller;\n\n"
+                "@RestController\n"
+                "@RequestMapping(\"/api/reb\")\n"
+                "public class RebController {\n"
+                "    private final RebFacade rebFacade;\n\n"
+                "    @GetMapping(\"/list\")\n"
+                "    public String list() {\n"
+                "        return rebFacade.list();\n"
+                "    }\n"
+                "}\n"
+            ))
+            result = self.scan(root)
+
+        by_label = {n["label"]: n for n in result["nodes"] if n["kind"] == "service"}
+        self.assertIn("RebFacade", by_label)
+        self.assertNotIn("RebFacadeImpl", by_label)
+
+        by_id = {n["id"]: n for n in result["nodes"]}
+        pairs = {(by_id[e["source"]]["label"], by_id[e["target"]]["label"]) for e in result["edges"]}
+        self.assertIn(("RebController.list", "RebFacade"), pairs)
+        self.assertIn(("RebFacade", "RebService"), pairs)
+
+
 if __name__ == "__main__":
     unittest.main()

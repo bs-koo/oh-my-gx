@@ -119,7 +119,9 @@ def _class_kind(text: str) -> str | None:
         # Facade는 컨트롤러와 여러 서비스 사이의 계층이다(kereb reb: Controller → RebFacade
         # → 서비스들). 노드가 아니면 그 뒤 체인 전체가 컨트롤러에서 끊긴다. @Component에는
         # 유틸도 많으므로 어노테이션이 아니라 이름으로 한정한다(설계서 §5.8.3, D3).
-        if name.endswith(("Service", "ServiceImpl", "Facade")):
+        # 인터페이스 `XFacade` + 구현 `XFacadeImpl`도 기존 Impl 병합(_merge_service_impls
+        # 등 _merge_impl 계열)이 한 노드로 합친다(2026-09-28 최종 리뷰 M8).
+        if name.endswith(("Service", "ServiceImpl", "Facade", "FacadeImpl")):
             return "service"
     return None
 
