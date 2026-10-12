@@ -158,7 +158,9 @@ def _undecided(rec: dict) -> bool:
     return any("[미확정" in (rec.get(h) or "") for h in rec if not h.startswith("_"))
 
 
-def build_floor(plan: dict, fn_ids: list[str]) -> list[dict]:
+def build_floor(plan: dict, fn_ids: list[str], ledger: dict[str, dict] | None = None) -> list[dict]:
+    """ledger(테스트ID→원장 행)에 지문이 같은 Pass가 있으면 이미 완료된 행으로 보고 하한선 대상에서 뺀다."""
+    ledger = ledger or {}
     known = {r["연계기능ID"] for r in plan["rows"] if r["연계기능ID"]}
     unknown = [f for f in fn_ids if f not in known]
     if unknown:
@@ -174,12 +176,18 @@ def build_floor(plan: dict, fn_ids: list[str]) -> list[dict]:
         deps = re.findall(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*", rec.get("의존성", ""))
         if any(d in fn_of and fn_of[d] != rec["연계기능ID"] for d in deps):
             marks.append("타기능 의존")
+        fp = row_fingerprint(rec)
+        done = ledger.get(rec["테스트ID"], {})
+        if _undecided(rec):
+            verdict = "제외(미확정 행)"
+        elif done.get("상태") == "Pass" and done.get("행 지문") == fp:
+            verdict = "제외(원장 Pass)"
+        else:
+            verdict = "대상"
         floor.append({
             "테스트ID": rec["테스트ID"], "기능ID": rec["연계기능ID"],
             **{f: rec.get(f, "") for f in FIELDS4}, "의존성": rec.get("의존성", ""),
-            "표식": ", ".join(marks),
-            "판정": "제외(미확정 행)" if _undecided(rec) else "대상",
-            "행 지문": row_fingerprint(rec),
+            "표식": ", ".join(marks), "판정": verdict, "행 지문": fp,
         })
     return floor
 
@@ -459,6 +467,8 @@ def record(floor_rows: list[dict], check: dict, ledger_dir: Path, date: str, tes
         path = _ledger_path(ledger_dir, fn)
         merged = _read_ledger(path)
         for row in rows:
+            if merged.get(row["테스트ID"], {}).get("상태") == "Pass" and row["상태"] != "Pass":
+                continue  # 이전 작업의 Pass를 후속 작업의 제외·이관으로 낮추지 않는다
             merged[row["테스트ID"]] = row
         _write_ledger(path, fn, merged)
         written.append(path)
@@ -621,7 +631,8 @@ def cmd_scope(args) -> int:
         print(f"기능 {len(functions)}개 목록을 {out}에 썼습니다")
         return 0
     fn_ids = [f.strip() for f in args.fn.split(",") if f.strip()]
-    rows = build_floor(plan, fn_ids)
+    ledger = {r["테스트ID"]: r for r in _ledger_rows(Path(args.ledger_dir))} if args.ledger_dir else None
+    rows = build_floor(plan, fn_ids, ledger)
     write_floor(out, Path(args.plan).as_posix(), plan, fn_ids, rows, args.date)
     target = sum(1 for r in rows if r["판정"] == "대상")
     print(f"하한선 {len(rows)}행(대상 {target})을 {out}에 썼습니다")
@@ -636,6 +647,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--out", required=True)
     s.add_argument("--fn")
     s.add_argument("--spec")
+    s.add_argument("--ledger-dir")
     s.add_argument("--date", default=_dt.date.today().isoformat())
     s.set_defaults(func=cmd_scope)
     c = sub.add_parser("check")

@@ -49,6 +49,15 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(rows["UT-001"]["행 지문"], "bbbb0002")
         self.assertEqual(list(rows), ["UT-001", "UT-005"])
 
+    def test_existing_pass_is_not_downgraded_by_later_exclusion_or_transfer(self):
+        de13.record([floor_row("UT-001"), floor_row("UT-002")], check_of(UT_001="found", UT_002="found"),
+                    self.ledger, "2026.10.01", "kim")
+        de13.record([floor_row("UT-001", verdict="제외(원장 Pass)"), floor_row("UT-002", verdict="이관(W05)")],
+                    check_of(), self.ledger, "2026.10.12", "bs.koo")
+        rows = {r["테스트ID"]: r for r in de13.read_md_table(self.ledger / "FN-001.md")}
+        self.assertEqual((rows["UT-001"]["상태"], rows["UT-001"]["수행일"]), ("Pass", "2026.10.01"))
+        self.assertEqual((rows["UT-002"]["상태"], rows["UT-002"]["담당자"]), ("Pass", "kim"))
+
     def test_refuses_when_target_is_missing_or_skipped(self):
         with self.assertRaisesRegex(de13.InputError, "UT-001"):
             de13.record([floor_row("UT-001")], check_of(UT_001="missing"), self.ledger, "2026.10.12", "x")

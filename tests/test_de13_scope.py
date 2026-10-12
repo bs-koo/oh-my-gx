@@ -70,6 +70,32 @@ class ScopeTests(unittest.TestCase):
         self.assertIn("타기능 의존", floor["UT-004"]["표식"])  # FN-002가 FN-001의 UT-001에 의존
         self.assertNotIn("타기능 의존", floor["UT-003"]["표식"])
 
+    def test_floor_marks_rows_already_passed_in_ledger_with_same_fingerprint(self):
+        plan = de13.load_plan(self.plan())
+        fp = {r["테스트ID"]: de13.row_fingerprint(r) for r in plan["rows"]}
+        ledger = {"UT-001": {"테스트ID": "UT-001", "상태": "Pass", "행 지문": fp["UT-001"]},
+                  "UT-002": {"테스트ID": "UT-002", "상태": "Pass", "행 지문": "deadbeef"},
+                  "UT-003": {"테스트ID": "UT-003", "상태": "제외", "행 지문": fp["UT-003"]}}
+        floor = {r["테스트ID"]: r for r in de13.build_floor(plan, ["FN-001"], ledger)}
+        self.assertEqual(floor["UT-001"]["판정"], "제외(원장 Pass)")
+        self.assertEqual(floor["UT-002"]["판정"], "대상")  # 계획서가 바뀐 행은 다시 검증
+        self.assertEqual(floor["UT-003"]["판정"], "대상")
+
+    def test_cli_scope_reads_ledger_dir(self):
+        path = self.plan()
+        plan = de13.load_plan(path)
+        fp = next(de13.row_fingerprint(r) for r in plan["rows"] if r["테스트ID"] == "UT-001")
+        ledger = self.dir / ".dev" / "ut-results"
+        ledger.mkdir(parents=True)
+        (ledger / "FN-001.md").write_text("# FN-001 단위테스트 결과 원장\n\n" + de13.write_md_table(de13.LEDGER_HEADER, [
+            {"테스트ID": "UT-001", "상태": "Pass", "수행일": "2026.10.01", "담당자": "kim", "테스트 위치": "a:1",
+             "행 지문": fp, "비고": ""}]), encoding="utf-8")
+        out = self.dir / "floor.md"
+        self.assertEqual(de13.main(["scope", "--plan", str(path), "--fn", "FN-001", "--out", str(out),
+                                    "--ledger-dir", str(ledger), "--date", "2026-10-12"]), 0)
+        rows = {r["테스트ID"]: r for r in de13.read_md_table(out)}
+        self.assertEqual(rows["UT-001"]["판정"], "제외(원장 Pass)")
+
     def test_fingerprint_ignores_whitespace_and_excludes_test_id(self):
         a = {"테스트ID": "UT-1", "사전조건": "a  b", "입력": " x", "기대결과": "y", "사후조건": "z"}
         b = {"테스트ID": "UT-9", "사전조건": "a b", "입력": "x ", "기대결과": "y", "사후조건": "z"}
