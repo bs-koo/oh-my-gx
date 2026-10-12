@@ -12,7 +12,7 @@ codex.cmd plugin add oh-my-gx@oh-my-gx
 codex.cmd plugin list --json
 ```
 
-Codex 입력창의 `/skills`에서 17개 GX 스킬을 확인한다. `source:url,url:./`는 Git source이고, 개발 중 임시 marketplace에는 `source:local,path:./`를 사용한다. Git source의 실제 cache 경로와 사용자 홈은 `codex.cmd plugin list --json`으로 확인한다. subprocess의 홈 환경변수가 사용자 홈과 다를 수 있으므로 홈 디렉토리를 추측해 수동 복사하지 않는다. 개발용 `skill-creator` junction은 릴리스 스킬 목록에 포함하지 않는다.
+Codex 입력창의 `/skills`에서 18개 GX 스킬을 확인한다. `source:url,url:./`는 Git source이고, 개발 중 임시 marketplace에는 `source:local,path:./`를 사용한다. Git source의 실제 cache 경로와 사용자 홈은 `codex.cmd plugin list --json`으로 확인한다. subprocess의 홈 환경변수가 사용자 홈과 다를 수 있으므로 홈 디렉토리를 추측해 수동 복사하지 않는다. 개발용 `skill-creator` junction은 릴리스 스킬 목록에 포함하지 않는다.
 
 ## 역할·도구 매핑
 

@@ -49,7 +49,7 @@ codex.cmd plugin add oh-my-gx@oh-my-gx
 codex.cmd plugin list --json
 ```
 
-PR이 main에 반영된 뒤 기본 브랜치를 처음 설치할 때는 `--ref feat/codex-native-validation`을 생략합니다. 설치 후 작업할 프로젝트 폴더에서 새 Codex 세션을 열고 `/skills`로 GX 스킬 17개를, `/hooks`로 GX 훅 정의와 신뢰 상태를 확인합니다.
+PR이 main에 반영된 뒤 기본 브랜치를 처음 설치할 때는 `--ref feat/codex-native-validation`을 생략합니다. 설치 후 작업할 프로젝트 폴더에서 새 Codex 세션을 열고 `/skills`로 GX 스킬 18개를, `/hooks`로 GX 훅 정의와 신뢰 상태를 확인합니다.
 
 아래는 터미널 명령이 아니라 **Codex 채팅창에 단계별로 입력할 요청**입니다.
 
@@ -272,6 +272,8 @@ tdd에도 **핵심 모드(core)**가 있습니다: 설계(testability 평가)와
 
 프롬프트로만 금지되는 계약(red-writer의 프로덕션 코드 미열람, implementer의 테스트 불변, reviewer의 판정 순서)은 `bash scripts/behavior-tests.sh`가 실제 모델 실행으로 검증합니다 — phase 파일의 디스패치 프롬프트를 그대로 추출해 픽스처 프로젝트에서 돌리고 파일 해시·러너 출력·도구 호출 기록으로 판정합니다 (`tests/golden-scenarios.md` "자동 행동 테스트").
 
+**단위테스트계획서 연동** — 프로젝트에 gx-pm이 만든 `*단위테스트계획서*.xlsx`가 있으면 gx-tdd가 자동으로 연동합니다. `REB-FN-001 원천 데이터 등록 TDD로 개발해줘`처럼 기능ID를 적으면 그 기능의 계획서 케이스가 테스트의 최소 하한선이 되고, 테스트 이름에 테스트ID(`REB-UT-002`)가 남습니다. 기능ID가 없으면 후보를 묻습니다("연동 안 함" 선택 가능). 완료 시 `.dev/ut-results/{기능ID}.md`에 Pass가 기록되고, `/gx-test-plan`으로 계획서 사본에 결과·수행일·담당자를 채웁니다.
+
 ### ralph
 
 루프 엔지니어링(Ralph 루프) 스킬입니다. PRD 확정 후, **외부 러너**가 수용 기준(AC)을 1건씩 자율 반복으로 구현합니다 — 사람은 PRD 승인까지만 개입하고, 구현 구간은 무인으로 돌아갑니다.
@@ -384,6 +386,10 @@ AI 글쓰기 패턴(40+가지, 한국어 K1~K19 / 영어 E1~E19 / 공통 C1~C6)�
 "/gx-humanizer 제안서.md AI 글쓰기 흔적 교정해줘"
 "/gx-humanizer 보고서.md 정밀 모드로 교정해줘"        ← strict (의미 보존·과윤문 검증)
 ```
+
+### test-plan
+
+`/gx-test-plan` — gx-tdd가 남긴 단위테스트 결과 원장을 단위테스트계획서 xlsx **사본**(`.dev/ut-results/export/`)에 반영합니다. 원본은 바꾸지 않습니다. 계획서가 개정되어 케이스 내용이 바뀐 행은 채우지 않고 "재확인 필요"로 알려 줍니다.
 
 ### commit / pull-request
 

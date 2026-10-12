@@ -25,6 +25,7 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | R3 | 작은 한국어 문단을 humanizer strict로 처리 | fidelity/naturalness 서로 다른 child id; `04_fidelity.json`의 `audit_verdict`, `05_naturalness.json`의 `verdict` | 역할 분리 확인 / strict 재작성 필요 |
 | Q1 | 기본 모드에서 선택 질문 | 실제 답변 전 의존 작업 없음; 질문 id/선택지/실제 답변의 결정 기록 보존 | 수정 후 PASS |
 | Q2 | gx-context 문서 기반 개방형 질문과 gx-dev 모드·프로파일 질문 | 각 질문의 stable snake_case id; 질문 3개 이하; 질문별 선택지 3개 이하; 명시적 Other option 0개; UI Other 자유 입력과 선택 답변의 decision capture가 같은 id로 기록됨 | 미실행 (1.33.0 후보에서도 UI Other·capture 본시험 미완료) |
+| T1 | 계획서 xlsx가 있는 소비 프로젝트에서 `REB-FN-014 … TDD로 개발해줘` (Codex) | 기능ID가 ARGS에서 빠지고 브랜치가 `feat/…`; 기능 후보 질문이 질문 3개 이하·선택지 3개 이하; 게이트 1·2 질문이 실제 답변을 기다림; `.dev/ut-results/REB-FN-014.md` 생성 | 미실행 |
 
 ## 보호 훅·커밋
 
