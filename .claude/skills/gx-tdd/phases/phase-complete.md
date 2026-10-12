@@ -23,7 +23,7 @@ complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한�
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1로 진행한다** — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
+0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1.5로 진행한다** (단위테스트계획서 연동이 아니면 Step -1.5가 그대로 Step -1로 넘긴다) — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
@@ -33,10 +33,10 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 
 ## Step -1.5: 단위테스트계획서 하한선 게이트 (연동 중에만)
 
-state.md에 `ut-scope`가 없으면 건너뛴다. `DE13`은 `setup-testplan.md`와 같은 규칙으로 정한다 (이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로).
+연동 중(state.md `ut-scope`가 기능ID)이 아니면 건너뛴다. `DE13`(이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로)과 Python 명령 `PY`는 `setup-testplan.md` 머리말과 같은 규칙으로 정한다. Python을 찾지 못하면 하한선을 확인할 수 없으므로 "Python 3.10 이상이 필요합니다 — 설치 후 `/gx-tdd --phase complete`로 다시 실행하세요"를 안내하고 중단한다 (확인 없이 원장을 쓰지 않는다).
 
 1. **계획서 교체 감지**: `setup-testplan.md` "6. 계획서 교체 감지"대로 sha를 비교한다. 다르면 "브랜치 진행 중 계획서가 바뀌었습니다"를 알리고, 범위를 다시 추출할지(→ `scope` 재실행 후 phase-requirements 게이트 1부터) 그대로 진행할지 묻는다.
-2. `python3 "<DE13>" check --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json"`
+2. `"<PY>" "<DE13>" check --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json"`
 3. 종료 코드 0 → Step -1로 진행. 2 → 메시지를 보고하고 중단. 1 → `ut-check.json`의 `missing`·`skipped` 목록을 보여주고 묻는다:
 
 ```
@@ -68,12 +68,12 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 **verify 결과 처리**:
 
-- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
+- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1.5부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
   1. verify가 실패 테스트/빌드 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:
      - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
-     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
+     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1.5부터 재실행)
      - "중단" → state.md에 `status: cancelled` 기록
   3. 자동 수정은 시도하지 않음 (RGR 사이클로만 수정. coder 직접 호출 금지)
 
@@ -131,9 +131,9 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 ## Step 0.5: 단위테스트 결과 원장 기록 (연동 중에만)
 
-state.md에 `ut-scope`가 없으면 건너뛴다. Step -1.5와 Step -1이 통과한 뒤에만 실행한다.
+연동 중(state.md `ut-scope`가 기능ID)이 아니면 건너뛴다. Step -1.5와 Step -1이 통과한 뒤에만 실행한다.
 
-`python3 "<DE13>" record --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --check "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json" --ledger-dir "${PROJECT_ROOT}/.dev/ut-results" --date "<오늘, YYYY.MM.DD>" --tester "<git config user.name>"`
+`"<PY>" "<DE13>" record --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --check "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json" --ledger-dir "${PROJECT_ROOT}/.dev/ut-results" --date "<오늘, YYYY.MM.DD>" --tester "<git config user.name>"`
 
 - svn이면 `--tester`는 `git` 대신 사용자에게 한 번 확인한 이름을 쓰고 state.md `execution-log`에 남긴다.
 - 원장은 `.dev` 아래라 verify 지문이 바뀌지 않는다. Step 1 커밋에 함께 들어간다 (svn은 Step 1 안내 문구의 `svn add --force .`로 등록된다).

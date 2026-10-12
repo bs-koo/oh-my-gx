@@ -37,7 +37,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 - `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read하여 설계서를 로드한다. **testability 섹션**(phase-design에서 test-architect가 추가)을 확인한다.
 - `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 PRD를 로드한다. **수용 기준(AC) Given-When-Then 시나리오**를 추출한다.
-- state.md에 `ut-scope`가 있으면 `${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md`를 Read하고, AC의 `[UT: …]` 태그로 AC별 계획서 행을 묶어 둔다 (2-R·2-V 프롬프트에 쓴다).
+- 연동 중(state.md `ut-scope`가 기능ID)이면 `${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md`를 Read하고, AC의 `[UT: …]` 태그로 AC별 계획서 행을 묶어 둔다 (2-R·2-V 프롬프트에 쓴다).
 - testability 섹션이 누락된 설계서면 사용자에게 경고: "testability 평가가 누락된 설계서입니다. phase-design을 재실행해야 RGR 격리 컨텍스트를 구성할 수 있습니다."
 - `ANTI_PATTERNS_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/testing-anti-patterns.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 이 경로를 전달한다.
 - `FRONTEND_TESTING_PATH`를 같은 규칙으로 확정한다 (`references/frontend-testing.md`). **UI 컴포넌트를 다루는 태스크에서만** red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 추가로 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.

@@ -68,7 +68,7 @@ Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 
 1. `git status --porcelain` 실행. 결과가 비어 있지 않으면 미커밋 변경이 존재한다.
 2. 변경이 있으면:
    - `git stash push -u -m "gx-tdd-auto-$(date +%s)"` 실행. `-u` 옵션으로 untracked 파일까지 포함해 워킹 디렉토리를 비우고 변경을 보관한다.
-   - `stash create`/`store`는 워킹 디렉토리를 비우지 않아 `checkout`이 충돌한다 — `push -u`만 쓴다.
+   - `stash create`/`store`는 워킹 디렉토리를 비우지 않아 쓰지 않는다.
    - `AUTO_STASHED=true`로 기록하고 `git stash list` 최상단 ref를 state.md `execution-log`의 `auto-stash: <ref>` 엔트리에 저장한다.
 3. 변경이 없으면 `AUTO_STASHED=false`.
 
@@ -213,7 +213,7 @@ Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`�
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
 - vcs-type, branch, base, project-type, project-root, args, flags 기록 (svn은 branch/base 미사용). `flags`에는 의도 파싱의 RALPH 우선순위 규칙을 **통과해 살아남은** RALPH는(플래그·자연어 `랄프로` 등 출처 무관) `--ralph`로 **정규화하여** 포함한다 — phase-implement Step 0.7의 판정 키이며 별도 필드를 두지 않는다. 우선순위 규칙에서 **무시된 RALPH는 기록하지 않는다** (core 세션에 `--ralph`가 남아 `--status`·Step 0.7이 이중 안내를 내지 않도록). `VCS_TYPE`이 `svn`이면 포함하지 않고 "gx-ralph는 SVN 미지원 — 대화형으로 진행합니다" 1줄을 안내한다 (의도 파싱의 svn 우선 배제가 1차, 이것은 2차 방어). `--isolated`는 있는 그대로 기록한다 — phase-implement Step 2-I와 phase-review 4b의 경로 판정 키다.
 - mode, intent-source 기록 (의도 파싱 결과)
-- model-profile 기록 (Step 1.5/3.0 결정 값)
+- model-profile 기록 (Step 1.5/3.0 결정 값), ut-scope (setup-testplan 3절)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.
 - **last-known-head** (git 전용): `git rev-parse HEAD` 결과. 재개 시 외부 커밋 감지에 사용한다. 각 Phase 종료 시 갱신한다. svn은 미사용.
 - phases: { setup: completed }

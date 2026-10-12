@@ -245,6 +245,6 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 > 5. `MODEL_PROFILE`: `${DEV_DIR}/state.md`의 `model-profile` 값이 있으면 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌리고 `verify-fingerprint`를 비운다.** 재진입 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다. `pipeline`/`verify-status`는 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)에 필요하다.
 > 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
-> 8. **단위테스트계획서 연동**: state.md에 `ut-scope`가 있으면 `${DEV_DIR}/ut-floor.md`를 하한선으로 쓴다. 없으면 `Read("phases/setup-testplan.md")`의 "5. 단독 진입" 절을 수행한다 (계획서가 없으면 아무 일도 없다).
+> 8. **단위테스트계획서 연동**: state.md `ut-scope`가 기능ID면 `${DEV_DIR}/ut-floor.md`를 하한선으로 쓰고, `off`면 연동하지 않는다. 필드가 없으면 `Read("phases/setup-testplan.md")`의 "5. 단독 진입" 절을 수행한다 (계획서가 없으면 아무 일도 없다).
 
 ---
