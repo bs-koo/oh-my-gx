@@ -124,6 +124,11 @@ Task(subagent_type="oh-my-gx:reviewer"):
     - 요구사항: {PRD "요구사항" 섹션}
     - 수용 기준 (G-W-T 시나리오): {PRD "수용 기준" 섹션}
 
+    [단위테스트계획서 하한선 — state.md ut-scope가 있을 때만]
+    - ut-floor 경로: {PROJECT_ROOT}/{DEV_DIR}/ut-floor.md — Read하여 판정=대상 행 확인
+    - Part 1에 "UT 대조표"(테스트ID / 테스트 위치 / 기대결과·사후조건 단언 여부 ✅⚠️❌)를 추가한다. ❌는 Part 1 FAIL 사유다.
+    - Part 2에서 테스트 이름 정리를 권고할 때 테스트ID를 빼라고 권고하지 않는다.
+
     [설계서]
     - 변경 범위: {design "변경 범위" 섹션}
 
