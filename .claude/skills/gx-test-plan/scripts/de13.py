@@ -364,6 +364,73 @@ def cmd_check(args) -> int:
     print(f"found {s['found']} · missing {s['missing']} · skipped {s['skipped']}")
     return 0 if s["missing"] == 0 and s["skipped"] == 0 else 1
 
+# ---------- 결과 원장 ----------
+
+VERDICT_RE = re.compile(r"^(대상|제외\((?P<reason>.+)\)|이관\((?P<work>W\d{2,})\))$")
+
+
+def _ledger_path(ledger_dir: Path, fn: str) -> Path:
+    return Path(ledger_dir) / f"{fn}.md"
+
+
+def _read_ledger(path: Path) -> dict[str, dict]:
+    if not path.is_file():
+        return {}
+    return {r["테스트ID"]: r for r in read_md_table(path) if r.get("테스트ID")}
+
+
+def _write_ledger(path: Path, fn: str, rows: dict[str, dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ordered = [rows[k] for k in sorted(rows)]
+    path.write_text(f"# {fn} 단위테스트 결과 원장\n\n" + write_md_table(LEDGER_HEADER, ordered), encoding="utf-8")
+
+
+def record(floor_rows: list[dict], check: dict, ledger_dir: Path, date: str, tester: str) -> list[Path]:
+    results = check.get("results", {})
+    entries: dict[str, list[dict]] = {}
+    problems = []
+    for r in floor_rows:
+        m = VERDICT_RE.match(r.get("판정", ""))
+        if not m:
+            raise InputError(f"알 수 없는 판정 '{r.get('판정', '')}' ({r.get('테스트ID')})")
+        base = {"테스트ID": r["테스트ID"], "상태": "", "수행일": "", "담당자": "",
+                "테스트 위치": "", "행 지문": r.get("행 지문", ""), "비고": ""}
+        if m.group(1) == "대상":
+            res = results.get(r["테스트ID"], {"status": "missing", "locations": []})
+            if res["status"] != "found":
+                problems.append(f"{r['테스트ID']}({res['status']})")
+                continue
+            loc = next(l for l in res["locations"] if not l["skipped"])
+            base.update({"상태": "Pass", "수행일": date, "담당자": tester,
+                         "테스트 위치": f"{loc['path']}:{loc['line']}"})
+        elif m.group("reason"):
+            base.update({"상태": "제외", "비고": m.group("reason")})
+        else:
+            base.update({"상태": f"이관({m.group('work')})"})
+        entries.setdefault(r["기능ID"], []).append(base)
+    if problems:
+        raise InputError("하한선 미충족 상태에서는 기록하지 않습니다: " + ", ".join(problems))
+    written = []
+    for fn, rows in entries.items():
+        path = _ledger_path(ledger_dir, fn)
+        merged = _read_ledger(path)
+        for row in rows:
+            merged[row["테스트ID"]] = row
+        _write_ledger(path, fn, merged)
+        written.append(path)
+    return written
+
+
+def cmd_record(args) -> int:
+    floor, check = Path(args.floor), Path(args.check)
+    for p in (floor, check):
+        if not p.is_file():
+            raise InputError(f"파일이 없습니다: {p}")
+    paths = record(read_md_table(floor), json.loads(check.read_text(encoding="utf-8")),
+                   Path(args.ledger_dir), args.date, args.tester)
+    print("원장 갱신: " + ", ".join(p.name for p in paths))
+    return 0
+
 # ---------- 명령 ----------
 
 def cmd_scope(args) -> int:
@@ -398,6 +465,13 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--root", required=True)
     c.add_argument("--out", required=True)
     c.set_defaults(func=cmd_check)
+    r = sub.add_parser("record")
+    r.add_argument("--floor", required=True)
+    r.add_argument("--check", required=True)
+    r.add_argument("--ledger-dir", required=True)
+    r.add_argument("--date", required=True)
+    r.add_argument("--tester", required=True)
+    r.set_defaults(func=cmd_record)
     return p
 
 
