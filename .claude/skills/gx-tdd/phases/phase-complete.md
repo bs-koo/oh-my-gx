@@ -31,6 +31,35 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 모드)를 안내한다.
 3. 전체 모드의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
 
+## Step -1.5: 단위테스트계획서 하한선 게이트 (연동 중에만)
+
+state.md에 `ut-scope`가 없으면 건너뛴다. `DE13`은 `setup-testplan.md`와 같은 규칙으로 정한다 (이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로).
+
+1. **계획서 교체 감지**: `setup-testplan.md` "6. 계획서 교체 감지"대로 sha를 비교한다. 다르면 "브랜치 진행 중 계획서가 바뀌었습니다"를 알리고, 범위를 다시 추출할지(→ `scope` 재실행 후 phase-requirements 게이트 1부터) 그대로 진행할지 묻는다.
+2. `python3 "<DE13>" check --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json"`
+3. 종료 코드 0 → Step -1로 진행. 2 → 메시지를 보고하고 중단. 1 → `ut-check.json`의 `missing`·`skipped` 목록을 보여주고 묻는다:
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "계획서 케이스 {N}건의 테스트가 없거나 skip 상태입니다 ({ID 목록}). 어떻게 할까요?",
+    header: "UT 하한선",
+    options: [
+      { label: "RED 추가 (Recommended)", description: "phase-implement로 돌아가 해당 케이스를 새 태스크로 RGR 사이클을 수행합니다" },
+      { label: "UT 제외", description: "다음 질문에서 받은 사유로 ut-floor.md의 해당 행 판정을 제외(사유)로 바꿉니다" },
+      { label: "중단", description: "state.md에 status: cancelled를 기록합니다" }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+"UT 제외"를 고르면 별도 후속 질문으로 사유를 묻고 실제 답변을 기다린 뒤 `판정`을 고치고 2번부터 다시 실행한다. Codex에서는 현재 모드의 질문 도구로 묻고, 응답할 사용자가 없는 헤드리스 실행이면 제외하지 않고 중단한다. 결과를 execution-log에 `gate: UT-floor`로 기록한다.
+
+`current-step`을 `"UT 하한선 게이트"`로 갱신.
+
+---
+
 ## Step -1: verify 게이트 (commit/PR 진입 전 필수)
 
 `Skill("oh-my-gx:gx-verify")`를 호출한다.
@@ -63,6 +92,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 **핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (verify 게이트가 테스트 실행 증거를 이미 강제하므로 여기서는 AC 충족 대조만 한다):
 1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
 2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
+   단위테스트계획서 연동 중이면 `ut-check.json`의 위치를 열어 테스트ID마다 계획서의 기대결과·사후조건을 단언하는지 확인하고 `REB-UT-002 ✅ (SourceTest:12)`처럼 함께 표시한다. 단언이 없으면 ⚠️로 표시하고 아래 미충족 질문으로 처리한다.
 3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
    ```
    AskUserQuestion(
@@ -98,6 +128,17 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
   - 건너뛰기 선택 → 다음 단계 진행 (위험 수용. trust-ledger에 기록)
 
 위 Step 0 진입 조건에 의해 PRD 부재이면 이 단계 전체가 건너뛰어진다.
+
+## Step 0.5: 단위테스트 결과 원장 기록 (연동 중에만)
+
+state.md에 `ut-scope`가 없으면 건너뛴다. Step -1.5와 Step -1이 통과한 뒤에만 실행한다.
+
+`python3 "<DE13>" record --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --check "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json" --ledger-dir "${PROJECT_ROOT}/.dev/ut-results" --date "<오늘, YYYY.MM.DD>" --tester "<git config user.name>"`
+
+- svn이면 `--tester`는 `git` 대신 사용자에게 한 번 확인한 이름을 쓰고 state.md `execution-log`에 남긴다.
+- 원장은 `.dev` 아래라 verify 지문이 바뀌지 않는다. Step 1 커밋에 함께 들어간다 (svn은 Step 1 안내 문구의 `svn add --force .`로 등록된다).
+- 실패(종료 코드 2)해도 커밋을 막지 않는다. 경고와 함께 "다음 `--phase complete`에서 원장 기록을 다시 시도합니다"를 안내하고 execution-log에 남긴다.
+- 성공하면 "원장 갱신: REB-FN-001.md (Pass N · 제외 N · 이관 N). 계획서 사본 반영은 `/gx-test-plan`" 한 줄을 보고한다.
 
 ## Step 1: Commit
 
