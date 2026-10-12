@@ -40,3 +40,5 @@ jobs:
         run: python scripts/sync-codex-resources.py --check
       - name: Codex 오프라인 계약 테스트
         run: python -m unittest discover -s tests -p "test_codex_*.py" -v
+      - name: DE-13 헬퍼 단위 테스트
+        run: python -m unittest discover -s tests -p "test_de13_*.py" -v

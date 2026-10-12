@@ -431,6 +431,140 @@ def cmd_record(args) -> int:
     print("원장 갱신: " + ", ".join(p.name for p in paths))
     return 0
 
+# ---------- 사본 반영 ----------
+
+TESTERS_HEADER = ["git 이름", "실명"]
+
+
+def read_testers(path: Path) -> dict[str, str]:
+    if not path or not Path(path).is_file():
+        return {}
+    return {r["git 이름"]: r["실명"] for r in read_md_table(Path(path)) if r.get("git 이름")}
+
+
+def _ledger_rows(ledger_dir: Path) -> list[dict]:
+    rows = []
+    for p in sorted(Path(ledger_dir).glob("*.md")):
+        if p.name == "testers.md":
+            continue
+        rows.extend(r for r in read_md_table(p) if r.get("테스트ID"))
+    return rows
+
+
+def _cell_xml(ref: str, value: str, style: str | None) -> str:
+    s = f' s="{style}"' if style else ""
+    return f'<c r="{ref}"{s} t="inlineStr"><is><t>{escape(value)}</t></is></c>'
+
+
+_CELL_RE = re.compile(r'<c\b(?P<attrs>[^>]*?)(?:/>|>.*?</c>)', re.S)
+
+
+def _patch_row(row_xml: str, rnum: int, values: dict[int, str]) -> str:
+    if row_xml.endswith("/>"):
+        row_xml = row_xml[:-2].rstrip() + "></row>"
+    open_end = row_xml.index(">") + 1
+    head, inner, tail = row_xml[:open_end], row_xml[open_end:-len("</row>")], "</row>"
+    cells = []
+    for m in _CELL_RE.finditer(inner):
+        ref = re.search(r'\br="([A-Z]+)\d+"', m.group("attrs"))
+        cells.append([_col_index(ref.group(1)) if ref else -1, m.group(0)])
+    for col, value in sorted(values.items()):
+        ref = f"{_col_letters(col)}{rnum}"
+        existing = next((c for c in cells if c[0] == col), None)
+        if existing:
+            style = re.search(r'\bs="(\d+)"', existing[1])
+            existing[1] = _cell_xml(ref, value, style.group(1) if style else None)
+        else:
+            cells.append([col, _cell_xml(ref, value, None)])
+    cells.sort(key=lambda c: c[0])
+    return head + "".join(c[1] for c in cells) + tail
+
+
+def _patch_sheet(xml: str, updates: dict[int, dict[int, str]]) -> str:
+    if re.search(r"<\w+:worksheet\b", xml):
+        raise InputError("지원하지 않는 시트 XML 형식입니다 (접두사 네임스페이스)")
+    for rnum, values in updates.items():
+        m = re.search(rf'<row\b[^>]*\br="{rnum}"[^>]*?(?:/>|>.*?</row>)', xml, re.S)
+        if not m:
+            raise InputError(f"계획서에서 {rnum}행을 찾을 수 없습니다")
+        xml = xml[:m.start()] + _patch_row(m.group(0), rnum, values) + xml[m.end():]
+    return xml
+
+
+def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], out: Path) -> dict:
+    plan_path, out = Path(plan_path), Path(out)
+    if out.resolve() == plan_path.resolve():
+        raise InputError("반영 사본 경로가 원본 계획서와 같습니다 — 원본은 덮어쓰지 않습니다")
+    plan = load_plan(plan_path)
+    by_id = {r["테스트ID"]: r for r in plan["rows"]}
+    cols = plan["cols"]
+    ledger = _ledger_rows(Path(ledger_dir))
+    in_ledger = {r["테스트ID"] for r in ledger}
+    per_fn: dict[str, dict[str, int]] = {}
+    for r in plan["rows"]:
+        if r["연계기능ID"]:
+            per_fn.setdefault(r["연계기능ID"], {"Pass": 0, "제외": 0, "이관": 0, "미착수": 0, "재확인 필요": 0})
+            if r["테스트ID"] not in in_ledger:
+                per_fn[r["연계기능ID"]]["미착수"] += 1
+
+    def bump(fn: str, key: str) -> None:
+        if fn in per_fn:
+            per_fn[fn][key] += 1
+
+    recheck, not_in_plan, unknown, updates = [], [], [], {}
+    for row in ledger:
+        tid, state = row["테스트ID"], row.get("상태", "")
+        rec = by_id.get(tid)
+        if rec is None:
+            not_in_plan.append(tid)
+            continue
+        fn = rec["연계기능ID"]
+        if state.startswith("이관"):
+            bump(fn, "이관")
+            continue
+        if state == "제외":
+            bump(fn, "제외")
+            continue
+        if state != "Pass":
+            continue
+        if row.get("행 지문") != row_fingerprint(rec):
+            recheck.append(tid)
+            bump(fn, "재확인 필요")
+            continue
+        git_name = row.get("담당자", "")
+        name = testers.get(git_name)
+        if name is None:
+            if git_name not in unknown:
+                unknown.append(git_name)
+            continue
+        updates[rec["_row"]] = {cols["결과"]: "Pass", cols["수행일"]: row.get("수행일", ""),
+                                cols["테스트담당자"]: name}
+        bump(fn, "Pass")
+    summary = {"output": out.as_posix(), "기능별": per_fn, "재확인 필요": recheck,
+               "계획서에 없음": not_in_plan, "매핑 없는 담당자": unknown}
+    if unknown:
+        return summary
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(plan_path) as src, zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info)
+            if info.filename == plan["part"] and updates:
+                data = _patch_sheet(data.decode("utf-8"), updates).encode("utf-8")
+            dst.writestr(info, data)
+    return summary
+
+
+def cmd_apply(args) -> int:
+    summary = apply(Path(args.plan), Path(args.ledger_dir), read_testers(Path(args.testers)), Path(args.out))
+    report = Path(args.report)
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    if summary["매핑 없는 담당자"]:
+        print("매핑 없는 담당자: " + ", ".join(summary["매핑 없는 담당자"]))
+        return 3
+    print(f"반영 사본: {summary['output']}")
+    return 0
+
 # ---------- 명령 ----------
 
 def cmd_scope(args) -> int:
@@ -472,6 +606,13 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--date", required=True)
     r.add_argument("--tester", required=True)
     r.set_defaults(func=cmd_record)
+    a = sub.add_parser("apply")
+    a.add_argument("--plan", required=True)
+    a.add_argument("--ledger-dir", required=True)
+    a.add_argument("--testers", required=True)
+    a.add_argument("--out", required=True)
+    a.add_argument("--report", required=True)
+    a.set_defaults(func=cmd_apply)
     return p
 
 
