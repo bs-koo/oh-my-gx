@@ -127,6 +127,50 @@ class CheckTests(unittest.TestCase):
                    'class ATest {\n  @Test\n  void a() {}\n  // TODO REB-UT-114 나중에\n  /* REB-UT-114 */\n}\n')
         self.assertEqual(self.status("REB-UT-114")["status"], "missing")
 
+    def test_js_skip_each_chain_is_skipped(self):
+        self.write("a.test.js", "test.skip.each([[1], [2]])('REB-UT-201 %s', (v) => {\n  expect(v).toBe(9);\n});\n")
+        self.assertEqual(self.status("REB-UT-201")["status"], "skipped")
+
+    def test_pytest_module_marker_skips_file(self):
+        self.write("tests/test_m.py", 'pytestmark = pytest.mark.skip(reason="disabled")\n\n'
+                                      "def test_REB_UT_202():\n    assert False\n")
+        self.assertEqual(self.status("REB-UT-202")["status"], "skipped")
+
+    def test_pytest_unconditional_skip_in_body_is_skipped_but_conditional_is_not(self):
+        self.write("tests/test_b.py", 'def test_REB_UT_203():\n    pytest.skip("disabled")\n    assert False\n\n'
+                                      'def test_REB_UT_210():\n    if os.name == "nt":\n        pytest.skip("win")\n'
+                                      '    assert True\n')
+        self.assertEqual(self.status("REB-UT-203")["status"], "skipped")
+        self.assertEqual(self.status("REB-UT-210")["status"], "found")
+
+    def test_one_line_test_followed_by_disabled_next_test_is_found(self):
+        self.write("src/test/ATest.java", 'class ATest {\n  @Test @DisplayName("REB-UT-204") void a() {}\n'
+                                          '  @Disabled\n  @Test\n  void b() {}\n}\n')
+        self.assertEqual(self.status("REB-UT-204")["status"], "found")
+
+    def test_blank_line_and_long_source_before_disabled_are_skipped(self):
+        rows = "".join(f'      "{n}, true",\n' for n in range(20))
+        self.write("src/test/ATest.java", 'class ATest {\n  @DisplayName("REB-UT-205")\n\n  @Disabled\n  @Test\n  void a() {}\n\n'
+                                          f'  @ParameterizedTest(name = "REB-UT-211 {{0}}")\n  @CsvSource({{\n{rows}  }})\n'
+                                          '  @Disabled\n  void b(int n, boolean ok) {\n  }\n}\n')
+        self.assertEqual(self.status("REB-UT-205")["status"], "skipped")
+        self.assertEqual(self.status("REB-UT-211")["status"], "skipped")
+
+    def test_closed_describe_skip_does_not_skip_following_multiline_it(self):
+        self.write("a.test.js", "describe.skip('old', () => {\n  it('old', () => {});\n});\nit(\n  'REB-UT-212',\n  () => {},\n);\n")
+        self.assertEqual(self.status("REB-UT-212")["status"], "found")
+
+    def test_trailing_and_block_comment_ids_are_ignored_but_strings_kept(self):
+        self.write("b.test.js", "it('다른 테스트', () => {}); // REB-UT-206\n/*\nREB-UT-207\n*/\n"
+                                "it('REB-UT-208 http://example.com', () => {});\n")
+        self.assertEqual(self.status("REB-UT-206")["status"], "missing")
+        self.assertEqual(self.status("REB-UT-207")["status"], "missing")
+        self.assertEqual(self.status("REB-UT-208")["status"], "found")
+
+    def test_commented_out_disabled_does_not_skip(self):
+        self.write("src/test/ATest.java", 'class ATest {\n  // @Disabled\n  @Test\n  @DisplayName("REB-UT-209")\n  void a() {}\n}\n')
+        self.assertEqual(self.status("REB-UT-209")["status"], "found")
+
     def test_found_wins_when_one_location_is_not_skipped(self):
         self.write("src/test/ATest.java", '@Disabled\n@Test\n@DisplayName("REB-UT-030")\nvoid a() {}\n')
         self.write("src/test/BTest.java", '@Test\n@DisplayName("REB-UT-030")\nvoid b() {}\n')

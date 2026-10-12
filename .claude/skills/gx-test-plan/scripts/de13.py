@@ -286,17 +286,94 @@ SOURCE_EXT = {".java", ".kt", ".kts", ".groovy", ".scala", ".js", ".jsx", ".ts",
 TEST_FILE_RE = re.compile(r"(Tests?\.[^.]+$)|(\.(test|spec)\.[^.]+$)|(^test_.*\.py$)|(_test\.[^.]+$)")
 DECL_RE = re.compile(
     r"@Test\b|@ParameterizedTest\b|@RepeatedTest\b|@TestFactory\b"
-    r"|\b[xf]?(?:it|test)\s*(?:\.\s*(?:skip|only|each|todo)\s*)?\("
+    r"|\b[xf]?(?:it|test)(?:\s*\.\s*(?:skip|only|each|todo|concurrent))*\s*\("
     r"|\bdef test_|\bfunc Test|\[(?:Fact|Theory|Test)\b")
 SKIP_RE = re.compile(
-    r"@Disabled\b|@Ignore\b|\[Ignore\b|\.\s*(?:skip|todo)\s*\(|\bxit\s*\(|\bxtest\s*\(|\bxdescribe\s*\("
+    r"@Disabled\b|@Ignore\b|\[Ignore\b|\b(?:it|test|describe)(?:\s*\.\s*(?:only|each|concurrent))*\s*\.\s*(?:skip|todo)\b"
+    r"|\bxit\s*\(|\bxtest\s*\(|\bxdescribe\s*\("
     r"|@pytest\.mark\.(?:skip|xfail)|@unittest\.skip|\bt\.Skip\(|\bSkip\s*=")
 CLASS_RE = re.compile(r"\bclass\s+\w+|\b[x]?describe\s*(?:\.\s*skip\s*)?\(")
-HEADER_SCAN_LIMIT = 15
+PY_MODULE_SKIP_RE = re.compile(r"^pytestmark\s*=.*\b(?:skip|xfail)\b")
+PY_BODY_SKIP_RE = re.compile(r"^\s*(?:pytest\.skip|self\.skipTest)\s*\(")
+PY_DEF_RE = re.compile(r"^\s*(?:async\s+)?def\s")
+HEADER_SCAN_LIMIT = 40
 
 
-def _is_comment(line: str) -> bool:
-    return line.strip().startswith(("//", "/*", "*", "#"))
+def _strip_comments(text: str, hash_comments: bool) -> list[str]:
+    """문자열은 남기고 주석만 공백으로 지운다 (줄 수·열 위치 보존)."""
+    out, i, n, state = [], 0, len(text), None
+    while i < n:
+        ch, nxt = text[i], text[i + 1] if i + 1 < n else ""
+        if state == "block":
+            if ch == "*" and nxt == "/":
+                out.append("  ")
+                state, i = None, i + 2
+                continue
+            out.append("\n" if ch == "\n" else " ")
+        elif state:
+            if ch == "\\" and nxt and nxt != "\n":
+                out.append(ch + nxt)
+                i += 2
+                continue
+            out.append(ch)
+            if ch == state or (ch == "\n" and state != "`"):
+                state = None
+        elif ch == "/" and nxt == "*":
+            out.append("  ")
+            state, i = "block", i + 2
+            continue
+        elif (ch == "/" and nxt == "/") or (hash_comments and ch == "#"):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            out.append(" " * (j - i))
+            i = j
+            continue
+        else:
+            if ch in "'\"`":
+                state = ch
+            out.append(ch)
+        i += 1
+    return "".join(out).split("\n")
+
+
+def _skip_balanced(s: str, i: int, open_ch: str, close_ch: str) -> int:
+    depth, quote = 0, None
+    while i < len(s):
+        ch = s[i]
+        if quote:
+            if ch == "\\":
+                i += 1
+            elif ch == quote:
+                quote = None
+        elif ch in "'\"":
+            quote = ch
+        elif ch == open_ch:
+            depth += 1
+        elif ch == close_ch:
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return len(s)
+
+
+def _after_annotations(line: str) -> str:
+    """줄 앞의 어노테이션·속성을 걷어 낸 나머지 — 한 줄에 선언까지 있는지 보려고 쓴다."""
+    s = line.strip()
+    while s:
+        if s.startswith("@"):
+            m = re.match(r"@[\w.]+\s*", s)
+            if not m:
+                break
+            i = m.end()
+            if i < len(s) and s[i] == "(":
+                i = _skip_balanced(s, i, "(", ")")
+            s = s[i:].lstrip()
+        elif s.startswith("["):
+            s = s[_skip_balanced(s, 0, "[", "]"):].lstrip()
+        else:
+            break
+    return s
 
 
 def _is_annotation(line: str) -> bool:
@@ -304,8 +381,8 @@ def _is_annotation(line: str) -> bool:
 
 
 def _opens_body(line: str) -> bool:
-    s = line.strip()
-    return not _is_annotation(line) and ("{" in s or "=>" in s or s.endswith(":"))
+    s = _after_annotations(line)
+    return bool(s) and ("{" in s or "=>" in s or s.endswith(":"))
 
 
 def _indent(line: str) -> int:
@@ -313,45 +390,67 @@ def _indent(line: str) -> int:
 
 
 def _has_skip(lines: list[str]) -> bool:
-    return any(SKIP_RE.search(l) for l in lines if not _is_comment(l))
+    return any(SKIP_RE.search(l) for l in lines)
 
 
-def _test_header(lines: list[str], i: int) -> list[str]:
-    """줄 i의 ID가 속한 테스트 머리: 위아래 어노테이션 묶음 + 선언 + 본문을 여는 줄."""
+def _test_header(lines: list[str], i: int) -> tuple[int, int, int]:
+    """줄 i의 ID가 속한 테스트 머리 (시작, 기준 선언, 끝) — 위아래 어노테이션 묶음 + 선언 + 본문을 여는 줄.
+    빈 줄은 경계로 쓰지 않는다. 앞 테스트의 끝(`}`·`;`·본문 시작·선언)에서 멈춘다."""
     anchor = i
     if not (_is_annotation(lines[i]) or DECL_RE.search(lines[i])):
-        # 메서드 이름이나 본문에 ID가 있으면 바로 위 어노테이션·선언을 기준으로 삼는다
+        # 메서드 이름·인자·본문에 ID가 있으면 바로 위 어노테이션·선언을 기준으로 삼는다
         k = i - 1
         while k >= 0 and i - k <= HEADER_SCAN_LIMIT and not (_is_annotation(lines[k]) or DECL_RE.search(lines[k])):
             k -= 1
         if k >= 0 and i - k <= HEADER_SCAN_LIMIT:
             anchor = k
-    start = anchor
-    while start - 1 >= 0 and anchor - start < HEADER_SCAN_LIMIT:
-        prev = lines[start - 1]
-        s = prev.strip()
-        if not _is_annotation(prev) and not _is_comment(prev) and (
-                not s or DECL_RE.search(prev) or _opens_body(prev) or s.endswith(("}", "})", ";"))):
-            break
-        start -= 1
+    start, k = anchor, anchor - 1
+    while k >= 0 and anchor - k <= HEADER_SCAN_LIMIT:
+        prev, s = lines[k], lines[k].strip()
+        if s and not (_is_annotation(prev) and not _opens_body(prev)):
+            if DECL_RE.search(prev) or _opens_body(prev) or s.endswith(("}", "})", ";")):
+                break
+        if s:
+            start = k
+        k -= 1
     end = anchor
     while not _opens_body(lines[end]) and end + 1 < len(lines) and end - anchor < HEADER_SCAN_LIMIT:
         nxt = lines[end + 1]
-        if not nxt.strip() or (DECL_RE.search(nxt) and not _is_annotation(nxt)):
+        if nxt.strip() and DECL_RE.search(nxt) and not _is_annotation(nxt):
             break
         end += 1
-    return lines[start:max(end, i) + 1]
+    return start, anchor, max(end, i)
 
 
-def _enclosing_skipped(lines: list[str], i: int) -> bool:
-    """들여쓰기로 줄 i를 감싸는 class·describe 머리에 skip 표식이 있는가."""
-    threshold = _indent(lines[i])
-    for k in range(i - 1, -1, -1):
+def _py_body_skipped(lines: list[str], end: int) -> bool:
+    """파이썬 테스트 본문 첫 들여쓰기 수준의 무조건 skip (조건문 안의 skip은 보지 않는다)."""
+    if not PY_DEF_RE.match(lines[end]) or not lines[end].rstrip().endswith(":"):
+        return False
+    body = None
+    for line in lines[end + 1:]:
+        if not line.strip():
+            continue
+        ind = _indent(line)
+        if body is None:
+            if ind <= _indent(lines[end]):
+                return False
+            body = ind
+        if ind < body:
+            return False
+        if ind == body and PY_BODY_SKIP_RE.match(line):
+            return True
+    return False
+
+
+def _enclosing_skipped(lines: list[str], anchor: int) -> bool:
+    """선언 줄의 들여쓰기로 감싸는 class·describe 머리를 찾아 skip 표식을 본다."""
+    threshold = _indent(lines[anchor])
+    for k in range(anchor - 1, -1, -1):
         line = lines[k]
-        if not line.strip() or _is_comment(line) or _indent(line) >= threshold or not CLASS_RE.search(line):
+        if not line.strip() or _indent(line) >= threshold or not CLASS_RE.search(line):
             continue
         s = k
-        while s - 1 >= 0 and (_is_annotation(lines[s - 1]) or _is_comment(lines[s - 1])):
+        while s - 1 >= 0 and k - s < HEADER_SCAN_LIMIT and (_is_annotation(lines[s - 1]) or not lines[s - 1].strip()):
             s -= 1
         if _has_skip(lines[s:k + 1]):
             return True
@@ -360,7 +459,9 @@ def _enclosing_skipped(lines: list[str], i: int) -> bool:
 
 
 def _is_skipped(lines: list[str], i: int) -> bool:
-    return _has_skip(_test_header(lines, i)) or _enclosing_skipped(lines, i)
+    start, anchor, end = _test_header(lines, i)
+    return (_has_skip(lines[start:end + 1]) or _py_body_skipped(lines, end)
+            or _enclosing_skipped(lines, anchor))
 
 
 def iter_test_files(root: Path):
@@ -386,15 +487,17 @@ def check_floor(floor_rows: list[dict], root: Path) -> dict:
     found: dict[str, list[dict]] = {t: [] for t in targets}
     for path, rel in iter_test_files(Path(root)):
         try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            text = path.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
         except OSError:
             continue
+        python = path.suffix.lower() in {".py", ".rb"}
+        lines = _strip_comments(text, hash_comments=python)  # 주석 속 ID·표식은 테스트가 아니다
+        module_skip = path.suffix.lower() == ".py" and any(PY_MODULE_SKIP_RE.match(l) for l in lines)
         for i, line in enumerate(lines):
-            if _is_comment(line):
-                continue  # 주석 속 ID는 테스트가 아니다
             for t, pat in patterns.items():
                 if pat.search(line):
-                    found[t].append({"path": rel, "line": i + 1, "skipped": _is_skipped(lines, i)})
+                    found[t].append({"path": rel, "line": i + 1,
+                                     "skipped": module_skip or _is_skipped(lines, i)})
     results, summary = {}, {"found": 0, "missing": 0, "skipped": 0}
     for t in targets:
         locs = sorted(found[t], key=lambda l: (l["path"], l["line"]))
