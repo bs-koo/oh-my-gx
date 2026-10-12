@@ -268,6 +268,102 @@ def function_list(plan: dict, spec: Path | None) -> list[dict]:
     return [{"기능ID": f, "UT수": n, "기능명": names.get(f, "")} for f, n in counts.items()]
 
 
+# ---------- 테스트 소스 검사 ----------
+
+SKIP_DIRS = {"node_modules", "build", "dist", "target", ".gradle", "out", ".git", ".dev",
+             ".idea", ".venv", "venv", "__pycache__", ".next", ".nuxt"}
+TEST_DIRS = {"test", "tests", "__tests__", "spec"}
+SOURCE_EXT = {".java", ".kt", ".kts", ".groovy", ".scala", ".js", ".jsx", ".ts", ".tsx", ".mjs",
+              ".cjs", ".py", ".go", ".cs", ".rb", ".php", ".rs", ".c", ".cc", ".cpp", ".swift"}
+TEST_FILE_RE = re.compile(r"(Tests?\.[^.]+$)|(\.(test|spec)\.[^.]+$)|(^test_.*\.py$)|(_test\.[^.]+$)")
+DECL_RE = re.compile(
+    r"@Test\b|@ParameterizedTest\b|@RepeatedTest\b|@TestFactory\b"
+    r"|\b[xf]?(?:it|test)\s*(?:\.\s*(?:skip|only|each)\s*)?\("
+    r"|\bdef test_|\bfunc Test|\[(?:Fact|Theory|Test)\b")
+SKIP_RE = re.compile(
+    r"@Disabled\b|@Ignore\b|\.\s*skip\s*\(|\bxit\s*\(|\bxtest\s*\(|\bxdescribe\s*\("
+    r"|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(|\bSkip\s*=")
+CLASS_RE = re.compile(r"\bclass\s+\w+|\b[x]?describe\s*(?:\.\s*skip\s*)?\(")
+
+
+def _annotation_block_start(lines: list[str], j: int) -> int:
+    k = j
+    while k - 1 >= 0 and lines[k - 1].strip().startswith(("@", "[")):
+        k -= 1
+    return k
+
+
+def _file_skipped(lines: list[str]) -> bool:
+    for k, line in enumerate(lines):
+        if CLASS_RE.search(line):
+            start = _annotation_block_start(lines, k)
+            return any(SKIP_RE.search(l) for l in lines[start:k + 1])
+    return False
+
+
+def _is_skipped(lines: list[str], i: int) -> bool:
+    j = i
+    while j >= 0 and not DECL_RE.search(lines[j]):
+        j -= 1
+    if j < 0:
+        return False
+    start = _annotation_block_start(lines, j)
+    return any(SKIP_RE.search(l) for l in lines[start:i + 1])
+
+
+def iter_test_files(root: Path):
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        rel_dir = Path(dirpath).relative_to(root)
+        in_test_dir = any(part in TEST_DIRS for part in rel_dir.parts)
+        for name in filenames:
+            if Path(name).suffix.lower() not in SOURCE_EXT:
+                continue
+            if in_test_dir or TEST_FILE_RE.search(name):
+                yield Path(dirpath) / name, (rel_dir / name).as_posix()
+
+
+def _id_pattern(test_id: str) -> re.Pattern:
+    raw, under = re.escape(test_id), re.escape(test_id.replace("-", "_"))
+    return re.compile(rf"(?<![A-Za-z0-9-])(?:{raw}|{under})(?![0-9A-Za-z])")
+
+
+def check_floor(floor_rows: list[dict], root: Path) -> dict:
+    targets = [r["테스트ID"] for r in floor_rows if r.get("판정") == "대상"]
+    patterns = {t: _id_pattern(t) for t in targets}
+    found: dict[str, list[dict]] = {t: [] for t in targets}
+    for path, rel in iter_test_files(Path(root)):
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        whole = _file_skipped(lines)
+        for i, line in enumerate(lines):
+            for t, pat in patterns.items():
+                if pat.search(line):
+                    found[t].append({"path": rel, "line": i + 1,
+                                     "skipped": whole or _is_skipped(lines, i)})
+    results, summary = {}, {"found": 0, "missing": 0, "skipped": 0}
+    for t in targets:
+        locs = sorted(found[t], key=lambda l: (l["path"], l["line"]))
+        status = "missing" if not locs else ("found" if any(not l["skipped"] for l in locs) else "skipped")
+        summary[status] += 1
+        results[t] = {"status": status, "locations": locs}
+    return {"results": results, "summary": summary}
+
+
+def cmd_check(args) -> int:
+    floor = Path(args.floor)
+    if not floor.is_file():
+        raise InputError(f"ut-floor 파일이 없습니다: {floor}")
+    result = check_floor(read_md_table(floor), Path(args.root))
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    s = result["summary"]
+    print(f"found {s['found']} · missing {s['missing']} · skipped {s['skipped']}")
+    return 0 if s["missing"] == 0 and s["skipped"] == 0 else 1
+
 # ---------- 명령 ----------
 
 def cmd_scope(args) -> int:
@@ -297,6 +393,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--spec")
     s.add_argument("--date", default=_dt.date.today().isoformat())
     s.set_defaults(func=cmd_scope)
+    c = sub.add_parser("check")
+    c.add_argument("--floor", required=True)
+    c.add_argument("--root", required=True)
+    c.add_argument("--out", required=True)
+    c.set_defaults(func=cmd_check)
     return p
 
 
