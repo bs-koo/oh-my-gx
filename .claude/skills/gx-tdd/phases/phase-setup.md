@@ -68,7 +68,7 @@ Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 
 1. `git status --porcelain` 실행. 결과가 비어 있지 않으면 미커밋 변경이 존재한다.
 2. 변경이 있으면:
    - `git stash push -u -m "gx-tdd-auto-$(date +%s)"` 실행. `-u` 옵션으로 untracked 파일까지 포함해 워킹 디렉토리를 비우고 변경을 보관한다.
-   - (참고) `git stash create`/`store` 조합은 워킹 디렉토리를 비우지 않으므로 이후 `checkout` 충돌을 유발한다. 반드시 `push -u`만 사용한다.
+   - `stash create`/`store`는 워킹 디렉토리를 비우지 않아 `checkout`이 충돌한다 — `push -u`만 쓴다.
    - `AUTO_STASHED=true`로 기록하고 `git stash list` 최상단 ref를 state.md `execution-log`의 `auto-stash: <ref>` 엔트리에 저장한다.
 3. 변경이 없으면 `AUTO_STASHED=false`.
 
@@ -122,7 +122,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 ### 3.1 병렬 수집
 
-아래 5개 작업은 서로 독립적이므로 **병렬로 실행**한다:
+아래 6개 작업은 서로 독립적이므로 **병렬로 실행**한다:
 1. **프로젝트 타입 감지**: `.claude/config.json`의 `projectTypes`에서 detect 필드와 매칭한다 (예: `build.gradle.kts` → `java-spring`, `package.json` → `node`, `Makefile` → `c-make`). 여러 타입이 감지되면 모두 기록한다. **매칭 실패 시**: gx-setup의 "프로젝트 타입 등록" 절차(빌드 파일 스캔 → 힌트 카탈로그 `Read("../../gx-setup/references/project-type-hints.md")` 제안 → 사용자 확인 → config 기록 → 권한 등록 → 하네스 확인)를 인라인으로 1회 실행한다. 사용자가 등록을 건너뛰면 타입 미상으로 진행한다 (이후 게이트는 fail-closed 동작 — 조용한 통과 없음).
 2. **디렉토리 구조 수집**: `PROJECT_ROOT`의 최상위 2레벨 디렉토리 구조를 수집한다.
 3. **CLAUDE.md 확인**: `PROJECT_ROOT`에 CLAUDE.md가 있으면 읽어서 코딩 컨벤션을 확보한다.
@@ -147,6 +147,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
         - 그 외 (`.pdf` 등): 파일명 그대로 사용
      c. 파일 목록 + 한줄 설명을 `REFERENCES` 변수에 저장한다.
    - `references/` 디렉토리가 없으면 `REFERENCES`는 빈 상태로 진행한다. 안내 메시지를 출력하지 않는다.
+6. **계획서 연동**: `Read("setup-testplan.md")`.
 
 ## Step 4: 관련 코드 맵 생성
 ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관련 코드를 탐색하고 초기 코드 맵을 생성한다.

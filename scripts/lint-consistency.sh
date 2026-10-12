@@ -901,8 +901,10 @@ grep -qF 'Read("setup-resume.md")' "$SETUP" || fail "setup-resume.md 포인터 �
 grep -qF 'ARGS[0]이 있고 `--resume`이 없으면' "$SETUP" || fail "setup-resume 조건부 로드 조건 누락: phase-setup.md"
 grep -qF 'Read("setup-work.md")' "$SETUP" || fail "setup-work.md 포인터 누락: phase-setup.md"
 grep -qF '계획이 있으나 작업 ID가 지정되지 않은 경우' "$SETUP" || fail "작업 ID 없음 경로의 setup-work 소절 포인터 누락: phase-setup.md"
+grep -qF 'Read("setup-testplan.md")' "$SETUP" || fail "setup-testplan.md 포인터 누락: phase-setup.md"
+[ -f .claude/skills/gx-tdd/phases/setup-testplan.md ] || fail "setup-testplan.md 파일 없음"
 
-[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 63000B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 4건"
+[ "$FAIL" -eq 0 ] && ok "SKILL.md ≤ 63000B · phase-setup.md ≤ 22000B · 조건부 로드 포인터 5건"
 
 echo "[33/36] gx-tdd 세션 IMPLEMENT 계약"
 # 설계: docs/specs/2026-09-07-tdd-density-rhythm-design.md D1·D2
