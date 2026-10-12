@@ -278,37 +278,81 @@ SOURCE_EXT = {".java", ".kt", ".kts", ".groovy", ".scala", ".js", ".jsx", ".ts",
 TEST_FILE_RE = re.compile(r"(Tests?\.[^.]+$)|(\.(test|spec)\.[^.]+$)|(^test_.*\.py$)|(_test\.[^.]+$)")
 DECL_RE = re.compile(
     r"@Test\b|@ParameterizedTest\b|@RepeatedTest\b|@TestFactory\b"
-    r"|\b[xf]?(?:it|test)\s*(?:\.\s*(?:skip|only|each)\s*)?\("
+    r"|\b[xf]?(?:it|test)\s*(?:\.\s*(?:skip|only|each|todo)\s*)?\("
     r"|\bdef test_|\bfunc Test|\[(?:Fact|Theory|Test)\b")
 SKIP_RE = re.compile(
-    r"@Disabled\b|@Ignore\b|\.\s*skip\s*\(|\bxit\s*\(|\bxtest\s*\(|\bxdescribe\s*\("
-    r"|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(|\bSkip\s*=")
+    r"@Disabled\b|@Ignore\b|\[Ignore\b|\.\s*(?:skip|todo)\s*\(|\bxit\s*\(|\bxtest\s*\(|\bxdescribe\s*\("
+    r"|@pytest\.mark\.(?:skip|xfail)|@unittest\.skip|\bt\.Skip\(|\bSkip\s*=")
 CLASS_RE = re.compile(r"\bclass\s+\w+|\b[x]?describe\s*(?:\.\s*skip\s*)?\(")
+HEADER_SCAN_LIMIT = 15
 
 
-def _annotation_block_start(lines: list[str], j: int) -> int:
-    k = j
-    while k - 1 >= 0 and lines[k - 1].strip().startswith(("@", "[")):
-        k -= 1
-    return k
+def _is_comment(line: str) -> bool:
+    return line.strip().startswith(("//", "/*", "*", "#"))
 
 
-def _file_skipped(lines: list[str]) -> bool:
-    for k, line in enumerate(lines):
-        if CLASS_RE.search(line):
-            start = _annotation_block_start(lines, k)
-            return any(SKIP_RE.search(l) for l in lines[start:k + 1])
+def _is_annotation(line: str) -> bool:
+    return line.strip().startswith(("@", "["))
+
+
+def _opens_body(line: str) -> bool:
+    s = line.strip()
+    return not _is_annotation(line) and ("{" in s or "=>" in s or s.endswith(":"))
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _has_skip(lines: list[str]) -> bool:
+    return any(SKIP_RE.search(l) for l in lines if not _is_comment(l))
+
+
+def _test_header(lines: list[str], i: int) -> list[str]:
+    """줄 i의 ID가 속한 테스트 머리: 위아래 어노테이션 묶음 + 선언 + 본문을 여는 줄."""
+    anchor = i
+    if not (_is_annotation(lines[i]) or DECL_RE.search(lines[i])):
+        # 메서드 이름이나 본문에 ID가 있으면 바로 위 어노테이션·선언을 기준으로 삼는다
+        k = i - 1
+        while k >= 0 and i - k <= HEADER_SCAN_LIMIT and not (_is_annotation(lines[k]) or DECL_RE.search(lines[k])):
+            k -= 1
+        if k >= 0 and i - k <= HEADER_SCAN_LIMIT:
+            anchor = k
+    start = anchor
+    while start - 1 >= 0 and anchor - start < HEADER_SCAN_LIMIT:
+        prev = lines[start - 1]
+        s = prev.strip()
+        if not _is_annotation(prev) and not _is_comment(prev) and (
+                not s or DECL_RE.search(prev) or _opens_body(prev) or s.endswith(("}", "})", ";"))):
+            break
+        start -= 1
+    end = anchor
+    while not _opens_body(lines[end]) and end + 1 < len(lines) and end - anchor < HEADER_SCAN_LIMIT:
+        nxt = lines[end + 1]
+        if not nxt.strip() or (DECL_RE.search(nxt) and not _is_annotation(nxt)):
+            break
+        end += 1
+    return lines[start:max(end, i) + 1]
+
+
+def _enclosing_skipped(lines: list[str], i: int) -> bool:
+    """들여쓰기로 줄 i를 감싸는 class·describe 머리에 skip 표식이 있는가."""
+    threshold = _indent(lines[i])
+    for k in range(i - 1, -1, -1):
+        line = lines[k]
+        if not line.strip() or _is_comment(line) or _indent(line) >= threshold or not CLASS_RE.search(line):
+            continue
+        s = k
+        while s - 1 >= 0 and (_is_annotation(lines[s - 1]) or _is_comment(lines[s - 1])):
+            s -= 1
+        if _has_skip(lines[s:k + 1]):
+            return True
+        threshold = _indent(line)
     return False
 
 
 def _is_skipped(lines: list[str], i: int) -> bool:
-    j = i
-    while j >= 0 and not DECL_RE.search(lines[j]):
-        j -= 1
-    if j < 0:
-        return False
-    start = _annotation_block_start(lines, j)
-    return any(SKIP_RE.search(l) for l in lines[start:i + 1])
+    return _has_skip(_test_header(lines, i)) or _enclosing_skipped(lines, i)
 
 
 def iter_test_files(root: Path):
@@ -337,12 +381,12 @@ def check_floor(floor_rows: list[dict], root: Path) -> dict:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
-        whole = _file_skipped(lines)
         for i, line in enumerate(lines):
+            if _is_comment(line):
+                continue  # 주석 속 ID는 테스트가 아니다
             for t, pat in patterns.items():
                 if pat.search(line):
-                    found[t].append({"path": rel, "line": i + 1,
-                                     "skipped": whole or _is_skipped(lines, i)})
+                    found[t].append({"path": rel, "line": i + 1, "skipped": _is_skipped(lines, i)})
     results, summary = {}, {"found": 0, "missing": 0, "skipped": 0}
     for t in targets:
         locs = sorted(found[t], key=lambda l: (l["path"], l["line"]))
