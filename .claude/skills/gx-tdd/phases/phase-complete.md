@@ -93,7 +93,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
 2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
    단위테스트계획서 연동 중이면 `ut-check.json`의 위치를 열어 테스트ID마다 계획서의 기대결과·사후조건을 단언하는지 확인하고 `REB-UT-002 ✅ (SourceTest:12)`처럼 함께 표시한다. 단언이 없으면 ⚠️로 표시하고 아래 미충족 질문으로 처리한다.
-3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
+3. 모두 충족 → Step 0.5 진행 (단위테스트계획서 연동이 아니면 Step 0.5가 그대로 Step 1로 넘긴다). 미충족이 있으면 AskUserQuestion으로 확인한다:
    ```
    AskUserQuestion(
      questions: [{
@@ -108,7 +108,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
    )
    ```
    - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
-   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 1 진행.
+   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 0.5 진행.
 
 **전체 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
 
@@ -148,7 +148,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 `Skill("oh-my-gx:gx-commit")`을 호출하여 커밋한다 (Step -1 verify 게이트 통과 후 → commit).
 
 > 주의: `oh-my-gx:gx-commit`은 gx-dev와 공유하는 스킬로 verify 실행(테스트 실행 증거 수집)을 포함하지 않는다 (`verify-status` 기반 조건부 경고 게이트만 있다).
-> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1을 반드시 재실행한다.
+> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1.5부터 반드시 다시 실행한다 (연동 중이면 하한선을 다시 확인한 뒤 verify).
 
 **build/test 실패 시**: Step -1 verify 게이트의 차단 처리 분기를 그대로 따른다 (동일 절차의 이중 서술을 피하기 위해 **Step -1이 단일 기준**이다). `coder`(deprecated) 직접 호출 금지 — 수정은 RGR 사이클로만 한다.
 

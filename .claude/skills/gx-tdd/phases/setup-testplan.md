@@ -12,6 +12,8 @@ Python 명령 `PY`는 계획서가 탐지된 뒤에 정한다: `python3 --versio
 - 1개: 그 파일을 `TESTPLAN`으로 둔다.
 - 2개 이상: 최근 수정 순 2개와 "연동 안 함"으로 묻는다. 다른 파일은 UI Other로 경로를 받는다.
 
+**자동 stash에 숨은 계획서**: phase-setup 2.1에서 자동 stash를 했으면(`AUTO_STASHED=true`) 아직 커밋하지 않은 계획서는 작업 트리에 없다. 작업 트리에서 찾지 못하면 `git show --name-only --format= "<stash ref>^3"`(stash의 미추적 파일 목록)에서도 같은 규칙으로 찾는다. 거기서 찾으면 2절은 Git Bash에서 `git show "<stash ref>^3:<경로>" > "<FUNCS_DIR>/plan.xlsx"`로 꺼낸 사본으로 수행하고 (PowerShell 리다이렉션은 바이너리를 깨뜨린다), 3절은 Step 5 뒤 stash 복원(2.3)이 끝난 다음 원래 경로로 수행한다.
+
 ```
 AskUserQuestion(
   questions: [{
@@ -73,7 +75,7 @@ AskUserQuestion(
 
 ## 3. 하한선 저장
 
-범위가 정해지면 Step 6.5에서 `DEV_DIR`이 확정된 뒤 실행한다:
+범위가 정해지면 `DEV_DIR`이 확정된 뒤(git은 Step 6.5, svn은 Step 5 — svn은 Step 6.5를 건너뛴다) Step 7 전에 실행한다:
 
 `"<PY>" "<DE13>" scope --plan "<TESTPLAN>" --fn "<기능ID,…>" --ledger-dir "${PROJECT_ROOT}/.dev/ut-results" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md"`
 

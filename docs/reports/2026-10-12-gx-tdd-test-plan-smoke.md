@@ -9,13 +9,15 @@
 
 | 검사 | 명령 | 결과 |
 |---|---|---|
-| 헬퍼 단위 테스트 | `python -m unittest discover -s tests -p "test_de13_*.py"` | 32 tests OK |
+| 헬퍼 단위·지시문 계약 테스트 | `python -m unittest discover -s tests -p "test_de13_*.py"` | 64 tests OK (최종 리뷰 2회 반영 후) |
 | Codex 계약 테스트 | `python -m unittest discover -s tests -p "test_codex_*.py"` | 152 tests OK |
 | Codex 역할 동기화 | `python scripts/sync-codex-resources.py --check` | 드리프트 없음 |
 | 훅 회귀 | `bash scripts/hook-tests.sh` | 훅 회귀 테스트 통과 |
 | 정합성 린트 | `bash scripts/lint-consistency.sh` | 정합성 린트 통과 (36/36, 버전 1.34.0 4중 일치) |
 
 이 검사는 헬퍼 동작과 지시문 계약 문구를 확인한다. 실제 모델 세션에서 오케스트레이터가 지시대로 움직이는지는 입증하지 않는다.
+
+브랜치 전체 리뷰는 두 번 받았다 — Claude Opus(Critical 1·Important 5)와 Codex CLI 0.160.0 읽기 전용 리뷰(Important 7). 지적한 skip 판정 반례와 지시문 순서 결함은 회귀 테스트(`tests/test_de13_check.py`, `tests/test_de13_contract.py`)로 고정했다.
 
 ## 2. 실데이터 확인 (헬퍼 단독)
 

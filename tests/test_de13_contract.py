@@ -25,6 +25,26 @@ class TestPlanLinkContractTests(unittest.TestCase):
         self.assertNotRegex(verify, r"Step -1(?: verify)?부터 재실행")
         self.assertEqual(verify.count("Step -1.5부터 재실행"), 2)
 
+    def test_core_mode_paths_reach_ledger_step(self):
+        core = between(read("phases/phase-complete.md"), "**핵심 모드이면**", "**전체 모드**")
+        self.assertNotIn("Step 1 진행", core)
+        self.assertEqual(core.count("Step 0.5 진행"), 2)
+
+    def test_no_reentry_instruction_skips_floor_gate(self):
+        for rel in ("phases/phase-complete.md", "references/pipeline-state.md"):
+            with self.subTest(file=rel):
+                self.assertNotRegex(read(rel), r"Step -1을 (?:반드시 )?재실행")
+        self.assertIn("Step -1.5부터", read("references/pipeline-state.md"))
+
+    def test_floor_is_saved_after_dev_dir_for_svn_too(self):
+        save = between(read("phases/setup-testplan.md"), "## 3.", "## 4.")
+        self.assertIn("svn은 Step 5", save)
+
+    def test_plan_hidden_by_auto_stash_is_still_detected(self):
+        detect = between(read("phases/setup-testplan.md"), "## 1.", "## 2.")
+        self.assertIn("AUTO_STASHED", detect)
+        self.assertIn("^3", detect)
+
     def test_function_list_is_not_written_into_project_before_opt_in(self):
         plan = read("phases/setup-testplan.md")
         self.assertNotIn("export/functions.json", plan)
