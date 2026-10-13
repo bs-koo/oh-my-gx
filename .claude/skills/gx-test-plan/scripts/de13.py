@@ -585,7 +585,7 @@ def cmd_record(args) -> int:
     print(f"원장 {Path(args.ledger).name}: 기존 {s['기존']}(보강 {s['보강']}) · 신규 {s['신규']}{tail}")
     return 0
 
-# ---------- 사본 반영 ----------
+# ---------- 계획서 반영 ----------
 
 TESTERS_HEADER = ["git 이름", "실명"]
 
@@ -594,15 +594,6 @@ def read_testers(path: Path) -> dict[str, str]:
     if not path or not Path(path).is_file():
         return {}
     return {r["git 이름"]: r["실명"] for r in read_md_table(Path(path)) if r.get("git 이름")}
-
-
-def _ledger_rows(ledger_dir: Path) -> list[dict]:
-    rows = []
-    for p in sorted(Path(ledger_dir).glob("*.md")):
-        if p.name == "testers.md":
-            continue
-        rows.extend(r for r in read_md_table(p) if r.get("테스트ID"))
-    return rows
 
 
 def _cell_xml(ref: str, value: str, style: str | None) -> str:
@@ -645,78 +636,184 @@ def _patch_sheet(xml: str, updates: dict[int, dict[int, str]]) -> str:
     return xml
 
 
-def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], out: Path) -> dict:
-    plan_path, out = Path(plan_path), Path(out)
-    if out.resolve() == plan_path.resolve():
-        raise InputError("반영 사본 경로가 원본 계획서와 같습니다 — 원본은 덮어쓰지 않습니다")
+ID_RE = re.compile(r"^(.*?)(\d+)$")
+RANGE_RE = re.compile(r"(\$?[A-Z]+\$?)(\d+):(\$?[A-Z]+\$?)(\d+)")
+_ROW_NUM_RE = re.compile(r'<row\b[^>]*\br="(\d+)"')
+
+
+def _ledger_files(ledger_dir: Path) -> list[Path]:
+    return [p for p in sorted(Path(ledger_dir).glob("*.md")) if p.name != "testers.md"]
+
+
+def _id_scheme(rows: list[dict]) -> tuple[str, int, int]:
+    found: dict[str, list[str]] = {}
+    for r in rows:
+        m = ID_RE.match(r["테스트ID"])
+        if m:
+            found.setdefault(m.group(1), []).append(m.group(2))
+    if not found:
+        raise InputError("테스트ID 번호 규칙을 찾을 수 없습니다")
+    prefix = max(found, key=lambda k: len(found[k]))
+    return prefix, max(len(n) for n in found[prefix]), max(int(n) for n in found[prefix])
+
+
+def _sheet_max_row(xml: str) -> int:
+    return max((int(n) for n in _ROW_NUM_RE.findall(xml)), default=0)
+
+
+def _row_styles(xml: str, rnum: int) -> dict[int, str]:
+    m = re.search(rf'<row\b[^>]*\br="{rnum}"[^>]*?(?:/>|>.*?</row>)', xml, re.S)
+    styles: dict[int, str] = {}
+    for c in _CELL_RE.finditer(m.group(0) if m else ""):
+        ref = re.search(r'\br="([A-Z]+)\d+"', c.group("attrs"))
+        style = re.search(r'\bs="(\d+)"', c.group("attrs"))
+        if ref and style:
+            styles[_col_index(ref.group(1))] = style.group(1)
+    return styles
+
+
+def _append_rows(xml: str, rows: list[tuple[int, dict[int, str]]], style_rnum: int) -> str:
+    """시트 끝에 행을 붙인다. 셀 서식은 style_rnum 행의 같은 열을 따른다."""
+    if "</sheetData>" not in xml:
+        raise InputError("시트에 행을 추가할 수 없습니다 (sheetData 없음)")
+    styles = _row_styles(xml, style_rnum)
+    out = []
+    for rnum, values in rows:
+        cols = sorted(set(values) | set(styles))
+        cells = "".join(_cell_xml(f"{_col_letters(c)}{rnum}", values.get(c, ""), styles.get(c)) for c in cols)
+        out.append(f'<row r="{rnum}">{cells}</row>')
+    return xml.replace("</sheetData>", "".join(out) + "</sheetData>", 1)
+
+
+def _extend_range_text(text: str, old: int, new: int) -> str:
+    return RANGE_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}:{m.group(3)}{new}" if int(m.group(4)) == old
+                        else m.group(0), text)
+
+
+def _extend_sheet_ranges(xml: str, old: int, new: int) -> str:
+    """마지막 행(old)에서 끝나는 dimension·autoFilter·데이터 검증·조건부 서식 범위를 new까지 늘린다."""
+    return re.sub(r'(<(?:dimension|autoFilter|dataValidation|conditionalFormatting)\b[^>]*?\b(?:ref|sqref)=")([^"]*)(")',
+                  lambda m: m.group(1) + _extend_range_text(m.group(2), old, new) + m.group(3), xml)
+
+
+def _extend_defined_names(xml: str, index: int, old: int, new: int) -> str:
+    return re.sub(rf'(<definedName\b[^>]*\blocalSheetId="{index}"[^>]*>)([^<]*)(</definedName>)',
+                  lambda m: m.group(1) + _extend_range_text(m.group(2), old, new) + m.group(3), xml)
+
+
+def _replace_xlsx(path: Path, parts: dict[str, bytes]) -> None:
+    """같은 폴더 임시 파일에 쓰고 다시 읽어 확인한 뒤 원본과 바꾼다. 실패하면 원본은 그대로다."""
+    path = Path(path)
+    tmp = path.with_name(path.name + ".gx-tmp")
+    try:
+        with zipfile.ZipFile(path) as src, zipfile.ZipFile(tmp, "w") as dst:
+            for info in src.infolist():
+                dst.writestr(info, parts[info.filename] if info.filename in parts else src.read(info))
+        load_plan(tmp)
+        os.replace(tmp, path)
+    except PermissionError as exc:
+        raise InputError(f"계획서를 바꿀 수 없습니다 — 엑셀에서 닫고 다시 실행하세요 ({exc})") from exc
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], author: str, date: str,
+          version: str | None = None) -> dict:
+    plan_path = Path(plan_path)
     plan = load_plan(plan_path)
     by_id = {r["테스트ID"]: r for r in plan["rows"]}
     cols = plan["cols"]
-    ledger = _ledger_rows(Path(ledger_dir))
-    in_ledger = {r["테스트ID"] for r in ledger}
-    per_fn: dict[str, dict[str, int]] = {}
-    for r in plan["rows"]:
-        if r["연계기능ID"]:
-            per_fn.setdefault(r["연계기능ID"], {"Pass": 0, "제외": 0, "이관": 0, "미착수": 0, "재확인 필요": 0})
-            if r["테스트ID"] not in in_ledger:
-                per_fn[r["연계기능ID"]]["미착수"] += 1
-
-    def bump(fn: str, key: str) -> None:
-        if fn in per_fn:
-            per_fn[fn][key] += 1
-
-    recheck, not_in_plan, unknown, updates = [], [], [], {}
-    for row in ledger:
-        tid, state = row["테스트ID"], row.get("상태", "")
-        rec = by_id.get(tid)
-        if rec is None:
-            not_in_plan.append(tid)
-            continue
-        fn = rec["연계기능ID"]
-        if state.startswith("이관"):
-            bump(fn, "이관")
-            continue
-        if state == "제외":
-            bump(fn, "제외")
-            continue
-        if state != "Pass":
-            continue
-        if row.get("행 지문") != row_fingerprint(rec):
-            recheck.append(tid)
-            bump(fn, "재확인 필요")
-            continue
-        git_name = row.get("담당자", "")
-        name = testers.get(git_name)
-        if name is None:
-            if git_name not in unknown:
-                unknown.append(git_name)
-            continue
-        updates[rec["_row"]] = {cols["결과"]: "Pass", cols["수행일"]: row.get("수행일", ""),
-                                cols["테스트담당자"]: name}
-        bump(fn, "Pass")
-    summary = {"output": out.as_posix(), "기능별": per_fn, "재확인 필요": recheck,
-               "계획서에 없음": not_in_plan, "매핑 없는 담당자": unknown}
-    if unknown:
+    tables = {p: read_md_table(p) for p in _ledger_files(Path(ledger_dir))}
+    pending = [(p, i, r) for p, rows in tables.items() for i, r in enumerate(rows)
+               if not r.get("반영") and r.get("구분") in ("기존", "신규")]
+    summary = {"계획서": plan_path.as_posix(), "버전": "", "결과 기입": 0, "보강": 0, "신규": [],
+               "재확인 필요": [], "계획서에 없음": [], "기능 미지정": 0, "개정이력": "",
+               "매핑 없는 담당자": sorted({r.get("담당자", "") for _, _, r in pending} - set(testers))}
+    if summary["매핑 없는 담당자"]:
         return summary
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(plan_path) as src, zipfile.ZipFile(out, "w") as dst:
-        for info in src.infolist():
-            data = src.read(info)
-            if info.filename == plan["part"] and updates:
-                data = _patch_sheet(data.decode("utf-8"), updates).encode("utf-8")
-            dst.writestr(info, data)
+    groups: dict[str, list[tuple[Path, int, dict]]] = {}
+    for p, i, r in pending:
+        if r["구분"] != "기존":
+            continue
+        rec = by_id.get(r.get("테스트ID", ""))
+        if rec is None:
+            summary["계획서에 없음"].append(r.get("테스트ID", ""))
+        elif r.get("행 지문") != row_fingerprint(rec):
+            summary["재확인 필요"].append(rec["테스트ID"])  # PM이 그 사이 행을 고쳤다
+        else:
+            groups.setdefault(rec["테스트ID"], []).append((p, i, r))
+    updates: dict[int, dict[int, str]] = {}
+    marks: dict[tuple[Path, int], str] = {}
+    for tid, items in groups.items():
+        items.sort(key=lambda it: it[2].get("수행일", ""))
+        last = items[-1][2]
+        values = {cols["결과"]: "Pass", cols["수행일"]: last.get("수행일", ""),
+                  cols["테스트담당자"]: testers[last["담당자"]]}
+        refined = next((it[2]["기대결과"] for it in reversed(items) if it[2].get("기대결과")), "")
+        if refined:
+            values[cols["기대결과"]] = refined
+            summary["보강"] += 1
+        updates[by_id[tid]["_row"]] = values
+        summary["결과 기입"] += 1
+        marks.update({(p, i): "" for p, i, _ in items})
+    prefix, width, last_no = _id_scheme(plan["rows"])
+    appended: list[dict[int, str]] = []
+    for p, i, r in pending:
+        if r["구분"] != "신규":
+            continue
+        siblings = [x for x in plan["rows"] if x["연계기능ID"] == r.get("연계기능ID")]
+        if r.get("연계기능ID") == UNASSIGNED or not siblings:
+            summary["기능 미지정"] += 1
+            continue
+        last_no += 1
+        tid = f"{prefix}{last_no:0{width}d}"
+        values = {c: siblings[-1].get(h, "") for h, c in cols.items()}  # 연계요구사항ID 등은 같은 기능 행을 따른다
+        values.update({cols[f]: r.get(f, "") for f in FIELDS4})
+        values.update({cols["테스트ID"]: tid, cols["연계기능ID"]: r["연계기능ID"], cols["의존성"]: "없음",
+                       cols["결과"]: "Pass", cols["수행일"]: r.get("수행일", ""),
+                       cols["테스트담당자"]: testers[r["담당자"]]})
+        appended.append(values)
+        summary["신규"].append(tid)
+        marks[(p, i)] = tid
+    if not updates and not appended:
+        return summary
+    with zipfile.ZipFile(plan_path) as z:
+        sheet = z.read(plan["part"]).decode("utf-8")
+        workbook = z.read("xl/workbook.xml").decode("utf-8")
+    if appended and "<tablePart" in sheet:
+        raise InputError("엑셀 표(Table) 서식이 있는 계획서에는 행을 추가할 수 없습니다")
+    sheet = _patch_sheet(sheet, updates)
+    if appended:
+        old = _sheet_max_row(sheet)
+        style_row = max(r["_row"] for r in plan["rows"])
+        sheet = _append_rows(sheet, [(old + n, v) for n, v in enumerate(appended, start=1)], style_row)
+        sheet = _extend_sheet_ranges(sheet, old, old + len(appended))
+        workbook = _extend_defined_names(workbook, plan["index"], old, old + len(appended))
+    parts = {plan["part"]: sheet.encode("utf-8")}
+    summary["개정이력"] = "개정이력 시트 없음"
+    parts["xl/workbook.xml"] = workbook.encode("utf-8")
+    _replace_xlsx(plan_path, parts)
+    tag = f"v{summary['버전']}" if summary["버전"] else date
+    for (p, i), tid in marks.items():
+        tables[p][i]["반영"] = f"{tag} {tid}".strip()
+    for p in {p for p, _ in marks}:
+        _write_ledger(p, tables[p])
     return summary
 
 
 def cmd_apply(args) -> int:
-    summary = apply(Path(args.plan), Path(args.ledger_dir), read_testers(Path(args.testers)), Path(args.out))
-    report = Path(args.report)
-    report.parent.mkdir(parents=True, exist_ok=True)
-    report.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    summary = apply(Path(args.plan), Path(args.ledger_dir), read_testers(Path(args.testers)),
+                    args.author, args.date, args.version)
+    _write_json(Path(args.report), summary)
     if summary["매핑 없는 담당자"]:
         print("매핑 없는 담당자: " + ", ".join(summary["매핑 없는 담당자"]))
         return 3
-    print(f"반영 사본: {summary['output']}")
+    if not summary["결과 기입"] and not summary["신규"]:
+        print("반영할 원장 항목이 없습니다")
+        return 0
+    head = f"계획서 v{summary['버전']}" if summary["버전"] else "계획서"
+    print(f"{head} 반영: 결과 {summary['결과 기입']} · 보강 {summary['보강']} · 신규 {len(summary['신규'])}")
     return 0
 
 # ---------- 명령 ----------
@@ -784,7 +881,9 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--plan", required=True)
     a.add_argument("--ledger-dir", required=True)
     a.add_argument("--testers", required=True)
-    a.add_argument("--out", required=True)
+    a.add_argument("--author", required=True)
+    a.add_argument("--date", default=_dt.date.today().strftime("%Y.%m.%d"))
+    a.add_argument("--version")
     a.add_argument("--report", required=True)
     a.set_defaults(func=cmd_apply)
     return p
