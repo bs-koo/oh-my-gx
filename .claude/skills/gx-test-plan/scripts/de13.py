@@ -636,6 +636,46 @@ def _patch_sheet(xml: str, updates: dict[int, dict[int, str]]) -> str:
     return xml
 
 
+REVISION_HEAD = ("버전", "개정일", "개정 사유", "개정 내용", "작성자")
+REVISION_REASON = "개발 반영(gx-tdd)"
+
+
+def next_version(last: str) -> str:
+    m = re.fullmatch(r"\s*(\d+)\.(\d+)\s*", last or "")
+    if not m:
+        raise InputError(f"개정이력 마지막 버전 '{last}'을 해석할 수 없습니다 — --version으로 지정하세요")
+    return f"{m.group(1)}.{int(m.group(2)) + 1}"
+
+
+def revision_text(new_ids: list[str], refined: int, passed: int) -> str:
+    parts = []
+    if new_ids:
+        span = new_ids[0] if len(new_ids) == 1 else f"{new_ids[0]}~{new_ids[-1]}"
+        parts.append(f"단위테스트 신규 {len(new_ids)}건 추가({span})")
+    if refined:
+        parts.append(f"기대결과 보강 {refined}건")
+    parts.append(f"결과 기입 Pass {passed}건")
+    return "·".join(parts)
+
+
+def load_revision(path: Path) -> dict | None:
+    wb = Workbook(Path(path))
+    try:
+        try:
+            name, part, cols, body = _find_table(wb, REVISION_HEAD)
+        except InputError:
+            return None
+        names = [n for n, _ in wb.sheets]
+    finally:
+        wb.close()
+    entries = [(rnum, cells) for rnum, cells in body if (cells.get(cols["버전"], "") or "").strip()]
+    if not entries:
+        return None
+    rnum, cells = entries[-1]
+    return {"sheet": name, "part": part, "index": names.index(name), "cols": cols,
+            "last_rnum": rnum, "last_version": cells.get(cols["버전"], "").strip()}
+
+
 ID_RE = re.compile(r"^(.*?)(\d+)$")
 RANGE_RE = re.compile(r"(\$?[A-Z]+\$?)(\d+):(\$?[A-Z]+\$?)(\d+)")
 _ROW_NUM_RE = re.compile(r'<row\b[^>]*\br="(\d+)"')
@@ -778,9 +818,15 @@ def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], author: st
         marks[(p, i)] = tid
     if not updates and not appended:
         return summary
+    revision = load_revision(plan_path)
+    if revision:
+        summary["버전"] = version or next_version(revision["last_version"])  # 쓰기 전에 실패해야 원본이 안전하다
+    elif version:
+        summary["버전"] = version
     with zipfile.ZipFile(plan_path) as z:
         sheet = z.read(plan["part"]).decode("utf-8")
         workbook = z.read("xl/workbook.xml").decode("utf-8")
+        rev_xml = z.read(revision["part"]).decode("utf-8") if revision else ""
     if appended and "<tablePart" in sheet:
         raise InputError("엑셀 표(Table) 서식이 있는 계획서에는 행을 추가할 수 없습니다")
     sheet = _patch_sheet(sheet, updates)
@@ -791,7 +837,18 @@ def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], author: st
         sheet = _extend_sheet_ranges(sheet, old, old + len(appended))
         workbook = _extend_defined_names(workbook, plan["index"], old, old + len(appended))
     parts = {plan["part"]: sheet.encode("utf-8")}
-    summary["개정이력"] = "개정이력 시트 없음"
+    if revision:
+        rc = revision["cols"]
+        text = revision_text(summary["신규"], summary["보강"], summary["결과 기입"] + len(summary["신규"]))
+        values = {rc["버전"]: summary["버전"], rc["개정일"]: date, rc["개정 사유"]: REVISION_REASON,
+                  rc["개정 내용"]: text, rc["작성자"]: author}
+        old = _sheet_max_row(rev_xml)
+        rev_xml = _extend_sheet_ranges(_append_rows(rev_xml, [(old + 1, values)], revision["last_rnum"]), old, old + 1)
+        workbook = _extend_defined_names(workbook, revision["index"], old, old + 1)
+        parts[revision["part"]] = rev_xml.encode("utf-8")
+        summary["개정이력"] = f"{summary['버전']} {text}"
+    else:
+        summary["개정이력"] = "개정이력 시트 없음"
     parts["xl/workbook.xml"] = workbook.encode("utf-8")
     _replace_xlsx(plan_path, parts)
     tag = f"v{summary['버전']}" if summary["버전"] else date
