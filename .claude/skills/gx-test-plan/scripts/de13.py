@@ -30,7 +30,6 @@ REQUIRED = ("테스트ID", "연계기능ID", "사전조건", "입력", "기대�
             "의존성", "테스트담당자", "수행일", "결과")
 FIELDS4 = ("사전조건", "입력", "기대결과", "사후조건")
 DITTO = "〃"
-LEDGER_HEADER = ["테스트ID", "상태", "수행일", "담당자", "테스트 위치", "행 지문", "비고"]
 
 
 class InputError(Exception):
@@ -499,71 +498,91 @@ def locate_test(root: Path, location: str) -> dict | None:
 
 # ---------- 결과 원장 ----------
 
-VERDICT_RE = re.compile(r"^(대상|제외\((?P<reason>.+)\)|이관\((?P<work>W\d{2,})\))$")
+LEDGER_HEADER = ["구분", "테스트ID", "연계기능ID", *FIELDS4, "결과", "수행일", "담당자",
+                 "테스트 위치", "행 지문", "근거", "반영"]
+DRAFT_HEADER = ["구분", "테스트ID", "연계기능ID", *FIELDS4, "테스트 위치", "근거"]
+UNASSIGNED = "미지정"
 
 
-def _ledger_path(ledger_dir: Path, fn: str) -> Path:
-    return Path(ledger_dir) / f"{fn}.md"
-
-
-def _read_ledger(path: Path) -> dict[str, dict]:
-    if not path.is_file():
-        return {}
-    return {r["테스트ID"]: r for r in read_md_table(path) if r.get("테스트ID")}
-
-
-def _write_ledger(path: Path, fn: str, rows: dict[str, dict]) -> None:
+def _write_ledger(path: Path, rows: list[dict]) -> None:
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    ordered = [rows[k] for k in sorted(rows)]
-    path.write_text(f"# {fn} 단위테스트 결과 원장\n\n" + write_md_table(LEDGER_HEADER, ordered), encoding="utf-8")
+    path.write_text(f"# {path.stem} 단위테스트 원장\n\n" + write_md_table(LEDGER_HEADER, rows), encoding="utf-8")
 
 
-def record(floor_rows: list[dict], check: dict, ledger_dir: Path, date: str, tester: str) -> list[Path]:
-    results = check.get("results", {})
-    entries: dict[str, list[dict]] = {}
-    problems = []
-    for r in floor_rows:
-        m = VERDICT_RE.match(r.get("판정", ""))
-        if not m:
-            raise InputError(f"알 수 없는 판정 '{r.get('판정', '')}' ({r.get('테스트ID')})")
-        base = {"테스트ID": r["테스트ID"], "상태": "", "수행일": "", "담당자": "",
-                "테스트 위치": "", "행 지문": r.get("행 지문", ""), "비고": ""}
-        if m.group(1) == "대상":
-            res = results.get(r["테스트ID"], {"status": "missing", "locations": []})
-            if res["status"] != "found":
-                problems.append(f"{r['테스트ID']}({res['status']})")
+def _check_locations(root: Path, raw: str) -> tuple[list[str], list[str]]:
+    locs = [s.strip() for s in (raw or "").split(",") if s.strip()]
+    bad = []
+    for loc in locs:
+        hit = locate_test(root, loc)
+        if hit is None:
+            bad.append(f"{loc}(테스트 아님)")
+        elif hit["skipped"]:
+            bad.append(f"{loc}(skip)")
+    return locs, bad
+
+
+def record(draft_rows: list[dict], plan: dict, root: Path, ledger_path: Path, date: str, tester: str) -> dict:
+    """초안을 검증해 원장에 병합한다. 반영(`반영` 값 있음)된 행은 보존하고 나머지는 이번 초안으로 바꾼다."""
+    by_id = {r["테스트ID"]: r for r in plan["rows"]}
+    functions = {r["연계기능ID"] for r in plan["rows"] if r["연계기능ID"]}
+    errors, rows, seen = [], [], set()
+    for n, d in enumerate(draft_rows, start=1):
+        kind = d.get("구분", "")
+        where = f"{n}행({d.get('테스트ID') or kind or '?'})"
+        locs, bad = _check_locations(Path(root), d.get("테스트 위치", ""))
+        if not locs:
+            errors.append(f"{where}: 테스트 위치 없음")
+            continue
+        if bad:
+            errors.append(f"{where}: " + ", ".join(bad))
+            continue
+        row = {h: "" for h in LEDGER_HEADER}
+        row.update({"구분": kind, "결과": "Pass", "수행일": date, "담당자": tester,
+                    "테스트 위치": ", ".join(locs), "근거": d.get("근거", "")})
+        if kind == "기존":
+            rec = by_id.get(d.get("테스트ID", ""))
+            if rec is None:
+                errors.append(f"{where}: 계획서에 없는 테스트ID")
                 continue
-            loc = next(l for l in res["locations"] if not l["skipped"])
-            base.update({"상태": "Pass", "수행일": date, "담당자": tester,
-                         "테스트 위치": f"{loc['path']}:{loc['line']}"})
-        elif m.group("reason"):
-            base.update({"상태": "제외", "비고": m.group("reason")})
+            if rec["테스트ID"] in seen:
+                errors.append(f"{where}: 같은 테스트ID 중복 — 한 행으로 묶으세요")
+                continue
+            seen.add(rec["테스트ID"])
+            row.update({"테스트ID": rec["테스트ID"], "연계기능ID": rec["연계기능ID"],
+                        "기대결과": d.get("기대결과", ""), "행 지문": row_fingerprint(rec)})
+        elif kind == "신규":
+            fn = d.get("연계기능ID", "") or UNASSIGNED
+            if fn != UNASSIGNED and fn not in functions:
+                errors.append(f"{where}: 계획서에 없는 연계기능ID {fn}")
+                continue
+            if not d.get("입력") or not d.get("기대결과"):
+                errors.append(f"{where}: 신규 행은 입력·기대결과가 필요합니다")
+                continue
+            row.update({"연계기능ID": fn, **{f: d.get(f, "") for f in FIELDS4}})
         else:
-            base.update({"상태": f"이관({m.group('work')})"})
-        entries.setdefault(r["기능ID"], []).append(base)
-    if problems:
-        raise InputError("하한선 미충족 상태에서는 기록하지 않습니다: " + ", ".join(problems))
-    written = []
-    for fn, rows in entries.items():
-        path = _ledger_path(ledger_dir, fn)
-        merged = _read_ledger(path)
-        for row in rows:
-            if merged.get(row["테스트ID"], {}).get("상태") == "Pass" and row["상태"] != "Pass":
-                continue  # 이전 작업의 Pass를 후속 작업의 제외·이관으로 낮추지 않는다
-            merged[row["테스트ID"]] = row
-        _write_ledger(path, fn, merged)
-        written.append(path)
-    return written
+            errors.append(f"{where}: 구분은 기존/신규")
+            continue
+        rows.append(row)
+    if errors:
+        raise InputError("초안 오류 — " + "; ".join(errors))
+    ledger_path = Path(ledger_path)
+    kept = [r for r in read_md_table(ledger_path) if r.get("반영")] if ledger_path.is_file() else []
+    _write_ledger(ledger_path, kept + rows)
+    old = [r for r in rows if r["구분"] == "기존"]
+    new = [r for r in rows if r["구분"] == "신규"]
+    return {"기존": len(old), "보강": sum(1 for r in old if r["기대결과"]), "신규": len(new),
+            "미지정": sum(1 for r in new if r["연계기능ID"] == UNASSIGNED)}
 
 
 def cmd_record(args) -> int:
-    floor, check = Path(args.floor), Path(args.check)
-    for p in (floor, check):
-        if not p.is_file():
-            raise InputError(f"파일이 없습니다: {p}")
-    paths = record(read_md_table(floor), json.loads(check.read_text(encoding="utf-8")),
-                   Path(args.ledger_dir), args.date, args.tester)
-    print("원장 갱신: " + ", ".join(p.name for p in paths))
+    draft = Path(args.draft)
+    if not draft.is_file():
+        raise InputError(f"초안 파일이 없습니다: {draft}")
+    s = record(read_md_table(draft), load_plan(Path(args.plan)), Path(args.root), Path(args.ledger),
+               args.date, args.tester)
+    tail = f" · 기능 미지정 {s['미지정']}" if s["미지정"] else ""
+    print(f"원장 {Path(args.ledger).name}: 기존 {s['기존']}(보강 {s['보강']}) · 신규 {s['신규']}{tail}")
     return 0
 
 # ---------- 사본 반영 ----------
@@ -754,9 +773,10 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--out", required=True)
     w.set_defaults(func=cmd_rows)
     r = sub.add_parser("record")
-    r.add_argument("--floor", required=True)
-    r.add_argument("--check", required=True)
-    r.add_argument("--ledger-dir", required=True)
+    r.add_argument("--draft", required=True)
+    r.add_argument("--plan", required=True)
+    r.add_argument("--root", required=True)
+    r.add_argument("--ledger", required=True)
     r.add_argument("--date", required=True)
     r.add_argument("--tester", required=True)
     r.set_defaults(func=cmd_record)
