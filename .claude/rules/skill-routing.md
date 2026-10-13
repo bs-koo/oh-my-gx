@@ -9,7 +9,7 @@
 | `커밋`, `커밋해`, `커밋해줘`, `commit` | `/gx-commit` |
 | `PR`, `PR 올려`, `PR 생성`, `풀리퀘`, `pull request` | `/gx-pull-request` |
 | `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
-| `단위테스트 결과 반영`, `결과반영 엑셀`, `테스트 결과 엑셀로`, `계획서에 결과 넣어줘` | `/gx-test-plan` |
+| `계획서 반영`, `단위테스트 계획서 반영`, `계획서 갱신`, `단위테스트 결과 반영` | `/gx-test-plan` |
 
 **gx-tdd·gx-ralph 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
 - 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.

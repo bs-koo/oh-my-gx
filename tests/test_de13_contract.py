@@ -54,6 +54,19 @@ class BackfillContractTests(unittest.TestCase):
             with self.subTest(file=rel):
                 self.assertEqual(json.loads(read(rel))["testPlan"], {"path": ""})
 
+    def test_test_plan_skill_updates_registered_plan_in_place(self):
+        skill = read(".claude/skills/gx-test-plan/SKILL.md")
+        for needle in ("testPlan.path", "--author", "git status --porcelain", "개정이력", "testers.md", "엑셀에서 닫고"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, skill)
+        for stale in ("_결과반영_", "export", "사본"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, skill)
+        commit = read(".claude/skills/gx-commit/SKILL.md")
+        self.assertIn("`.dev/ut-results/`", commit)
+        self.assertNotIn("ut-results/export", commit)
+        self.assertIn("계획서 반영", read(".claude/rules/skill-routing.md"))
+
 
 if __name__ == "__main__":
     unittest.main()
