@@ -63,7 +63,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 **핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (verify 게이트가 테스트 실행 증거를 이미 강제하므로 여기서는 AC 충족 대조만 한다):
 1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
 2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
-3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
+3. 모두 충족 → Step 0.5 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
    ```
    AskUserQuestion(
      questions: [{
@@ -78,7 +78,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
    )
    ```
    - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
-   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 1 진행.
+   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 0.5 진행.
 
 **전체 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
 
@@ -98,6 +98,27 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
   - 건너뛰기 선택 → 다음 단계 진행 (위험 수용. trust-ledger에 기록)
 
 위 Step 0 진입 조건에 의해 PRD 부재이면 이 단계 전체가 건너뛰어진다.
+
+## Step 0.5: 단위테스트 원장 작성 (계획서 등록 시)
+
+`.claude/config.json`의 `testPlan.path`가 비어 있거나 그 파일이 없으면 아무 안내 없이 Step 1로 진행한다. 등록돼 있으면 verify를 통과한 이번 변경의 테스트로 gx-pm 단위테스트계획서 역보강용 원장을 쓴다. **이 단계는 질문하지 않는다** — 짝짓기가 틀렸으면 사용자가 PR의 원장 diff에서 고친다.
+
+`DE13`은 이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로, `PY`는 `python3 --version`이 3.x를 출력하면 `python3`, 아니면 `python`(Windows)이다. 둘 다 없으면 "Python이 없어 단위테스트 원장을 건너뜁니다" 1줄을 안내하고 Step 1로 진행한다. `TESTPLAN`은 `PROJECT_ROOT` 기준 `testPlan.path`, `SLUG`는 `DEV_DIR`의 마지막 경로 성분이다.
+
+1. **테스트 목록**: `"<PY>" "<DE13>" tests --diff "${DIFF_FILE}" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-tests.json"`. 테스트가 0개면 "이번 변경에 테스트가 없어 원장을 쓰지 않습니다" 1줄 후 Step 1로 진행한다.
+2. **관련 기능**: `"<PY>" "<DE13>" functions --plan "<TESTPLAN>" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-functions.json"` (계획서와 같은 폴더에 `*기능명세서*.xlsx`가 하나 있으면 `--spec "<그 파일>"`). AC·PRD 요구사항과 기능명·UT 수를 대조해 이번 작업에 해당하는 기능을 고르고, `"<PY>" "<DE13>" rows --plan "<TESTPLAN>" --fn "<기능ID,…>" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-rows.md"`로 그 기능의 UT 행을 읽는다. 해당 기능을 고를 수 없으면 rows를 건너뛰고 모든 테스트를 신규(`미지정`)로 둔다.
+3. **초안 작성**: `${DEV_DIR}/ut-draft.md`에 `| 구분 | 테스트ID | 연계기능ID | 사전조건 | 입력 | 기대결과 | 사후조건 | 테스트 위치 | 근거 |` 표를 쓴다.
+   - `ut-tests.json`에서 `skipped: true`인 테스트는 넣지 않는다.
+   - **기존**: 테스트가 UT 행의 사전조건·입력·기대결과와 같은 동작을 단언하면 `구분`=`기존`, 그 `테스트ID`. 계획서 기대결과가 모호하고("정상 처리", "안내" 등) 테스트 단언이 더 구체적이면 `기대결과`에 계획서 문체로 구체화한 한 문장을, 아니면 비운다. 사전조건·입력·사후조건은 비운다.
+   - **신규**: 대응하는 행이 없는 동작은 `구분`=`신규`, `테스트ID` 비움, `연계기능ID`는 2에서 고른 기능(없으면 `미지정`), 사전조건·입력·기대결과·사후조건을 계획서 문체로 쓴다. 입력·기대결과는 필수다.
+   - 확신이 낮으면 기존 행에 붙이지 않고 신규로 두고 `근거`에 "REB-UT-045와 유사"처럼 적는다.
+   - 같은 동작의 여러 테스트(파라미터화·변형)는 한 행으로 묶고 `테스트 위치`에 `ut-tests.json`의 `path:line`을 `, `로 나열한다.
+   - `근거`는 한 줄: 짝지은 이유(기존) 또는 계획서에 없다고 본 이유(신규).
+4. **원장 기록**: `"<PY>" "<DE13>" record --draft "${PROJECT_ROOT}/${DEV_DIR}/ut-draft.md" --plan "<TESTPLAN>" --root "${PROJECT_ROOT}" --ledger "${PROJECT_ROOT}/.dev/ut-results/<SLUG>.md" --date "<오늘, YYYY.MM.DD>" --tester "<git config user.name>"`. svn이면 `--tester`에 OS 사용자명을 쓴다 (`/gx-test-plan`이 실명으로 매핑한다).
+5. 종료 코드 2면 메시지대로 초안을 고쳐 4를 한 번 더 실행한다. 두 번째도 실패하면 "단위테스트 원장을 기록하지 못했습니다 — `/gx-tdd --phase complete`로 다시 시도할 수 있습니다"를 경고하고 execution-log에 남긴 뒤 Step 1로 진행한다. 원장 실패는 커밋을 막지 않는다.
+6. 성공하면 헬퍼 출력 한 줄과 "계획서 반영은 `/gx-test-plan`"을 보고한다. 원장은 `.dev` 아래라 verify 지문이 바뀌지 않으며 Step 1 커밋에 함께 들어간다 (svn은 Step 1 안내의 `svn add --force .`로 등록된다).
+
+`current-step`을 `"단위테스트 원장"`으로 갱신.
 
 ## Step 1: Commit
 
