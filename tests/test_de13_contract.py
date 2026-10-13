@@ -45,6 +45,15 @@ class BackfillContractTests(unittest.TestCase):
         self.assertNotIn("AskUserQuestion", step)
         self.assertEqual(step.count('"<PY>" "<DE13>"'), 4)
 
+    def test_setup_registers_test_plan_path(self):
+        section = between(read(".claude/skills/gx-setup/SKILL.md"), "### 3.5단계", "### 4단계")
+        for needle in ('{"testPlan":{"path":', "~$*.xlsx", "등록 안 함", "단위테스트계획서 : 완료"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, section)
+        for rel in (".claude/config.json", ".claude/skills/gx-setup/references/config.template.json"):
+            with self.subTest(file=rel):
+                self.assertEqual(json.loads(read(rel))["testPlan"], {"path": ""})
+
 
 if __name__ == "__main__":
     unittest.main()

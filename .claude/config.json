@@ -62,6 +62,9 @@
       "webhookUrl": ""
     }
   },
+  "testPlan": {
+    "path": ""
+  },
   "contextLimits": {
     "product-owner": { "maxInputLines": 500, "note": "PRD 작성에 필요한 요구사항 + 코드 맵" },
     "architect": { "maxInputLines": 1000, "note": "PRD + 코드 맵 + 참조 코드" },
