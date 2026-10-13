@@ -23,42 +23,13 @@ complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한�
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1.5로 진행한다** (단위테스트계획서 연동이 아니면 Step -1.5가 그대로 Step -1로 넘긴다) — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
+0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1로 진행한다** — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
    - 핵심 모드(`mode: core` 또는 `flags`의 `--core` 포함)가 **아닌데** `phases.review`가 `completed`가 아니다 (core는 review를 설계상 스킵하므로 review 부재가 정상이다)
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 모드)를 안내한다.
 3. 전체 모드의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
-
-## Step -1.5: 단위테스트계획서 하한선 게이트 (연동 중에만)
-
-연동 중(state.md `ut-scope`가 기능ID)이 아니면 건너뛴다. `DE13`(이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로)과 Python 명령 `PY`는 `setup-testplan.md` 머리말과 같은 규칙으로 정한다. Python을 찾지 못하면 하한선을 확인할 수 없으므로 "Python 3.10 이상이 필요합니다 — 설치 후 `/gx-tdd --phase complete`로 다시 실행하세요"를 안내하고 중단한다 (확인 없이 원장을 쓰지 않는다).
-
-1. **계획서 교체 감지**: `setup-testplan.md` "6. 계획서 교체 감지"대로 sha를 비교한다. 다르면 "브랜치 진행 중 계획서가 바뀌었습니다"를 알리고, 범위를 다시 추출할지(→ `scope` 재실행 후 phase-requirements 게이트 1부터) 그대로 진행할지 묻는다.
-2. `"<PY>" "<DE13>" check --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json"`
-3. 종료 코드 0 → Step -1로 진행. 2 → 메시지를 보고하고 중단. 1 → `ut-check.json`의 `missing`·`skipped` 목록을 보여주고 묻는다:
-
-```
-AskUserQuestion(
-  questions: [{
-    question: "계획서 케이스 {N}건의 테스트가 없거나 skip 상태입니다 ({ID 목록}). 어떻게 할까요?",
-    header: "UT 하한선",
-    options: [
-      { label: "RED 추가 (Recommended)", description: "phase-implement로 돌아가 해당 케이스를 새 태스크로 RGR 사이클을 수행합니다" },
-      { label: "UT 제외", description: "다음 질문에서 받은 사유로 ut-floor.md의 해당 행 판정을 제외(사유)로 바꿉니다" },
-      { label: "중단", description: "state.md에 status: cancelled를 기록합니다" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-"UT 제외"를 고르면 별도 후속 질문으로 사유를 묻고 실제 답변을 기다린 뒤 `판정`을 고치고 2번부터 다시 실행한다. Codex에서는 현재 모드의 질문 도구로 묻고, 응답할 사용자가 없는 헤드리스 실행이면 제외하지 않고 중단한다. 결과를 execution-log에 `gate: UT-floor`로 기록한다.
-
-`current-step`을 `"UT 하한선 게이트"`로 갱신.
-
----
 
 ## Step -1: verify 게이트 (commit/PR 진입 전 필수)
 
@@ -68,12 +39,12 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 **verify 결과 처리**:
 
-- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1.5부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
+- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
   1. verify가 실패 테스트/빌드 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:
      - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
-     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1.5부터 재실행)
+     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
      - "중단" → state.md에 `status: cancelled` 기록
   3. 자동 수정은 시도하지 않음 (RGR 사이클로만 수정. coder 직접 호출 금지)
 
@@ -92,8 +63,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 **핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (verify 게이트가 테스트 실행 증거를 이미 강제하므로 여기서는 AC 충족 대조만 한다):
 1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
 2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
-   단위테스트계획서 연동 중이면 `ut-check.json`의 위치를 열어 테스트ID마다 계획서의 기대결과·사후조건을 단언하는지 확인하고 `REB-UT-002 ✅ (SourceTest:12)`처럼 함께 표시한다. 단언이 없으면 ⚠️로 표시하고 아래 미충족 질문으로 처리한다.
-3. 모두 충족 → Step 0.5 진행 (단위테스트계획서 연동이 아니면 Step 0.5가 그대로 Step 1로 넘긴다). 미충족이 있으면 AskUserQuestion으로 확인한다:
+3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
    ```
    AskUserQuestion(
      questions: [{
@@ -108,7 +78,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
    )
    ```
    - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
-   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 0.5 진행.
+   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 1 진행.
 
 **전체 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
 
@@ -129,17 +99,6 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 위 Step 0 진입 조건에 의해 PRD 부재이면 이 단계 전체가 건너뛰어진다.
 
-## Step 0.5: 단위테스트 결과 원장 기록 (연동 중에만)
-
-연동 중(state.md `ut-scope`가 기능ID)이 아니면 건너뛴다. Step -1.5와 Step -1이 통과한 뒤에만 실행한다.
-
-`"<PY>" "<DE13>" record --floor "${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md" --check "${PROJECT_ROOT}/${DEV_DIR}/ut-check.json" --ledger-dir "${PROJECT_ROOT}/.dev/ut-results" --date "<오늘, YYYY.MM.DD>" --tester "<git config user.name>"`
-
-- svn이면 `--tester`는 `git` 대신 사용자에게 한 번 확인한 이름을 쓰고 state.md `execution-log`에 남긴다.
-- 원장은 `.dev` 아래라 verify 지문이 바뀌지 않는다. Step 1 커밋에 함께 들어간다 (svn은 Step 1 안내 문구의 `svn add --force .`로 등록된다).
-- 실패(종료 코드 2)해도 커밋을 막지 않는다. 경고와 함께 "다음 `--phase complete`에서 원장 기록을 다시 시도합니다"를 안내하고 execution-log에 남긴다.
-- 성공하면 "원장 갱신: REB-FN-001.md (Pass N · 제외 N · 이관 N). 계획서 사본 반영은 `/gx-test-plan`" 한 줄을 보고한다.
-
 ## Step 1: Commit
 
 **svn인 경우** → `gx-commit` 스킬은 git 전용이므로 건너뛴다. "SVN 프로젝트입니다. verify 게이트 통과를 확인하고, `svn add --force .`로 신규 파일(.dev 산출물 포함)이 등록되었는지 확인한 뒤 `svn commit`을 직접 실행해주세요." 출력 후 Step 3으로 진행한다.
@@ -148,7 +107,7 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 `Skill("oh-my-gx:gx-commit")`을 호출하여 커밋한다 (Step -1 verify 게이트 통과 후 → commit).
 
 > 주의: `oh-my-gx:gx-commit`은 gx-dev와 공유하는 스킬로 verify 실행(테스트 실행 증거 수집)을 포함하지 않는다 (`verify-status` 기반 조건부 경고 게이트만 있다).
-> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1.5부터 반드시 다시 실행한다 (연동 중이면 하한선을 다시 확인한 뒤 verify).
+> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1을 반드시 재실행한다.
 
 **build/test 실패 시**: Step -1 verify 게이트의 차단 처리 분기를 그대로 따른다 (동일 절차의 이중 서술을 피하기 위해 **Step -1이 단일 기준**이다). `coder`(deprecated) 직접 호출 금지 — 수정은 RGR 사이클로만 한다.
 

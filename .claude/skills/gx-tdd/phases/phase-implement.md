@@ -37,7 +37,6 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 - `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read하여 설계서를 로드한다. **testability 섹션**(phase-design에서 test-architect가 추가)을 확인한다.
 - `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 PRD를 로드한다. **수용 기준(AC) Given-When-Then 시나리오**를 추출한다.
-- 연동 중(state.md `ut-scope`가 기능ID)이면 `${PROJECT_ROOT}/${DEV_DIR}/ut-floor.md`를 Read하고, AC의 `[UT: …]` 태그로 AC별 계획서 행을 묶어 둔다 (2-R·2-V 프롬프트에 쓴다).
 - testability 섹션이 누락된 설계서면 사용자에게 경고: "testability 평가가 누락된 설계서입니다. phase-design을 재실행해야 RGR 격리 컨텍스트를 구성할 수 있습니다."
 - `ANTI_PATTERNS_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/testing-anti-patterns.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 이 경로를 전달한다.
 - `FRONTEND_TESTING_PATH`를 같은 규칙으로 확정한다 (`references/frontend-testing.md`). **UI 컴포넌트를 다루는 태스크에서만** red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 추가로 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.
@@ -123,8 +122,6 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 - T1, T2, T3은 **순차 실행** (의존성 체인).
 ```
 
-단위테스트계획서 연동 중이면 `AC 매핑` 열에 태그를 함께 적는다 (예: `AC-2 [UT: REB-UT-002, REB-UT-003]`).
-
 ### 1.15 태스크 수 가드
 
 태스크가 **8개를 넘으면** 승인 게이트 전에 두 단계로 묻는다. 태스크마다 red-writer 콜드 스타트와 verify 6단계가 붙으므로 30개짜리 분해는 한 세션에서 끝나지 않는다 — 분해가 잘못됐거나 실행 단위가 잘못된 것이다. 첫 질문은 재분해·분할·다른 실행 경로 중 하나를 고른다. "다른 실행 경로"를 고르면 두 번째 질문에서 무인 루프와 그대로 진행을 고른다. 각 질문은 선택지 2~3개이며 추천 항목을 첫 번째에 둔다.
@@ -161,7 +158,7 @@ AskUserQuestion(
 ```
 
 - **AC 묶어서 재분해** → 조건 1의 묶기 규칙을 적용해 재분해하고 1.1 표를 다시 제시한다. 여전히 8개를 넘으면 이 가드를 한 번 더 거친다 (최대 2회).
-- **작업 계획으로 분할** → `.dev/plan.md`가 없으면 이 선택지를 **제외**하고 제시한다. 있으면 앞 8개 태스크에 대응하는 AC로 범위를 줄이고, 나머지 AC를 `.dev/plan.md`에 `대기` 상태의 새 W행으로 추가한다 (도메인·브랜치명은 현재 실행과 같은 규칙, 선행은 현재 `work-id`). `.dev/plan.md`만 스테이징해 `docs: [plan] 후속 작업 등록` 메시지로 커밋한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다. 연동 중이면 이관한 AC의 `[UT: …]` 테스트ID를 `ut-floor.md`에서 `판정=이관(W0N)`(새 W행 ID)으로 고친다.
+- **작업 계획으로 분할** → `.dev/plan.md`가 없으면 이 선택지를 **제외**하고 제시한다. 있으면 앞 8개 태스크에 대응하는 AC로 범위를 줄이고, 나머지 AC를 `.dev/plan.md`에 `대기` 상태의 새 W행으로 추가한다 (도메인·브랜치명은 현재 실행과 같은 규칙, 선행은 현재 `work-id`). `.dev/plan.md`만 스테이징해 `docs: [plan] 후속 작업 등록` 메시지로 커밋한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
 - **무인 루프로 전환** → `status: cancelled`로 종료하고 `/gx-tdd --ralph {원 요청}` 재실행을 안내한다. svn이면 이 선택지를 제외한다.
 - **그대로 진행** → 1.2로 진행한다. execution-log에 `"태스크 수 가드 통과(사용자 선택): {N}개"`를 남긴다.
 
@@ -260,15 +257,6 @@ Task(subagent_type="oh-my-gx:red-writer"):
     [AC (Given-When-Then)]
     {태스크가 매핑된 AC 시나리오}
 
-    [단위테스트계획서 케이스 — 연동 중이고 태스크 AC에 UT 태그가 있을 때만]
-    {태그된 테스트ID별 계획서 행: 사전조건 / 입력 / 기대결과 / 사후조건 / 의존성 / 표식}
-    - 각 테스트ID마다 테스트 케이스 1건. 테스트 이름이나 표시 이름에 테스트ID 원문을 넣는다
-      (@DisplayName("REB-UT-002 …"), it('REB-UT-002 …')). 하이픈을 못 쓰는 식별자만 쓸 수 있으면 REB_UT_002.
-      파라미터화 테스트면 케이스별 표시 이름에 각 ID를 넣는다.
-    - 의존성 열은 실행 순서가 아니다. 선행 상태를 Given 준비 데이터로 만들고, 선행 기능이 없으면 모의로 대신한다.
-    - 사후조건의 테이블 건수는 저장소 모의로 저장 대상·건수를 단언하고, "변화 없음"은 저장 호출 0회를 단언한다.
-    - 따옴표 화면 문구는 서버 응답·예외에 담기면 원문 그대로 단언하고, AC에 "(문구는 화면 책임)"이 있으면 오류코드를 단언한다.
-
     [설계서 testability 섹션]
     {대상 컴포넌트의 인터페이스 + 모의 전략}
 
@@ -281,7 +269,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
     [작업]
     1. 이 태스크에 매핑된 AC의 시나리오마다 테스트 케이스 1건씩 작성 ([작성 범위] 참조). 각 케이스는 테스트 품질 3기준 준수:
        - 하나의 동작만 검증 (이름에 '그리고'가 필요하면 분리)
-       - 이름이 검증하는 동작을 설명 (계획서 케이스면 테스트ID를 앞에 둔다)
+       - 이름이 검증하는 동작을 설명
        - 실제 코드 우선, 모의는 불가피할 때만
     2. 테스트 명령 실행으로 실패 확인 (에러 메시지 캡처)
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
@@ -460,10 +448,6 @@ Task(subagent_type="oh-my-gx:reviewer", model: "sonnet"):
 
     [태스크 AC (Given-When-Then)]
     {이 태스크에 매핑된 AC 시나리오 — Part 1은 이것만 평가}
-
-    [단위테스트계획서 케이스 — 연동 중이고 태스크 AC에 UT 태그가 있을 때만]
-    {태그된 테스트ID별 계획서 행: 사전조건 / 입력 / 기대결과 / 사후조건}
-    Part 1에 UT 대조표(테스트ID / 테스트 위치 / 기대결과·사후조건 단언 여부 ✅⚠️❌)를 추가한다. ❌는 Part 1 FAIL 사유다.
 
     [설계서 인터페이스]
     {대상 컴포넌트의 시그니처 — 핵심 모드는 "없음 (핵심 모드)"}
