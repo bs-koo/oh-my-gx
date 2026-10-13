@@ -26,7 +26,7 @@ GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 
      │
 /gx-lens ─────────── 현행 정책 분석 + 영향도 (읽기 전용)
 /gx-tech-debt ────── 기술 부채 분석 + 우선순위 로드맵 (읽기 전용)
-/gx-test-plan ────── 단위테스트 결과 원장 → 계획서(xlsx) 사본 반영
+/gx-test-plan ────── 단위테스트 원장 → 계획서(xlsx) 보강·결과·개정이력
 /gx-research ─────── 외부 리서치 → context 반영 가능
 /gx-humanizer ────── AI 글쓰기 교정 (audit / rewrite / strict)
 ```
