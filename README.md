@@ -73,7 +73,7 @@ Claude Code의 기존 스킬 원본을 유지하고 Codex용 역할·설정 리�
 | 설정 템플릿 | 플러그인 `.claude/config.json` | 번들 템플릿과 config 병합 helper 사용; 기존 사용자 설정 보존 실측 |
 | 훅 게이트 | 플러그인 적용 | `hooks.json`의 Bash matcher와 Python 어댑터; `/hooks`의 사용자 신뢰 확인 필요 |
 | 역할·도구 대응 | Claude Task/Skill | 배포된 `gx-dev/references/codex-runtime.md`가 실제 스키마·allowlist 확인 후 매핑 |
-| 표준·에코 모델 선택 | opus/sonnet과 Task override | 모델 helper가 역할·프로파일·예외·allowlist를 계산; 기본 최신 허용 Astra/high·Sol/medium 자동 선택 |
+| 표준·에코 모델 선택 | opus/sonnet과 Task override | 모델 helper가 역할·프로파일·예외·allowlist를 계산; 기본 최신 허용 Astra/low·Sol/medium 자동 선택 |
 | 필수 질문 대기 | 동기 AskUserQuestion | pending helper로 실제 답변·결정 기록 전 phase 진행 보류; async ack는 답변으로 취급하지 않음 |
 | TDD·검증·리뷰 | 기존 파이프라인 | 실제 RED/GREEN, 코드 지문, native 교차 리뷰 실행 확인 |
 

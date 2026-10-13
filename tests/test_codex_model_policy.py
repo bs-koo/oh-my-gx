@@ -19,8 +19,8 @@ class ModelPolicyTests(unittest.TestCase):
         self.project = Path(self.temporary.name)
         self.capabilities = {
             "models": {
-                "gpt-6-astra": ["medium", "high", "xhigh"],
-                "gpt-6.1-sol": ["medium", "high"],
+                "gpt-6-astra": ["low", "medium", "high", "xhigh"],
+                "gpt-6.1-sol": ["low", "medium", "high"],
             },
             "parent_model": "gpt-6-astra", "parent_reasoning_effort": "xhigh",
         }
@@ -58,7 +58,7 @@ class ModelPolicyTests(unittest.TestCase):
                         result = self.resolve(role, pipeline=pipeline, profile=profile)
                         self.assertEqual((result["base_tier"], result["effective_tier"]), (base, tier))
                         self.assertEqual((result["model"], result["reasoning_effort"]),
-                                         ("gpt-6-astra", "high") if tier == "high" else ("gpt-6.1-sol", "medium"))
+                                         ("gpt-6-astra", "low") if tier == "high" else ("gpt-6.1-sol", "medium"))
 
     def test_architect_preserves_high_in_both_eco_pipelines(self):
         for pipeline in ("gx-dev", "gx-tdd"):
@@ -78,6 +78,10 @@ class ModelPolicyTests(unittest.TestCase):
                 with self.subTest(profile=profile, fix_round=round_number):
                     result = self.resolve("implementer", profile=profile, fix_round=round_number)
                     self.assertEqual(result["effective_tier"], "high" if round_number >= 4 else "mid")
+                    self.assertEqual(result["spawn_args"], {
+                        "model": "gpt-6-astra" if round_number >= 4 else "gpt-6.1-sol",
+                        "reasoning_effort": "low" if round_number >= 4 else "medium",
+                        "fork_turns": "none"})
         self.assertEqual(self.resolve("implementer", pipeline="standalone", fix_round=5)["effective_tier"], "mid")
         self.assertEqual(self.resolve("red-writer", fix_round=5)["effective_tier"], "mid")
 
@@ -111,14 +115,15 @@ class ModelPolicyTests(unittest.TestCase):
         self.assertEqual((result["model"], result["source"]), ("gpt-6-astra", "fallback"))
         self.assertIn("project-config", result["reason"])
         self.assertIn("unavailable/high", result["reason"])
+        self.assertEqual(result["reasoning_effort"], "high")
 
     def test_candidate_effort_must_be_allowed_and_effort_is_never_silently_downgraded(self):
-        self.capabilities["models"] = {"gpt-6-astra": ["medium"], "gpt-6-sol": ["high"]}
+        self.capabilities["models"] = {"gpt-6-astra": ["medium", "high"], "gpt-6-sol": ["low"]}
         result = self.resolve("architect")
         self.assertEqual((result["model"], result["reasoning_effort"], result["source"]),
-                         ("gpt-6-sol", "high", "fallback"))
+                         ("gpt-6-sol", "low", "fallback"))
         self.capabilities["models"] = {"gpt-6-astra": ["medium"]}
-        with self.assertRaisesRegex(ValueError, "high"):
+        with self.assertRaisesRegex(ValueError, "low"):
             self.resolve("architect")
 
     def test_mid_fallback_prefers_sol_variants_over_parent_astra(self):
@@ -133,13 +138,13 @@ class ModelPolicyTests(unittest.TestCase):
         self.capabilities["models"].update({
             "gpt-6.2-sol": ["medium", "high"],
             "gpt-6.10-sol": ["medium", "high"],
-            "gpt-7-astra": ["medium", "high"],
+            "gpt-7-astra": ["low", "medium", "high"],
         })
         for pipeline in ("gx-dev", "gx-tdd", "standalone"):
             for profile in ("standard", "eco"):
                 high = self.resolve("architect", pipeline=pipeline, profile=profile)
                 mid = self.resolve("red-writer", pipeline=pipeline, profile=profile)
-                self.assertEqual((high["model"], high["reasoning_effort"]), ("gpt-7-astra", "high"))
+                self.assertEqual((high["model"], high["reasoning_effort"]), ("gpt-7-astra", "low"))
                 self.assertEqual((mid["model"], mid["reasoning_effort"]), ("gpt-6.10-sol", "medium"))
                 self.assertIn("최신 허용", mid["reason"])
 
@@ -166,10 +171,11 @@ class ModelPolicyTests(unittest.TestCase):
 
     def test_absent_family_fallback_uses_newest_compatible_other_family(self):
         self.capabilities["models"] = {
-            "gpt-6.1-sol": ["high", "medium"], "gpt-7-sol": ["high", "medium"]}
+            "gpt-6.1-sol": ["low", "high", "medium"], "gpt-7-sol": ["low", "high", "medium"]}
         result = self.resolve("architect")
         self.assertEqual((result["model"], result["source"]), ("gpt-7-sol", "fallback"))
         self.assertIn("family:astra", result["reason"])
+        self.assertEqual(result["reasoning_effort"], "low")
 
     def test_pinned_model_override_keeps_older_available_model(self):
         self.capabilities["models"]["gpt-7-sol"] = ["medium"]
@@ -200,14 +206,14 @@ class ModelPolicyTests(unittest.TestCase):
                     self.resolve("implementer")
 
     def test_shared_allowed_model_can_distinguish_tiers_by_effort(self):
-        self.capabilities["models"] = {"gpt-6-astra": ["high", "medium"]}
+        self.capabilities["models"] = {"gpt-6-astra": ["low", "medium"]}
         high = self.resolve("architect", profile="eco")
         mid = self.resolve("implementer", profile="eco")
         self.assertEqual(high["model"], mid["model"])
-        self.assertEqual((high["reasoning_effort"], mid["reasoning_effort"]), ("high", "medium"))
+        self.assertEqual((high["reasoning_effort"], mid["reasoning_effort"]), ("low", "medium"))
 
     def test_other_allowed_fallback_is_deterministic_and_prefers_allowed_parent(self):
-        self.capabilities["models"] = {"z-model": ["high"], "a-model": ["high"]}
+        self.capabilities["models"] = {"z-model": ["low"], "a-model": ["low"]}
         self.capabilities["parent_model"] = "z-model"
         self.assertEqual(self.resolve()["model"], "z-model")
         self.capabilities["parent_model"] = "unlisted-model"
@@ -239,9 +245,9 @@ class ModelPolicyTests(unittest.TestCase):
                 self.assertIn("high/mid", result["warnings"][0])
 
     def test_unsupported_other_tier_does_not_block_current_dispatch(self):
-        self.capabilities["models"] = {"gpt-6-astra": ["high"]}
+        self.capabilities["models"] = {"gpt-6-astra": ["low"]}
         result = self.resolve("architect")
-        self.assertEqual((result["model"], result["reasoning_effort"]), ("gpt-6-astra", "high"))
+        self.assertEqual((result["model"], result["reasoning_effort"]), ("gpt-6-astra", "low"))
         self.assertEqual(result["warnings"], [])
 
     def test_session_returns_parent_even_outside_child_allowlist_and_does_not_spawn(self):

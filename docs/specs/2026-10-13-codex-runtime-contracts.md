@@ -12,7 +12,7 @@ Codex 기본 모드의 비동기 질문은 등록 후 즉시 반환한다. GX는
 
 ### 모델 선택
 
-scripts/codex-model-policy.py가 설치된 역할 index와 프로젝트 .claude/config.json의 선택적 codex.modelTiers를 읽는다. 기본 high는 최신 허용 Astra/high, mid는 최신 허용 Sol/medium이다. 특정 버전명을 기본값으로 고정하지 않고 실제 세션 models의 `gpt-<숫자 버전>-astra|sol` 정식 이름을 숫자 버전으로 비교한다. 요청 effort를 지원하는 같은 계열의 가장 높은 버전을 선택한다. 날짜 snapshot·preview·latest 별칭의 출시 순서를 이름만으로 추측하지 않는다. 계열 부재 시 다른 계열의 최신 허용 모델로 대체하고 사유를 표시하며, 지정한 model override는 기존 고정을 유지한다. family override는 astra/sol과 reasoning_effort로 설정한다.
+scripts/codex-model-policy.py가 설치된 역할 index와 프로젝트 .claude/config.json의 선택적 codex.modelTiers를 읽는다. 기본 high는 최신 허용 Astra/low, mid는 최신 허용 Sol/medium이다. 특정 버전명을 기본값으로 고정하지 않고 실제 세션 models의 `gpt-<숫자 버전>-astra|sol` 정식 이름을 숫자 버전으로 비교한다. 요청 effort를 지원하는 같은 계열의 가장 높은 버전을 선택한다. 날짜 snapshot·preview·latest 별칭의 출시 순서를 이름만으로 추측하지 않는다. 계열 부재 시 다른 계열의 최신 허용 모델로 대체하고 사유를 표시하며, 지정한 model override는 기존 고정을 유지한다. family override는 astra/sol과 reasoning_effort로 설정한다.
 
 입력 capabilities JSON에는 실제 세션의 models(모델명→허용 effort 목록)와 parent_model/parent_reasoning_effort만 적는다. 모델 목록은 실행 시점에 갱신하고 과거 세션 파일을 재사용하지 않는다. 계정 권한을 추측하거나 API 모델 목록을 spawn allowlist로 대신하지 않는다. 자동 최신 선택은 자식 배정 정책이며 메인 세션은 현재 사용자가 선택한 모델을 유지한다.
 

@@ -4,12 +4,14 @@
 
 ## 선택과 설정
 
-설치된 [모델 helper](../../../../scripts/codex-model-policy.py)는 같은 설치 루트의 `codex-roles/index.json`을 읽는다. 소비 프로젝트 `.claude/config.json`의 `modelProfile`은 기존 프로파일 우선순위로 확정한다. 기본 high는 최신 허용 Astra/high, mid는 최신 허용 Sol/medium이다. 버전 번호를 고정하지 않고 실행 시점의 모델 목록에서 요청 effort를 지원하는 `gpt-<숫자 버전>-astra|sol` 이름을 숫자로 비교한다. 6.10은 6.9보다 높게 해석한다. 이름만으로 날짜 snapshot·preview·latest 별칭의 출시 순서를 추측하지 않는다.
+설치된 [모델 helper](../../../../scripts/codex-model-policy.py)는 같은 설치 루트의 `codex-roles/index.json`을 읽는다. 소비 프로젝트 `.claude/config.json`의 `modelProfile`은 기존 프로파일 우선순위로 확정한다. 기본 high는 최신 허용 Astra/low, mid는 최신 허용 Sol/medium이다. 버전 번호를 고정하지 않고 실행 시점의 모델 목록에서 요청 effort를 지원하는 `gpt-<숫자 버전>-astra|sol` 이름을 숫자로 비교한다. 6.10은 6.9보다 높게 해석한다. 이름만으로 날짜 snapshot·preview·latest 별칭의 출시 순서를 추측하지 않는다.
+
+`high`/`mid`는 역할의 모델 티어이며 추론 강도 이름이 아니다. 기본 high 티어의 Astra는 `low`로 실행한다. architect와 TDD fix 4~5 격상에도 같은 기본값을 적용한다. 명시적 프로젝트 effort override와 현재 부모 세션 effort는 유지한다.
 
 빈 설정이면 자동 최신 정책을 쓴다. 선택적 `codex.modelTiers`의 `family`로 계열·effort를 지정할 수 있다:
 
 ```json
-{"codex":{"modelTiers":{"high":{"family":"astra","reasoning_effort":"high"},"mid":{"family":"sol","reasoning_effort":"medium"}}}}
+{"codex":{"modelTiers":{"high":{"family":"astra","reasoning_effort":"low"},"mid":{"family":"sol","reasoning_effort":"medium"}}}}
 ```
 
 특정 모델을 유지하려면 `family` 대신 `model`을 지정한다. 예를 들어 `{"mid":{"model":"gpt-6.1-sol","reasoning_effort":"medium"}}`은 더 높은 Sol 버전이 허용돼도 지정한 지원 모델을 유지한다. model과 family를 동시에 넣지 않는다. 최신 정책은 자식 배정에만 적용하고 메인 세션 모델을 자동 교체하지 않는다.

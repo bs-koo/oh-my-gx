@@ -4,7 +4,7 @@
 
 ## 변경 결과
 
-기본 모델 정책은 최신 허용 Astra/high·Sol/medium 자동 선택이며, 실제 세션의 spawn allowlist와 요청 effort만 사용한다. 프로젝트 `codex.modelTiers.family` 자동 선택 및 `model` 고정 override와 후보 부재의 대체 사유를 반환한다. dev/tdd의 eco 대상, architect 유지, task reviewer mid, TDD fix 4~5 fresh high, 부모 세션 구현을 함께 계산한다. 역할 없는 setup·complete는 부모 세션 정보로 따로 기록한다.
+기본 모델 정책은 최신 허용 Astra/low·Sol/medium 자동 선택이며, 실제 세션의 spawn allowlist와 요청 effort만 사용한다. 프로젝트 `codex.modelTiers.family` 자동 선택 및 `model` 고정 override와 후보 부재의 대체 사유를 반환한다. dev/tdd의 eco 대상, architect 유지, task reviewer mid, TDD fix 4~5 fresh high, 부모 세션 구현을 함께 계산한다. 역할 없는 setup·complete는 부모 세션 정보로 따로 기록한다.
 
 필수 질문은 stable id와 질문 세트 token으로 등록하고, 실제 답변 기록 전 원래 phase를 유지한다. async 등록 ack·추천 항목·빈/부분 답변은 결정을 만들지 않는다. 답변 저장 후 실패의 재시도는 결정 digest로 중복을 방지한다. 완료 영수증은 같은 token이 명시된 이벤트만 억제하며, 이후 독립 질문을 과거 답변의 중복으로 지우지 않는다. Claude 기존 capture와 Codex 질문 도구 용도 제한은 유지한다.
 
@@ -32,7 +32,15 @@ Windows PowerShell에서 Git for Windows의 Bash를 명시했다. Python 3.10 st
 
 모델 정책 35개, 리소스 동기화, 정합성 린트 36개, diff 검사는 통과했다. 로컬 전체 209개 실행은 기존 CLI 러너의 5초 제한과 Ralph의 30초 제한에서 2개가 시간 초과였다. CLI 러너는 개별 재실행에서 통과했다. Ralph는 원본 테스트/러너를 바꾸지 않고 진단 실행의 제한만 90초로 늘려 같은 assertion을 확인했으며 30.261초에 통과했다. 이를 기본 30초 제한을 사용한 전체 209개 PASS로 표시하지 않는다. 모델 선택 후속 리뷰에서 조치할 결함은 없었다.
 
+## Astra low 후속 검증
+
+사용자 요청에 따라 기본 high 모델 티어의 추론 강도를 high에서 low로 바꿨다. 최신 허용 Astra 선택, architect 유지, TDD fix 4~5 fresh agent 격상에 같은 low 기본값을 적용한다. Sol은 medium, 명시적 프로젝트 effort override와 부모 세션은 기존 설정을 유지한다. 역할 matrix와 fix 4~5의 실제 spawn 인자, low 미지원 시 대체·중단을 확인했다.
+
+모델 정책 35개, 리소스 동기화, 정합성 린트 36개, diff 검사는 통과했다. 로컬 전체 209개는 597.862초에 기존 Ralph의 trailing 계약 검사 30초 시간 초과와 CLI 러너의 자식 프로세스 종료 검사 실패를 보고했다. 변경하지 않은 두 테스트를 개별로 함께 재실행해 27.613초에 모두 통과했다. 전체 209개 로컬 실행을 PASS로 표시하지 않는다.
+
 ## Skill Creator 비교 평가
+
+아래 비교 점수는 이전 Astra/high 정책 당시의 평가 결과다. 현재 평가 fixture의 자식 Astra 기대값은 후속 요청에 맞춰 low로 갱신했으며 기존 점수를 새 정책 재평가 결과로 사용하지 않는다.
 
 기존 main 스킬을 별도로 보존하고 동일한 두 시나리오를 기존·개선 계약에 적용했다. [평가 프롬프트·기대 결과](../../tests/fixtures/codex-runtime/evals.json)를 저장했다. 질문 시나리오는 Default의 필수 설계 승인·미응답·수정 요청 재개, 모델 시나리오는 tdd eco와 기본/isolated 구현·태스크 리뷰·fix4·dev coder·Astra 부재다.
 

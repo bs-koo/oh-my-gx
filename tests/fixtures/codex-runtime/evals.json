@@ -19,16 +19,16 @@
     {
       "id": 2,
       "name": "profile-model-exceptions",
-      "prompt": "Codex에서 gx-tdd를 eco로 실행한다. 허용 child 모델은 gpt-6-astra와 gpt-6.1-sol이며 둘 다 medium/high effort를 지원한다. parent는 gpt-6-astra/high다. architect, test-architect, phase reviewer, task reviewer, red-writer, isolated implementer, 기본 session implementer, fix4 implementer의 model/effort를 JSON으로 반환하라. 추가로 gx-dev standard coder와 eco coder를 비교하고, Astra가 없는 환경의 fallback, agent_type/fork_turns와 요청·관측 모델 기록을 설명하라. 실제 tool spawn이나 구현을 수행하지 말고 계약과 설치 helper를 근거로 계산하라.",
-      "expected_output": "architect Astra/high; tdd eco critic/test-architect/reviewer와 RED·isolated 구현은 6.1Sol/medium; 기본 구현은 parent Astra/high; fix4는 fresh Astra/high; dev coder standard Astra/high eco6.1Sol/medium. Astra 부재면 허용 Sol/high fallback·사유 보고. fixed agent_type 회피/fork none, 요청·관측 구분.",
+      "prompt": "Codex에서 gx-tdd를 eco로 실행한다. 허용 child 모델은 gpt-6-astra와 gpt-6.1-sol이며 둘 다 low/medium/high effort를 지원한다. parent는 gpt-6-astra/high다. architect, test-architect, phase reviewer, task reviewer, red-writer, isolated implementer, 기본 session implementer, fix4 implementer의 model/effort를 JSON으로 반환하라. 추가로 gx-dev standard coder와 eco coder를 비교하고, Astra가 없는 환경의 fallback, agent_type/fork_turns와 요청·관측 모델 기록을 설명하라. 실제 tool spawn이나 구현을 수행하지 말고 계약과 설치 helper를 근거로 계산하라.",
+      "expected_output": "architect Astra/low; tdd eco critic/test-architect/reviewer와 RED·isolated 구현은 6.1Sol/medium; 기본 구현은 parent Astra/high; fix4는 fresh Astra/low; dev coder standard Astra/low eco6.1Sol/medium. Astra 부재면 허용 Sol/low fallback·사유 보고. fixed agent_type 회피/fork none, 요청·관측 구분.",
       "files": [],
       "assertions": [
-        "eco architect는 Astra/high를 유지한다",
+        "eco architect는 Astra/low를 유지한다",
         "eco test-architect와 phase reviewer는 6.1 Sol/medium이다",
         "task reviewer·red-writer·isolated implementer는 6.1 Sol/medium이다",
         "기본 session implementer는 부모 Astra/high를 유지한다",
-        "fix4 implementer는 eco에서도 fresh Astra/high다",
-        "dev coder standard/eco 배정이 Astra/high와 6.1Sol/medium으로 구분된다",
+        "fix4 implementer는 eco에서도 fresh Astra/low다",
+        "dev coder standard/eco 배정이 Astra/low와 6.1Sol/medium으로 구분된다",
         "fallback은 실제 허용 모델·effort만 선택하고 사유를 표시한다",
         "고정 agent_type을 회피하고 fork_turns none과 요청·관측 기록을 구분한다"
       ]

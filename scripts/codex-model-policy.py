@@ -11,7 +11,7 @@ import sys
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 ROLE_INDEX = Path(".claude/skills/gx-dev/references/codex-roles/index.json")
 DEFAULT_TIERS = {
-    "high": {"family": "astra", "reasoning_effort": "high"},
+    "high": {"family": "astra", "reasoning_effort": "low"},
     "mid": {"family": "sol", "reasoning_effort": "medium"},
 }
 ECO_ROLES = {
