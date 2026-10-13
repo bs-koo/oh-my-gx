@@ -105,7 +105,11 @@ PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요
 
 `DE13`은 이 파일 위치 기준 `../../gx-test-plan/scripts/de13.py`의 절대경로, `PY`는 `python3 --version`이 3.x를 출력하면 `python3`, 아니면 `python`(Windows)이다. 둘 다 없으면 "Python이 없어 단위테스트 원장을 건너뜁니다" 1줄을 안내하고 Step 1로 진행한다. `TESTPLAN`은 `PROJECT_ROOT` 기준 `testPlan.path`, `SLUG`는 `DEV_DIR`의 마지막 경로 성분이다.
 
-1. **테스트 목록**: `"<PY>" "<DE13>" tests --diff "${DIFF_FILE}" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-tests.json"`. 테스트가 0개면 "이번 변경에 테스트가 없어 원장을 쓰지 않습니다" 1줄 후 Step 1로 진행한다.
+1. **테스트 목록**: Step 0의 diff 파일은 쓰지 않는다 — 500줄 이상이면 요약으로 바뀌고, ralph 복귀처럼 이미 커밋된 테스트나 svn 미등록 신규 파일이 빠진다. 대신 작업 시작점부터 지금까지 바뀐 파일을 `${DEV_DIR}/ut-files.txt`에 한 줄에 하나씩(`PROJECT_ROOT` 기준 상대경로) 쓴다.
+   - **git**: `references/pipeline-state.md` "베이스 브랜치 감지"로 `<base>`를 정하고, `git -c core.quotePath=false diff --name-only $(git merge-base HEAD <base>) -- . ':(exclude).dev'`와 `git -c core.quotePath=false ls-files --others --exclude-standard -- . ':(exclude).dev'`의 출력을 합친다.
+   - **svn**: `svn status`에서 상태 열이 `A`·`M`·`?`인 경로를 쓴다.
+
+   `"<PY>" "<DE13>" tests --files-from "${PROJECT_ROOT}/${DEV_DIR}/ut-files.txt" --root "${PROJECT_ROOT}" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-tests.json"`. 테스트가 0개면 "이번 변경에 테스트가 없어 원장을 쓰지 않습니다" 1줄 후 Step 1로 진행한다.
 2. **관련 기능**: `"<PY>" "<DE13>" functions --plan "<TESTPLAN>" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-functions.json"` (계획서와 같은 폴더에 `*기능명세서*.xlsx`가 하나 있으면 `--spec "<그 파일>"`). AC·PRD 요구사항과 기능명·UT 수를 대조해 이번 작업에 해당하는 기능을 고르고, `"<PY>" "<DE13>" rows --plan "<TESTPLAN>" --fn "<기능ID,…>" --out "${PROJECT_ROOT}/${DEV_DIR}/ut-rows.md"`로 그 기능의 UT 행을 읽는다. 해당 기능을 고를 수 없으면 rows를 건너뛰고 모든 테스트를 신규(`미지정`)로 둔다.
 3. **초안 작성**: `${DEV_DIR}/ut-draft.md`에 `| 구분 | 테스트ID | 연계기능ID | 사전조건 | 입력 | 기대결과 | 사후조건 | 테스트 위치 | 근거 |` 표를 쓴다.
    - `ut-tests.json`에서 `skipped: true`인 테스트는 넣지 않는다.

@@ -18,10 +18,11 @@ class RevisionTests(unittest.TestCase):
         self.dir = Path(self.tmp.name)
         self.ledger_dir = self.dir / ".dev" / "ut-results"
 
-    def plan(self, last_version="1.0"):
+    def plan(self, last_version="1.0", blanks=0):
         self.plan_path = make_xlsx(
             self.dir / "REB-단위테스트계획서.xlsx",
-            [("개정이력", [["개 정 이 력"], REV_HEADER, [last_version, "2026.09.09", "신규", "최초 작성", "구본승", ""]]),
+            [("개정이력", [["개 정 이 력"], REV_HEADER, [last_version, "2026.09.09", "신규", "최초 작성", "구본승", ""],
+                           *([[""] * 6] * blanks)]),
              ("단위테스트계획", [PLAN_HEADER_11, *sample_rows()])],
             validation="K2:K9", style="3", filters={"개정이력": "A2", "단위테스트계획": "A1"})
         fp = {r["테스트ID"]: de13.row_fingerprint(r) for r in de13.load_plan(self.plan_path)["rows"]}
@@ -41,26 +42,27 @@ class RevisionTests(unittest.TestCase):
             wb.close()
         return [(rnum, {h: cells.get(c, "") for h, c in cols.items()}) for rnum, cells in body]
 
-    def test_next_version(self):
-        self.assertEqual(de13.next_version("1.0"), "1.1")
-        self.assertEqual(de13.next_version("1.9"), "1.10")
-        with self.assertRaisesRegex(de13.InputError, "--version"):
-            de13.next_version("초안")
+    def test_next_version_follows_gx_pm_rule(self):
+        self.assertEqual(de13.next_version("1.0"), "2.0")
+        self.assertEqual(de13.next_version("3.0"), "4.0")
+        for bad in ("초안", "1.10"):
+            with self.assertRaisesRegex(de13.InputError, "--version"):
+                de13.next_version(bad)
 
     def test_revision_text(self):
-        self.assertEqual(de13.revision_text(["UT-009"], 1, 2), "단위테스트 신규 1건 추가(UT-009)·기대결과 보강 1건·결과 기입 Pass 2건")
-        self.assertEqual(de13.revision_text(["UT-009", "UT-010"], 0, 2), "단위테스트 신규 2건 추가(UT-009~UT-010)·결과 기입 Pass 2건")
-        self.assertEqual(de13.revision_text([], 0, 3), "결과 기입 Pass 3건")
+        self.assertEqual(de13.revision_text(["UT-009"], 1, 2), "단위테스트 신규 1건 추가(UT-009)·기대결과 보강 1건·결과 기입 Pass 2건 (gx-tdd)")
+        self.assertEqual(de13.revision_text(["UT-009", "UT-010"], 0, 2), "단위테스트 신규 2건 추가(UT-009~UT-010)·결과 기입 Pass 2건 (gx-tdd)")
+        self.assertEqual(de13.revision_text([], 0, 3), "결과 기입 Pass 3건 (gx-tdd)")
 
     def test_revision_row_is_appended_with_bumped_version(self):
         self.plan()
         summary = de13.apply(self.plan_path, self.ledger_dir, {"bs.koo": "구본승"}, "구본승", "2026.10.13")
-        self.assertEqual(summary["버전"], "1.1")
+        self.assertEqual(summary["버전"], "2.0")
         rnum, row = self.revisions()[-1]
         self.assertEqual(rnum, 4)
         self.assertEqual((row["버전"], row["개정일"], row["개정 사유"], row["작성자"], row["승인자"]),
-                         ("1.1", "2026.10.13", "개발 반영(gx-tdd)", "구본승", ""))
-        self.assertEqual(row["개정 내용"], "단위테스트 신규 1건 추가(UT-009)·기대결과 보강 1건·결과 기입 Pass 2건")
+                         ("2.0", "2026.10.13", "추가", "구본승", ""))
+        self.assertEqual(row["개정 내용"], "단위테스트 신규 1건 추가(UT-009)·기대결과 보강 1건·결과 기입 Pass 2건 (gx-tdd)")
         with zipfile.ZipFile(self.plan_path) as z:
             rev = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
             wb = z.read("xl/workbook.xml").decode("utf-8")
@@ -68,7 +70,19 @@ class RevisionTests(unittest.TestCase):
         self.assertIn('<c r="F4" s="3" t="inlineStr"><is><t></t></is></c>', rev)
         self.assertIn("'개정이력'!$A$2:$F$4</definedName>", wb)
         self.assertIn("'단위테스트계획'!$A$1:$K$10</definedName>", wb)
-        self.assertEqual([r["반영"] for r in de13.read_md_table(self.ledger_dir / "feat-a.md")], ["v1.1", "v1.1 UT-009"])
+        self.assertEqual([r["반영"] for r in de13.read_md_table(self.ledger_dir / "feat-a.md")], ["v2.0", "v2.0 UT-009"])
+
+    def test_reason_is_supplement_without_new_rows_and_trailing_blank_rows_are_filled(self):
+        self.plan(blanks=5)
+        rows = de13.read_md_table(self.ledger_dir / "feat-a.md")[:1]
+        de13._write_ledger(self.ledger_dir / "feat-a.md", rows)
+        de13.apply(self.plan_path, self.ledger_dir, {"bs.koo": "구본승"}, "구본승", "2026.10.13")
+        rnum, row = next((n, r) for n, r in self.revisions() if r["버전"] == "2.0")
+        self.assertEqual((rnum, row["개정 사유"]), (4, "보완"))
+        with zipfile.ZipFile(self.plan_path) as z:
+            rev = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+        self.assertEqual(rev.count('<row r="4"'), 1)
+        self.assertIn('<autoFilter ref="A2:F8"/>', rev)  # 빈 행까지 덮던 범위는 그대로
 
     def test_unparseable_version_needs_override(self):
         self.plan(last_version="초안")
@@ -95,7 +109,7 @@ class RevisionTests(unittest.TestCase):
         self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["매핑 없는 담당자"], ["bs.koo"])
         testers.write_text("| git 이름 | 실명 |\n|---|---|\n| bs.koo | 구본승 |\n", encoding="utf-8")
         self.assertEqual(de13.main(args), 0)
-        self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["버전"], "1.1")
+        self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["버전"], "2.0")
         self.assertEqual(de13.main(args), 0)  # 두 번째는 반영할 것이 없다
         self.assertEqual(de13.main(args[:2] + [str(self.dir / "none.xlsx")] + args[3:]), 2)
 

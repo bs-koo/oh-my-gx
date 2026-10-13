@@ -35,7 +35,7 @@ class SkipTests(unittest.TestCase):
                 if pat.search(line):
                     hit = de13.locate_test(self.root, f"{rel}:{i + 1}")
                     if hit is not None:
-                        locs.append(hit)
+                        locs.append({k: hit[k] for k in ("path", "line", "skipped")})
         if not locs:
             return {"status": "missing", "locations": []}
         return {"status": "found" if any(not l["skipped"] for l in locs) else "skipped", "locations": locs}

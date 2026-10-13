@@ -38,11 +38,13 @@ class BackfillContractTests(unittest.TestCase):
 
     def test_ledger_step_uses_helper_without_questions(self):
         step = between(read(COMPLETE), "## Step 0.5:", "## Step 1:")
-        for needle in ("testPlan.path", "tests --diff", "functions --plan", "rows --plan", "record --draft",
+        for needle in ("testPlan.path", "tests --files-from", "merge-base", "ls-files --others", "core.quotePath=false",
+                       "svn status", "functions --plan", "rows --plan", "record --draft",
                        "skipped", "미지정", "커밋을 막지 않는다", "/gx-test-plan"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, step)
         self.assertNotIn("AskUserQuestion", step)
+        self.assertNotIn("DIFF_FILE", step)  # 500줄 이상이면 --stat 요약으로 바뀌어 파일 목록을 잃는다
         self.assertEqual(step.count('"<PY>" "<DE13>"'), 4)
 
     def test_setup_registers_test_plan_path(self):

@@ -138,6 +138,7 @@ def load_plan(path: Path) -> dict:
             continue
         rec["_row"] = rnum
         rec["_flags"] = []
+        rec["_ditto"] = {h for h in cols if rec[h] == DITTO}  # 원본 셀이 〃였던 열
         for h in cols:
             if rec[h] == DITTO and prev and rec["연계기능ID"] and prev["연계기능ID"] == rec["연계기능ID"]:
                 rec[h] = prev[h]
@@ -443,6 +444,14 @@ def _load_source(path: Path) -> tuple[list[str], bool]:
     return lines, suffix == ".py" and any(PY_MODULE_SKIP_RE.match(l) for l in lines)
 
 
+def _git_unquote(path: str) -> str:
+    """git core.quotePath 인용(`"b/\\353\\251\\224.py"`)을 풀어 UTF-8 경로로 돌려준다."""
+    if not (len(path) >= 2 and path.startswith('"') and path.endswith('"')):
+        return path
+    raw = path[1:-1].encode("latin-1", "backslashreplace").decode("unicode_escape")
+    return raw.encode("latin-1").decode("utf-8", errors="replace")
+
+
 def changed_files(diff_text: str) -> list[str]:
     """unified diff의 새 쪽 경로 (git `+++ b/x`, svn `+++ x\\t(working copy)`). 삭제 파일은 뺀다."""
     git = "diff --git " in diff_text
@@ -450,7 +459,7 @@ def changed_files(diff_text: str) -> list[str]:
     for line in diff_text.splitlines():
         if not line.startswith("+++ "):
             continue
-        path = line[4:].split("\t")[0].strip()
+        path = _git_unquote(line[4:].split("\t")[0].strip())
         if path == "/dev/null":
             continue
         if git and path.startswith("b/"):
@@ -481,8 +490,31 @@ def list_tests(root: Path, files: list[str]) -> list[dict]:
     return out
 
 
+def _body_end(lines: list[str], opener: int) -> int:
+    """본문을 여는 줄에서 본문 끝 줄 — 파이썬은 들여쓰기, 그 밖은 중괄호 짝으로 찾는다."""
+    if PY_DEF_RE.match(lines[opener]) and lines[opener].rstrip().endswith(":"):
+        base, last = _indent(lines[opener]), opener
+        for k in range(opener + 1, len(lines)):
+            if lines[k].strip():
+                if _indent(lines[k]) <= base:
+                    break
+                last = k
+        return last
+    depth, seen = 0, False
+    for k in range(opener, len(lines)):
+        for ch in lines[k]:
+            if ch == "{":
+                depth, seen = depth + 1, True
+            elif ch == "}":
+                depth -= 1
+            if seen and depth <= 0:
+                return k
+    return opener if not seen else len(lines) - 1
+
+
 def locate_test(root: Path, location: str) -> dict | None:
-    """`경로:줄`이 테스트(머리 또는 본문)를 가리키면 skip 여부를, 아니면 None을 돌려준다."""
+    """`경로:줄`이 테스트(머리 또는 본문)를 가리키면 skip 여부와 선언을, 아니면 None을 돌려준다.
+    skip은 가리킨 줄이 아니라 그 테스트 전체로 판정한다."""
     rel, _, num = location.strip().rpartition(":")
     path = Path(root) / rel
     if not rel or not num.isdigit() or not _is_test_file(rel) or not path.is_file():
@@ -491,15 +523,19 @@ def locate_test(root: Path, location: str) -> dict | None:
     i = int(num) - 1
     if not 0 <= i < len(lines):
         return None
-    start, _, end = _test_header(lines, i)
-    if not any(DECL_RE.search(l) for l in lines[start:end + 1]):
+    _, anchor, _ = _test_header(lines, i)
+    start, _, opener = _test_header(lines, anchor)
+    if not any(DECL_RE.search(l) for l in lines[start:opener + 1]):
         return None
-    return {"path": rel, "line": i + 1, "skipped": module_skip or _is_skipped(lines, i)}
+    if not start <= i <= _body_end(lines, opener):
+        return None
+    decl = " ".join(l.strip() for l in lines[start:opener + 1] if l.strip())
+    return {"path": rel, "line": i + 1, "skipped": module_skip or _is_skipped(lines, anchor), "decl": decl[:300]}
 
 # ---------- 결과 원장 ----------
 
 LEDGER_HEADER = ["구분", "테스트ID", "연계기능ID", *FIELDS4, "결과", "수행일", "담당자",
-                 "테스트 위치", "행 지문", "근거", "반영"]
+                 "테스트 위치", "행 지문", "근거", "반영", "선언"]
 DRAFT_HEADER = ["구분", "테스트ID", "연계기능ID", *FIELDS4, "테스트 위치", "근거"]
 UNASSIGNED = "미지정"
 
@@ -510,27 +546,43 @@ def _write_ledger(path: Path, rows: list[dict]) -> None:
     path.write_text(f"# {path.stem} 단위테스트 원장\n\n" + write_md_table(LEDGER_HEADER, rows), encoding="utf-8")
 
 
-def _check_locations(root: Path, raw: str) -> tuple[list[str], list[str]]:
+def _check_locations(root: Path, raw: str) -> tuple[list[str], list[str], list[str]]:
+    """위치 목록, 문제 목록, 선언 키(`경로::선언` — 줄 번호가 바뀌어도 같은 테스트를 가리킨다)."""
     locs = [s.strip() for s in (raw or "").split(",") if s.strip()]
-    bad = []
+    bad, keys = [], []
     for loc in locs:
         hit = locate_test(root, loc)
         if hit is None:
             bad.append(f"{loc}(테스트 아님)")
         elif hit["skipped"]:
             bad.append(f"{loc}(skip)")
-    return locs, bad
+        else:
+            keys.append(f"{hit['path']}::{hit['decl']}")
+    return locs, bad, keys
+
+
+def _applied_ids(kept: list[dict], known: set[str]) -> dict[str, str]:
+    """반영된 원장 행의 선언 키 → 계획서 테스트ID (신규 행은 반영 때 발급된 ID)."""
+    out = {}
+    for r in kept:
+        tid = r.get("테스트ID") if r.get("구분") == "기존" else (r.get("반영", "").split() or [""])[-1]
+        if tid in known:
+            out.update({k: tid for k in (r.get("선언") or "").split("\n") if k})
+    return out
 
 
 def record(draft_rows: list[dict], plan: dict, root: Path, ledger_path: Path, date: str, tester: str) -> dict:
     """초안을 검증해 원장에 병합한다. 반영(`반영` 값 있음)된 행은 보존하고 나머지는 이번 초안으로 바꾼다."""
     by_id = {r["테스트ID"]: r for r in plan["rows"]}
     functions = {r["연계기능ID"] for r in plan["rows"] if r["연계기능ID"]}
+    ledger_path = Path(ledger_path)
+    kept = [r for r in read_md_table(ledger_path) if r.get("반영")] if ledger_path.is_file() else []
+    applied = _applied_ids(kept, set(by_id))
     errors, rows, seen = [], [], set()
     for n, d in enumerate(draft_rows, start=1):
         kind = d.get("구분", "")
         where = f"{n}행({d.get('테스트ID') or kind or '?'})"
-        locs, bad = _check_locations(Path(root), d.get("테스트 위치", ""))
+        locs, bad, keys = _check_locations(Path(root), d.get("테스트 위치", ""))
         if not locs:
             errors.append(f"{where}: 테스트 위치 없음")
             continue
@@ -539,7 +591,13 @@ def record(draft_rows: list[dict], plan: dict, root: Path, ledger_path: Path, da
             continue
         row = {h: "" for h in LEDGER_HEADER}
         row.update({"구분": kind, "결과": "Pass", "수행일": date, "담당자": tester,
-                    "테스트 위치": ", ".join(locs), "근거": d.get("근거", "")})
+                    "테스트 위치": ", ".join(locs), "근거": d.get("근거", ""), "선언": "\n".join(keys)})
+        inherited = next((applied[k] for k in keys if k in applied), "")
+        if kind == "신규" and inherited:
+            # 이미 반영된 테스트를 다시 신규로 적으면 같은 케이스가 두 번 추가된다 — 발급된 ID를 이어받는다
+            d = {**d, "구분": "기존", "테스트ID": inherited, "기대결과": ""}
+            kind = "기존"
+            row.update({"구분": kind, "근거": f"{row['근거']} (반영된 {inherited} 승계)".strip()})
         if kind == "기존":
             rec = by_id.get(d.get("테스트ID", ""))
             if rec is None:
@@ -566,8 +624,6 @@ def record(draft_rows: list[dict], plan: dict, root: Path, ledger_path: Path, da
         rows.append(row)
     if errors:
         raise InputError("초안 오류 — " + "; ".join(errors))
-    ledger_path = Path(ledger_path)
-    kept = [r for r in read_md_table(ledger_path) if r.get("반영")] if ledger_path.is_file() else []
     _write_ledger(ledger_path, kept + rows)
     old = [r for r in rows if r["구분"] == "기존"]
     new = [r for r in rows if r["구분"] == "신규"]
@@ -604,7 +660,9 @@ def _cell_xml(ref: str, value: str, style: str | None) -> str:
 _CELL_RE = re.compile(r'<c\b(?P<attrs>[^>]*?)(?:/>|>.*?</c>)', re.S)
 
 
-def _patch_row(row_xml: str, rnum: int, values: dict[int, str]) -> str:
+def _patch_row(row_xml: str, rnum: int, values: dict[int, str], defaults: dict[int, str] | None = None) -> str:
+    """values 셀을 바꾼다. 없는 셀은 defaults(열→서식)의 서식으로 새로 만든다."""
+    defaults = defaults or {}
     if row_xml.endswith("/>"):
         row_xml = row_xml[:-2].rstrip() + "></row>"
     open_end = row_xml.index(">") + 1
@@ -620,7 +678,7 @@ def _patch_row(row_xml: str, rnum: int, values: dict[int, str]) -> str:
             style = re.search(r'\bs="(\d+)"', existing[1])
             existing[1] = _cell_xml(ref, value, style.group(1) if style else None)
         else:
-            cells.append([col, _cell_xml(ref, value, None)])
+            cells.append([col, _cell_xml(ref, value, defaults.get(col))])
     cells.sort(key=lambda c: c[0])
     return head + "".join(c[1] for c in cells) + tail
 
@@ -637,14 +695,15 @@ def _patch_sheet(xml: str, updates: dict[int, dict[int, str]]) -> str:
 
 
 REVISION_HEAD = ("버전", "개정일", "개정 사유", "개정 내용", "작성자")
-REVISION_REASON = "개발 반영(gx-tdd)"
+REVISION_SOURCE = " (gx-tdd)"
 
 
 def next_version(last: str) -> str:
-    m = re.fullmatch(r"\s*(\d+)\.(\d+)\s*", last or "")
+    """gx-pm 개정이력 규칙: 개정마다 +1.0, 소수점 둘째 자리는 쓰지 않는다."""
+    m = re.fullmatch(r"\s*(\d+)\.(\d)\s*", last or "")
     if not m:
         raise InputError(f"개정이력 마지막 버전 '{last}'을 해석할 수 없습니다 — --version으로 지정하세요")
-    return f"{m.group(1)}.{int(m.group(2)) + 1}"
+    return f"{int(m.group(1)) + 1}.{m.group(2)}"
 
 
 def revision_text(new_ids: list[str], refined: int, passed: int) -> str:
@@ -655,7 +714,7 @@ def revision_text(new_ids: list[str], refined: int, passed: int) -> str:
     if refined:
         parts.append(f"기대결과 보강 {refined}건")
     parts.append(f"결과 기입 Pass {passed}건")
-    return "·".join(parts)
+    return "·".join(parts) + REVISION_SOURCE
 
 
 def load_revision(path: Path) -> dict | None:
@@ -697,10 +756,6 @@ def _id_scheme(rows: list[dict]) -> tuple[str, int, int]:
     return prefix, max(len(n) for n in found[prefix]), max(int(n) for n in found[prefix])
 
 
-def _sheet_max_row(xml: str) -> int:
-    return max((int(n) for n in _ROW_NUM_RE.findall(xml)), default=0)
-
-
 def _row_styles(xml: str, rnum: int) -> dict[int, str]:
     m = re.search(rf'<row\b[^>]*\br="{rnum}"[^>]*?(?:/>|>.*?</row>)', xml, re.S)
     styles: dict[int, str] = {}
@@ -712,26 +767,34 @@ def _row_styles(xml: str, rnum: int) -> dict[int, str]:
     return styles
 
 
-def _append_rows(xml: str, rows: list[tuple[int, dict[int, str]]], style_rnum: int) -> str:
-    """시트 끝에 행을 붙인다. 셀 서식은 style_rnum 행의 같은 열을 따른다."""
+def _put_rows(xml: str, rows: list[tuple[int, dict[int, str]]], style_rnum: int) -> str:
+    """행 번호 자리에 값을 쓴다. 그 행이 이미 있으면(서식만 남은 빈 행) 채우고, 없으면 순서에 맞게 끼운다.
+    셀 서식은 style_rnum 행의 같은 열을 따른다."""
     if "</sheetData>" not in xml:
         raise InputError("시트에 행을 추가할 수 없습니다 (sheetData 없음)")
     styles = _row_styles(xml, style_rnum)
-    out = []
     for rnum, values in rows:
+        m = re.search(rf'<row\b[^>]*\br="{rnum}"[^>]*?(?:/>|>.*?</row>)', xml, re.S)
+        if m:
+            xml = xml[:m.start()] + _patch_row(m.group(0), rnum, values, styles) + xml[m.end():]
+            continue
         cols = sorted(set(values) | set(styles))
         cells = "".join(_cell_xml(f"{_col_letters(c)}{rnum}", values.get(c, ""), styles.get(c)) for c in cols)
-        out.append(f'<row r="{rnum}">{cells}</row>')
-    return xml.replace("</sheetData>", "".join(out) + "</sheetData>", 1)
+        new = f'<row r="{rnum}">{cells}</row>'
+        later = next((n for n in _ROW_NUM_RE.finditer(xml) if int(n.group(1)) > rnum), None)
+        at = later.start() if later else xml.index("</sheetData>")
+        xml = xml[:at] + new + xml[at:]
+    return xml
 
 
 def _extend_range_text(text: str, old: int, new: int) -> str:
-    return RANGE_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}:{m.group(3)}{new}" if int(m.group(4)) == old
+    """끝 행이 old(기존 데이터 끝) 이상 new 미만인 범위를 new까지 늘린다. 이미 new를 덮는 범위는 그대로 둔다."""
+    return RANGE_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}:{m.group(3)}{new}" if old <= int(m.group(4)) < new
                         else m.group(0), text)
 
 
 def _extend_sheet_ranges(xml: str, old: int, new: int) -> str:
-    """마지막 행(old)에서 끝나는 dimension·autoFilter·데이터 검증·조건부 서식 범위를 new까지 늘린다."""
+    """기존 데이터 끝(old) 이후에서 끝나는 dimension·autoFilter·데이터 검증·조건부 서식 범위를 new까지 늘린다."""
     return re.sub(r'(<(?:dimension|autoFilter|dataValidation|conditionalFormatting)\b[^>]*?\b(?:ref|sqref)=")([^"]*)(")',
                   lambda m: m.group(1) + _extend_range_text(m.group(2), old, new) + m.group(3), xml)
 
@@ -794,9 +857,18 @@ def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], author: st
         if refined:
             values[cols["기대결과"]] = refined
             summary["보강"] += 1
-        updates[by_id[tid]["_row"]] = values
+        updates.setdefault(by_id[tid]["_row"], {}).update(values)
         summary["결과 기입"] += 1
         marks.update({(p, i): "" for p, i, _ in items})
+    refined_rows = {r for r, v in updates.items() if cols["기대결과"] in v}
+    order = plan["rows"]
+    for n, rec in enumerate(order):
+        if rec["_row"] not in refined_rows:
+            continue
+        for nxt in order[n + 1:]:  # 보강한 셀을 〃로 가리키던 아래 행은 원래 뜻을 명시해 둔다
+            if "기대결과" not in nxt["_ditto"] or nxt["연계기능ID"] != rec["연계기능ID"] or nxt["_row"] in refined_rows:
+                break
+            updates.setdefault(nxt["_row"], {})[cols["기대결과"]] = nxt["기대결과"]
     prefix, width, last_no = _id_scheme(plan["rows"])
     appended: list[dict[int, str]] = []
     for p, i, r in pending:
@@ -831,25 +903,29 @@ def apply(plan_path: Path, ledger_dir: Path, testers: dict[str, str], author: st
         raise InputError("엑셀 표(Table) 서식이 있는 계획서에는 행을 추가할 수 없습니다")
     sheet = _patch_sheet(sheet, updates)
     if appended:
-        old = _sheet_max_row(sheet)
-        style_row = max(r["_row"] for r in plan["rows"])
-        sheet = _append_rows(sheet, [(old + n, v) for n, v in enumerate(appended, start=1)], style_row)
+        old = max(r["_row"] for r in plan["rows"])  # 값이 있는 마지막 행 — 뒤의 빈 서식 행은 채운다
+        sheet = _put_rows(sheet, [(old + n, v) for n, v in enumerate(appended, start=1)], old)
         sheet = _extend_sheet_ranges(sheet, old, old + len(appended))
         workbook = _extend_defined_names(workbook, plan["index"], old, old + len(appended))
     parts = {plan["part"]: sheet.encode("utf-8")}
     if revision:
         rc = revision["cols"]
         text = revision_text(summary["신규"], summary["보강"], summary["결과 기입"] + len(summary["신규"]))
-        values = {rc["버전"]: summary["버전"], rc["개정일"]: date, rc["개정 사유"]: REVISION_REASON,
+        values = {rc["버전"]: summary["버전"], rc["개정일"]: date, rc["개정 사유"]: "추가" if summary["신규"] else "보완",
                   rc["개정 내용"]: text, rc["작성자"]: author}
-        old = _sheet_max_row(rev_xml)
-        rev_xml = _extend_sheet_ranges(_append_rows(rev_xml, [(old + 1, values)], revision["last_rnum"]), old, old + 1)
+        old = revision["last_rnum"]
+        rev_xml = _extend_sheet_ranges(_put_rows(rev_xml, [(old + 1, values)], old), old, old + 1)
         workbook = _extend_defined_names(workbook, revision["index"], old, old + 1)
         parts[revision["part"]] = rev_xml.encode("utf-8")
         summary["개정이력"] = f"{summary['버전']} {text}"
     else:
         summary["개정이력"] = "개정이력 시트 없음"
     parts["xl/workbook.xml"] = workbook.encode("utf-8")
+    for p in {p for p, _ in marks}:  # 계획서만 바뀌고 반영 표시를 못 쓰면 재실행 때 중복 추가된다
+        try:
+            Path(p).open("r+b").close()
+        except OSError as exc:
+            raise InputError(f"원장 파일에 쓸 수 없습니다 — 계획서를 바꾸지 않았습니다: {p} ({exc})") from exc
     _replace_xlsx(plan_path, parts)
     tag = f"v{summary['버전']}" if summary["버전"] else date
     for (p, i), tid in marks.items():
@@ -882,10 +958,15 @@ def _write_json(path: Path, data) -> None:
 
 
 def cmd_tests(args) -> int:
-    diff = Path(args.diff)
-    if not diff.is_file():
-        raise InputError(f"diff 파일이 없습니다: {diff}")
-    tests = list_tests(Path(args.root), changed_files(diff.read_text(encoding="utf-8", errors="replace")))
+    source = Path(args.files_from or args.diff)
+    if not source.is_file():
+        raise InputError(f"입력 파일이 없습니다: {source}")
+    text = source.read_text(encoding="utf-8", errors="replace")
+    if args.files_from:
+        files = list(dict.fromkeys(l.strip().replace("\\", "/") for l in text.splitlines() if l.strip()))
+    else:
+        files = changed_files(text)
+    tests = list_tests(Path(args.root), files)
     _write_json(Path(args.out), tests)
     print(f"테스트 {len(tests)}개 (skip {sum(t['skipped'] for t in tests)})")
     return 0
@@ -912,7 +993,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="de13", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("tests")
-    t.add_argument("--diff", required=True)
+    src = t.add_mutually_exclusive_group(required=True)
+    src.add_argument("--diff")
+    src.add_argument("--files-from")
     t.add_argument("--root", required=True)
     t.add_argument("--out", required=True)
     t.set_defaults(func=cmd_tests)

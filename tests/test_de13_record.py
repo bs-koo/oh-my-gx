@@ -94,6 +94,19 @@ class RecordTests(unittest.TestCase):
         self.assertEqual([(r["구분"], r["입력"], r["반영"]) for r in after],
                          [("기존", "", "v1.1"), ("신규", "공백 메모 저장", "")])
 
+    def test_rerecord_after_apply_inherits_issued_id_even_if_lines_shift(self):
+        plan_path = self.root / "REB-단위테스트계획서.xlsx"
+        self.run_record([self.new()])
+        de13.apply(plan_path, self.ledger.parent, {"bs.koo": "구본승"}, "구본승", "2026.10.13")
+        (self.root / TEST).write_text("// 머리 주석\n// 둘째 줄\n" + JAVA, encoding="utf-8")
+        self.plan = de13.load_plan(plan_path)
+        self.run_record([self.new(loc=f"{TEST}:11")])
+        last = de13.read_md_table(self.ledger)[-1]
+        fp = de13.row_fingerprint(next(r for r in self.plan["rows"] if r["테스트ID"] == "UT-009"))
+        self.assertEqual((last["구분"], last["테스트ID"], last["행 지문"], last["반영"]), ("기존", "UT-009", fp, ""))
+        summary = de13.apply(plan_path, self.ledger.parent, {"bs.koo": "구본승"}, "구본승", "2026.10.14")
+        self.assertEqual((summary["신규"], summary["결과 기입"]), ([], 1))
+
     def test_cli_exit_codes_and_summary_line(self):
         draft = self.root / ".dev" / "feat-memo" / "ut-draft.md"
         draft.parent.mkdir(parents=True)

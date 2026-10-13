@@ -1,4 +1,6 @@
 """de13.py apply: 원장을 계획서에 제자리 반영."""
+import os
+import stat
 import tempfile
 import unittest
 import zipfile
@@ -84,6 +86,37 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual([r["반영"] for r in de13.read_md_table(self.ledger_dir / "feat-a.md")],
                          ["2026.10.13 UT-009", "2026.10.13 UT-010"])
 
+    def test_new_rows_fill_trailing_formatted_empty_rows_and_extend_ranges(self):
+        blank = [""] * 11
+        self.plan_path = make_xlsx(self.dir / "blank.xlsx",
+                                   [("단위테스트계획", [PLAN_HEADER_11, *sample_rows(), blank, blank, blank])],
+                                   validation="K2:K9", style="3", filters={"단위테스트계획": "A1"})
+        self.ledger("feat-a", [self.new(inp=f"입력 {n}") for n in range(4)])
+        self.run_apply()
+        rows = self.rows()
+        self.assertEqual([rows[t]["_row"] for t in ("UT-009", "UT-010", "UT-011", "UT-012")], [10, 11, 12, 13])
+        sheet = self.part("xl/worksheets/sheet1.xml")
+        self.assertEqual(sheet.count('<row r="10"'), 1)
+        self.assertIn('<c r="A10" s="3" t="inlineStr"><is><t>UT-009</t></is></c>', sheet)
+        self.assertLess(sheet.index('<row r="12"'), sheet.index('<row r="13"'))
+        self.assertIn('sqref="K2:K13"', sheet)
+        self.assertIn('<autoFilter ref="A1:K13"/>', sheet)
+        self.assertIn('<dimension ref="A1:K13"/>', sheet)
+        self.assertIn("!$A$1:$K$13</definedName>", self.part("xl/workbook.xml"))
+
+    def test_refining_expected_keeps_following_ditto_rows_meaning(self):
+        rows = sample_rows()
+        rows[2][5] = "〃"  # UT-003 기대결과가 바로 위 UT-002를 가리킨다
+        self.plan_path = make_xlsx(self.dir / "ditto.xlsx", [("단위테스트계획", [PLAN_HEADER_11, *rows])], style="3")
+        self.fp = {r["테스트ID"]: de13.row_fingerprint(r) for r in de13.load_plan(self.plan_path)["rows"]}
+        fp3 = self.fp["UT-003"]
+        self.ledger("feat-a", [self.existing("UT-002", expected="\"파일 용량 초과(최대 1,000MB)\" 안내")])
+        self.run_apply()
+        after = self.rows()
+        self.assertEqual(after["UT-002"]["기대결과"], "\"파일 용량 초과(최대 1,000MB)\" 안내")
+        self.assertEqual(after["UT-003"]["기대결과"], "\"파일 용량 초과\" 안내")
+        self.assertEqual(de13.row_fingerprint(after["UT-003"]), fp3)
+
     def test_changed_or_unknown_rows_are_reported_and_left_pending(self):
         before = self.plan_path.read_bytes()
         self.ledger("feat-a", [self.existing("UT-001", fp="deadbeef"), dict(self.existing("UT-002"), 테스트ID="UT-999")])
@@ -129,6 +162,16 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(self.plan_path.read_bytes(), before)
         self.assertEqual(list(self.dir.glob("*.gx-tmp")), [])
         self.assertEqual(de13.read_md_table(self.ledger_dir / "feat-a.md")[0]["반영"], "")
+
+    def test_read_only_ledger_stops_before_plan_changes(self):
+        before = self.plan_path.read_bytes()
+        self.ledger("feat-a", [self.new()])
+        path = self.ledger_dir / "feat-a.md"
+        os.chmod(path, stat.S_IREAD)
+        self.addCleanup(os.chmod, path, stat.S_IREAD | stat.S_IWRITE)
+        with self.assertRaisesRegex(de13.InputError, "원장"):
+            self.run_apply()
+        self.assertEqual(self.plan_path.read_bytes(), before)
 
     def test_shared_strings_plan_with_missing_cells_gets_new_row(self):
         rows = [r[:8] for r in sample_rows()]  # 테스트담당자·수행일·결과 셀이 아예 없는 행

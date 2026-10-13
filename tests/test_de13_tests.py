@@ -84,7 +84,9 @@ class TestsCommandTests(unittest.TestCase):
 
     def test_locate_test_accepts_header_or_body_line_and_rejects_others(self):
         rel = self.write("src/test/java/a/MemoTest.java", JAVA)
-        self.assertEqual(de13.locate_test(self.root, f"{rel}:4"), {"path": rel, "line": 4, "skipped": False})
+        hit = de13.locate_test(self.root, f"{rel}:4")
+        self.assertEqual((hit["path"], hit["line"], hit["skipped"]), (rel, 4, False))
+        self.assertIn("빈_내용이면_거부", hit["decl"])
         self.assertFalse(de13.locate_test(self.root, f"{rel}:11")["skipped"])  # 본문 줄
         self.assertTrue(de13.locate_test(self.root, f"{rel}:7")["skipped"])
         self.assertIsNone(de13.locate_test(self.root, f"{rel}:1"))   # package 줄
@@ -99,6 +101,34 @@ class TestsCommandTests(unittest.TestCase):
         out = self.root / ".dev" / "x" / "ut-tests.json"
         self.assertEqual(de13.main(["tests", "--diff", str(diff), "--root", str(self.root), "--out", str(out)]), 0)
         self.assertEqual(len(json.loads(out.read_text(encoding="utf-8"))), 3)
+
+    def test_git_quoted_korean_path_is_decoded(self):
+        quoted = 'diff --git "a/tests/test_\\353\\251\\224\\353\\252\\250.py" "b/tests/test_\\353\\251\\224\\353\\252\\250.py"\n' \
+                 '--- /dev/null\n+++ "b/tests/test_\\353\\251\\224\\353\\252\\250.py"\n'
+        self.assertEqual(de13.changed_files(quoted), ["tests/test_메모.py"])
+
+    def test_cli_files_from_list(self):
+        self.write("src/test/java/a/MemoTest.java", JAVA)
+        self.write("tests/test_메모.py", "def test_a():\n    pass\n")
+        listing = self.root / "files.txt"
+        listing.write_text("src/test/java/a/MemoTest.java\ntests/test_메모.py\n\nsrc/main/X.java\n", encoding="utf-8")
+        out = self.root / "ut-tests.json"
+        self.assertEqual(de13.main(["tests", "--files-from", str(listing), "--root", str(self.root), "--out", str(out)]), 0)
+        self.assertEqual(len(json.loads(out.read_text(encoding="utf-8"))), 4)
+
+    def test_locate_test_rejects_lines_after_test_body(self):
+        rel = self.write("src/test/java/a/HelperTest.java",
+                         "class HelperTest {\n    @Test\n    void a() {\n        assertThat(1).isOne();\n    }\n"
+                         "    private int helper() {\n        return 1;\n    }\n}\n")
+        self.assertIsNotNone(de13.locate_test(self.root, f"{rel}:4"))
+        self.assertIsNotNone(de13.locate_test(self.root, f"{rel}:5"))
+        self.assertIsNone(de13.locate_test(self.root, f"{rel}:7"))
+        self.assertIsNone(de13.locate_test(self.root, f"{rel}:9"))
+
+    def test_python_body_line_shares_test_skip_and_module_code_is_rejected(self):
+        rel = self.write("tests/test_b.py", 'def test_a():\n    marker = 1\n    pytest.skip("x")\n\nSETTING = 42\n')
+        self.assertTrue(de13.locate_test(self.root, f"{rel}:2")["skipped"])
+        self.assertIsNone(de13.locate_test(self.root, f"{rel}:5"))
 
     def test_cli_missing_diff_returns_2(self):
         self.assertEqual(de13.main(["tests", "--diff", str(self.root / "none.txt"), "--root", str(self.root),
