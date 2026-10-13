@@ -65,6 +65,20 @@ oh-my-gx:gx-pull-request로 main 대상 PR을 만들어줘.
 
 커밋·PR은 작업 브랜치에서 진행합니다. 보호 브랜치나 검증 미통과·검증 후 코드 변경 상태에서는 중단합니다. Codex의 일반 권한 승인도 필요할 수 있으며 PR 머지는 별도 요청 사항입니다.
 
+### 질문 대기와 모델 배정
+
+필수 선택·승인 질문은 본문과 선택지를 대화에 표시하고 실제 답변을 기다립니다. 비동기 질문 등록 성공이나 추천 항목 선택 상태는 답변으로 취급하지 않습니다. UI가 접혀 있어도 자연어로 답할 수 있으며, 미응답 질문은 원래 단계에서 대기하고 재개 시 먼저 복원합니다. 자세한 도구 용도 제한·기록·재개 절차는 [질문 계약](../.claude/skills/gx-dev/references/codex-questions.md)을 참고하세요.
+
+표준·에코의 자식 모델은 설치된 정책 helper가 현재 spawn allowlist와 effort를 검사해 결정합니다. 기본 high는 최신 허용 Astra/low, mid는 최신 허용 Sol/medium을 자동 선택합니다. 예를 들어 6.1 Sol과 더 높은 버전의 Sol이 함께 허용되면 요청 effort를 지원하는 가장 높은 숫자 버전을 선택합니다. eco에서도 architect는 high를 유지하고, TDD의 기본 GREEN·REFACTOR는 현재 메인 세션 모델을 유지합니다. `--isolated` 구현은 mid 에이전트, 태스크 리뷰는 mid, fix 4~5는 fresh high 에이전트를 사용합니다. 미지원 계열의 대체 사유와 같은 모델로 티어가 합쳐진 경고를 표시합니다.
+
+프로젝트 `.claude/config.json`에 선택적으로 티어 설정을 추가할 수 있습니다. 설정은 실제 세션에서 지원되는 모델·effort여야 하며 사용자 전역 Codex 설정과 메인 모델을 자동으로 변경하지 않습니다.
+
+```json
+{"codex":{"modelTiers":{"high":{"family":"astra","reasoning_effort":"low"},"mid":{"family":"sol","reasoning_effort":"medium"}}}}
+```
+
+설정을 비워도 위 자동 최신 정책을 사용합니다. 특정 버전을 유지하려면 `family` 대신 `model`을 지정합니다. 날짜 snapshot·preview·별칭의 최신 순서는 모델 이름만으로 추측하지 않습니다. 호출별 요청 모델·effort와 확인 가능한 실제 관측값은 구분해 기록합니다. 정책 계산이 실제 앱 UI·하네스 모델 호출까지 검증한 것은 아닙니다. [모델 정책과 단계별 배정표](../.claude/skills/gx-dev/references/codex-models.md)를 참고하세요.
+
 ## 3. Superpowers와 함께 사용
 
 Superpowers와 GX는 별도 플러그인입니다. GX 사용에 Superpowers 설치가 필수는 아닙니다. 둘 다 설치했다면 사용할 스킬 이름을 명시하세요.

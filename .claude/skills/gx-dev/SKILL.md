@@ -69,7 +69,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 | 이 문서의 표기 | Codex 대응 |
 |----------------|-----------|
 | `Task(subagent_type="oh-my-gx:{name}")` | 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다 |
-| `AskUserQuestion` | `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다 |
+| `AskUserQuestion` | 공통 질문 대기 계약으로 변환한다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 기록·실제 답변 전 진행하지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다 |
 | `Skill(skill: "oh-my-gx:{name}")` | 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다 |
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
@@ -167,6 +167,9 @@ else:  # ALL
 # 2. Phase별 순차 실행 (건너뛰기 금지)
 for phase in PHASES:
 
+    # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
+    # answer 기록·해제 전 phase 실행·완료 표시는 하지 않는다. 자세한 절차는 codex-runtime 참조.
+
     # 2a. 산출물 게이트 — 이전 Phase 산출물이 없으면 이전 Phase부터 실행 (순서 중요: 상위 의존성 먼저 체크)
     # 참고: core 모드는 PRD/설계서 대신 ac.md로 진행하므로 이 게이트를 적용하지 않는다
     if phase == "design" and not exists("${DEV_DIR}/prd.md"):
@@ -187,9 +190,11 @@ for phase in PHASES:
     # 2c. Phase 파일의 지시에 따라 실행
 
     # 2d. state.md 갱신
+    # Codex에서 질문 대기로 phase가 끝나지 않았다면 완료 표시를 하지 않고 현재 phase를 유지한다.
     Update state.md → phases.{phase}: completed
 
     # 2e. 다음 Phase로 진행
+    # Codex에서는 미응답 pending 질문이 있으면 다음 Phase로 진행하지 않고 현재 Phase에서 대기한다.
 ```
 
 ### Phase 파일 경로

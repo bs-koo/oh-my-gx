@@ -29,3 +29,12 @@ docs/presentation-*.md
 
 # Codex 훅 페이로드 캡처 로그 (실측용 임시 산출물 — 명령 문자열이 그대로 들어간다)
 .dev/codex-probe.jsonl
+
+# Codex 질문·모델 런타임 상태는 공유 산출물이 아닌 현재 세션 기록이다.
+.dev/*/pending-question.json
+.dev/*/answered-question.json
+.dev/*/.question-lock
+.dev/*/model-dispatches.jsonl
+
+# Python helper·회귀 테스트의 생성 바이트코드
+__pycache__/

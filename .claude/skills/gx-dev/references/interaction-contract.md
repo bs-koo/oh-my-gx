@@ -2,6 +2,8 @@
 
 ### 에이전트 질문 → AskUserQuestion 변환 규칙
 
+Codex에서는 먼저 [질문 대기 계약](codex-questions.md)을 적용한다. 질문의 필수 여부·도구 용도 제한·pending 등록·실제 답변 기록을 확인하고 아래 Claude 예시를 현재 스키마로 변환한다. 질문 UI의 등록 성공을 승인으로 취급하지 않는다.
+
 에이전트(product-owner, architect, qa-manager, security-auditor)가 "확인이 필요한 사항"에 구조화된 질문을 출력하면, 오케스트레이터가 AskUserQuestion으로 변환하여 사용자에게 제시한다.
 
 #### 변환 프로세스

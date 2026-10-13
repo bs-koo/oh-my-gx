@@ -48,8 +48,10 @@
 
 config·플래그·자연어·질문 답변이 없으면 잠정 `standard`; **Step 3.0 config 로드 후 `modelProfile`로 재확정한다** (vcs와 동일).
 
-`eco` 안내: "에코 모드로 실행합니다 — agent 디스패치는 sonnet 중심입니다. 절차·게이트·Iron Law는 동일합니다. 더 절약하려면 세션 모델도 sonnet으로 바꾸세요. eco는 agent 디스패치만 낮추며 오케스트레이터·인라인 단계(setup·complete)는 플러그인이 제어하지 못합니다."
-`standard` 안내: "표준 프로파일 — agent는 frontmatter 모델 그대로입니다. architect·coder·design-critic·test-architect·reviewer 등 opus 역할은 세션 모델과 무관하게 opus입니다. 세션 모델을 sonnet으로 낮춰도 절감이 제한되니 절약하려면 eco를 쓰세요."
+Codex는 [모델 정책](../../gx-dev/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
+
+Claude Code의 `eco` 안내: "architect는 opus, 지정된 검토 역할은 sonnet입니다. 절차·게이트·Iron Law는 유지하며 메인 세션 모델은 바뀌지 않습니다."
+`standard` 안내: "역할 frontmatter 모델을 유지합니다. 에이전트 절약에는 eco를 사용하세요."
 Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 공유 규칙 "모델 프로파일"을 따른다.
 
 ## Step 2: 베이스 브랜치 결정
