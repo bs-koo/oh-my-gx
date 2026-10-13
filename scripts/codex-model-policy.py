@@ -4,24 +4,23 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 ROLE_INDEX = Path(".claude/skills/gx-dev/references/codex-roles/index.json")
 DEFAULT_TIERS = {
-    "high": {"model": "gpt-6-astra", "reasoning_effort": "high"},
-    "mid": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"},
+    "high": {"family": "astra", "reasoning_effort": "high"},
+    "mid": {"family": "sol", "reasoning_effort": "medium"},
 }
 ECO_ROLES = {
     "gx-dev": {"design-critic", "coder"},
     "gx-tdd": {"design-critic", "test-architect", "reviewer"},
     "standalone": set(),
 }
-FALLBACK_MODELS = {
-    "high": ("gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-5.6-sol"),
-    "mid": ("gpt-6.1-sol", "gpt-6-sol", "gpt-5.6-sol", "gpt-6-astra"),
-}
+FAMILY_ORDER = {"high": ("astra", "sol"), "mid": ("sol", "astra")}
+VERSIONED_MODEL = re.compile(r"gpt-([0-9]+(?:\.[0-9]+)*)-(astra|sol)")
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
@@ -58,12 +57,13 @@ def model_tiers(cwd: Path) -> tuple[dict, set[str]]:
     if not isinstance(overrides, dict) or set(overrides) - set(tiers):
         raise ValueError("codex.modelTiers는 high/mid 선택적 객체여야 합니다.")
     for tier, candidate in overrides.items():
-        if not isinstance(candidate, dict) or set(candidate) != {"model", "reasoning_effort"}:
-            raise ValueError(f"codex.modelTiers.{tier}에는 model과 reasoning_effort가 필요합니다.")
-        tiers[tier] = {
-            key: nonempty_string(candidate[key], f"codex.modelTiers.{tier}.{key}")
-            for key in ("model", "reasoning_effort")
-        }
+        if not isinstance(candidate, dict) or set(candidate) not in (
+                {"model", "reasoning_effort"}, {"family", "reasoning_effort"}):
+            raise ValueError(f"codex.modelTiers.{tier}에는 model 또는 family 하나와 reasoning_effort가 필요합니다.")
+        tiers[tier] = {key: nonempty_string(value, f"codex.modelTiers.{tier}.{key}")
+                       for key, value in candidate.items()}
+        if "family" in candidate and candidate["family"] not in {"astra", "sol"}:
+            raise ValueError(f"codex.modelTiers.{tier}.family는 astra 또는 sol이어야 합니다.")
     return tiers, set(overrides)
 
 
@@ -80,19 +80,40 @@ def allowed_models(capabilities: dict) -> dict[str, list[str]]:
     return models
 
 
+def family_candidates(family: str, models: dict, effort: str) -> list[str]:
+    """실제로 허용되고 해당 effort를 지원하는 정식 계열 이름을 숫자로 정렬한다."""
+    candidates = []
+    for name, efforts in models.items():
+        match = VERSIONED_MODEL.fullmatch(name)
+        if match and match[2] == family and effort in efforts:
+            version = tuple(int(part) for part in match[1].split("."))
+            candidates.append((version, name))
+    return [name for _, name in sorted(candidates, reverse=True)]
+
+
 def select_candidate(tier: str, tiers: dict, overridden: set[str], models: dict,
                      parent_model) -> tuple[str, str, str, str]:
     """한 티어의 모델/effort 쌍을 지원 목록에서 선택한다."""
-    model, effort = tiers[tier]["model"], tiers[tier]["reasoning_effort"]
+    candidate = tiers[tier]
+    effort = candidate["reasoning_effort"]
     source = "project-config" if tier in overridden else "default"
-    if effort in models.get(model, []):
+    model = candidate.get("model")
+    if model is not None and effort in models.get(model, []):
         return model, effort, source, f"{source} 후보 {model}/{effort}가 세션 allowlist에서 지원됨"
-    preferred = [*FALLBACK_MODELS[tier], parent_model, *sorted(models)]
+    family = candidate.get("family")
+    if family:
+        matching = family_candidates(family, models, effort)
+        if matching:
+            return matching[0], effort, source, f"{source} 계열 {family}의 최신 허용 모델 {matching[0]}/{effort} 선택"
+    preferred = [name for fallback_family in FAMILY_ORDER[tier]
+                 for name in family_candidates(fallback_family, models, effort)]
+    preferred.extend([parent_model, *sorted(models)])
     replacement = next((name for name in preferred
                         if isinstance(name, str) and effort in models.get(name, [])), None)
     if replacement is None:
         raise ValueError(f"티어 {tier}의 요청 effort '{effort}'를 지원하는 허용 모델이 없습니다.")
-    reason = f"{source} 후보 {model}/{effort} 미지원: 허용 모델 {replacement}/{effort}로 대체"
+    requested = model if model is not None else f"family:{family}"
+    reason = f"{source} 후보 {requested}/{effort} 미지원: 허용 모델 {replacement}/{effort}로 대체"
     return replacement, effort, "fallback", reason
 
 

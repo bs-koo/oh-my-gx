@@ -128,6 +128,77 @@ class ModelPolicyTests(unittest.TestCase):
             result = self.resolve("implementer", profile="eco")
             self.assertEqual(result["model"], expected)
 
+    def test_auto_selects_newest_available_version_per_family_without_a_release_list(self):
+        # 가상 버전은 정렬 규칙 fixture이며 실제 출시/사용 가능 여부를 주장하지 않는다.
+        self.capabilities["models"].update({
+            "gpt-6.2-sol": ["medium", "high"],
+            "gpt-6.10-sol": ["medium", "high"],
+            "gpt-7-astra": ["medium", "high"],
+        })
+        for pipeline in ("gx-dev", "gx-tdd", "standalone"):
+            for profile in ("standard", "eco"):
+                high = self.resolve("architect", pipeline=pipeline, profile=profile)
+                mid = self.resolve("red-writer", pipeline=pipeline, profile=profile)
+                self.assertEqual((high["model"], high["reasoning_effort"]), ("gpt-7-astra", "high"))
+                self.assertEqual((mid["model"], mid["reasoning_effort"]), ("gpt-6.10-sol", "medium"))
+                self.assertIn("최신 허용", mid["reason"])
+
+    def test_versions_are_numeric_and_major_versions_override_minor_versions(self):
+        self.capabilities["models"] = {
+            "gpt-6.9-sol": ["medium"], "gpt-6.10-sol": ["medium"],
+            "gpt-7-sol": ["medium"], "gpt-10-sol": ["medium"],
+        }
+        self.assertEqual(self.resolve("implementer")["model"], "gpt-10-sol")
+        del self.capabilities["models"]["gpt-10-sol"]
+        del self.capabilities["models"]["gpt-7-sol"]
+        self.assertEqual(self.resolve("implementer")["model"], "gpt-6.10-sol")
+
+    def test_latest_family_choice_filters_effort_and_does_not_guess_snapshot_or_preview_versions(self):
+        self.capabilities["models"].update({
+            "gpt-7-sol": ["high"],
+            "gpt-99-sol-preview": ["medium"],
+            "gpt-99-sol-2027-01-01": ["medium"],
+            "gpt-sol-latest": ["medium"],
+            "gpt-6.2-sol": ["medium"],
+        })
+        result = self.resolve("implementer")
+        self.assertEqual((result["model"], result["reasoning_effort"]), ("gpt-6.2-sol", "medium"))
+
+    def test_absent_family_fallback_uses_newest_compatible_other_family(self):
+        self.capabilities["models"] = {
+            "gpt-6.1-sol": ["high", "medium"], "gpt-7-sol": ["high", "medium"]}
+        result = self.resolve("architect")
+        self.assertEqual((result["model"], result["source"]), ("gpt-7-sol", "fallback"))
+        self.assertIn("family:astra", result["reason"])
+
+    def test_pinned_model_override_keeps_older_available_model(self):
+        self.capabilities["models"]["gpt-7-sol"] = ["medium"]
+        self.config({"codex": {"modelTiers": {
+            "mid": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}})
+        self.assertEqual(self.resolve("implementer")["model"], "gpt-6.1-sol")
+
+    def test_family_override_selects_latest_and_custom_effort(self):
+        self.capabilities["models"]["gpt-7-sol"] = ["high"]
+        self.config({"codex": {"modelTiers": {
+            "high": {"family": "sol", "reasoning_effort": "high"}}}})
+        result = self.resolve("architect")
+        self.assertEqual((result["model"], result["source"]), ("gpt-7-sol", "project-config"))
+        self.assertEqual(result["warnings"], [])
+
+    def test_auto_selection_never_changes_parent_session(self):
+        self.capabilities["models"]["gpt-10-sol"] = ["high", "medium"]
+        result = self.resolve("implementer", profile="eco", execution="session")
+        self.assertEqual((result["model"], result["reasoning_effort"]), ("gpt-6-astra", "xhigh"))
+
+    def test_family_config_rejects_unknown_family_and_ambiguous_pin(self):
+        for candidate in (
+                {"family": "unknown", "reasoning_effort": "high"},
+                {"family": "sol", "model": "gpt-6.1-sol", "reasoning_effort": "medium"}):
+            with self.subTest(candidate=candidate):
+                self.config({"codex": {"modelTiers": {"mid": candidate}}})
+                with self.assertRaises(ValueError):
+                    self.resolve("implementer")
+
     def test_shared_allowed_model_can_distinguish_tiers_by_effort(self):
         self.capabilities["models"] = {"gpt-6-astra": ["high", "medium"]}
         high = self.resolve("architect", profile="eco")

@@ -4,13 +4,17 @@
 
 ## 선택과 설정
 
-설치된 [모델 helper](../../../../scripts/codex-model-policy.py)는 같은 설치 루트의 `codex-roles/index.json`을 읽는다. 소비 프로젝트 `.claude/config.json`의 `modelProfile`은 기존 프로파일 우선순위로 확정하고, 선택적 `codex.modelTiers`로 티어 모델·effort를 지정할 수 있다. 빈 설정이면 helper 기본값을 쓴다.
+설치된 [모델 helper](../../../../scripts/codex-model-policy.py)는 같은 설치 루트의 `codex-roles/index.json`을 읽는다. 소비 프로젝트 `.claude/config.json`의 `modelProfile`은 기존 프로파일 우선순위로 확정한다. 기본 high는 최신 허용 Astra/high, mid는 최신 허용 Sol/medium이다. 버전 번호를 고정하지 않고 실행 시점의 모델 목록에서 요청 effort를 지원하는 `gpt-<숫자 버전>-astra|sol` 이름을 숫자로 비교한다. 6.10은 6.9보다 높게 해석한다. 이름만으로 날짜 snapshot·preview·latest 별칭의 출시 순서를 추측하지 않는다.
+
+빈 설정이면 자동 최신 정책을 쓴다. 선택적 `codex.modelTiers`의 `family`로 계열·effort를 지정할 수 있다:
 
 ```json
-{"codex":{"modelTiers":{"high":{"model":"gpt-6-astra","reasoning_effort":"high"},"mid":{"model":"gpt-6.1-sol","reasoning_effort":"medium"}}}}
+{"codex":{"modelTiers":{"high":{"family":"astra","reasoning_effort":"high"},"mid":{"family":"sol","reasoning_effort":"medium"}}}}
 ```
 
-모델명은 불변 API가 아니다. 실행 전 노출된 spawn allowlist와 각 모델의 허용 effort를 `capabilities.json`에 적는다. API 모델 목록·과거 실행·config의 모델명으로 계정 사용 가능 여부를 추측하지 않는다. 이 파일은 실행 입력이며 사용자 전역 Codex 설정을 바꾸지 않는다.
+특정 모델을 유지하려면 `family` 대신 `model`을 지정한다. 예를 들어 `{"mid":{"model":"gpt-6.1-sol","reasoning_effort":"medium"}}`은 더 높은 Sol 버전이 허용돼도 지정한 지원 모델을 유지한다. model과 family를 동시에 넣지 않는다. 최신 정책은 자식 배정에만 적용하고 메인 세션 모델을 자동 교체하지 않는다.
+
+모델명은 불변 API가 아니다. 실행 전 노출된 spawn allowlist와 각 모델의 허용 effort를 `capabilities.json`에 새로 적는다. 과거 세션의 파일을 재사용하거나 API 모델 목록·config 모델명으로 spawn 사용 가능 여부를 추측하지 않는다. 이 파일은 실행 입력이며 사용자 전역 Codex 설정을 바꾸지 않는다. 새로운 계열 이름이나 모델 명명 규칙이 생기면 정책 지원을 확인하며, 모든 미래 모델의 출시 순서·별칭 지원을 보장한다고 설명하지 않는다.
 
 ```json
 {"models":{"gpt-6-astra":["low","medium","high","xhigh"],"gpt-6.1-sol":["low","medium","high","xhigh"]},"parent_model":"gpt-6.1-sol","parent_reasoning_effort":"high"}

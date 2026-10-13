@@ -4,7 +4,7 @@
 
 ## 변경 결과
 
-기본 모델 정책은 Astra/high·6.1 Sol/medium이며, 실제 세션의 spawn allowlist와 effort만 사용한다. 프로젝트 `codex.modelTiers` override와 후보 부재의 대체 사유를 반환한다. dev/tdd의 eco 대상, architect 유지, task reviewer mid, TDD fix 4~5 fresh high, 부모 세션 구현을 함께 계산한다. 역할 없는 setup·complete는 부모 세션 정보로 따로 기록한다.
+기본 모델 정책은 최신 허용 Astra/high·Sol/medium 자동 선택이며, 실제 세션의 spawn allowlist와 요청 effort만 사용한다. 프로젝트 `codex.modelTiers.family` 자동 선택 및 `model` 고정 override와 후보 부재의 대체 사유를 반환한다. dev/tdd의 eco 대상, architect 유지, task reviewer mid, TDD fix 4~5 fresh high, 부모 세션 구현을 함께 계산한다. 역할 없는 setup·complete는 부모 세션 정보로 따로 기록한다.
 
 필수 질문은 stable id와 질문 세트 token으로 등록하고, 실제 답변 기록 전 원래 phase를 유지한다. async 등록 ack·추천 항목·빈/부분 답변은 결정을 만들지 않는다. 답변 저장 후 실패의 재시도는 결정 digest로 중복을 방지한다. 완료 영수증은 같은 token이 명시된 이벤트만 억제하며, 이후 독립 질문을 과거 답변의 중복으로 지우지 않는다. Claude 기존 capture와 Codex 질문 도구 용도 제한은 유지한다.
 
@@ -25,6 +25,12 @@ Windows PowerShell에서 Git for Windows의 Bash를 명시했다. Python 3.10 st
 | `git diff --check` | PASS | 공백·패치 오류 없음 |
 
 최초 린트는 공통 질문 안내에서 실제 도구명을 제거한 점과 tdd setup의 바이트 예산을 차단했다. 모드·용도 제한을 명시한 도구명을 복원하고 공통 모델 문서로 설명을 모아 최종 검사에 통과했다. 상한을 늘리거나 검사 항목을 삭제하지 않았다. 전체 검사 이후 리뷰 보완으로 바뀐 질문·기록 코드는 해당 두 회귀를 다시 실행했다.
+
+## 자동 최신 모델 선택 후속 검증
+
+사용자 후속 요청에 따라 고정 기본 모델명을 계열별 최신 허용 모델 선택으로 바꿨다. 요청 effort를 지원하는 정식 숫자 버전을 비교하며 `family` 자동 선택과 `model` 고정을 구분한다. 날짜 snapshot·preview·별칭·미래 명명 규칙의 순서를 추측하지 않고 메인 세션을 교체하지 않는다. 새 버전 fixture는 정렬 테스트 입력이며 실제 출시·계정 접근을 주장하지 않는다.
+
+모델 정책 35개, 리소스 동기화, 정합성 린트 36개, diff 검사는 통과했다. 로컬 전체 209개 실행은 기존 CLI 러너의 5초 제한과 Ralph의 30초 제한에서 2개가 시간 초과였다. CLI 러너는 개별 재실행에서 통과했다. Ralph는 원본 테스트/러너를 바꾸지 않고 진단 실행의 제한만 90초로 늘려 같은 assertion을 확인했으며 30.261초에 통과했다. 이를 기본 30초 제한을 사용한 전체 209개 PASS로 표시하지 않는다. 모델 선택 후속 리뷰에서 조치할 결함은 없었다.
 
 ## Skill Creator 비교 평가
 
