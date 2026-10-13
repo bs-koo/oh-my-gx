@@ -2,6 +2,8 @@
 
 아래는 무엇이 어디에 중복돼 있고 무엇이 SSOT인지의 목록이다. 스킬·phase·에이전트 정의를 **수정할 때** 읽는다. 파이프라인 실행 중에는 읽지 않는다.
 
+Codex 모델 선택과 질문 대기는 gx-dev의 `codex-models.md`·`codex-questions.md` 및 설치 helper가 공통 정본이다. dev/tdd setup·질문 적응표·Phase 실행 루프·resume 안내를 같이 대조한다. `tests/test_codex_model_policy.py`는 역할 matrix·eco·scope·fix·allowlist를 실행하고, `tests/test_codex_question_gate.py`는 미응답·부분 답변·동일 id의 기록·재개를 검사한다. helper 결과를 인증된 실제 모델·앱 UI 실측으로 치환하지 않는다.
+
 **드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
 이 중 기계 검증 가능한 불변식(refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달, verify 판별식 키, 디스패치 이름↔agents/ 대조)은 `scripts/lint-consistency.sh`가 CI(`.github/workflows/lint.yml`)에서 자동 검사한다. 나머지는 여전히 수동 동기화 대상이다.
 - **메인 지시문 모듈 경계**: gx-dev·gx-tdd는 각자의 `references/intent-routing.md`(인자·모드·플래그 충돌), `references/pipeline-state.md`(코드 맵·공유 규칙·state·gate), `references/interaction-contract.md`(질문 변환·에러 처리)를 필수 실행 계약으로 읽는다. 각 SKILL.md는 Agent/Phase 실행 순서와 안전 게이트를 소유한다. 이동한 문구를 수정할 때는 해당 소유 파일과 `scripts/lint-consistency.sh`의 명시적 계약 bundle을 함께 갱신한다. TDD 전용 verify 지문·`test-file-hash`·RGR 재개 규칙은 gx-tdd의 `pipeline-state.md`에만 둔다.

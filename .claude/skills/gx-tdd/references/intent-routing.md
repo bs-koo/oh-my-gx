@@ -76,8 +76,8 @@ AskUserQuestion(
       question: "모델 프로파일을 선택해주세요. 절차·게이트·Iron Law는 동일하고 에이전트 모델 수준만 달라집니다.",
       header: "모델 프로파일",
       options: [
-        { label: "표준", description: "설계·testability·품질 리뷰에 opus — 품질 우선 (Max 요금제 권장)" },
-        { label: "에코", description: "architect 외 opus 에이전트를 sonnet으로 하향 — 토큰 절약 (Pro 요금제 권장, RGR·verify 동일)" }
+        { label: "표준", description: "설계·testability·최종 리뷰의 high 역할을 유지합니다. 실제 모델은 현재 하네스의 모델 정책으로 결정합니다" },
+        { label: "에코", description: "architect를 유지하고 testability·비판 검토·최종 리뷰를 mid로 낮춥니다. RGR·verify와 메인 세션 모델은 그대로입니다" }
       ],
       multiSelect: false
     }

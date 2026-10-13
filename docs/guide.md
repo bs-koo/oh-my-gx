@@ -149,6 +149,8 @@ Agent마다 적합한 모델이 배정됩니다:
 
 #### 모델 프로파일 (표준/에코)
 
+아래 opus/sonnet 표는 Claude Code 기준입니다. Codex는 [모델 정책](../.claude/skills/gx-dev/references/codex-models.md)으로 기본 Astra/high·6.1 Sol/medium을 선택하며 실제 allowlist와 프로젝트 `codex.modelTiers`를 확인합니다. 에코에서도 기본 TDD 구현은 메인 세션 모델을 유지합니다. Codex 필수 질문은 [질문 계약](../.claude/skills/gx-dev/references/codex-questions.md)에 따라 내용을 표시하고 실제 응답을 기다리므로, 질문 등록만으로 다음 단계에 진입하지 않습니다.
+
 절차 축(모드)과 직교하는 두 번째 축입니다. 절차·게이트는 동일하고 **에이전트 디스패치 모델**만 달라집니다:
 
 | 프로파일 | 동작 | 용도 |

@@ -178,6 +178,9 @@ else:  # ALL
 # 2. Phase별 순차 실행 (건너뛰기 금지)
 for phase in PHASES:
 
+    # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
+    # answer 기록·해제 전 phase 실행·완료 표시는 하지 않는다. 자세한 절차는 codex-runtime 참조.
+
     # 2a. 산출물 게이트 — 이전 Phase 산출물이 없으면 이전 Phase부터 실행 (순서 중요: 상위 의존성 먼저 체크)
     if phase == "design" and not exists("${DEV_DIR}/prd.md"):
         → phase-requirements부터 실행
@@ -207,9 +210,11 @@ for phase in PHASES:
     # 2c. Phase 파일의 지시에 따라 실행
 
     # 2d. state.md 갱신
+    # Codex에서 질문 대기로 phase가 끝나지 않았다면 완료 표시를 하지 않고 현재 phase를 유지한다.
     Update state.md → phases.{phase}: completed
 
     # 2e. 다음 Phase로 진행
+    # Codex에서는 미응답 pending 질문이 있으면 다음 Phase로 진행하지 않고 현재 Phase에서 대기한다.
 ```
 
 ### Phase 파일 경로

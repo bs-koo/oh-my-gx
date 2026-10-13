@@ -25,7 +25,7 @@ allowed-tools:
 Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
-- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
 
 질문은 한 번에 1~3개, 질문마다 선택지는 2~3개로 제한한다. 추천 답변은 첫 번째에 놓고 label 끝에 `(Recommended)`를 붙인다. UI가 자유 입력을 제공하므로 Other를 option으로 직접 추가하지 않는다. Codex 변환에서는 `../gx-dev/references/codex-runtime.md`와 실제 도구 스키마를 우선한다.
 

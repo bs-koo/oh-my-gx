@@ -32,7 +32,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-iterate/SKILL.md`의 절대경로인 `GX_RALPH_ITERATE_SKILL`을 전달한다. `GX_RALPH_CODEX_CMD`는 Codex 실행 파일을 별도 지정할 때만 쓴다. 기본 하네스는 Claude다. Codex에서는 네이티브 `scripts/codex-run.py`가 prompt를 stdin으로 보내고 최종 응답 파일만 종료 계약으로 판정한다. 그 파일에는 앞선 요약이 있어도 되지만 **정확한 계약 줄 하나만 마지막 비공백 줄**이어야 한다. 계약 줄이 중복되면 실패다. 이벤트 로그의 가짜 COMPLETE는 판정하지 않으며 nonzero/timeout은 종료 계약보다 우선해 실패한다. COMPLETE라도 원장 `acs` 전 항목의 `passes: true` 확인이 필요하다.
 
-- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
 - `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.

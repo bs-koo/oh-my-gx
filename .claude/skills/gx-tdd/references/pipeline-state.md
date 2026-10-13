@@ -76,6 +76,8 @@ phase-setup 결정, 모든 Phase 사용.
 
 ### 모델 프로파일 (MODEL_PROFILE)
 
+Codex는 [모델 정책](../../gx-dev/references/codex-models.md)의 helper로 아래 역할·프로파일과 태스크 리뷰·fix 격상 예외를 함께 해석한다. opus/sonnet은 원본 티어이며 메인 세션 IMPLEMENT를 mid 디스패치로 기록하지 않는다. `model-dispatches.jsonl`에 계획과 실제 도구 인자·관측값을 구분한다.
+
 에이전트 디스패치의 모델 수준. 절차 축(mode)과 **직교**하며 Phase 구성·게이트·Iron Law에 영향을 주지 않는다.
 
 - 결정 우선순위: `--eco`/`--standard` 플래그 > ARGS[0] 자연어(`에코 모드`/`에코로`/`절약 모드` → eco) > **의도 파싱 Step 3 질문 답변**(모드 확인 질문에 프로파일 질문이 함께 제시된 경우) > config.json `modelProfile` > 기본 `standard`. phase-setup Step 1.5가 이 순서로 확정해 state.md에 기록한다.

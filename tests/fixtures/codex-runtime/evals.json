@@ -1,0 +1,37 @@
+{
+  "skill_name": "gx-dev-codex-runtime",
+  "evals": [
+    {
+      "id": 1,
+      "name": "async-required-question",
+      "prompt": "Codex Default에서 gx-dev 설계 승인이 필요하다. 동기 request_user_input은 Plan 전용이고 optional 질문에만 쓸 수 있다. async는 등록 후 즉시 반환한다. 사용자 답변은 아직 없다. 단계별 실행 계획을 JSON으로 제시하고, async 등록 ack 직후 next_phase/decision 상태, 독립 작업이 끝난 뒤 어떻게 질문을 표시·대기하는지, 실제 수정 요청 응답 후 어떻게 기록·재개하는지 설명하라. 실제 질문 도구나 Git 변경을 실행하지 말고 계약 적용만 평가하라.",
+      "expected_output": "도구의 용도 제한을 따른 자연어 승인 질문, 사용자에게 본문·선택지 표시, pending 등록·원래 phase 유지, 미응답 의존 작업 차단 및 턴 종료, 실제 답변의 question_set_id/id 기록·해제. ack/default는 결정이 아님.",
+      "files": [],
+      "assertions": [
+        "Plan 전용 또는 optional 전용 도구로 필수 승인을 처리하지 않는다",
+        "질문 본문과 선택지를 대화에 표시한다",
+        "미응답 pending 상태와 phase 차단을 명시한다",
+        "독립 작업이 끝나면 턴을 종료해 응답을 기다린다",
+        "ack 또는 preselection을 승인·결정으로 기록하지 않는다",
+        "실제 답변에 question_set_id와 질문 id를 연결해 기록하고 재개한다"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "profile-model-exceptions",
+      "prompt": "Codex에서 gx-tdd를 eco로 실행한다. 허용 child 모델은 gpt-6-astra와 gpt-6.1-sol이며 둘 다 medium/high effort를 지원한다. parent는 gpt-6-astra/high다. architect, test-architect, phase reviewer, task reviewer, red-writer, isolated implementer, 기본 session implementer, fix4 implementer의 model/effort를 JSON으로 반환하라. 추가로 gx-dev standard coder와 eco coder를 비교하고, Astra가 없는 환경의 fallback, agent_type/fork_turns와 요청·관측 모델 기록을 설명하라. 실제 tool spawn이나 구현을 수행하지 말고 계약과 설치 helper를 근거로 계산하라.",
+      "expected_output": "architect Astra/high; tdd eco critic/test-architect/reviewer와 RED·isolated 구현은 6.1Sol/medium; 기본 구현은 parent Astra/high; fix4는 fresh Astra/high; dev coder standard Astra/high eco6.1Sol/medium. Astra 부재면 허용 Sol/high fallback·사유 보고. fixed agent_type 회피/fork none, 요청·관측 구분.",
+      "files": [],
+      "assertions": [
+        "eco architect는 Astra/high를 유지한다",
+        "eco test-architect와 phase reviewer는 6.1 Sol/medium이다",
+        "task reviewer·red-writer·isolated implementer는 6.1 Sol/medium이다",
+        "기본 session implementer는 부모 Astra/high를 유지한다",
+        "fix4 implementer는 eco에서도 fresh Astra/high다",
+        "dev coder standard/eco 배정이 Astra/high와 6.1Sol/medium으로 구분된다",
+        "fallback은 실제 허용 모델·effort만 선택하고 사유를 표시한다",
+        "고정 agent_type을 회피하고 fork_turns none과 요청·관측 기록을 구분한다"
+      ]
+    }
+  ]
+}

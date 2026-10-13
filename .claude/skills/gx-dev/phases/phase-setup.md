@@ -16,6 +16,8 @@
 
 ## Step 0: 진행 중 작업 감지
 
+Codex는 state.md 탐색 전에 현재 브랜치/SVN 활성 작업의 pending 질문을 확인한다. state.md가 아직 없는 초기 setup 질문도 표시·응답 기록·해제를 먼저 처리하고 원래 setup에서 계속한다. 미응답을 "재개할 작업 없음"으로 처리하거나 새 질문으로 덮어쓰지 않는다.
+
 진행 상태는 `${PROJECT_ROOT}/.dev/*/state.md`를 기준으로 탐색한다.
 
 ### `--resume` 플래그가 있는 경우
@@ -66,6 +68,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 3. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
 **이어서 진행 시:**
+- Codex는 공통 질문 helper의 status를 먼저 확인한다. pending 질문이 있으면 원래 phase·질문을 복원하고 실제 답변을 기록·해제한 뒤 재개한다. 새 모드·프로파일 질문으로 기존 미응답 질문을 덮어쓰지 않는다.
 - state.md에서 VCS_TYPE, GIT_PREFIX, DEV_DIR, 베이스 브랜치, 프로젝트 타입, ARGS[0], flags, mode, model-profile을 복원하되 PROJECT_ROOT는 Step -1의 절대경로를 유지한다. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다. DEV_DIR이 없으면 재구성한다 — git은 브랜치명의 `/`를 `-`로 치환, svn은 `.dev/.active`가 가리키는 `.dev/{slug}`(없으면 `.dev/trunk` 폴백). Step 5의 DEV_DIR 설정 규칙과 동일.
 - **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-dev {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격 등 mode를 기록하지 않는 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
@@ -120,6 +123,8 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 3. 의도 파싱 Step 3에서 프로파일 질문에 답한 경우 → 그 답변 (표준 → `standard`, 에코 → `eco`)
 4. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`) — config.json이 없거나 파싱 불가하면 건너뛴다
 5. 그 외 (미설정·빈 값·config 부재) → `standard`
+
+**하네스별 안내**: Codex에서는 [모델 정책](../references/codex-models.md)의 helper로 역할별 배정을 계산한다. `eco`는 "architect high 유지, design-critic·coder mid, 메인 세션 모델 유지", `standard`는 "역할 기본 high/mid 유지"로 안내하고 실제 선택한 모델·effort·대체 사유를 표시한다. 아래 opus/sonnet 안내는 Claude Code에서만 사용한다.
 
 `eco`로 결정되면 안내한다: "에코 모드로 실행합니다 — 에이전트 디스패치가 sonnet 중심으로 하향됩니다 (절차·게이트는 동일). 더 큰 절감을 원하면 실행 전 세션 모델도 sonnet으로 바꾸세요 — 그래야 오케스트레이터와 인라인 단계(setup·complete 등)까지 sonnet으로 실행됩니다. (에코는 에이전트 디스패치만 낮추며, 오케스트레이터/메인 세션 모델은 플러그인이 제어하지 못합니다.)"
 `standard`로 결정되면 안내한다: "표준 프로파일 — 에이전트를 frontmatter 모델대로 디스패치합니다 (architect·coder·design-critic 등 opus 에이전트는 세션 모델과 무관하게 opus로 실행). 세션 모델을 sonnet으로 낮춰 절감하려면 표준이 아니라 eco를 쓰세요 — 표준은 이 opus 에이전트들을 그대로 유지하므로 절감 효과가 제한적입니다."
