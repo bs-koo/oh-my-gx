@@ -1,6 +1,7 @@
 """DE-13 헬퍼 테스트용 최소 xlsx 생성기."""
 from __future__ import annotations
 
+import re
 import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -53,32 +54,47 @@ def _col(i: int) -> str:
     return out
 
 
-def _sheet_xml(rows, shared_index, validation, style, rich):
+def _abs(rng: str) -> str:
+    return re.sub(r"([A-Z]+)(\d+)", r"$\1$\2", rng)
+
+
+def _sheet_xml(rows, shared_index, validation, style, rich, filter_from=None):
     body = []
     for r, values in enumerate(rows, start=1):
         cells = "".join(
             _cell(f"{_col(c)}{r}", v, shared_index, style, rich.get(f"{_col(c)}{r}"))
             for c, v in enumerate(values))
         body.append(f'<row r="{r}">{cells}</row>')
+    last = f"{_col(max((len(r) for r in rows), default=1) - 1)}{len(rows)}"
+    dim = f'<dimension ref="A1:{last}"/>' if filter_from else ""
+    af = f'<autoFilter ref="{filter_from}:{last}"/>' if filter_from else ""
     dv = ""
     if validation:
         dv = (f'<dataValidations count="1"><dataValidation type="list" allowBlank="1" '
               f'sqref="{validation}"><formula1>"Pass,Fail"</formula1></dataValidation></dataValidations>')
     return ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            f'<sheetData>{"".join(body)}</sheetData>{dv}</worksheet>')
+            f'{dim}<sheetData>{"".join(body)}</sheetData>{af}{dv}</worksheet>'), last
 
 
-def make_xlsx(path: Path, sheets, shared=False, validation=None, style=None, rich=None):
+def make_xlsx(path: Path, sheets, shared=False, validation=None, style=None, rich=None, filters=None):
     """sheets: [(시트명, [[셀값,...],...]), ...].
-    shared=True면 공유 문자열(엑셀 재저장 형식), validation은 첫 시트의 결과 열 데이터 검증 범위,
-    style은 모든 셀의 s 속성, rich={"D2": ["앞", "뒤"]}는 첫 시트의 해당 셀을 서식 런으로 쓴다."""
+    shared=True면 공유 문자열(엑셀 재저장 형식), style은 모든 셀의 s 속성.
+    validation(결과 열 데이터 검증 범위)과 rich={"D2": ["앞", "뒤"]}(서식 런)는
+    '단위테스트계획' 시트(없으면 첫 시트)에 적용한다.
+    filters={"시트명": "A1"}이면 그 시트에 dimension·autoFilter·_FilterDatabase 정의 이름을 넣는다."""
     shared_index = {} if shared else None
-    sheet_parts = []
-    for n, (name, rows) in enumerate(sheets, start=1):
-        xml = _sheet_xml(rows, shared_index, validation if n == 1 else None, style,
-                         (rich or {}) if n == 1 else {})
-        sheet_parts.append((name, f"xl/worksheets/sheet{n}.xml", xml))
+    filters = filters or {}
+    target = next((i for i, (name, _) in enumerate(sheets) if name == "단위테스트계획"), 0)
+    sheet_parts, defined = [], []
+    for n, (name, rows) in enumerate(sheets):
+        xml, last = _sheet_xml(rows, shared_index, validation if n == target else None, style,
+                               (rich or {}) if n == target else {}, filters.get(name))
+        sheet_parts.append((name, f"xl/worksheets/sheet{n + 1}.xml", xml))
+        if name in filters:
+            defined.append(f'<definedName name="_xlnm._FilterDatabase" localSheetId="{n}" hidden="1">'
+                           f"'{escape(name)}'!{_abs(filters[name] + ':' + last)}</definedName>")
+    names = f"<definedNames>{''.join(defined)}</definedNames>" if defined else ""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml",
                    '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -91,7 +107,7 @@ def make_xlsx(path: Path, sheets, shared=False, validation=None, style=None, ric
         z.writestr("xl/workbook.xml",
                    '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
                    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-                   f'<sheets>{sheets_xml}</sheets></workbook>')
+                   f'<sheets>{sheets_xml}</sheets>{names}</workbook>')
         rels = "".join(
             f'<Relationship Id="rId{i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{i}.xml"/>'
             for i in range(1, len(sheet_parts) + 1))

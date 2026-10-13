@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""DE-13 단위테스트계획서(xlsx) 연동 헬퍼 — Python 3.10 표준 라이브러리 전용.
+"""DE-13 단위테스트계획서(xlsx) 역보강 헬퍼 — Python 3.10 표준 라이브러리 전용.
 
-scope  : 계획서에서 기능별 UT 행을 뽑아 ut-floor.md를 쓴다 (--fn 생략 시 기능 목록 JSON)
-check  : ut-floor의 '대상' UT ID가 테스트 소스에 skip 없이 존재하는지 확인한다
-record : check 결과로 기능별 결과 원장을 갱신한다
-apply  : 원장을 계획서 xlsx 사본의 결과·수행일·테스트담당자 열에 반영한다
+tests     : diff의 변경 테스트 파일에서 테스트 선언 목록을 뽑는다
+functions : 계획서 기능 목록(기능ID·기능명·UT 수)
+rows      : 지정 기능의 UT 행과 행 지문
+record    : gx-tdd가 쓴 짝짓기 초안을 검증해 원장에 병합한다
+apply     : 원장을 계획서에 반영하고(결과·보강·신규 행) 개정이력을 남긴다
 """
 from __future__ import annotations
 
@@ -29,8 +30,6 @@ REQUIRED = ("테스트ID", "연계기능ID", "사전조건", "입력", "기대�
             "의존성", "테스트담당자", "수행일", "결과")
 FIELDS4 = ("사전조건", "입력", "기대결과", "사후조건")
 DITTO = "〃"
-FLOOR_HEADER = ["테스트ID", "기능ID", "사전조건", "입력", "기대결과", "사후조건",
-                "의존성", "표식", "판정", "행 지문"]
 LEDGER_HEADER = ["테스트ID", "상태", "수행일", "담당자", "테스트 위치", "행 지문", "비고"]
 
 
@@ -129,6 +128,7 @@ def load_plan(path: Path) -> dict:
     wb = Workbook(Path(path))
     try:
         sheet, part, cols, body = _find_table(wb, REQUIRED)
+        index = [name for name, _ in wb.sheets].index(sheet)
     finally:
         wb.close()  # Windows에서 핸들이 남으면 임시 폴더 정리·덮어쓰기가 실패한다
     rows: list[dict] = []
@@ -146,7 +146,7 @@ def load_plan(path: Path) -> dict:
                 rec["_flags"].append("〃미해결")
         rows.append(rec)
         prev = rec
-    return {"sheet": sheet, "part": part, "cols": cols, "rows": rows, "sha": file_sha(Path(path))}
+    return {"sheet": sheet, "part": part, "index": index, "cols": cols, "rows": rows, "sha": file_sha(Path(path))}
 
 
 def row_fingerprint(rec: dict) -> str:
@@ -154,42 +154,17 @@ def row_fingerprint(rec: dict) -> str:
     return hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()[:8]
 
 
-def _undecided(rec: dict) -> bool:
-    return any("[미확정" in (rec.get(h) or "") for h in rec if not h.startswith("_"))
+ROWS_HEADER = ["테스트ID", "연계기능ID", *FIELDS4, "결과", "행 지문"]
 
 
-def build_floor(plan: dict, fn_ids: list[str], ledger: dict[str, dict] | None = None) -> list[dict]:
-    """ledger(테스트ID→원장 행)에 지문이 같은 Pass가 있으면 이미 완료된 행으로 보고 하한선 대상에서 뺀다."""
-    ledger = ledger or {}
+def plan_rows(plan: dict, fn_ids: list[str]) -> list[dict]:
     known = {r["연계기능ID"] for r in plan["rows"] if r["연계기능ID"]}
     unknown = [f for f in fn_ids if f not in known]
     if unknown:
         raise InputError(f"계획서에 없는 기능ID: {', '.join(unknown)}")
-    fn_of = {r["테스트ID"]: r["연계기능ID"] for r in plan["rows"]}
-    floor = []
-    for rec in plan["rows"]:
-        if rec["연계기능ID"] not in fn_ids:
-            continue
-        marks = list(rec["_flags"])
-        if "[가정" in " ".join(rec.get(f, "") for f in FIELDS4):
-            marks.append("가정")
-        deps = re.findall(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*", rec.get("의존성", ""))
-        if any(d in fn_of and fn_of[d] != rec["연계기능ID"] for d in deps):
-            marks.append("타기능 의존")
-        fp = row_fingerprint(rec)
-        done = ledger.get(rec["테스트ID"], {})
-        if _undecided(rec):
-            verdict = "제외(미확정 행)"
-        elif done.get("상태") == "Pass" and done.get("행 지문") == fp:
-            verdict = "제외(원장 Pass)"
-        else:
-            verdict = "대상"
-        floor.append({
-            "테스트ID": rec["테스트ID"], "기능ID": rec["연계기능ID"],
-            **{f: rec.get(f, "") for f in FIELDS4}, "의존성": rec.get("의존성", ""),
-            "표식": ", ".join(marks), "판정": verdict, "행 지문": fp,
-        })
-    return floor
+    return [{"테스트ID": r["테스트ID"], "연계기능ID": r["연계기능ID"], **{f: r.get(f, "") for f in FIELDS4},
+             "결과": r.get("결과", ""), "행 지문": row_fingerprint(r)}
+            for r in plan["rows"] if r["연계기능ID"] in fn_ids]
 
 
 # ---------- 마크다운 표 ----------
@@ -243,15 +218,6 @@ def read_md_table(path: Path) -> list[dict[str, str]]:
             continue
         rows.append(dict(zip(header, cells)))
     return rows
-
-
-def write_floor(path: Path, source: str, plan: dict, fn_ids: list[str], rows: list[dict], date: str) -> None:
-    head = ("# UT 하한선\n\n"
-            f"- 출처: {source} (시트: {plan['sheet']}, sha256: {plan['sha']})\n"
-            f"- 범위: {', '.join(fn_ids)}\n"
-            f"- 생성: {date}\n\n")
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(head + write_md_table(FLOOR_HEADER, rows), encoding="utf-8")
 
 
 def function_list(plan: dict, spec: Path | None) -> list[dict]:
@@ -464,60 +430,72 @@ def _is_skipped(lines: list[str], i: int) -> bool:
             or _enclosing_skipped(lines, anchor))
 
 
-def iter_test_files(root: Path):
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
-        rel_dir = Path(dirpath).relative_to(root)
-        in_test_dir = any(part in TEST_DIRS for part in rel_dir.parts)
-        for name in filenames:
-            if Path(name).suffix.lower() not in SOURCE_EXT:
-                continue
-            if in_test_dir or TEST_FILE_RE.search(name):
-                yield Path(dirpath) / name, (rel_dir / name).as_posix()
+def _is_test_file(rel: str) -> bool:
+    p = Path(rel)
+    if p.suffix.lower() not in SOURCE_EXT or any(part in SKIP_DIRS for part in p.parts[:-1]):
+        return False
+    return any(part in TEST_DIRS for part in p.parts[:-1]) or bool(TEST_FILE_RE.search(p.name))
 
 
-def _id_pattern(test_id: str) -> re.Pattern:
-    raw, under = re.escape(test_id), re.escape(test_id.replace("-", "_"))
-    return re.compile(rf"(?<![A-Za-z0-9-])(?:{raw}|{under})(?![0-9A-Za-z])")
+def _load_source(path: Path) -> tuple[list[str], bool]:
+    text = Path(path).read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
+    suffix = Path(path).suffix.lower()
+    lines = _strip_comments(text, hash_comments=suffix in {".py", ".rb"})  # 주석 속 선언·표식은 테스트가 아니다
+    return lines, suffix == ".py" and any(PY_MODULE_SKIP_RE.match(l) for l in lines)
 
 
-def check_floor(floor_rows: list[dict], root: Path) -> dict:
-    targets = [r["테스트ID"] for r in floor_rows if r.get("판정") == "대상"]
-    patterns = {t: _id_pattern(t) for t in targets}
-    found: dict[str, list[dict]] = {t: [] for t in targets}
-    for path, rel in iter_test_files(Path(root)):
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
-        except OSError:
+def changed_files(diff_text: str) -> list[str]:
+    """unified diff의 새 쪽 경로 (git `+++ b/x`, svn `+++ x\\t(working copy)`). 삭제 파일은 뺀다."""
+    git = "diff --git " in diff_text
+    out: list[str] = []
+    for line in diff_text.splitlines():
+        if not line.startswith("+++ "):
             continue
-        python = path.suffix.lower() in {".py", ".rb"}
-        lines = _strip_comments(text, hash_comments=python)  # 주석 속 ID·표식은 테스트가 아니다
-        module_skip = path.suffix.lower() == ".py" and any(PY_MODULE_SKIP_RE.match(l) for l in lines)
+        path = line[4:].split("\t")[0].strip()
+        if path == "/dev/null":
+            continue
+        if git and path.startswith("b/"):
+            path = path[2:]
+        if path not in out:
+            out.append(path)
+    return out
+
+
+def list_tests(root: Path, files: list[str]) -> list[dict]:
+    out = []
+    for rel in files:
+        path = Path(root) / rel
+        if not _is_test_file(rel) or not path.is_file():
+            continue
+        lines, module_skip = _load_source(path)
+        seen: set[tuple[int, int]] = set()
         for i, line in enumerate(lines):
-            for t, pat in patterns.items():
-                if pat.search(line):
-                    found[t].append({"path": rel, "line": i + 1,
-                                     "skipped": module_skip or _is_skipped(lines, i)})
-    results, summary = {}, {"found": 0, "missing": 0, "skipped": 0}
-    for t in targets:
-        locs = sorted(found[t], key=lambda l: (l["path"], l["line"]))
-        status = "missing" if not locs else ("found" if any(not l["skipped"] for l in locs) else "skipped")
-        summary[status] += 1
-        results[t] = {"status": status, "locations": locs}
-    return {"results": results, "summary": summary}
+            if not DECL_RE.search(line):
+                continue
+            start, anchor, end = _test_header(lines, i)
+            if (start, end) in seen:
+                continue
+            seen.add((start, end))
+            decl = " ".join(l.strip() for l in lines[start:end + 1] if l.strip())
+            out.append({"path": rel, "line": anchor + 1, "decl": decl[:300],
+                        "skipped": module_skip or _is_skipped(lines, i)})
+    return out
 
 
-def cmd_check(args) -> int:
-    floor = Path(args.floor)
-    if not floor.is_file():
-        raise InputError(f"ut-floor 파일이 없습니다: {floor}")
-    result = check_floor(read_md_table(floor), Path(args.root))
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    s = result["summary"]
-    print(f"found {s['found']} · missing {s['missing']} · skipped {s['skipped']}")
-    return 0 if s["missing"] == 0 and s["skipped"] == 0 else 1
+def locate_test(root: Path, location: str) -> dict | None:
+    """`경로:줄`이 테스트(머리 또는 본문)를 가리키면 skip 여부를, 아니면 None을 돌려준다."""
+    rel, _, num = location.strip().rpartition(":")
+    path = Path(root) / rel
+    if not rel or not num.isdigit() or not _is_test_file(rel) or not path.is_file():
+        return None
+    lines, module_skip = _load_source(path)
+    i = int(num) - 1
+    if not 0 <= i < len(lines):
+        return None
+    start, _, end = _test_header(lines, i)
+    if not any(DECL_RE.search(l) for l in lines[start:end + 1]):
+        return None
+    return {"path": rel, "line": i + 1, "skipped": module_skip or _is_skipped(lines, i)}
 
 # ---------- 결과 원장 ----------
 
@@ -724,40 +702,57 @@ def cmd_apply(args) -> int:
 
 # ---------- 명령 ----------
 
-def cmd_scope(args) -> int:
-    plan = load_plan(Path(args.plan))
-    out = Path(args.out)
-    if not args.fn:
-        functions = function_list(plan, Path(args.spec) if args.spec else None)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(functions, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"기능 {len(functions)}개 목록을 {out}에 썼습니다")
-        return 0
+def _write_json(path: Path, data) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def cmd_tests(args) -> int:
+    diff = Path(args.diff)
+    if not diff.is_file():
+        raise InputError(f"diff 파일이 없습니다: {diff}")
+    tests = list_tests(Path(args.root), changed_files(diff.read_text(encoding="utf-8", errors="replace")))
+    _write_json(Path(args.out), tests)
+    print(f"테스트 {len(tests)}개 (skip {sum(t['skipped'] for t in tests)})")
+    return 0
+
+
+def cmd_functions(args) -> int:
+    functions = function_list(load_plan(Path(args.plan)), Path(args.spec) if args.spec else None)
+    _write_json(Path(args.out), functions)
+    print(f"기능 {len(functions)}개")
+    return 0
+
+
+def cmd_rows(args) -> int:
     fn_ids = [f.strip() for f in args.fn.split(",") if f.strip()]
-    ledger = {r["테스트ID"]: r for r in _ledger_rows(Path(args.ledger_dir))} if args.ledger_dir else None
-    rows = build_floor(plan, fn_ids, ledger)
-    write_floor(out, Path(args.plan).as_posix(), plan, fn_ids, rows, args.date)
-    target = sum(1 for r in rows if r["판정"] == "대상")
-    print(f"하한선 {len(rows)}행(대상 {target})을 {out}에 썼습니다")
+    rows = plan_rows(load_plan(Path(args.plan)), fn_ids)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(write_md_table(ROWS_HEADER, rows), encoding="utf-8")
+    print(f"UT {len(rows)}행")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="de13", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
-    s = sub.add_parser("scope")
-    s.add_argument("--plan", required=True)
-    s.add_argument("--out", required=True)
-    s.add_argument("--fn")
-    s.add_argument("--spec")
-    s.add_argument("--ledger-dir")
-    s.add_argument("--date", default=_dt.date.today().isoformat())
-    s.set_defaults(func=cmd_scope)
-    c = sub.add_parser("check")
-    c.add_argument("--floor", required=True)
-    c.add_argument("--root", required=True)
-    c.add_argument("--out", required=True)
-    c.set_defaults(func=cmd_check)
+    t = sub.add_parser("tests")
+    t.add_argument("--diff", required=True)
+    t.add_argument("--root", required=True)
+    t.add_argument("--out", required=True)
+    t.set_defaults(func=cmd_tests)
+    f = sub.add_parser("functions")
+    f.add_argument("--plan", required=True)
+    f.add_argument("--spec")
+    f.add_argument("--out", required=True)
+    f.set_defaults(func=cmd_functions)
+    w = sub.add_parser("rows")
+    w.add_argument("--plan", required=True)
+    w.add_argument("--fn", required=True)
+    w.add_argument("--out", required=True)
+    w.set_defaults(func=cmd_rows)
     r = sub.add_parser("record")
     r.add_argument("--floor", required=True)
     r.add_argument("--check", required=True)
