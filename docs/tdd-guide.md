@@ -460,11 +460,11 @@ requirements ─ PRD 작성 (product-owner)
    ↓          [게이트 1] G-W-T 검증 — AC가 전부 Given-When-Then 형식인가
 design ─────── 설계 (architect) + 비판 검토 (design-critic)
    ↓          [게이트 2] testability score ≥ 7 (test-architect)
-implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록
+implement ──── [게이트 3] 기준선 게이트 — 기존 테스트 GREEN + 경고 수 기록 (측정은 requirements 시작과 함께 미리 실행)
    ↓          RGR 사이클: red-writer → 세션 IMPLEMENT (AC 단위 태스크, 순차)
-review ─────── [게이트 4] Mechanical Gate (build + test)
+review ─────── [게이트 4] Mechanical Gate (build + 이번 파이프라인 테스트 누적)
    ↓          reviewer (AC 충족 → 코드 품질 통합 1석, spec verdict 선행) + security-auditor 병렬
-complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify)
+complete ───── [게이트 5] TDD 이행 게이트 → verify 게이트 (gx-verify — 기존 스위트 전체 회귀 1회)
               → 인수 검증 (product-owner) → commit → PR
 ```
 
@@ -497,7 +497,7 @@ TDD의 각 단계를 **다른 주체가 맡는다** (IMPLEMENT는 기본 세션)
 
 1. "테스트 결함 의심" 보고가 있으면 red-writer로 되돌림 (구현 주체가 테스트를 고치지 않는다)
 2. 테스트 파일 해시 재계산 → **RED 시점과 다르면 무단 수정**. 원복 후 재호출, 재차 위반 시 사이클 중단
-3. focused 테스트 집합을 오케스트레이터가 직접 실행 → 통과 확인 + 테스트 수 기록 (전체 회귀는 사이클 경계에서 별도 확인)
+3. focused 테스트 집합을 오케스트레이터가 직접 실행 → 통과 확인 + 테스트 수 기록 (대상은 그 태스크 테스트만. 태스크 간 회귀는 review 게이트, 전체 회귀는 complete verify에서 확인)
 4. 테스트에서 쓰이지 않는 public 메서드·필드가 추가됐으면 과잉 구현으로 판정해 제거한다 (설계서 인터페이스가 명시한 멤버는 유지). 묻지 않고 처리하고 판정·근거·되돌림 비용을 `decisions.md`에 남긴다
 5. public 시그니처 변경 없음 확인
 6. 프로덕션 파일을 2개 이상 바꿨거나 fix 라운드가 있었으면 `reviewer`가 태스크 범위로 리뷰 → findings는 같은 fix loop로, Minor는 phase-review에 유예. 단일 파일·fix 없음이면 기계 검증만으로 닫는다
@@ -655,7 +655,7 @@ RED    red-writer가 UserTest.shouldRejectChargeOverLimit 작성
        → 테스트 파일 해시 기록
 
 GREEN  구현 주체가 예외 클래스 + 한도 분기 추가 (그 이상 없음)
-       → 대상 테스트 통과, 전체 회귀 0건
+       → 대상 테스트 통과 (전체 회귀는 complete의 verify에서)
        → 테스트 파일 해시 재확인 (변조 없음)
 
 REFACTOR 구현 주체가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 추출
@@ -672,7 +672,7 @@ REFACTOR 구현 주체가 100_000 리터럴을 MAX_CHARGE_PER_REQUEST 상수로 
 - verify 게이트가 `./gradlew test`와 `./gradlew build`를 새로 실행해 0 failures 확인
 - product-owner 인수 검증 → 커밋 → PR
 
-verify에서 실패가 나오면 자동 수정하지 않는다. 실패 항목을 새 AC로 정의해 **RGR 사이클로 되돌아간다.** 버그 수정도 RED가 먼저다.
+verify에서 실패가 나오면 자동 수정하지 않는다. 사용자가 "수정"을 고르면 깨진 기존 테스트를 RED로 삼아 수리 모드로 고치고(테스트 파일은 손대지 않는다) verify를 다시 돈다. 고치려면 동작이 바뀌는 항목만 새 AC로 정의해 **RGR 사이클로 되돌아간다.** 수리는 2회까지이고, 그 뒤에는 수동 수정이나 중단을 고른다.
 
 ---
 

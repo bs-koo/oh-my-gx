@@ -12,5 +12,6 @@ Codex에서는 먼저 `Read("../../gx-dev/references/codex-runtime.md")`를 실�
 | `Task(subagent_type="oh-my-gx:{name}")` | 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다 |
 | `AskUserQuestion` | 공통 질문 대기 계약으로 변환한다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 기록·실제 답변 전 진행하지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다 |
 | `Skill(skill: "oh-my-gx:{name}")` | 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다 |
+| `Bash(run_in_background: true)` — 기준선 사전 실행 (phase-requirements, phase-implement Step 0.5) | 미지원 — 시작하지 않는다. Step 0.5가 동기 실행한다 |
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
