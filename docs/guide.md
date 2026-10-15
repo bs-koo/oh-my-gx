@@ -683,6 +683,7 @@ AI가 생성한 텍스트의 흔적을 찾아내어 자연스러운 글로 교�
 | 설계 추가 게이트 | test-architect가 testability score(≥7)를 판정 |
 | 무인 루프 전환 | `--ralph`(또는 "랄프로 …")로 시작한 실행만 기준선 게이트(Step 0.5) 통과 후 전환(Step 0.7) — 기본 경로는 묻지 않음. 루프 안에서도 red-writer→implementer 사이클이 AC 1건 단위로 유지 (§4.13, origin: gx-tdd) |
 | verify 게이트 | 테스트 직접 실행 + 0 failures 증거 없이는 commit/PR 진입 불가 (훅이 최종 방어) |
+| 테스트 실행 횟수 | 기존 스위트 전체 실행은 기준선(Claude Code에서는 requirements 시작과 함께 백그라운드 사전 실행)과 complete의 verify 1회뿐. 태스크는 그 태스크 테스트만, review 게이트는 이번 파이프라인 테스트 누적만 실행. 실행 중에는 다른 테스트를 겹쳐 돌리지 않는다 |
 | 핵심 모드(core) | gx-dev 핵심 모드와 달리 **RGR·verify·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로 (Iron Law 불변). 생략은 design(testability)·정식 review뿐이며, AC 작성이 product-owner 대신 오케스트레이터 직접(ac.md). 테스트 강제 없는 경량 경로가 필요하면 gx-dev 핵심 모드 사용 |
 | 에코 프로파일(eco) | gx-dev와 동일 원칙 적용 — design-critic·test-architect·reviewer를 sonnet으로 하향 디스패치 (architect는 opus 유지). RGR·verify·게이트는 무변경 |
 

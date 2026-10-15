@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -646,6 +647,200 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), physical_root)
+
+
+# Executable approximation of the acceptance rule in phase-implement Step 0.5
+# "기준선 사전 실행". It checks the decision table, not a model run.
+BASELINE_ACCEPT_PROBE = r'''
+accept() {
+  local done="$1" start="$2" current="$3" dir="$4"; shift 4
+  test -f "$done" || { echo sync; return; }
+  test "$(head -n 1 "$done")" = "start=$start" || { echo sync; return; }
+  test "$(tail -n 1 "$done")" = DONE || { echo sync; return; }
+  local end; end=$(sed -n 's/^fingerprint-end=//p' "$done")
+  test -n "$end" || { echo sync; return; }
+  test "${start#*:}" = "${end#*:}" && test "${start#*:}" = "${current#*:}" || { echo sync; return; }
+  local t k
+  for t in "$@"; do
+    for k in test build; do
+      test "$(grep -c "^$t $k rc=[0-9][0-9]*$" "$done")" = 1 || { echo sync; return; }
+      test -f "$dir/baseline-$t-$k.log" || { echo sync; return; }
+    done
+  done
+  echo accept
+}
+accept "$DONE_FILE" "$START" "$CURRENT" "$DIR" $TYPES
+'''
+
+TDD_PHASES = ROOT / ".claude/skills/gx-tdd/phases"
+IMPLEMENTER = ROOT / "agents/implementer.md"
+
+
+def section(text: str, start: str, end: str) -> str:
+    begin = text.index(start)
+    stop = text.index(end, begin + len(start))
+    return text[begin:stop]
+
+
+class TestRunBudgetContractTests(unittest.TestCase):
+    def read(self, name: str) -> str:
+        return (TDD_PHASES / name).read_text(encoding="utf-8")
+
+    def test_review_gate_runs_pipeline_tests_not_full_suite(self):
+        text = self.read("phase-review.md")
+        gate = section(text, "## Step 0: Mechanical Gate", "## Step 1:")
+        for needle in (
+            "Step 0 테스트 집합",
+            "무결성 선확인",
+            "사용자 변경으로 인정",
+            "누적 focused",
+            "`detect` 파일이 있는 디렉토리",
+            "테스트 파일이 없는 타입은 빌드만",
+            "전체 폴백",
+            "통틀어 `test-file` 기록이 0건",
+            "`focusedTest` 없음",
+            "명령 자체 오류",
+            "-x test testClasses",
+            "기존 스위트 전체 회귀는 phase-complete의 verify 게이트가 1회 맡는다",
+            "SSOT는 config",
+            "복수 타입",
+        ):
+            self.assertIn(needle, gate)
+        handling = section(text, "### Step 4.4", "## state.md 추적")
+        self.assertNotIn("전체 테스트 1회 직접 실행", handling)
+        self.assertGreaterEqual(handling.count("Step 0 테스트 집합"), 3)
+        self.assertNotIn("정리 후 전체 테스트 GREEN", text)
+
+    def test_task_focused_scope_is_task_only(self):
+        text = self.read("phase-implement.md")
+        implementer = IMPLEMENTER.read_text(encoding="utf-8")
+        assembly = section(text, "**focused 테스트 명령 조립**:", "**명령 오류 가드**")
+        self.assertIn("이 태스크의 `test-file` 기록 파일만", assembly)
+        self.assertNotIn("이전 태스크들이 만든 신규 테스트 파일 전부", text)
+        self.assertGreaterEqual(text.count("와일드카드"), 3)
+        for needle in ("와일드카드", "모듈 묶음", "verify 회귀 수리", "완료 verify"):
+            self.assertIn(needle, implementer)
+        self.assertNotIn("전체는 경계에서", implementer)
+        self.assertIn("같은 태스크의 직전 `test-count`", text)
+        self.assertNotIn("직전 태스크의 같은 방식 값", text)
+        subs = ROOT / "tests/fixtures/behavior/b2/subs.json"
+        for key in json.loads(subs.read_text(encoding="utf-8")):
+            self.assertIn(key, text, key)
+
+    def test_boundary_regression_only_without_following_verify(self):
+        text = self.read("phase-implement.md")
+        step = section(text, "## Step 3.5:", "## Step 4:")
+        self.assertIn("## Step 3.5: 경계 회귀 (--phase implement 단독 전용)", step)
+        self.assertIn("complete(verify)가 실행되지 않는 경로", step)
+        core = section(text, "## 핵심 모드 분기 (core)", "## Step 0: 문서 로드")
+        self.assertIn("Step 3.5(경계 회귀)는 건너뛴다", core)
+        self.assertNotIn("핵심 모드·`--phase implement` 단독: Step 3.5", text)
+
+    def test_baseline_prelaunch_contract(self):
+        req = self.read("phase-requirements.md")
+        trigger = section(req, "## 기준선 사전 실행 (진입 직후)", "## 핵심 모드 분기 (core)")
+        self.assertIn("phase-implement.md", trigger)
+        self.assertIn("Codex와 svn은 시작하지 않고", trigger)
+        self.assertIn("phase 목록에 implement가 있을 때만", trigger)
+        impl = self.read("phase-implement.md")
+        pre = section(impl, "### 기준선 사전 실행 (Claude Code·git 전용)", "## Step 0.7")
+        for needle in (
+            "phase 목록에 implement가 있을 때만",
+            "`--phase requirements`",
+            "run_in_background: true",
+            "`baseline-fingerprint`",
+            "${DEV_DIR}/baseline.done",
+            "${DEV_DIR}/baseline-{타입}-{test|build}.log",
+            "`{타입} {test|build} rc={N}`",
+            "`fingerprint-end={값}`",
+            "`start={baseline-fingerprint}`",
+            "실행 완료 표식이지 성공이 아니다",
+            "동기 실행",
+            "판정 1(기준 GREEN 실패)",
+            "`&&`·`set -e`로 잇지 않는다",
+            "작업을 중지하고 동기 실행",
+            "포그라운드 sleep으로 기다리지 않는다",
+        ):
+            self.assertIn(needle, pre)
+        self.assertIn("```bash", pre)
+        accept = section(pre, "**결과 수용**", "| 상태 | 처리 |")
+        for needle in (
+            "첫 줄이 `start={값}`",
+            "마지막 줄이 `DONE`",
+            "각 1개",
+            "트리 성분",
+            "HEAD 성분은 비교하지 않는다",
+            "로그 파일 존재",
+        ):
+            self.assertIn(needle, accept)
+        self.assertIn("기준선 사전 실행", section(impl, "## Step 0.5", "### 레이어별 하네스 게이트"))
+        refs = TDD_PHASES.parent / "references"
+        self.assertIn("run_in_background", (refs / "harness-adaptation.md").read_text(encoding="utf-8"))
+        self.assertIn("baseline-fingerprint:", (refs / "pipeline-state.md").read_text(encoding="utf-8"))
+
+    def test_baseline_acceptance_probe(self):
+        bash = shutil.which("bash") or "bash"
+        start = "1111111:aaaaaaaaaaaa"
+        good = [f"start={start}", "java-spring test rc=0", "java-spring build rc=0",
+                "node test rc=0", "node build rc=0",
+                f"fingerprint-end={start}", "DONE"]
+        cases = (
+            ("complete", good, start, True, "accept"),
+            ("stale file from another run", [f"start=1111111:dddddddddddd"] + good[1:], start, True, "sync"),
+            ("no start line", good[1:], start, True, "sync"),
+            ("duplicate type line", good[:2] + good[1:], start, True, "sync"),
+            ("empty end fingerprint",
+             [l if not l.startswith("fingerprint-end=") else "fingerprint-end=" for l in good], start, True, "sync"),
+            ("failed baseline still accepted",
+             [l.replace("node test rc=0", "node test rc=1") for l in good], start, True, "accept"),
+            ("head moved, tree same", good, "2222222:aaaaaaaaaaaa", True, "accept"),
+            ("no DONE", good[:-1], start, True, "sync"),
+            ("missing type line", [l for l in good if l != "node build rc=0"], start, True, "sync"),
+            ("end fingerprint differs",
+             [l.replace(f"fingerprint-end={start}", "fingerprint-end=1111111:bbbbbbbbbbbb") for l in good],
+             start, True, "sync"),
+            ("current tree differs", good, "1111111:cccccccccccc", True, "sync"),
+            ("log missing", good, start, False, "sync"),
+        )
+        for name, lines, current, logs, expected in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory(prefix="baseline probe ") as root:
+                done = Path(root) / "baseline.done"
+                done.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))  # LF 고정 — Windows 텍스트 모드 CRLF 방지
+                if logs:
+                    for t in ("java-spring", "node"):
+                        for k in ("test", "build"):
+                            (Path(root) / f"baseline-{t}-{k}.log").write_text("", encoding="utf-8")
+                env = dict(os.environ, DONE_FILE=str(done), START=start, CURRENT=current,
+                           DIR=root, TYPES="java-spring node")
+                result = subprocess.run([bash, "-c", BASELINE_ACCEPT_PROBE], env=env,
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.stdout.strip(), expected, result.stderr)
+
+    def test_verify_block_repair_contract(self):
+        text = self.read("phase-complete.md")
+        step = section(text, "## Step -1: verify 게이트", "## Step 0: 인수 검증")
+        self.assertIn('"수정"', step)
+        self.assertIn("다른 테스트·빌드 명령을 시작하지 않고", step)
+        self.assertNotIn('"RGR 사이클로 수정"', step)
+        repair = section(step, '**verify 회귀 수리** ("수정" 선택 시)', "**Iron Law 위반 감지**")
+        for needle in (
+            "`verify-status: pending`",
+            '`verify-fingerprint: ""`',
+            "수리 모드",
+            "테스트 파일은 수정하지 않는다",
+            "테스트를 고쳐야만 해결됨",
+            "수리 라운드 상한 2회",
+            "`verify 회귀 수리 R{n}` 항목 수",
+            "세션 직접",
+            "다시 리뷰하지 않는다",
+        ):
+            self.assertIn(needle, repair)
+        self.assertNotIn("red-writer 재호출", repair)
+        self.assertIn("이 verify가 유일하다", text[: text.index("## Step -2")])
+        verify = (ROOT / ".claude/skills/gx-verify/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("다른 테스트·빌드 명령을 병행하지 않는다", section(verify, "### Step 2", "### Step 3"))
+        state = (TDD_PHASES.parent / "references/pipeline-state.md").read_text(encoding="utf-8")
+        self.assertIn("verify 회귀 수리", state)
 
 
 if __name__ == "__main__":
