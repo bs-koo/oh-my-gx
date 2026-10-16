@@ -15,7 +15,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "AskUserQuestion|request_user_input",
+        "matcher": "AskUserQuestion|request_user_input|request_user_input_async",
         "hooks": [
           {
             "type": "command",

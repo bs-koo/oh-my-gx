@@ -16,6 +16,7 @@ oh-my-gx의 `.claude/skills/gx-*/` 스킬, phase, 참조 파일과 `agents/*.md`
 - 승인·verify·보호 브랜치·커밋/PR 중단 조건은 하네스별 도구명만 바뀌어도 유지한다. 훅이 로드되지 않은 상태를 보호 성공으로 취급하지 않으며, 스킬 자체의 보호 분기도 확인한다. 헤드리스 경로는 응답할 사용자가 없을 때의 중단·기록 규칙을 명시한다.
 - `agents/*.md`의 본문·모델 티어·도구 목록을 바꾸면 `python scripts/sync-codex-resources.py`로 배포용 `codex-roles/`와 index를 갱신한다. `.claude/config.json`을 바꿀 때도 같은 명령으로 setup 템플릿을 동기화한다. 생성물은 직접 따로 고쳐 원본과 어긋나게 두지 않는다.
 - Windows 예시에는 UTF-8 파일 읽기와 실제 셸을 명시한다. PowerShell에서는 `Get-Content -Encoding UTF8`을 사용하고, Bash 문법은 Bash에서 실행한다. 특정 Codex 모델명·도구 인자를 불변 API처럼 쓰지 않고 현재 세션의 허용 목록과 스키마를 확인하도록 적는다.
+- Codex 모델 기본값·eco·태스크 예외는 `scripts/codex-model-policy.py`에서 함께 검증한다. 질문 계약은 설치된 `codex-questions.md`와 `scripts/codex-question.py`, capture 훅을 함께 대조한다. 실제 호출 인자·관측 모델을 구분하고 UI 표시·사용자 이벤트를 helper만으로 검증했다고 보고하지 않는다.
 
 ## 변경 후 확인
 

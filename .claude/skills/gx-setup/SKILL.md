@@ -34,7 +34,7 @@ Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 
 Codex config helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-project-config.py](../../../scripts/codex-project-config.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-project-config.py')).Path`. 아래 config 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
-- `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
+- `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
 - `Skill(skill: "oh-my-gx:{name}")` → 해당 스킬의 `SKILL.md`를 읽어 그 절차를 수행한다.
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
@@ -409,8 +409,8 @@ gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파
        question: "에이전트 모델 프로파일을 선택해주세요. 절차·게이트는 동일하고 에이전트가 사용하는 모델 수준만 달라집니다.",
        multiSelect: false,
        options: [
-         { label: "표준", description: "에이전트 기본 모델 그대로 (설계 등 핵심에 opus) — 품질 우선 (Max 요금제 권장)" },
-         { label: "에코", description: "설계(architect)를 제외한 opus 에이전트를 sonnet으로 하향 — 토큰 절약 (Pro 요금제 권장). 빌드·테스트·verify 게이트는 동일하게 유지" }
+         { label: "표준", description: "역할별 기본 high/mid 모델 수준을 유지합니다. 실제 모델은 현재 하네스에서 지원하는 모델로 결정합니다" },
+         { label: "에코", description: "architect를 유지하고 지정된 high 역할을 mid로 낮춥니다. 빌드·테스트·verify와 메인 세션 모델은 유지합니다" }
        ]
      }]
    )
@@ -445,6 +445,10 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 - /gx-commit, /gx-pull-request는 SVN에서 미지원
 - /gx-dev 리뷰까지 완료 후 svn commit은 직접 수행하세요
 ```
+
+### Codex 모델 설정 안내
+
+Codex에서는 [모델 정책](../gx-dev/references/codex-models.md)을 참조한다. config의 `codex.modelTiers`가 없거나 비어 있으면 helper 기본값을 사용한다. 사용자가 역할 티어별 모델·effort를 지정하면 `codex-project-config.py`에 `{"codex":{"modelTiers":{확정한 티어만}}}` updates를 전달해 기존 사용자 설정을 보존한다. setup은 현재 세션의 spawn allowlist·effort와 대조해 지원 여부를 표시하며, 임의로 전역 `~/.codex/config.toml`이나 메인 모델을 변경하지 않는다. 질문은 공통 pending 계약으로 실제 응답을 기다린다. 세션 정보가 없으면 모델 설정이 검증됐다고 표시하지 않는다.
 
 ## 주의사항
 

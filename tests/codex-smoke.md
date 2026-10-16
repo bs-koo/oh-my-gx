@@ -26,6 +26,18 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | Q1 | 기본 모드에서 선택 질문 | 실제 답변 전 의존 작업 없음; 질문 id/선택지/실제 답변의 결정 기록 보존 | 수정 후 PASS |
 | Q2 | gx-context 문서 기반 개방형 질문과 gx-dev 모드·프로파일 질문 | 각 질문의 stable snake_case id; 질문 3개 이하; 질문별 선택지 3개 이하; 명시적 Other option 0개; UI Other 자유 입력과 선택 답변의 decision capture가 같은 id로 기록됨 | 미실행 (1.33.0 후보에서도 UI Other·capture 본시험 미완료) |
 
+## Codex 질문·모델 계약 후속 검증 (2026-10-13)
+
+아래 항목은 새 helper의 단위 검사·계약 비교 평가와 구분하는 실제 앱/소비 프로젝트 시나리오다. 기본 spawn 후보는 세션 allowlist로 확인하고 요청 인자와 하네스가 표시한 관측 모델을 구분한다. 테스트만 실행한 경우 미실행을 유지한다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| Q3 | Default의 async 질문 등록 후 사용자 미응답 | 질문 본문·선택지가 대화에 보임; pending phase 유지; ack 결정 기록 0; 독립 작업 후 턴 종료; 실제 답변 token/id 기록·해제와 원래 phase 재개 | 미실행 |
+| Q4 | 필수 설계 승인 + 질문 도구가 optional/Plan 전용 | 금지된 도구 호출 없음; 자연어 승인 질문과 pending 등록; 실제 승인까지 의존 작업·다음 phase 없음 | 미실행 |
+| M1 | gx-dev standard/eco 전체 역할 | architect 유지; coder/design-critic high→mid; 실제 spawn model/effort 및 fallback 기록 | 미실행 |
+| M2 | gx-tdd standard/eco, 기본·isolated·태스크 리뷰·fix 4~5 | 기본 구현 부모 유지; isolated mid; task reviewer mid; eco fix4~5 fresh high; 고정 agent_type 대신 role message+fork none | 미실행 |
+| M3 | Astra 부재, mid 후보 부재, effort 미지원 | 허용 모델·effort만 대체; 사유·tier collapse 경고 표시; 지원 불가 exit2 후 디스패치 없음 | 미실행 |
+
 ## 보호 훅·커밋
 
 실제 hook 로드는 임시 테스트 hook에서 무해한 `Write-Output GX_HOOK_SENTINEL` 또는 `printf GX_HOOK_SENTINEL`을 **deny**하는 것으로 확인한다. 배포 hook에는 sentinel 규칙을 넣지 않는다. `/hooks`에서 테스트 정의를 확인·신뢰한 후 무해한 명령만 실행한다. 강제 push는 JSON fixture로만 테스트한다. 각 시나리오는 격리된 임시 프로젝트에서 HEAD/index 해시를 기록한다.

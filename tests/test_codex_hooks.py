@@ -196,7 +196,7 @@ class HookRegistrationTests(unittest.TestCase):
         post = config["hooks"]["PostToolUse"]
 
         self.assertEqual(pre[0]["matcher"], "^Bash$")
-        self.assertEqual(post[0]["matcher"], "AskUserQuestion|request_user_input")
+        self.assertEqual(post[0]["matcher"], "AskUserQuestion|request_user_input|request_user_input_async")
         for group, mode in ((pre[0], "guard"), (post[0], "capture")):
             command = group["hooks"][0]
             self.assertIn("codex_hook.py", command["command"])

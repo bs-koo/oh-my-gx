@@ -27,6 +27,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 - **RGR 사이클은 유지**한다 (핵심 모드여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: ac.md의 AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
   - IMPLEMENT 입력(세션 또는 implementer): RED report 경로 + 기존 코드 인터페이스 (설계서 없음) + focused 테스트 명령.
+- **Step 3.5(경계 회귀)는 건너뛴다** — 핵심 모드는 implement 다음이 곧 complete(verify)라, 실행하면 전체 스위트가 연달아 두 번 돈다.
 - Step H1~H4 (긴급 보안 감사)는 사이클 완료 후 동일하게 실행한다.
 
 핵심 모드가 아닌 경우 아래 전체 모드 플로우를 따른다.
@@ -44,7 +45,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 ## Step 0.5: 기준선 게이트 (RGR 시작 전)
 
-RGR 사이클 진입 전에 전체 테스트+빌드를 1회 실행한다 (명령은 config.json `projectTypes`의 test·build. **복수 타입이 감지되면 전부 실행한다** — gx-verify Step 1과 동일 규약이며, 기준선은 verify가 나중에 대조할 대상이므로 같은 명령 집합으로 측정해야 유효하다. 출력 캡처·경고 수 추출은 **gx-verify Step 2의 경고 측정 규약(SSOT)** 을 따른다):
+RGR 사이클 진입 전에 전체 테스트+빌드를 1회 실행한다 (명령은 config.json `projectTypes`의 test·build. **복수 타입이 감지되면 전부 실행한다** — gx-verify Step 1과 동일 규약이며, 기준선은 verify가 나중에 대조할 대상이므로 같은 명령 집합으로 측정해야 유효하다. 출력 캡처·경고 수 추출은 **gx-verify Step 2의 경고 측정 규약(SSOT)** 을 따른다. phase-requirements가 시작한 **기준선 사전 실행**(아래 절)의 결과가 수용 조건을 충족하면 다시 실행하지 않고 그 결과로 판정한다 — 아래 판정 1~5는 측정값의 출처와 무관하게 같다):
 
 1. **기준 GREEN 확인**: 기존 테스트가 깨져 있으면 사용자에게 보고하고 진행 여부를 확인한다 (깨진 기준 위에서는 RGR의 회귀 판정이 성립하지 않는다).
 2. **warnings-baseline 기록**: 테스트+빌드 출력의 경고 수를 세어 state.md **최상위 필드** `warnings-baseline: N`으로 기록한다. phase-complete의 verify 게이트가 이 값과 비교하여 **이번 구현이 유입한 경고부터** 차단한다 (기존 경고는 허용).
@@ -82,6 +83,43 @@ AskUserQuestion(
 - **"중단"** → `status: cancelled`.
 
 이 게이트는 모노레포 복합 명령(`references/frontend-testing.md` §7)이 등록되어 있어도 동작한다 — 명령이 등록되었는지가 아니라 **그 레이어에 실행 가능한 테스트가 있는지**를 본다.
+
+### 기준선 사전 실행 (Claude Code·git 전용)
+
+phase-requirements 진입 직후 이 절차로 기준선 측정을 백그라운드에서 미리 시작한다 — PRD·설계 단계와 겹쳐 RGR 진입 대기에서 빼려는 것이다. 여기서는 판정하지 않는다 (판정 1~5는 Step 0.5가 RGR 진입 시점에 수행한다).
+
+**적용 조건** (하나라도 아니면 시작하지 않고 Step 0.5가 동기 실행한다): 이번 실행의 **phase 목록에 implement가 있을 때만**(전체·핵심 모드 — `--phase requirements`·`--phase design` 단독 실행은 같은 실행에서 결과를 쓸 Step 0.5가 없다) / 하네스가 Claude Code(Bash `run_in_background` 사용 가능)다 / VCS가 git이다 / 아래 1의 지문 계산이 성공한다. Codex·svn·`--phase implement` 단독 진입은 사전 실행이 없다.
+
+1. gx-verify Step 5-A의 Claude Code 지문 규약(임시 인덱스·`.dev` 제외·`{HEAD 단축}:{트리해시 앞12자}`)으로 지문을 계산한다. 결과가 `^[0-9a-f]+:[0-9a-f]{12}$` 형식이 아니면 시작하지 않는다. 형식이 맞으면 state.md 최상위 `baseline-fingerprint`에 기록한다.
+2. 이전 실행이 남긴 `${DEV_DIR}/baseline.done`과 `${DEV_DIR}/baseline-*.log`를 지운다 (`.dev/`는 브랜치에 남으므로 낡은 결과가 새 실행의 결과로 읽히지 않게 한다).
+3. 아래 골격을 실제 값으로 치환해 Bash `run_in_background: true` 호출 한 번으로 실행한다. 명령 집합은 Step 0.5 본문과 같다(감지된 타입별 config `test` → `build`, config 등록 순서). 각 명령의 출력은 `${DEV_DIR}/baseline-{타입}-{test|build}.log`에 리다이렉트로 캡처하고, 명령이 끝날 때마다 `{타입} {test|build} rc={N}` 줄을 `${DEV_DIR}/baseline.done`에 추가한다. 파일의 첫 줄은 `start={baseline-fingerprint}`, 끝에서 두 번째 줄은 `fingerprint-end={값}`(1과 같은 규약으로 다시 계산), 마지막 줄은 `DONE`이다. 명령은 `;`로 잇고 `&&`·`set -e`로 잇지 않는다 — 앞 명령이 실패해도 다음 명령과 기록이 이어져야 한다.
+
+   ```bash
+   cd "{PROJECT_ROOT}"; D="{PROJECT_ROOT}/{DEV_DIR}"
+   fp() { i="${TMPDIR:-/tmp}/.gxbl.$$"; rm -f "$i"; GIT_INDEX_FILE="$i" git add -A >/dev/null 2>&1; GIT_INDEX_FILE="$i" git rm -r --cached -q --ignore-unmatch .dev >/dev/null 2>&1; t=$(GIT_INDEX_FILE="$i" git write-tree 2>/dev/null); rm -f "$i"; [ -n "$t" ] && printf '%s:%s' "$(git rev-parse --short HEAD)" "${t:0:12}"; }
+   echo "start={baseline-fingerprint}" > "$D/baseline.done"
+   ( {타입1 test 명령} ) > "$D/baseline-{타입1}-test.log" 2>&1; echo "{타입1} test rc=$?" >> "$D/baseline.done"
+   ( {타입1 build 명령} ) > "$D/baseline-{타입1}-build.log" 2>&1; echo "{타입1} build rc=$?" >> "$D/baseline.done"
+   # 감지된 타입마다 위 두 줄을 config 등록 순서대로 반복한다
+   echo "fingerprint-end=$(fp)" >> "$D/baseline.done"; echo DONE >> "$D/baseline.done"
+   ```
+
+   `DONE`은 실행 완료 표식이지 성공이 아니다.
+4. 시작부터 Step 0.5까지 오케스트레이터는 프로젝트 코드 파일을 바꾸지 않는다 (requirements·design은 `.dev/` 산출물만 쓴다). 실행 중에는 다른 테스트·빌드 명령을 시작하지 않는다.
+
+requirements 재진입 시 이 세션이 띄운 사전 실행이 아직 실행 중이거나 `baseline.done`이 이미 있으면 다시 시작하지 않는다. 지문만 기록되고 둘 다 없으면(시작 실패·세션 재개) 1부터 다시 시작한다.
+
+**결과 수용** (Step 0.5 진입 시): 아래를 **모두** 만족하면 사전 실행 결과로 판정 1~5를 수행한다 — `baseline.done`의 첫 줄이 `start={값}`이고 그 값이 state.md `baseline-fingerprint`와 같음 / 마지막 줄이 `DONE` / 감지된 모든 타입의 test·build 줄이 각 1개 / `baseline-fingerprint`·`fingerprint-end`·지금 다시 계산한 지문의 트리 성분이 모두 같음 (HEAD 성분은 비교하지 않는다) / 각 로그 파일 존재. rc≠0은 판정 1(기준 GREEN 실패), 실행 0건은 판정 4(하네스 부재 감지), 경고 추출 불가는 판정 3(미측정)으로 동기 실행과 똑같이 처리한다.
+
+| 상태 | 처리 |
+|---|---|
+| 이 세션이 띄운 사전 실행이 아직 실행 중 (파일 내용과 무관하게 이 행이 우선) | 지금 지문의 트리 성분이 `baseline-fingerprint`와 같으면 완료 알림을 기다린다 — 포그라운드 sleep으로 기다리지 않는다. 사용자에게 진행 상황을 알리고 턴을 마치면 완료 알림이 다시 깨운다. 그동안 다른 테스트·빌드는 시작하지 않는다. 지문이 다르면 작업을 중지하고 동기 실행한다 |
+| 수용 조건 충족 | 사전 실행 로그로 판정 |
+| `baseline.done`·`DONE` 없음, 실행 중인 작업도 없음 (세션 재개 등) | 동기 실행 |
+| `start` 불일치·지문 불일치·타입 줄 누락·로그 부재 | 결과를 버리고 동기 실행 |
+| `baseline-fingerprint` 없음 | 동기 실행 |
+
+동기 실행으로 전환하면 사유를 execution-log에 남긴다 (`gate: baseline`, 예: `"사전 실행 지문 불일치 — 동기 실행"`).
 
 ## Step 0.7: gx-ralph 전환 (--ralph 전용)
 
@@ -312,7 +350,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 1. 테스트 파일을 수정하지 않는다. 테스트가 실패하면 코드를 고친다. 테스트 자체 결함이 의심되면 고치지 말고 report `## 우려사항`에 "테스트 결함 의심"으로 적고 verify_implement 2번을 따른다.
 2. GREEN: 실패 테스트를 통과시키는 최소 코드만 작성한다 (YAGNI — 추가 기능/에러 핸들링/검증/로깅 금지).
 3. REFACTOR: 동작 변경 금지. 매 정리 후 focused 테스트로 GREEN 유지 확인, 깨지면 즉시 롤백.
-4. 테스트 실행은 focused 명령만 사용한다. 전체 스위트는 사이클 경계(Step 3.5 / phase-review Step 0)에서만 실행한다.
+4. 테스트 실행은 focused 명령만 사용한다 — 대상은 이 태스크의 `test-file` 기록 파일뿐이며 와일드카드(`*DbTest` 등)·패키지/모듈 묶음·회귀 확인용 이웃 클래스를 덧붙이지 않는다. 전체 스위트는 완료 verify(`--phase implement` 단독은 Step 3.5)에서만 실행하고, 다른 테스트·빌드 명령이 실행 중이면 새 실행을 시작하지 않는다.
 5. report 작성 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정한다. 이 절차를 다른 에이전트에 재위임하지 않는다 (fix 라운드 4~5의 격상 디스패치만 예외).
 
 [수행 불가능한 정리]
@@ -342,7 +380,7 @@ Task(subagent_type="oh-my-gx:implementer"):
     1. 테스트 파일을 수정하지 않습니다. 테스트가 실패하면 코드를 고치고, 테스트를 고치지 않습니다. 테스트 자체 결함이 의심되면 수정하지 말고 "테스트 결함 의심"으로 보고합니다.
     2. GREEN: 실패 테스트를 통과시키는 최소 코드만 작성합니다 (YAGNI — 추가 기능/에러 핸들링/검증/로깅 금지).
     3. REFACTOR: 동작 변경 금지. 매 정리 후 focused 테스트로 GREEN 유지 확인, 깨지면 즉시 롤백.
-    4. 테스트 실행은 아래 focused 명령만 사용합니다. 전체 스위트를 임의로 실행하지 않습니다 (전달된 명령이 focusedTest 미등록 폴백으로 전체 test 명령이면 그 명령이 곧 focused 집합입니다).
+    4. 테스트 실행은 아래 focused 명령만 사용합니다. 명령에 테스트를 덧붙이거나 와일드카드·패키지/모듈 묶음으로 넓히지 않고, 전체 스위트를 임의로 실행하지 않습니다 (전달된 명령이 focusedTest 미등록 폴백으로 전체 test 명령이면 그 명령이 곧 focused 집합입니다).
     5. 보고 전 self-review(완전성/품질/규율/테스트 4관점)를 수행하고 발견 즉시 수정합니다.
 
     [수행 불가능한 정리]
@@ -359,7 +397,7 @@ Task(subagent_type="oh-my-gx:implementer"):
     {대상 컴포넌트의 시그니처만}
 
     [focused 테스트 명령]
-    {오케스트레이터가 조립한 명령 — 대상 테스트 + 이번 파이프라인 실행의 신규 테스트 전부}
+    {오케스트레이터가 조립한 명령 — 이 태스크의 test-file 기록 파일만}
 
     [report 파일]
     {reports/t{N}-impl.md} — 전문 보고를 이 파일에 Write하십시오 (agents/implementer.md의 report 형식)
@@ -372,7 +410,7 @@ Task(subagent_type="oh-my-gx:implementer"):
     - 변경 파일 / 테스트 1줄 요약 / 우려사항 / report 경로
 ```
 
-**focused 테스트 명령 조립**: config.json `projectTypes.{타입}.focusedTest` 템플릿을 사용한다. 대상은 이 태스크의 테스트 파일 + 이번 파이프라인 실행에서 이전 태스크들이 만든 신규 테스트 파일 전부(state.md 각 태스크의 `test-file` 기록)다.
+**focused 테스트 명령 조립**: config.json `projectTypes.{타입}.focusedTest` 템플릿을 사용한다. 대상은 **이 태스크의 `test-file` 기록 파일만**이다 (`test-file`은 경로 하나 또는 경로 목록). 이전 태스크들의 테스트는 넣지 않는다 — 태스크 간 회귀는 phase-review Step 0의 누적 실행이, 기존 스위트 회귀는 완료 verify가 확인한다. 와일드카드(`*DbTest` 등)·패키지/모듈 묶음·회귀 확인용 이웃 클래스로 넓히지 않는다.
 - `{files}` 플레이스홀더: 테스트 파일 경로들을 공백 구분으로 치환한다 (예: `npx vitest run src/a.spec.ts src/b.spec.ts`).
 - `{pattern}` 플레이스홀더: 각 테스트 파일명(확장자 제외)에서 유도한 클래스 글롭 `*.{파일명}`으로 치환하고, 복수 파일이면 플레이스홀더를 포함한 인자를 반복한다 (예: `./gradlew test --tests '*.PaymentLimitTest' --tests '*.PaymentServiceTest'`).
 - `focusedTest` 필드가 없으면 해당 타입의 전체 `test` 명령을 사용하고 execution-log에 `"focused 미지원 — 전체 실행 폴백"`을 기록한다.
@@ -383,7 +421,7 @@ Task(subagent_type="oh-my-gx:implementer"):
 1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`에 "없음" 외의 내용이 있으면 DONE_WITH_CONCERNS로 취급한다): `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (구현 주체가 테스트를 고치지 않는다).
 3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
-4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다(직전 태스크의 같은 방식 값과 비교해 감소 시 사유 확인 — 무단 삭제면 롤백 요청). **전체 스위트는 실행하지 않는다** — 전체 회귀는 사이클 경계(전체 모드: phase-review Step 0 Mechanical Gate / 핵심 모드·`--phase implement` 단독: Step 3.5)가 담당한다.
+4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다. **같은 태스크의 직전 `test-count`와 비교**해 감소하면 사유를 확인한다(무단 삭제면 롤백 요청). 첫 기록이거나, 직전 기록 이후 red-writer 재호출로 verify_red가 `test-file-hash`를 다시 기록했으면(정당한 테스트 변경) 비교하지 않고 새 값을 기준으로 삼는다. 태스크마다 대상 집합이 다르므로 태스크 간 비교는 하지 않는다. **전체 스위트는 실행하지 않는다** — 태스크 간 회귀는 phase-review Step 0(누적 실행), 기존 스위트 회귀는 완료 verify(`--phase implement` 단독: Step 3.5)가 담당한다.
 5. **과잉 구현 판정**: 추가된 public 메서드/필드 중 focused 테스트 집합이 참조하지 않는 것을 찾는다. 있으면 **묻지 않고 판정한다** — "판정 기록 (Rulings)" 절의 기본값대로 설계서 인터페이스가 명시한 멤버는 "설계 예약"으로 유지하고, 그 외는 제거한 뒤 focused를 재실행한다 (제거는 기본 경로에서 세션이 직접, `--isolated`면 implementer에 요청한다 — 4b와 같은 경로 구분. 제거로 깨지면 복원하고 `## 우려사항`에 기록하되, 이것은 관찰이므로 1번의 DONE_WITH_CONCERNS 판정에는 넣지 않는다). 제거·유지 목록을 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절로 append하고, decisions.md에 `Ruling: T{N} 과잉 구현 정리` 블록을 append한다. 판정할 것이 없으면 아무것도 기록하지 않는다.
 6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
 7. ✅ 통과 + 무결성 유지 → **Step 2-V 태스크 리뷰 판정**으로 진행한다 (발동 조건 미충족이면 `review: skipped` 기록 후 태스크 완료).
@@ -510,9 +548,9 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 ---
 
-## Step 3.5: 경계 회귀 (핵심 모드·--phase implement 단독 전용)
+## Step 3.5: 경계 회귀 (--phase implement 단독 전용)
 
-**핵심 모드** 또는 **`--phase implement` 단독 실행**이면 전체 테스트를 1회 실행한다 — 사이클 중 focused만 돌렸으므로 기존 스위트 회귀를 여기서 확인한다 (전체 모드는 phase-review Step 0 Mechanical Gate가 이 역할을 겸하므로 건너뛴다). 실패 시 깨진 테스트 파일 경로 + 에러를 implementer에 **수리 모드**(RED report 없음 — agents/implementer.md 참조)로 전달해 수정한다. 검증 명령은 깨진 대상으로 조립한 focused 명령을 전달하고, 수리 후 전체 테스트를 오케스트레이터가 1회 재실행해 확인한다. 재시도는 1회로 제한하며(태스크 fix-round와 무관 — 태스크가 특정되지 않는 경계 수리다), 재차 실패하면 사용자에게 보고한다. `current-step`은 `"경계 회귀 수리"`로 갱신한다.
+**같은 실행 안에서 implement 뒤에 complete(verify)가 실행되지 않는 경로** — 현재는 `--phase implement` 단독 실행 — 이면 전체 테스트를 1회 실행한다. 사이클 중 태스크마다 그 태스크 테스트만 돌렸으므로 기존 스위트 회귀를 여기서 확인한다. 전체 모드(implement → review → complete)와 핵심 모드(implement → complete)는 같은 실행에서 verify가 전체 회귀를 맡으므로 건너뛴다. 실패 시 깨진 테스트 파일 경로 + 에러를 implementer에 **수리 모드**(RED report 없음 — agents/implementer.md 참조)로 전달해 수정한다. 검증 명령은 깨진 대상으로 조립한 focused 명령을 전달하고, 수리 후 전체 테스트를 오케스트레이터가 1회 재실행해 확인한다. 재시도는 1회로 제한하며(태스크 fix-round와 무관 — 태스크가 특정되지 않는 경계 수리다), 재차 실패하면 사용자에게 보고한다. `current-step`은 `"경계 회귀 수리"`로 갱신한다.
 
 ---
 
@@ -527,7 +565,7 @@ RGR 사이클 완료: {N}개 태스크
 - T2 (AC-2, AC-3 배칭): RED ✅ → IMPLEMENT ✅ (fix 라운드 1회) → REVIEW ✅ (Important 1건 정리, Minor 2건 유예)
 - T3 (AC-4): RED ✅ → IMPLEMENT ✅ (정리 대상 없음) → REVIEW ✅
 
-focused 누적: {N pass}, 0 fail (전체 회귀는 경계에서 — 전체 모드: review Step 0 / 핵심 모드·단독: Step 3.5)
+focused: 태스크별 {N pass}, 0 fail (태스크 간 회귀는 review Step 0, 전체 회귀는 complete verify — `--phase implement` 단독: Step 3.5)
 변경 파일: {N}개
 판정: {N}건 (decisions.md — 제목 나열: T2 과잉 구현 정리, …)
 

@@ -17,6 +17,77 @@ capture = load("gx_capture", ".claude/hooks/capture_decision.py")
 
 
 class DecisionTests(unittest.TestCase):
+    def test_other_branch_pending_and_receipt_do_not_suppress_current_question(self):
+        question = {"id": "path", "question": "방식?"}
+        payload = {"tool_input": {"questions": [question]},
+                   "tool_response": {"answers": {"path": {"answers": ["선택"]}}}}
+        with tempfile.TemporaryDirectory() as workspace:
+            other = Path(workspace) / ".dev/other-branch"
+            other.mkdir(parents=True)
+            (other / "pending-question.json").write_text(json.dumps({"questions": [question]}), encoding="utf-8")
+            (other / "answered-question.json").write_text(json.dumps({"question": {"questions": [question]}}), encoding="utf-8")
+            with mock.patch.object(capture, "branch_slug", return_value="current-branch"):
+                self.assertFalse(capture.question_helper_owns_capture(workspace, payload))
+            current = Path(workspace) / ".dev/current-branch"
+            current.mkdir()
+            (current / "pending-question.json").write_text(json.dumps({"questions": [question]}), encoding="utf-8")
+            with mock.patch.object(capture, "branch_slug", return_value="current-branch"):
+                self.assertTrue(capture.question_helper_owns_capture(workspace, payload))
+
+    def test_svn_active_task_is_scoped_and_missing_pointer_falls_back_to_trunk(self):
+        question = {"id": "path", "question": "방식?"}
+        payload = {"tool_input": {"questions": [question]}}
+        failed = subprocess.CompletedProcess([], 128, "", "not a git repository")
+        with tempfile.TemporaryDirectory() as workspace:
+            root = Path(workspace)
+            (root / ".svn").mkdir()
+            active = root / ".dev/active-task.v2"
+            active.mkdir(parents=True)
+            (active / "pending-question.json").write_text(json.dumps({"questions": [question]}), encoding="utf-8")
+            pointer = root / ".dev/.active"
+            pointer.write_text("active-task.v2\n", encoding="utf-8")
+            with mock.patch.object(capture.subprocess, "run", return_value=failed):
+                self.assertEqual(capture.branch_slug(workspace), "active-task.v2")
+                self.assertTrue(capture.question_helper_owns_capture(workspace, payload))
+                pointer.unlink()
+                self.assertEqual(capture.branch_slug(workspace), "trunk")
+                self.assertFalse(capture.question_helper_owns_capture(workspace, payload))
+                trunk = root / ".dev/trunk"
+                trunk.mkdir()
+                (trunk / "pending-question.json").write_text(json.dumps({"questions": [question]}), encoding="utf-8")
+                self.assertTrue(capture.question_helper_owns_capture(workspace, payload))
+
+    def test_svn_active_pointer_cannot_traverse_directories(self):
+        failed = subprocess.CompletedProcess([], 128, "", "not a git repository")
+        with tempfile.TemporaryDirectory() as workspace:
+            root = Path(workspace)
+            (root / ".svn").mkdir()
+            (root / ".dev").mkdir()
+            with mock.patch.object(capture.subprocess, "run", return_value=failed):
+                for value in ("../outside", "bad name", ".", "..", "safe..bad"):
+                    (root / ".dev/.active").write_text(value, encoding="utf-8")
+                    self.assertEqual(capture.branch_slug(workspace), "trunk")
+
+    def test_async_raw_registration_and_unidentified_answers_are_not_decisions(self):
+        for response in ({"request_id": "registered"},
+                         {"answers": {"방식": {"answers": ["기본 구현"]}}}):
+            payload = {"tool_name": "request_user_input_async",
+                       "tool_input": {"questions": [{"title": "방식", "options": ["기본 구현", "독립 구현"]}]},
+                       "tool_response": response}
+            self.assertEqual(capture.render(payload), "")
+
+    def test_async_normalized_actual_response_is_recorded_but_ack_or_partial_is_not(self):
+        payload = {"tool_name": "request_user_input_async",
+                   "tool_input": {"questions": [{"id": "path", "question": "방식?"}]}}
+        for response in ({"request_id": "registered"}, {"answers": {}},
+                         {"answers": {"path": {"answers": []}}},
+                         {"answers": {"path": {"answers": [""]}}},
+                         {"answers": {"another": {"answers": ["독립 구현"]}}}):
+            self.assertEqual(capture.render({**payload, "tool_response": response}), "")
+        text = capture.render({**payload, "tool_response": {"answers": {"path": {"answers": ["독립 구현"]}}}})
+        self.assertIn("**ID.** path", text)
+        self.assertIn("**A.** 독립 구현", text)
+
     def test_codex_question_is_not_replaced_by_id(self):
         payload = {
             "tool_input": {"questions": [{

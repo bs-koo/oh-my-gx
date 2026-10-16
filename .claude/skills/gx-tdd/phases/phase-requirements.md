@@ -16,6 +16,10 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 
 **최대 1회 반복.**
 
+## 기준선 사전 실행 (진입 직후)
+
+본문(핵심 모드의 ac.md 작성, 전체 모드의 PRD 사이클)보다 먼저 같은 디렉토리 `phase-implement.md` Step 0.5의 "기준선 사전 실행 (Claude Code·git 전용)" 절차로 기준선 측정을 백그라운드에서 시작한다. 판정은 RGR 진입 시 Step 0.5가 한다. **이번 실행의 phase 목록에 implement가 있을 때만**(전체·핵심 모드) **Claude Code·git에서** 시작한다 — `--phase requirements`·`--phase design` 단독 실행은 같은 실행에서 결과를 쓸 Step 0.5가 없어 시작하지 않고, Codex와 svn은 시작하지 않고 Step 0.5가 동기 실행한다. 재진입 시 이미 진행 중이거나 완료된 실행이 있으면 다시 시작하지 않는다.
+
 ## 핵심 모드 분기 (core)
 
 핵심 모드이면 **오케스트레이터가 ac.md를 직접 작성한다** (product-owner 디스패치 없음):

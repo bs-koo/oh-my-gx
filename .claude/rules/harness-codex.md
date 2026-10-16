@@ -18,9 +18,9 @@ Codex 입력창의 `/skills`에서 17개 GX 스킬을 확인한다. `source:url,
 
 Codex 스킬은 `../skills/gx-dev/references/codex-runtime.md`를 읽는다. 배포된 `codex-roles/index.json`에서 역할 이름별 `tier`, `file`, `tools`를 읽고 해당 역할 본문·도구 제약·소비 프로젝트 지침·태스크 prompt 전문을 `spawn_agent` message에 전달한다. reviewer처럼 `Read/Glob/Grep`만 가진 역할은 읽기/검색용 명령만 사용하고 보고서 파일은 부모가 저장한다. red-writer의 구현 코드 미열람 지침을 부모 대화 fork로 깨지 않도록 `fork_turns: "none"`을 쓴다.
 
-현재 `spawn_agent`의 인자는 `task_name`, `message`, `fork_turns`, `model`, `reasoning_effort`다. 실제 스키마에 `agent_type`이 없으면 보내지 않는다. high 후보는 `gpt-6-astra`/`high`, mid 후보는 `gpt-5.6-sol`/`medium`이지만 세션 allowlist 확인 후에만 선택한다. 해당 모델이 없으면 허용 모델의 high/medium effort로 구분한다. 역할의 원래 `opus`/`sonnet` 매핑은 index 생성기가 보존한다. `allowed-tools`는 Codex 권한 설정이 아니므로 목록을 자식 지침에 전달해도 도구 강제가 이루어진다고 주장하지 않는다.
+실제 `spawn_agent` 스키마를 확인하고 [모델 정책](../skills/gx-dev/references/codex-models.md)의 설치된 helper로 프로파일·역할·예외·allowlist를 함께 해석한다. 모델 override에는 `fork_turns: "none"`을 쓰고, `agent_type`은 생략하거나 허용된 `default`를 쓴다. 고정 모델이 붙은 하네스 기본 역할을 GX 역할 대용으로 선택하지 않는다. 역할의 원래 `opus`/`sonnet` 티어는 index 생성기가 보존한다. 요청 모델과 실제 확인 가능한 관측 모델을 구분해 기록한다. `allowed-tools`는 Codex 권한 설정이 아니므로 도구 강제가 이루어진다고 주장하지 않는다.
 
-`AskUserQuestion`은 현재 모드에서 제공된 질문 도구로 옮긴다. 동기 `request_user_input`이 Plan 모드에만 제공되면 기본 모드에서 호출하지 않는다. async 또는 자연어 질문은 실제 사용자 응답을 기다리고, 확정된 결정은 `codex_hook.py capture`의 id→answers payload로 기록한다. `Skill()` 호출은 설치된 해당 `SKILL.md`를 읽고 verify/commit/pull-request의 모든 게이트를 수행한다.
+`AskUserQuestion`은 [질문 대기 계약](../skills/gx-dev/references/codex-questions.md)으로 옮긴다. Plan 전용 또는 승인·필수 질문을 지원하지 않는 도구를 해당 용도로 호출하지 않는다. 필수 질문은 helper로 등록하고 내용을 표시하며 실제 응답·결정 기록까지 phase를 진행하지 않는다. async 반환은 답변이 아니다. 독립 작업이 끝나면 질문을 포함한 final 응답으로 턴을 종료한다. 기존 동기 capture는 유지한다. `Skill()` 호출은 설치된 해당 `SKILL.md`를 읽고 verify/commit/pull-request의 모든 게이트를 수행한다.
 
 ## 훅과 신뢰
 

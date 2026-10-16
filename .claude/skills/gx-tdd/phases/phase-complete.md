@@ -12,6 +12,7 @@ complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한�
 - phase-review가 통과해도 시간이 지나며 외부 환경 변화(의존성 업데이트, 다른 브랜치 머지 등)로 회귀 가능
 - "phase-review에서 통과했으니 OK"는 신선한 증거 아님 (Iron Law 3)
 - commit 직전 신선한 검증 실행이 유일한 안전망
+- gx-tdd에서 기존 스위트 회귀를 전체 실행으로 확인하는 곳은 이 verify가 유일하다 (태스크는 그 태스크 테스트만, phase-review Step 0은 이번 파이프라인 테스트만 실행한다)
 
 위반 시 즉시 중단하고 verify 게이트부터 재시작.
 
@@ -35,18 +36,38 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 
 `Skill("oh-my-gx:gx-verify")`를 호출한다.
 
+verify 실행 중에는 다른 테스트·빌드 명령을 시작하지 않고 테스트를 실행하는 서브에이전트도 디스패치하지 않는다 — 같은 빌드 데몬·DB·CPU를 나눠 쓰면 시간 제한 테스트가 오탐하고 테스트 프로세스가 메모리 부족으로 죽는다.
+
 verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-implement Step 0.5(기준선 게이트)가 기록한 `warnings-baseline` 대비 **신규 경고**도 차단한다 (기존 경고는 허용 — 기준선이 RGR 시작 전이므로 이번 구현이 유입한 경고부터 잡힌다). verify가 "위험 수용"으로 통과를 보고하면(신규 경고·검증 명령 미감지 등) **오케스트레이터가 그 내용을 `${DEV_DIR}/trust-ledger.md`에 기록**한다 (gx-verify는 Write 권한이 없다).
 
 **verify 결과 처리**:
 
 - **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
-  1. verify가 실패 테스트/빌드 항목을 보고함
+  1. verify가 실패 테스트·빌드·신규 경고 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:
-     - "RGR 사이클로 수정" → phase-implement로 복귀 (실패 항목을 새 AC로 정의)
+     - "수정" → 아래 **verify 회귀 수리**를 수행한다
      - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
      - "중단" → state.md에 `status: cancelled` 기록
-  3. 자동 수정은 시도하지 않음 (RGR 사이클로만 수정. coder 직접 호출 금지)
+  3. 자동 수정은 시도하지 않음 (사용자가 "수정"을 고른 경우에만 수리한다. coder 직접 호출 금지)
+
+**verify 회귀 수리** ("수정" 선택 시):
+
+1. state.md를 `verify-status: pending`·`verify-fingerprint: ""`로 두고 `current-step`을 `"verify 회귀 수리"`로 갱신한다 (이전 통과 기록이 남아 커밋 게이트가 열리는 것을 막는다).
+2. 차단 사유를 분류해 처리한다. **verify 회귀 수리에서는 테스트 파일은 수정하지 않는다** — 수리 diff는 다시 리뷰하지 않으므로, 테스트를 바꾸는 수리를 이 경로에 두면 실제 회귀가 테스트 수정으로 덮여 리뷰 없이 커밋될 수 있다.
+
+   | 차단 사유 | 처리 | 새 RED |
+   |---|---|---|
+   | 기존 테스트 실패 (프로덕션 코드가 기대를 깨뜨림) | implementer **수리 모드** — 깨진 테스트 + 에러 전문 + 깨진 대상으로 조립한 focused 검증 명령. 프로덕션 코드로만 해결하고 수리 뒤 테스트 파일 무변경을 확인한다 | 불필요 (깨진 테스트가 RED) |
+   | 빌드 실패 — 프로덕션 소스 | implementer 수리 모드 | 불필요 |
+   | 신규 경고 — 동작 불변으로 정리 가능 | 정리 모드 — 세션 직접(`--isolated`면 implementer 정리 모드), phase-implement 세션 IMPLEMENT 절차의 REFACTOR 규칙·수행 불가능한 정리 목록을 따른다 | 불필요 |
+   | 신규 경고 — 고치려면 동작이 바뀜 | 실패 항목을 새 AC로 정의해 phase-implement로 복귀 (RGR) | 필요 |
+   | 테스트를 고쳐야만 해결됨 (테스트 기대가 틀렸다고 의심되거나 테스트 소스가 컴파일되지 않음) | 수리하지 않는다. 근거(실패 단언·관련 AC)를 보여 주고 "수동 수정"·"중단"으로 안내한다 | — |
+
+3. 처리 뒤 Step -1(verify)을 다시 실행한다.
+4. **수리 라운드 상한 2회**: 이번 phase-complete 진입 이후 execution-log의 `verify 회귀 수리 R{n}` 항목 수로 센다. 2회 수행한 뒤에도 차단되면 "수정" 선택지를 빼고 "수동 수정"·"중단"만 묻는다. RGR로 phase-implement에 복귀했다가 다시 들어오면 새로 센다.
+5. 수리 diff는 다시 리뷰하지 않는다. execution-log에 `{ phase: complete, gate: "verify 회귀 수리 R{n}", result: "{분류} — {대상} — {결과}" }`를 남긴다.
+6. `--resume`이 `"verify 회귀 수리"`에서 재개되면 Step -1부터 재실행한다 (state는 1에서 이미 pending이다).
 
 **Iron Law 위반 감지**: verify 통과 없이 Step 0 이후를 진입하려는 시도가 감지되면 즉시 중단.
 

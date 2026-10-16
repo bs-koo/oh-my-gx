@@ -34,6 +34,12 @@ docs/presentation-*.md
 .dev/architecture/
 .dev/*/visual/
 
-# Python
+# Codex 질문·모델 런타임 상태는 공유 산출물이 아닌 현재 세션 기록이다.
+.dev/*/pending-question.json
+.dev/*/answered-question.json
+.dev/*/.question-lock
+.dev/*/model-dispatches.jsonl
+
+# Python helper·회귀 테스트의 생성 바이트코드
 __pycache__/
 *.pyc

@@ -4,6 +4,10 @@ phase-setup Step 0이 `--resume` 지정 또는 ARGS[0] 부재일 때만 이 파�
 
 ## Step 0: 진행 중 작업 감지
 
+Codex는 DEV_DIR을 확정한 뒤 공통 질문 helper의 status를 먼저 확인한다. pending이 있으면 원래 phase·질문을 복원하고 실제 응답을 기록·해제한 뒤 재개한다. 재개 제안·새 작업 질문으로 기존 미응답 질문을 덮어쓰지 않는다.
+
+이 확인은 state.md 존재·pipeline 판정보다 먼저 실행한다. state.md가 아직 없는 초기 setup 질문도 미응답이면 표시·대기하고, 답변 기록·해제 후 원래 setup을 계속한다. 해당 상태를 "재개할 작업이 없습니다"로 처리하지 않는다.
+
 ### `--resume` 플래그가 있는 경우
 1. state.md 탐색을 위해 경로를 계산한다 (VCS 판별: `.claude/config.json`의 `vcs` 값이 있으면 이를 따르고, 없으면 `git rev-parse --is-inside-work-tree` 성공 시 git·실패하고 `svn info` 성공 시 svn으로 폴백):
    - **git**: 현재 브랜치명에서 **임시** 경로를 계산한다: `git branch --show-current` → `/`를 `-`로 치환 → `.dev/{branch-slug}/state.md`.
