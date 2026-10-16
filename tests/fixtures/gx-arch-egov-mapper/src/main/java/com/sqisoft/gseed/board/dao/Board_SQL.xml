@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.sqisoft.gseed.board.dao.BoardDao">
+  <select id="selectBoard" resultType="map">
+    SELECT BOARD_ID, TITLE FROM TB_BOARD WHERE USE_YN = 'Y'
+  </select>
+</mapper>

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "view": "service",
+  "locale": "ko-KR",
+  "title": "로그인 서비스 구조",
+  "nodes": [
+    {
+      "id": "n-api",
+      "kind": "api",
+      "label": "로그인 API",
+      "technical_label": "/api/v1/login",
+      "status": "verified",
+      "evidence": [
+        {
+          "file": "gx-service.valid.json",
+          "line": 1,
+          "kind": "artifact"
+        }
+      ]
+    },
+    {
+      "id": "n-service",
+      "kind": "service",
+      "label": "로그인 서비스",
+      "technical_label": "LoginService",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "id": "n-repo",
+      "kind": "repository",
+      "label": "사용자 저장소",
+      "technical_label": "UserRepository",
+      "status": "review",
+      "evidence": [
+        {
+          "kind": "inferred"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "n-api->n-service",
+      "source": "n-api",
+      "target": "n-service",
+      "relation": "calls"
+    },
+    {
+      "id": "n-service->n-repo",
+      "source": "n-service",
+      "target": "n-repo",
+      "relation": "calls"
+    }
+  ],
+  "meta": {
+    "project": "gx-visualize-test"
+  }
+}
