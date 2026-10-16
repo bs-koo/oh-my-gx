@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import importlib.util
 import json
 import os
@@ -13,6 +14,7 @@ import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 
 Command = str | os.PathLike[str] | Sequence[str | os.PathLike[str]]
@@ -30,7 +32,44 @@ def _strip_userinfo(url: str) -> str:
     which this leaves untouched — that `user@` is the SSH syntax itself, not an embedded
     secret.
     """
-    return _URL_USERINFO_RE.sub(r"\1", url)
+    clean = _URL_USERINFO_RE.sub(r"\1", url)
+    if "://" not in clean:
+        return clean.split("?", 1)[0].split("#", 1)[0]
+    parsed = urlsplit(clean)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+
+
+def _supported_remote(url: str) -> str | None:
+    try:
+        clean = _strip_userinfo(url)
+        if re.match(r"^[^/@:\s]+@[^/:\s]+:[^\s]+$", clean):
+            return clean
+        parsed = urlsplit(clean)
+        if parsed.scheme in {"http", "https", "ssh"} and parsed.hostname and parsed.path.strip("/"):
+            return clean
+    except ValueError:
+        pass
+    return None
+
+
+def _repository_context(project_root, ir):
+    """모듈 기준 근거를 Git 최상위 기준으로 복사한다. 원본 IR은 변경하지 않는다."""
+    if project_root is None:
+        return None, ir
+    try:
+        result = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=str(project_root), capture_output=True, text=True, check=False)
+        if result.returncode:
+            return Path(project_root), ir
+        top = Path(result.stdout.strip()).resolve()
+        prefix = Path(project_root).resolve().relative_to(top)
+    except (OSError, ValueError):
+        return Path(project_root), ir
+    mapped = copy.deepcopy(ir)
+    for node in mapped.get("nodes", []):
+        for evidence in node.get("evidence", []):
+            if evidence.get("file"):
+                evidence["file"] = (prefix / evidence["file"]).as_posix()
+    return top, mapped
 
 
 def _json_list_command(command: str) -> list[str] | None:
@@ -182,7 +221,10 @@ def _git_repository_evidence(project_root: Path | str, cited_paths: list[str]) -
     url = origin.stdout.strip()
     if not _FULL_SHA_RE.match(sha) or not url:
         return None
-    return {"url": _strip_userinfo(url), "revision": sha.lower(), "link_mode": "local-only"}
+    clean = _supported_remote(url)
+    if clean is None:
+        return None
+    return {"url": clean, "revision": sha.lower(), "link_mode": "local-only"}
 
 
 def _render_fallback(
@@ -392,6 +434,7 @@ def _fallback(
     failed_archify = _last_failed_archify_attempt(attempts)
     failed = {
         "status": "failed",
+        "capability": "failed",
         "backend": "static",
         "artifact_path": None,
         "command": failed_archify["command"] if failed_archify else None,
@@ -494,6 +537,7 @@ def render_archify(
         # 않는다"와 같은 원칙을 HTML에도 지킨다(2026-09-18 최종 리뷰 I8).
         failed_receipt = {
             **local_receipt,
+            "capability": "failed",
             "backend": None,
             "artifact_path": None,
             "command": None,
@@ -549,14 +593,15 @@ def render_archify(
 
     to_archify_module = _to_archify_module()
     ir_document = json.loads(ir_path.read_text(encoding="utf-8-sig"))
-    cited_paths = to_archify_module.cited_paths(ir_document)
-    repository = _git_repository_evidence(project_root, cited_paths) if project_root is not None else None
+    repository_root, repository_ir = _repository_context(project_root, ir_document)
+    cited_paths = to_archify_module.cited_paths(repository_ir)
+    repository = _git_repository_evidence(repository_root, cited_paths) if repository_root is not None else None
     archify_payload = output_dir / f"{stem}.archify.json"
-    archify_document = to_archify_module.to_archify(ir_document, kind, repository=repository)
+    archify_document = to_archify_module.to_archify(repository_ir, kind, repository=repository)
     archify_payload.write_text(
         json.dumps(archify_document, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    repo_root_args = ["--repo-root", str(project_root)] if repository is not None else []
+    repo_root_args = ["--repo-root", str(repository_root)] if repository is not None else []
 
     validate_command = [*command, "validate", kind, str(archify_payload), "--json", *repo_root_args]
     attempts = [*discovery_attempts, _run(validate_command, "validate", html_path)]
@@ -584,15 +629,27 @@ def render_archify(
     # render_fallback.render()와 같은 함수라 두 경로의 배너가 같다(설계서 §5.8.2).
     fallback_module = _fallback_module()
     banner = fallback_module.change_banner_html(ir_document)
-    if banner:
-        html_path.write_text(
-            fallback_module.inject_banner(html_path.read_text(encoding="utf-8"), banner),
-            encoding="utf-8",
-        )
+    viewer = fallback_module._viewer_module()
+    document = html_path.read_text(encoding="utf-8")
+    document = re.sub(r'(<html\b[^>]*\blang=)["\'][^"\']+["\']', r'\1"ko"', document, count=1)
+    document = re.sub(r'<head\b[^>]*>', lambda match: match.group() + viewer.theme_bootstrap(), document, count=1, flags=re.I)
+    # 외부 렌더러의 스타일 뒤에 범위를 제한한 GX 스타일을 넣는다.
+    document = document.replace('</head>', viewer.styles() + '</head>', 1)
+    document = document.replace('<body>', '<body class="gx-archify">', 1)
+    feature = viewer.feature_explorer(ir_document, project_root)
+    if feature:
+        body = re.search(r'<body\b[^>]*>', document, flags=re.I)
+        end = document.rfind('</body>')
+        if body and end > body.end():
+            document = document[:body.end()] + viewer.full_map(document[body.end():end]) + document[end:]
+    document = fallback_module.inject_banner(document, viewer.navigation(ir_document) + banner + feature)
+    document = document.replace('</body>', viewer.supplement(ir_document, project_root) + viewer.scripts() + '</body>', 1)
+    html_path.write_text(document, encoding="utf-8")
 
     receipt = {
         "status": "valid",
         "backend": "archify",
+        "capability": "diagram",
         "artifact_path": str(html_path),
         "command": deliver_command,
         "exit_code": attempts[-1]["exit_code"],

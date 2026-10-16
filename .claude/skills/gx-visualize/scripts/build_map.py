@@ -14,6 +14,10 @@ import argparse
 import importlib.util
 import json
 import sys
+import shutil
+import html
+from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +50,9 @@ backend_detector = _load("detect_backend")
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    pending = path.with_name(path.name + ".tmp")
+    pending.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    pending.replace(path)
 
 
 def apply_labels(ir: dict[str, Any], labels: dict[str, str]) -> int:
@@ -61,6 +67,7 @@ def apply_labels(ir: dict[str, Any], labels: dict[str, str]) -> int:
         korean = labels.get(node["label"])
         if not isinstance(korean, str) or not korean.strip():
             continue
+        node.setdefault("symbol", node["label"])
         node.setdefault("technical_label", node["label"])
         node["label"] = korean.strip()
         applied += 1
@@ -106,6 +113,7 @@ def _render_domain(
     project_root: Path,
     archify_command: Any,
     archify_discovery: dict[str, Any] | None = None,
+    preserve_previous: bool = True,
 ) -> dict[str, Any]:
     ir_path = map_dir / "ir" / f"{name}{IR_SUFFIX}"
     receipts_dir = map_dir / "receipts"
@@ -114,20 +122,55 @@ def _render_domain(
         "backend": None,
         "validation_status": "failed",
         "html_path": None,
-        "ir_path": str(ir_path) if ir_path.is_file() else None,
+        "ir_path": None,
         "receipt_path": None,
         "missing_inputs": sorted(set(part.get("missing_inputs", []))),
-        "added": sum(1 for node in part["nodes"] if node.get("change") == "added"),
-        "changed": sum(1 for node in part["nodes"] if node.get("change") == "changed"),
+        "added": sum(1 for node in part["nodes"] if node.get("change") == "added" and not node.get("external_domain")),
+        "changed": sum(1 for node in part["nodes"] if node.get("change") == "changed" and not node.get("external_domain")),
     }
+    previous_receipt = receipts_dir / f"{name}.receipt.json"
+    previous_html = map_dir / "domains" / f"{name}.html"
+    try:
+        previous = json.loads(previous_receipt.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        previous = {}
+    if not preserve_previous:
+        previous = {}
+    if previous.get("last_good"):
+        entry["last_good"] = previous["last_good"]
+    if previous.get("status") != "failed" and previous.get("artifact_path") and previous_html.is_file():
+        saved = previous_html.with_name(f"{name}.last-good.html")
+        shutil.copyfile(previous_html, saved)
+        entry["last_good"] = {"html_path": str(saved), "generated_at": previous.get("generated_at"),
+                              "revision": previous.get("revision")}
+
+    def failed(errors: list[Any]) -> dict[str, Any]:
+        entry["errors"] = errors
+        entry["capability"] = "failed"
+        receipt_path = receipts_dir / f"{name}.receipt.json"
+        _write_json(receipt_path, {"status": "failed", "backend": None, "artifact_path": None,
+                                 "errors": errors, "last_good": entry.get("last_good")})
+        entry["receipt_path"] = str(receipt_path)
+        diagnostic_path = map_dir / "domains" / f"{name}.html"
+        diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+        reasons = ''.join(f'<li>{html.escape(str(error))}</li>' for error in errors)
+        document = ('<!doctype html><html lang="ko"><meta charset="utf-8">'
+                    '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                    f'<title>{html.escape(name)} 생성 실패</title><body><main>'
+                    '<a href="../아키텍처-맵.html">전체 구조</a>'
+                    f'<h1>{html.escape(name)} 생성 실패</h1><p>이번 실행의 구조를 확인하지 못했습니다. 오류를 해결한 뒤 다시 생성해 주세요.</p>'
+                    f'<ul>{reasons}</ul></main></body></html>')
+        pending_html = diagnostic_path.with_suffix(".html.tmp")
+        pending_html.write_text(document, encoding="utf-8")
+        pending_html.replace(diagnostic_path)
+        return entry
     # 검증을 통과하기 전에는 이전 {domain}.ir.json을 덮어쓰지 않는다(설계서 §6).
     pending = map_dir / "ir" / f".{name}{IR_SUFFIX}.pending"
     _write_json(pending, part)
     receipt = validator.validate(pending, project_root=project_root)
     if receipt["status"] != "valid":
         pending.unlink(missing_ok=True)
-        entry["errors"] = receipt["errors"]
-        return entry
+        return failed(receipt["errors"])
     pending.replace(ir_path)
     entry["ir_path"] = str(ir_path)
     try:
@@ -137,17 +180,27 @@ def _render_domain(
             archify_discovery=archify_discovery,
         )
     except (OSError, ValueError, RuntimeError) as exc:
-        entry["errors"] = [str(exc)]
-        entry["receipt_path"] = str(receipts_dir / f"{name}.receipt.json")
-        return entry
-    rendered = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+        return failed([str(exc)])
+    try:
+        rendered = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError) as exc:
+        return failed([f"렌더 결과를 확인하지 못했습니다: {exc}"])
+    if _domain_status(rendered) == "failed":
+        return failed(rendered.get("errors", ["렌더러가 현재 HTML을 생성하지 못했습니다."]))
     entry.update(
         backend=result["backend"],
         validation_status=_domain_status(rendered),
         html_path=result["html_path"],
         receipt_path=result["receipt_path"],
         missing_inputs=rendered.get("missing_inputs", entry["missing_inputs"]),
+        capability=rendered.get("capability", "diagram" if result["backend"] == "archify" else "table"),
     )
+    rendered["generated_at"] = datetime.now(timezone.utc).isoformat()
+    rendered["revision"] = fallback_renderer._short_head(project_root)
+    entry.update(generated_at=rendered["generated_at"], revision=rendered["revision"], freshness="current",
+                 detail_anchor_prefix=fallback_renderer._viewer_module().anchor(""))
+    rendered["detail_anchor_prefix"] = entry["detail_anchor_prefix"]
+    _write_json(Path(result["receipt_path"]), rendered)
     return entry
 
 
@@ -159,17 +212,20 @@ def _rerender_with_mermaid_asset(entry: dict[str, Any], map_dir: Path, project_r
     콜드런에서 관찰). 다시 그리기 전의 영수증을 되돌려 놓는다.
     """
     receipt_path = Path(entry["receipt_path"])
-    preserved = receipt_path.read_text(encoding="utf-8")
+    preserved = json.loads(receipt_path.read_text(encoding="utf-8"))
     try:
-        fallback_renderer.render(
+        result = fallback_renderer.render(
             entry["ir_path"], map_dir / "receipts", "mermaid",
             project_root=project_root, output_name=entry["domain"],
             html_dir=map_dir / "domains", mermaid_asset_href=MERMAID_ASSET_HREF,
         )
+        if result.get("html_path") and Path(result["html_path"]).is_file():
+            preserved["capability"] = "diagram"
+            entry["capability"] = "diagram"
     except (OSError, ValueError, RuntimeError) as exc:
         entry.setdefault("errors", []).append(f"Mermaid 자산으로 다시 그리지 못했습니다: {exc}")
     finally:
-        receipt_path.write_text(preserved, encoding="utf-8")
+        _write_json(receipt_path, preserved)
 
 
 def build_map(
@@ -188,9 +244,21 @@ def build_map(
     않는다(T15).
     """
     root = Path(project_root).resolve()
-    map_dir = Path(map_dir) if map_dir is not None else root / DEFAULT_MAP_DIR
+    map_dir = (Path(map_dir) if map_dir is not None else root / DEFAULT_MAP_DIR).resolve()
+    map_dir.mkdir(parents=True, exist_ok=True)
+    previous = index_builder._load_json(map_dir / "run-manifest.json") or {}
+    # 부분 갱신은 이전 도메인 결과를 보존하지만, 다른 프로젝트의 산출물을 섞지 않는다.
+    previous_entries = previous.get("map_domains", previous.get("domains", []))
+    previous_domains = {entry["domain"]: entry for entry in previous_entries
+                        if isinstance(entry, dict) and isinstance(entry.get("domain"), str)}
+    retained = {name: {**deepcopy(entry), "freshness": "retained"}
+                for name, entry in previous_domains.items()} if (
+                    domain is not None and previous.get("project_root") in (None, str(root))) else {}
+    known_domains: set[str] = set(retained)
     report: dict[str, Any] = {
         "view": "service",
+        "project_root": str(root),
+        "requested_domain": domain,
         "map_dir": str(map_dir),
         "index_path": None,
         "validation_status": "failed",
@@ -202,23 +270,50 @@ def build_map(
         "mermaid_asset": None,
         "missing_inputs": [],
         "labels_applied": 0,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "revision": fallback_renderer._short_head(root),
     }
 
-    head = scanner.scan(root)
+    def publish() -> None:
+        entries = {name: {"domain": name, "validation_status": "not_generated", "html_path": None,
+                          "ir_path": None, "backend": None, "capability": "failed"} for name in known_domains}
+        entries.update(retained)
+        entries.update({entry["domain"]: entry for entry in report["domains"]})
+        report["map_domains"] = [entries[name] for name in sorted(entries)]
+        _write_json(map_dir / "run-manifest.json", report)
+        report["index_path"] = str(index_builder.build_index(map_dir, project_root=root, changes=report["changes"]))
+        _write_json(map_dir / "run-manifest.json", report)
+
+    report["validation_status"] = "in_progress"
+    publish()
+    try:
+        head = scanner.scan(root)
+    except (OSError, ValueError, RuntimeError) as exc:
+        report["validation_status"] = "failed"
+        report["reason"] = f"소스 분석을 완료하지 못했습니다: {exc}"
+        publish()
+        return report
     report["skipped"] = head["skipped"]
     report["unresolved_edge_count"] = len(head["unresolved_edges"])
+    report["diagnostics"] = head.get("diagnostics", [])
+    # 마지막 소스가 삭제된 경우에도 기준 스캔과 비교해 삭제 내용을 남긴다.
+    changes = changes_module.compute_changes(root, changed_since, head) if changed_since else None
+    report["changes"] = changes
     if not head["nodes"]:
+        retained.clear()
+        known_domains.clear()
+        report["validation_status"] = "failed"
+        _write_json(map_dir / "global.ir.json", {"schema_version": 1, "view": "service", "locale": "ko-KR", "title": "아키텍처 맵", "nodes": [], "edges": []})
         report["missing_inputs"] = [ENTRYPOINT_SCAN_GROUP]
         report["reason"] = (
             "스캔이 노드를 하나도 찾지 못했습니다. 지원 언어(Java Spring·JSP/Servlet) 소스가 없거나 "
             "project_root가 소스 트리를 포함하지 않습니다."
         )
+        publish()
         return report
 
     # 변경 판정은 라벨 적용보다 먼저 한다 - 라벨이 technical_label을 채우면 기준 스캔과
     # 달라져 라벨을 붙인 노드가 모두 "변경"으로 표시된다(설계서 §5.8.3).
-    changes = changes_module.compute_changes(root, changed_since, head) if changed_since else None
-    report["changes"] = changes
     if labels:
         report["labels_applied"] = apply_labels(head, labels)
 
@@ -232,15 +327,26 @@ def build_map(
         "missing_inputs": [],
         "skipped": head["skipped"],
         "unresolved_edges": head["unresolved_edges"],
+        "diagnostics": head.get("diagnostics", []),
     }
+    _write_json(map_dir / "global.ir.json", ir)
     parts = splitter.split_by_domain(ir)
-    kept_edges = {edge["id"] for part in parts.values() for edge in part["edges"]}
-    report["cross_domain_edge_count"] = sum(1 for edge in head["edges"] if edge["id"] not in kept_edges)
+    report["cross_domain_edge_count"] = len({eid for part in parts.values() for eid in part.get("cross_domain_edges", [])})
+    owners = {node["id"]: name for name, part in parts.items() for node in part["nodes"]
+              if not node.get("external_domain") and node.get("kind") != "table"}
+    report["domain_relations"] = sorted({(owners[e["source"]], owners[e["target"]])
+        for e in head["edges"] if e["source"] in owners and e["target"] in owners
+        and owners[e["source"]] != owners[e["target"]]})
+    all_domains = sorted(parts)
+    known_domains = set(all_domains)
+    retained = {name: entry for name, entry in retained.items() if name in known_domains}
 
     if domain is not None:
         if domain not in parts:
+            report["validation_status"] = "failed"
             found = ", ".join(sorted(parts)) or "없음"
             report["reason"] = f"도메인 '{domain}'을 찾지 못했습니다. 찾은 도메인: {found}"
+            publish()
             return report
         parts = {domain: parts[domain]}
     else:
@@ -249,15 +355,38 @@ def build_map(
     domain_meta = None
     if changes is not None:
         domain_meta = {key: changes[key] for key in ("available", "base_ref", "base_commit", "reason") if key in changes}
+    report["domains"] = [{"domain": name, "validation_status": "pending", "html_path": None,
+                           "ir_path": None, "backend": None, "capability": "failed"} for name in sorted(parts)]
+    report["validation_status"] = "in_progress"
+    publish()
+    report["domains"] = []
     # Archify 탐지·설치는 실행당 한 번만 - 도메인마다 다시 부르면 사내망이 막힌
     # 환경에서 도메인 수만큼 설치 시도가 되풀이된다(2026-09-28 최종 리뷰 I1).
     discovery = backend_detector.ensure_archify() if archify_command is None else None
+    available_domains = set(parts) | {name for name, entry in retained.items()
+        if entry.get("validation_status") in {"verified", "fallback"}
+        and entry.get("html_path") and (map_dir / "domains" / f"{name}.html").is_file()}
+    detail_prefix = fallback_renderer._viewer_module().anchor("")
     for name in sorted(parts):
         part = parts[name]
         part["title"] = f"{name} 도메인 구조"
+        part.setdefault("meta", {})["navigation"] = {"domain": name, "domains": [
+            {"name": item, "available": item in available_domains} for item in all_domains]}
+        for node in part["nodes"]:
+            if node.get("external_domain"):
+                node["external_available"] = node["external_domain"] in available_domains
+                node["external_detail_available"] = (node["external_domain"] in parts or
+                    retained.get(node["external_domain"], {}).get("detail_anchor_prefix") == detail_prefix)
         if domain_meta is not None:
-            part["meta"] = {"changes": domain_meta}
-        report["domains"].append(_render_domain(name, part, map_dir, root, archify_command, discovery))
+            removed = [item for item in changes.get("removed", [])
+                       if any(splitter.domain_of(e.get("file", "")) == name for e in item.get("evidence", []))]
+            removed_edges = [item for item in changes.get("removed_edges", [])
+                             if any(splitter.domain_of(e.get("file", "")) == name
+                                    for e in item.get("source_evidence", []) + item.get("target_evidence", []))]
+            part["meta"]["changes"] = {**domain_meta, "removed": removed, "removed_edges": removed_edges}
+        report["domains"].append(_render_domain(name, part, map_dir, root, archify_command, discovery,
+            preserve_previous=(previous.get("project_root") in (None, str(root))
+                and bool(previous_domains.get(name, {}).get("html_path") or previous_domains.get(name, {}).get("last_good")))))
 
     mermaid_domains = [entry for entry in report["domains"] if entry["backend"] == "mermaid"]
     if mermaid_domains:
@@ -267,8 +396,8 @@ def build_map(
             for entry in mermaid_domains:
                 _rerender_with_mermaid_asset(entry, map_dir, root)
 
-    report["index_path"] = str(index_builder.build_index(map_dir, project_root=root, changes=changes))
     report["validation_status"] = _overall_status(report["domains"])
+    publish()
     return report
 
 

@@ -73,7 +73,7 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 `collect_inputs(project_root, dev_dir, view) -> {"files": [...], "missing_inputs": [...]}`
 
 1. `project_root`와 `dev_dir`를 실제 존재하는 디렉터리로 해석하고, 읽을 수 있는 프로젝트 내부 경로만 허용한다.
-2. `--input`이 있으면 그 파일 또는 디렉터리 안에서 선택한 view의 후보만 수집한다. 없으면 `dev_dir`, 프로젝트 `context/`, 프로젝트 루트의 명시 산출물 순으로 찾는다. 반복 `--input-path`가 있으면 명시 경로와 기본 탐색 결과를 합친다. 따라서 파이프라인이 현재 산출물을 정확히 넘겨도 service 뷰의 프로젝트 context 기본 탐색은 유지된다.
+2. `--input`이 있으면 그 파일 또는 디렉터리 안에서 선택한 view의 후보만 수집한다. 없으면 `dev_dir`, 프로젝트 `context/`, 프로젝트 루트의 명시 산출물 순으로 찾는다. 반복 `--input-path`가 있으면 명시 경로와 기본 탐색 결과를 합친다. service는 이 수집 절차 대신 전체 코드 스캔과 용어집을 사용한다.
 3. 같은 논리 산출물의 후보가 여러 개면 `dev_dir`의 현재 작업 산출물을 우선하고, 선택한 실제 경로만 `files`에 넣는다.
 4. 존재하고 읽을 수 있는 일반 파일만 프로젝트 루트 상대경로로 기록한다. `files`와 `missing_inputs`를 정렬하고 중복을 제거한다.
 5. 충족되지 않은 필수 논리 그룹만 매핑 표의 안정된 그룹명으로 `missing_inputs`에 넣는다. 보조 그룹은 넣지 않고, `A 또는 B` 필수 그룹은 후보가 하나라도 있으면 충족이다. 누락 입력을 추정하거나 조용히 채우지 않는다.
@@ -87,8 +87,8 @@ view가 없는 자연어 요청은 다음 키워드로 정규화한다.
 1. view와 옵션을 검증하고 입력을 수집한다.
 2. [IR 계약](references/ir-contract.md)에 맞춰 `{view}.json`을 만든다. 공식 ID와 한국어 표시명을 보존하고, 텍스트는 실제 파일·라인, XLSX/PDF는 실제 파일·locator를 쓴다.
 3. `scripts/validate_ir.py {view}.json --project-root <PROJECT_ROOT>`로 IR을 검증한다. renderer API와 CLI에도 같은 `project_root`를 전달한다. 실패하면 성공 HTML을 만들거나 이전 HTML을 재사용하지 않는다.
-4. `auto`이면 `scripts/detect_backend.py`의 `ensure_archify()`가 Archify 설치를 확인하고, 없으면 사용자에게 묻지 않고 `npx -y skills add tt-a1i/archify -g`로 1회 자동 설치를 시도한 뒤 그 결과로 `detect_backend()`가 실행 가능한 백엔드를 확정한다. 설치 성공은 exit code가 아니라 `doctor` 결과로 판정하며, 설치·재탐지가 모두 실패해도 예외 없이 폴백(Mermaid → static)으로 넘어간다.
-5. Archify는 [선택 어댑터 계약](references/archify-adapter.md)에 따라 validate 후 deliver한다. 렌더 명령은 `python scripts/render_archify.py <OUTPUT_DIR>/{view}.json <OUTPUT_DIR> --project-root <PROJECT_ROOT>`다(`<OUTPUT_DIR>`는 `--output` 또는 기본 출력 폴더) — `--archify-command`는 생략한다(스크립트가 4번과 같은 `ensure_archify()`로 스스로 찾는다). 명시적 override는 테스트용이며, 그 값이 셸을 거치며 깨질 수 있다([선택 어댑터 계약](references/archify-adapter.md#archify-명령-계약)). Archify가 실패하면 Mermaid, 이어서 static을 시도한다. 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
+4. 이 네 뷰는 Archify 적용 대상이 아니다. `auto`·`archify` 요청도 어댑터가 `not_applicable`을 기록하고 Mermaid → static 폴백으로 보낸다. 이를 위해 Archify를 따로 설치·탐지하지 않는다. service의 자동 설치·검증 절차는 [선택 어댑터 계약](references/archify-adapter.md)을 따른다.
+5. 렌더 명령은 `python scripts/render_archify.py <OUTPUT_DIR>/{view}.json <OUTPUT_DIR> --project-root <PROJECT_ROOT>`다(`<OUTPUT_DIR>`는 `--output` 또는 기본 출력 폴더). `--archify-command`는 생략한다. 이 어댑터는 view 적용 여부를 먼저 판단한다. 명시적 override는 테스트용이며 셸을 거치는 명령 문자열은 깨질 수 있다([선택 어댑터 계약](references/archify-adapter.md#archify-명령-계약)). 명시한 `mermaid` 또는 `static`은 `scripts/render_fallback.py`로 렌더링한다.
 6. HTML이 존재하고 비어 있지 않으며 IR·receipt의 view와 경로가 일치하는지 확인한다.
 7. 아래 출력 계약으로 결과를 보고한다. 전체 예시는 [trace 요청 예시](examples/trace-request.md)를 참고한다.
 
@@ -111,8 +111,8 @@ python scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-sinc
 이 명령이 스캔 → 변경 표시 → 라벨 적용 → 도메인 분할 → 도메인별 검증·렌더(Archify, 실패하면 Mermaid → static) → Mermaid 자산 확보 → 인덱스 생성을 모두 수행하고 JSON 보고를 stdout에 낸다. 단계를 손으로 나눠 실행하거나 중간 파일을 직접 만들지 않는다. 종료 코드는 `validation_status`가 `failed`면 1, 아니면 0이다.
 
 - `--changed-since <REF>`: `<REF>`와 HEAD의 공통 조상 이후 새로 생기거나 바뀐 구조를 표시한다. gx-dev·gx-tdd Step 5.5는 `BASE_BRANCH`를 넘긴다. 단독 호출에서는 사용자가 "이번 브랜치에서 바뀐 것"처럼 비교 기준을 말했을 때만 넘기고, 아니면 생략한다. git 저장소가 아니거나 기준을 정할 수 없으면 맵은 그대로 만들고 표시만 생략하며, 보고의 `changes.reason`에 이유가 남는다. 사용자가 비교를 원하지만 기준 브랜치를 말하지 않았으면 추측하지 말고 묻는다.
-- `--labels <LABELS_JSON>`: 한국어 라벨을 붙일 때만 쓴다. `context/{도메인}/glossary.md`를 읽고, 스캔 라벨과 **정확히 같은 이름**이 용어집에 있는 항목만 `{"스캔 라벨": "한국어 라벨"}` JSON 파일로 만들어 `${MAP_DIR}/labels.json`에 쓴다(커밋 제외 위치 — 프로젝트 루트에 두면 커밋된다). 스캔 라벨은 클래스명(`UserService`) 또는 `클래스.메서드`(`UserController.login`)이다. `python scripts/scan_entrypoints.py <PROJECT_ROOT> --output <MAP_DIR>/scan.json`로 파일에 써서 그 `label`을 읽거나, 이전 실행의 `${MAP_DIR}/ir/*.ir.json`에서 읽는다(stdout으로 읽지 않는다 — 큰 저장소에서 출력이 크고 콘솔 인코딩이 깨질 수 있다). 부분 일치·추측으로 항목을 만들지 않는다 — 근거가 없으면 이 인자를 생략하고 기술 식별자를 그대로 둔다. 클래스 노드는 원래 이름이 `technical_label`에 남는다. API 노드는 `technical_label`이 HTTP 경로라 그대로 두므로 `클래스.메서드` 이름은 그림에서 사라진다.
-- `--domain <DOMAIN>`: 그 도메인만 다시 만든다. 다른 도메인 페이지와 인덱스의 변경 표시는 이전 실행 그대로 남으므로, 전체의 변경 표시가 필요하면 `--domain` 없이 실행한다.
+- `--labels <LABELS_JSON>`: 한국어 라벨을 붙일 때만 쓴다. `context/{도메인}/glossary.md`에서 스캔 라벨과 **정확히 같은 이름**인 항목만 `{"스캔 라벨": "한국어 라벨"}`로 만들어 `${MAP_DIR}/labels.json`에 쓴다. 스캔 라벨은 클래스명 또는 `클래스.메서드`다. 필요하면 `python scripts/scan_entrypoints.py <PROJECT_ROOT> --output <MAP_DIR>/scan.json` 결과의 `label`을 읽는다. 부분 일치·추측으로 항목을 만들지 않는다. 원래 심볼은 `symbol`에, API의 HTTP 경로는 `technical_label`에 보존한다.
+- `--domain <DOMAIN>`: 전체 스캔에서 해당 도메인의 렌더링을 선택한다. manifest의 `domains`는 이번 렌더 결과, `map_domains`는 보존된 다른 도메인을 포함한 전체 맵 상태다. 갱신하지 않은 결과에는 `freshness: retained`와 원래 생성 시각을 표시하며 이번 성공으로 세지 않는다. 아직 생성하지 않은 도메인은 링크를 비활성화한다. 전체를 갱신하려면 `--domain` 없이 실행한다.
 - `--map-dir <MAP_DIR>`: 출력 폴더. 프로젝트 밖 경로는 사용자가 명시했을 때만 쓴다.
 
 ### 출력 구조 — `아키텍처-맵.html` 하나만 열면 된다
@@ -120,12 +120,22 @@ python scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-sinc
 ```text
 ${MAP_DIR}/
   아키텍처-맵.html              ← 인덱스. 이것만 열면 된다
+  global.ir.json                도메인 경계를 포함한 전체 관계
+  run-manifest.json             이번 실행 상태와 도메인별 결과의 정본
   domains/{domain}.html          도메인별 그림·표
   ir/{domain}.ir.json            GX IR (사람이 읽는 정본)
   receipts/{domain}.receipt.json 영수증
   receipts/{domain}.archify.json 중간 산출물(Archify를 시도한 도메인만)
   assets/mermaid.min.js          Mermaid로 폴백한 도메인이 있을 때만
 ```
+
+### 기능별 코드 탐색
+
+API·화면 진입점이 있는 도메인은 기능 선택 화면을 먼저 제공한다. API·메서드·모든 HTTP 경로로 검색하고, 선택한 진입점에서 이어지는 코드와 근거만 확인한다. 탐색은 생성된 관계 데이터를 브라우저에서 처리하므로 API를 선택할 때 모델을 다시 호출하지 않는다.
+
+기본 연결은 `calls`·`requests`·`reads`·`writes`다. `depends_on`은 ‘타입 의존성 후보도 포함’으로 별도 선택한다. 다른 API, 공유 테이블의 역방향 관계, 외부 도메인을 따라 무관한 기능을 합치지 않는다. 서비스·저장소가 클래스 단위이므로 후속 연결은 선택한 API의 메서드별 실행 경로로 단정하지 않는다. 실제 요청 시간이나 메서드 변경 영향을 확정하려면 별도 메서드 색인·실측 근거가 필요하다.
+
+전체 도메인 관계도와 구성 요소·관계·진단 목록은 펼쳐서 확인한다. 기존 `gx-detail-` 깊은 링크는 접힌 목록을 열고 해당 근거로 이동한다. API가 없는 도메인과 다른 뷰는 기존 목록·그림을 제공한다. JavaScript가 없을 때도 전체 관계도와 근거 목록은 읽을 수 있다.
 
 ### 무엇이 표시되는가
 
@@ -135,20 +145,20 @@ ${MAP_DIR}/
 |---|---|---|
 | 신규 | 현재 스캔에만 있는 노드·관계 | 라벨 앞 `[신규]`, 초록 채움(Mermaid), 굵은 선 |
 | 변경 | 양쪽에 있고 HTTP 경로(`technical_label`)나 나가는 관계가 달라진 노드 | 라벨 앞 `[변경]`, 노랑 채움(Mermaid) |
-| 삭제 | 기준에만 있는 테이블 외 노드 | 그릴 수 없으므로 인덱스와 보고에 목록으로만 |
+| 삭제 | 기준에만 있는 노드·관계 | 인덱스·해당 도메인의 변경 요약과 보고에 목록으로 표시 |
 
-구조가 바뀐 것만 표시한다. 메서드 본문만 바뀐 경우는 그림이 달라지지 않으므로 표시하지 않고, 테이블은 "변경"이 되지 않는다. 각 도메인 HTML 맨 위 배너가 기준 ref·커밋과 신규·변경 수를 알리고, 변경이 없는 도메인에는 "구조 변경이 없습니다"를 띄운다. 인덱스의 "이번 변경" 절이 바뀐 도메인과 항목을 모아 보여 준다.
+구조가 바뀐 것만 표시한다. 메서드 본문에서 호출 대상이 바뀌면 관계 변경으로 잡히지만, 계산식·문구만 바뀌어 추출된 노드·관계가 같으면 구조 변경은 없다. 각 도메인 배너는 기준 ref·커밋과 신규·변경·삭제를 보여 준다. 삭제만 있어도 변경 없음으로 표시하지 않는다. 인덱스의 "이번 변경" 절이 바뀐 도메인과 항목을 모아 보여 준다.
 
 ### 도메인 분할
 
 실제 저장소 규모(86노드)를 한 장으로 그리면 Archify 검증이 대량으로 실패하고 사람이 읽을 수도 없다(설계서 §5.7). 그래서 노드를 도메인별로 나눠 각각 별도 문서로 그린다.
 
 - 도메인은 파일 경로에서 계층 폴더(`controller`·`service`·`facade`·`repository`·`dao`·`mapper`·`web`·`api`) 바로 앞 세그먼트다. 서비스 인터페이스와 `{X}Impl`은 한 노드로 합쳐지고, 이름이 `*Facade`인 클래스는 서비스 계층으로 본다. 추출 규칙은 [진입점 체인 추출 규칙](references/entrypoint-rules.md)을 읽는다.
-- 테이블 노드는 자신을 참조하는 모든 도메인에 복제된다. 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않으므로 조용히 지우지 않고 관련 도메인 IR의 `missing_inputs`에 `cross-domain-edge`로 남기며, 보고의 `cross_domain_edge_count`가 실제 엣지 수를 센다.
+- 테이블 노드는 자신을 참조하는 모든 도메인에 복제된다. 도메인 경계를 넘는 엣지는 전체 IR에 보존하고, 양쪽 상세에는 `external_domain`을 가진 경계 노드를 넣어 원래 도메인으로 이동할 수 있게 한다. 이미 확인한 관계이므로 `missing_inputs`로 세지 않는다. `cross_domain_edge_count`는 중복 복제 전 실제 경계 엣지 수다.
 - **도메인마다 개별로 Archify에 넣어 판정한다.** 한 저장소 안에서 어떤 도메인은 Archify 그림이, 어떤 도메인은 Mermaid 그림이 나오는 것이 정상이며 보고에 드러난다. Mermaid로 떨어진 도메인이 있으면 `assets/mermaid.min.js`를 1회 확보해 브라우저에서 실제 그림으로 그린다. 확보하지 못하면 소스만 보이는 HTML이 최종 상태다.
-- 검증에 실패한 도메인의 이전 `ir/{domain}.ir.json`은 덮어쓰지 않는다. 전체 실행에서는 이번 스캔에 없는 도메인의 이전 산출물을 지운다.
+- 이번 실행 결과는 `run-manifest.json`으로 판정한다. 이전 파일이 남아 있어도 현재 성공으로 재사용하지 않는다. 보존한 과거 정상 결과는 `last_good`로 구분한다. 전체 실행에서는 이번 스캔에 없는 도메인의 이전 산출물을 정리한다.
 - 스캔은 UTF-8로 읽지 못한 소스를 CP949로 재시도하고, 둘 다 실패한 파일은 `skipped`에 담는다. 관계를 해소하지 못한 엣지는 `unresolved_edges`로 남는다 — "노드가 없다"와 "관계를 해소하지 못했다"는 다른 사실이다. SQL 본문은 IR에 담지 않는다.
-- 스캔이 **0개 노드**를 반환하면 빈 IR을 쓰지 않고 `missing_inputs: ["entrypoint-scan"]`으로 실패한다.
+- 스캔이 **0개 노드**를 반환하면 `missing_inputs: ["entrypoint-scan"]`으로 실패하고, 실패 이유를 볼 수 있는 인덱스와 실행 manifest를 남긴다. 빈 결과를 정상 아키텍처로 보고하지 않는다.
 
 ### 보고
 
@@ -157,11 +167,12 @@ ${MAP_DIR}/
 | 필드 | 내용 |
 |---|---|
 | `view` | `service` |
-| `map_dir`, `index_path` | 출력 폴더와 `아키텍처-맵.html` 경로. 스캔이 0개 노드이거나 `--domain`의 도메인을 찾지 못하면 `index_path`는 `null`이다 — 도메인 하나가 실패해도 인덱스는 만들어진다 |
+| `map_dir`, `index_path` | 출력 폴더와 `아키텍처-맵.html` 경로. 빈 스캔·없는 도메인도 실패 진단 인덱스를 남긴다. 경로 존재가 성공을 뜻하지 않으므로 `validation_status`를 함께 읽는다 |
 | `validation_status` | 도메인 하나라도 `failed`거나 도메인이 없으면 `failed`, 아니면 `fallback`이 하나라도 있으면 `fallback`, 전부 Archify면 `verified` |
-| `domains[]` | 도메인마다 `domain`, `backend`, `validation_status`, `html_path`, `ir_path`, `receipt_path`, `missing_inputs`, `added`, `changed`, 실패한 도메인에는 `errors` |
-| `changes` | `--changed-since`가 없으면 `null`. 있으면 `available`, `base_ref`, 그리고 `base_commit`·`added`·`changed`·`added_edges`·`removed[]` 또는 `reason` |
-| `cross_domain_edge_count` | 어느 도메인 그림에도 담기지 못한 엣지 수 |
+| `domains[]` | 도메인마다 `domain`, `backend`, `capability`, `validation_status`, `html_path`, `ir_path`, `receipt_path`, `missing_inputs`, `added`, `changed`, 실패한 도메인에는 `errors`; 보존된 과거 결과는 `last_good` |
+| `map_domains[]` | 전체 개요에 표시할 상태. 이번 결과와 `freshness: retained`인 기존 결과, 아직 생성하지 않은 `not_generated` 항목을 구분한다. `domains[]`의 이번 실행 성공 판정을 대신하지 않는다 |
+| `changes` | `--changed-since`가 없으면 `null`. 있으면 `available`, `base_ref`, 그리고 `base_commit`·`added`·`changed`·`added_edges`·`removed[]`·`removed_edges[]` 또는 `reason` |
+| `cross_domain_edge_count` | 전체 IR과 경계 노드로 보존한 도메인 간 엣지 수 |
 | `unresolved_edge_count`, `skipped` | 스캔 진단 |
 | `mermaid_asset` | Mermaid 폴백 도메인이 있을 때만: `available`, `attempts` |
 | `missing_inputs` | 스캔이 0개 노드면 `["entrypoint-scan"]` |
@@ -169,6 +180,16 @@ ${MAP_DIR}/
 | `labels_applied` | `--labels`로 바꾼 노드 수 |
 
 사용자에게는 먼저 `index_path`(`아키텍처-맵.html`)를 안내하고, 도메인별 `backend`·`validation_status`, `changes` 요약(신규·변경·삭제 수 또는 생략 이유), `cross_domain_edge_count`·`unresolved_edge_count`·`skipped`를 그대로 전한다. Archify가 아닌 도메인을 Archify 성공으로 표현하지 않는다.
+
+백엔드 이름과 실제 표시 능력은 구분한다. `capability`에서 `diagram`·`table`·`failed`를 확인하고, Mermaid 자산을 확보하지 못했으면 그림 대신 표와 소스가 제공됨을 알린다. 브라우저에서 그림 렌더가 실패해도 읽을 수 있는 표·근거를 유지한다.
+
+### 읽는 순서와 분석 범위
+
+인덱스의 대표 API·도메인 간 관계에서 시작해 도메인 → 노드 → 연결된 노드 → 파일·라인 근거로 이동한다. 검색은 표시명·원래 심볼·HTTP 경로를 함께 찾는다. 작은 화면에서는 그림을 축소해 글씨를 읽기 어렵게 만들기보다 스크롤·확대와 목록 보기를 사용한다.
+
+`calls`는 메서드 본문에서 확인한 호출, `depends_on`은 주입된 타입 의존성이다. 둘 다 정적 근거이며 실제 실행 순서·호출 빈도·배포 구조를 뜻하지 않는다. Java Spring·JSP/Servlet·MyBatis XML을 대상으로 하고, 완전한 Java/SQL 파서가 아니다. 처리하지 못한 매핑·동적 SQL·모호한 타입은 진단과 근거를 확인한다. 상세 범위는 [진입점 체인 추출 규칙](references/entrypoint-rules.md)에 있다.
+
+gx-dev·gx-tdd는 complete Step 5.5의 "아키텍처 맵 갱신" 선택으로 service를 호출한다. design/review 자동 호출이나 별도 `--visualize` 플래그를 요구하지 않는다. 헤드리스에서는 이 선택 단계를 건너뛰며, 사용자가 이미 요청한 시각화를 다시 승인받지 않는다.
 
 ## 런타임 사실 제약
 

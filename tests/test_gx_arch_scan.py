@@ -79,15 +79,15 @@ class JavaSpringScanTests(unittest.TestCase):
     def test_method_level_request_mapping_no_double(self):
         result = self.scan(FIXTURE)
         api_paths = {node["technical_label"] for node in result["nodes"] if node["kind"] == "api"}
-        self.assertIn("ANY /legacy/ping", api_paths, "Method-level @RequestMapping should not double the path")
-        self.assertNotIn("ANY /legacy/ping/legacy/ping", api_paths, "Path must not double")
+        self.assertIn("GET /legacy/ping", api_paths, "Explicit RequestMethod.GET should preserve the verb")
+        self.assertNotIn("GET /legacy/ping/legacy/ping", api_paths, "Path must not double")
 
     def test_sibling_methods_not_contaminated(self):
         result = self.scan(FIXTURE)
         legacy_nodes = [n for n in result["nodes"] if n["kind"] == "api" and "legacy" in n["evidence"][0]["file"].lower()]
         api_paths = {node["technical_label"] for node in legacy_nodes}
         self.assertIn("GET /a", api_paths, "@GetMapping(/a) should produce GET /a")
-        self.assertIn("ANY /b", api_paths, "@RequestMapping(/b) should produce ANY /b")
+        self.assertIn("POST /b", api_paths, "Explicit RequestMethod.POST should preserve the verb")
         self.assertNotIn("GET /b/a", api_paths, "Sibling paths must not be contaminated")
         self.assertNotIn("ANY /b/b", api_paths, "Sibling paths must not be contaminated")
 
@@ -471,7 +471,7 @@ class FacadeScanTests(unittest.TestCase):
     def test_other_component_utilities_stay_out_of_the_map(self):
         # D3: 진입점 체인만 - @Component 유틸까지 넣지 않는다.
         self.assertNotIn("ExcelSupport", self.by_label)
-        self.assertIn("ExcelSupport", {edge["target"] for edge in self.result["unresolved_edges"]})
+        self.assertNotIn("ExcelSupport", {edge["target"] for edge in self.result["unresolved_edges"]})
 
 
 class FacadeImplMergeTests(unittest.TestCase):

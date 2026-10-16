@@ -49,14 +49,18 @@ gx-visualize trace --backend auto --project-root .
 
 `backend`는 요청값 `auto`가 아니라 실제 HTML을 만든 백엔드다. 폴백 이유와 앞선 시도는 receipt에 남긴다.
 
+trace는 Archify 적용 대상이 아니다. 설치되어 있어도 Archify 실행 없이 `not_applicable`을 기록하고 Mermaid 또는 static으로 만든다. Mermaid 자산이 없으면 표와 소스만 제공된다고 보고한다.
+
 ## 시각화 전용 실패 예
 
 IR 검증 또는 모든 렌더가 실패하면 성공 경로를 반환하지 않는다.
 
 ```text
-시각화 실패: DE-08 입력이 없고 확인 가능한 requirement → data 관계가 없습니다.
+시각화 실패: 명시된 근거 파일이 존재하지 않아 IR 검증을 통과하지 못했습니다.
 receipt: .dev/feat-energy/visual/trace.receipt.json
 재실행 명령: gx-visualize trace --input .dev/feat-energy --backend static --project-root .
 ```
 
 직접 호출은 실패로 끝내지만, 상위 개발·리뷰 작업에서 선택적으로 요청된 시각화라면 그 작업의 게이트 판정은 변경하지 않는다.
+
+DE-08 누락만으로는 전체 실패가 아니다. 다른 근거로 만든 부분 trace가 검증되면 `missing_inputs: ["DE-08"]`을 보존한 폴백 결과를 반환한다.

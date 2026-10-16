@@ -1,0 +1,11 @@
+<mapper namespace="shop.mapper.OrderMapper">
+  <insert id="archive">
+    <!-- SELECT * FROM COMMENT_ONLY -->
+    INSERT INTO app.ARCHIVE
+    SELECT id, 'FROM FAKE_TABLE' FROM app.ORDERS
+  </insert>
+  <select id="recent">
+    WITH recent AS (SELECT id FROM app.ORDERS)
+    SELECT * FROM recent
+  </select>
+</mapper>

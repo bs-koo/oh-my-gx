@@ -571,8 +571,10 @@ class VisualFallbackRenderingTests(unittest.TestCase):
     def test_fallback_html_renders_mermaid_not_just_source(self):
         # 사용자 요청 2(2026-09-21): 폴백 도메인도 그림이 보여야 한다.
         with tempfile.TemporaryDirectory() as temporary:
+            (Path(temporary) / "assets").mkdir()
+            (Path(temporary) / "assets" / "mermaid.min.js").write_text("/* local fixture */", encoding="utf-8")
             result = self.renderer.render(
-                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+                FIXTURE, Path(temporary) / "domains", "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
             )
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
 
@@ -582,8 +584,10 @@ class VisualFallbackRenderingTests(unittest.TestCase):
     def test_fallback_references_shared_asset_not_inline(self):
         # 실측 mermaid.min.js는 3.4MB다 - href로만 참조하고 내용을 인라인하지 않는다.
         with tempfile.TemporaryDirectory() as temporary:
+            (Path(temporary) / "assets").mkdir()
+            (Path(temporary) / "assets" / "mermaid.min.js").write_text("/* local fixture */", encoding="utf-8")
             result = self.renderer.render(
-                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+                FIXTURE, Path(temporary) / "domains", "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
             )
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
 
@@ -592,8 +596,10 @@ class VisualFallbackRenderingTests(unittest.TestCase):
 
     def test_source_is_still_available_but_collapsed(self):
         with tempfile.TemporaryDirectory() as temporary:
+            (Path(temporary) / "assets").mkdir()
+            (Path(temporary) / "assets" / "mermaid.min.js").write_text("/* local fixture */", encoding="utf-8")
             result = self.renderer.render(
-                FIXTURE, Path(temporary), "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
+                FIXTURE, Path(temporary) / "domains", "mermaid", mermaid_asset_href="../assets/mermaid.min.js",
             )
             html_text = Path(result["html_path"]).read_text(encoding="utf-8")
 

@@ -30,10 +30,9 @@ class GxVisualizeGuideTests(unittest.TestCase):
             self.assertIn(trigger, guide)
         for view in ("trace", "progress", "impact", "service", "sequence"):
             self.assertRegex(guide, rf"(?m)^\| `{view}` \|")
-        for view in ("trace", "progress", "impact"):
+        for view in ("trace", "progress", "impact", "service"):
             self.assertRegex(guide, rf"(?m)^\| `{view}` \|.*\| 1차 필수 \|$")
-        for view in ("service", "sequence"):
-            self.assertRegex(guide, rf"(?m)^\| `{view}` \|.*\| 계약 지원 \|$")
+        self.assertRegex(guide, r"(?m)^\| `sequence` \|.*\| 후속 범위 \|$")
         self.assertRegex(guide, r"근거가\s+부족하면 관계를 추정하지")
         self.assertIn("`missing_inputs`와 실패 상태", guide)
         self.assertIn(".dev/{branch-slug}/visual/", guide)
@@ -42,6 +41,16 @@ class GxVisualizeGuideTests(unittest.TestCase):
         self.assertIn("정적 HTML 폴백", guide)
         self.assertIn("자동 설치를 시도합니다", guide)
         self.assertIn("npx -y skills add tt-a1i/archify -g", guide)
+
+    def test_guide_distinguishes_current_run_and_actual_display_capability(self):
+        guide = self.read(GUIDE)
+        for field in ("global.ir.json", "run-manifest.json", "capability", "last_good"):
+            self.assertIn(field, guide)
+        self.assertIn("`index_path`가 있다는 이유만으로 성공으로 판단하지", guide)
+        self.assertIn("`calls`", guide)
+        self.assertIn("`depends_on`", guide)
+        self.assertIn("`not_applicable`", guide)
+        self.assertNotIn("gx-visualize trace --backend auto", guide)
 
     def test_guide_explains_evidence_receipts_and_truthful_failures(self):
         guide = self.read(GUIDE)

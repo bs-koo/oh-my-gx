@@ -143,6 +143,7 @@ def _component(node: dict[str, Any], row: int, col: int, include_sources: bool) 
         "label": label,
         "row": row,
         "col": col,
+        "tag": {"screen": "화면", "api": "API", "service": "서비스", "repository": "저장소", "table": "테이블"}.get(node.get("kind"), node.get("kind", "")),
     }
     # technical_label이 label과 같으면(예: 테이블 노드는 둘 다 테이블명) 같은 이름을
     # sublabel로 또 찍지 않는다 - 폭 계산도 실제로 찍히는 값 기준으로 맞춘다.
@@ -174,6 +175,7 @@ _RELATION_LABEL_KO = {
     "reads": "조회",
     "writes": "저장",
     "requests": "요청",
+    "depends_on": "타입 의존",
 }
 
 
@@ -183,16 +185,35 @@ def _connection(edge: dict[str, Any], node_col: dict[str, int], row_of: dict[str
         connection["label"] = _RELATION_LABEL_KO.get(edge["relation"], edge["relation"])
     if edge.get("change") == "added":
         connection["variant"] = "emphasis"
-    source, target = edge["source"], edge["target"]
-    # 같은 열 안의 엣지(예: service -> service, repository -> repository)는 Archify의
-    # clean-flow/endpoint-side-direction 규칙이 거부한다(실측: auth 모듈 2건). 같은 열
-    # 호출도 실제 관계이므로 버리지 않고 fromSide/toSide를 명시해 세로 방향임을 알린다.
-    if node_col.get(source) == node_col.get(target):
-        if row_of.get(target, 0) > row_of.get(source, 0):
-            connection["fromSide"], connection["toSide"] = "bottom", "top"
-        else:
-            connection["fromSide"], connection["toSide"] = "top", "bottom"
+    # 같은 열의 연결은 최종 칸 폭을 계산한 뒤 _route_same_column에서 처리한다.
     return connection
+
+
+def _route_same_column(connections: list[dict[str, Any]], components: list[dict[str, Any]], layout: dict[str, Any]) -> None:
+    """같은 계층의 긴 연결을 열 사이 여백으로 우회한다. 노드 순서는 바꾸지 않는다."""
+    by_id = {component["id"]: component for component in components}
+    same_column = [connection for connection in connections
+                   if by_id[connection["from"]]["col"] == by_id[connection["to"]]["col"]]
+    if not same_column:
+        return
+    counts: dict[int, int] = {}
+    for connection in same_column:
+        col = by_id[connection["from"]]["col"]
+        counts[col] = counts.get(col, 0) + 1
+    layout["gapX"] = max(layout["gapX"], 64 + max(counts.values()) * 24)
+    origin_x, origin_y = layout.get("origin", [40, 80])
+    lanes: dict[int, int] = {}
+    for connection in same_column:
+        source, target = by_id[connection["from"]], by_id[connection["to"]]
+        col = source["col"]
+        lane = lanes.get(col, 0)
+        lanes[col] = lane + 1
+        column_x = origin_x + col * (layout["cellW"] + layout["gapX"])
+        right = column_x + max(component.get("size", [120, 60])[0] for component in components if component["col"] == col)
+        corridor = right + 32 + lane * 24
+        source_y = origin_y + source["row"] * (layout["cellH"] + layout["gapY"]) + source.get("size", [120, 60])[1] / 2
+        target_y = origin_y + target["row"] * (layout["cellH"] + layout["gapY"]) + target.get("size", [120, 60])[1] / 2
+        connection.update({"fromSide": "right", "toSide": "right", "via": [[corridor, source_y], [corridor, target_y]], "labelAt": [corridor, (source_y + target_y) / 2 - 10]})
 
 
 def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -239,13 +260,15 @@ def to_archify(ir: dict[str, Any], kind: str, repository: dict[str, Any] | None 
     meta: dict[str, Any] = {"title": ir.get("title", ""), "locale": "en"}
     if repository is not None:
         meta["repository"] = repository
+    connections = [_connection(edge, node_col, row_of) for edge in edges]
+    _route_same_column(connections, components, layout)
     return {
         "schema_version": 1,
         "diagram_type": kind,
         "meta": meta,
         "layout": layout,
         "components": components,
-        "connections": [_connection(edge, node_col, row_of) for edge in edges],
+        "connections": connections,
     }
 
 

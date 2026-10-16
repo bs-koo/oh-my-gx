@@ -1,7 +1,7 @@
 # gx-visualize 사용 가이드
 
 `gx-visualize`는 GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로
-변환합니다. 사용자가 `--visualize` 또는 시각화를 명시한 경우에만 실행하며,
+변환합니다. 사용자가 시각화를 명시한 경우에만 실행하며,
 시각화 결과가 개발·리뷰·커밋 게이트를 대신하지 않습니다.
 
 ## 요청하기
@@ -26,19 +26,23 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--output
 | `trace` | 요구사항 추적, 기능·데이터·테스트 연결 | `prd.md`/AN-02, `design.md`/AN-03, DE-08, DE-13 | 1차 필수 |
 | `progress` | 진행 상태, Phase·Gate·검증 상태 | `state.md`, `summary.md`, `self-check.md` | 1차 필수 |
 | `impact` | 변경 영향도, 추가·삭제·변경·이동 | `diff.txt`, `codemap.md`, `design.md` | 1차 필수 |
-| `service` | 구조, 서비스·화면·API·테이블 관계 | `codemap.md`, 설계서, 프로젝트 context | 계약 지원 |
-| `sequence` | 호출 순서 | 설계서와 명시된 호출 근거 | 계약 지원 |
+| `service` | 구조, 서비스·화면·API·테이블 관계 | 전체 코드 스캔, 프로젝트 용어집 | 1차 필수 |
+| `sequence` | 호출 순서 | 설계서와 명시된 호출 근거 | 후속 범위 |
 
-`trace`, `progress`, `impact`는 1차 필수 구현 범위이고, `service`와
-`sequence`는 입력·출력 계약을 정의한 후속 범위입니다. 두 계약 지원 뷰는 근거가
+`service`는 코드 스캔부터 인덱스까지 구현되어 있습니다. `sequence`의 전용 Archify
+변환기는 후속 범위이며 현재는 표·Mermaid 폴백으로 확인합니다. 근거가
 부족하면 관계를 추정하지 않으며 `missing_inputs`와 실패 상태를 반환합니다.
 
 일반적인 “시각화 포함”은 현재 phase가 design이면 `service`, review이면
 `impact`, 그 외에는 `progress`를 기본값으로 사용합니다.
 
+gx-dev·gx-tdd는 complete Step 5.5의 “아키텍처 맵 갱신” 선택으로 service를 호출합니다.
+design/review 자동 호출이나 `--visualize` 플래그는 현재 계약이 아닙니다.
+헤드리스에서는 완료 단계의 제안을 건너뜁니다.
+
 ## 출력과 근거
 
-기본 출력 디렉터리는 `.dev/{branch-slug}/visual/`입니다. 성공 또는 폴백한 실행은
+service 이외 뷰의 기본 출력 디렉터리는 `.dev/{branch-slug}/visual/`입니다. 성공 또는 폴백한 실행은
 같은 이름의 세 파일을 만듭니다.
 
 ```text
@@ -81,12 +85,16 @@ Mermaid는 자동 설치하지 않습니다. 설치 여부·버전·CLI 경로�
 ### Archify 사용 가능
 
 ```text
-gx-visualize trace --backend auto
+gx-visualize service --project-root <프로젝트 루트>
 ```
 
-Archify의 validate와 deliver가 모두 성공하고 non-empty HTML이 확인된 경우에만
+service에서 Archify의 validate와 deliver가 모두 성공하고 non-empty HTML이 확인된 경우에만
 `backend: archify`, `validation_status: verified`로 보고합니다. 영수증에는 실제
 명령, 종료 코드, stdout/stderr와 artifact 경로가 남습니다.
+
+trace·progress·impact·sequence는 Archify 적용 대상이 아니므로 실행하지 않고
+receipt에 `not_applicable`을 남긴 뒤 폴백을 사용합니다. trace를 Archify 성공
+예시로 보고하지 않습니다.
 
 ### Archify 없음
 
@@ -94,7 +102,7 @@ Archify의 validate와 deliver가 모두 성공하고 non-empty HTML이 확인�
 gx-visualize impact --backend auto
 ```
 
-Archify가 발견되지 않거나 실행에 실패하면 Mermaid를 시도하고, 이어서 static을
+service에서 Archify가 발견되지 않거나 실행에 실패하면 Mermaid를 시도하고, 이어서 static을
 시도합니다. 성공한 폴백은 `validation_status: fallback`이며 `backend`에는 실제
 HTML 생성자를 기록합니다. 최초 진단과 시도 순서를 영수증에 보존합니다.
 실패한 Archify를 성공으로 표시하지 않습니다.
@@ -126,6 +134,8 @@ python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [-
 ```text
 .dev/architecture/
   아키텍처-맵.html              ← 인덱스. 이것만 열면 전체가 보입니다
+  global.ir.json                전체 노드와 도메인 간 관계
+  run-manifest.json             이번 실행 결과의 정본
   domains/{domain}.html          도메인별 그림·표
   ir/{domain}.ir.json            GX IR (사람이 읽는 정본)
   receipts/{domain}.receipt.json 영수증
@@ -143,23 +153,39 @@ python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [-
 |---|---|---|
 | 신규 | 기준 이후 새로 생긴 노드·관계 | 라벨 앞 `[신규]`, 굵은 선 |
 | 변경 | HTTP 경로나 나가는 관계가 달라진 노드 | 라벨 앞 `[변경]` |
-| 삭제 | 기준에만 있던 노드 | 인덱스의 "이번 변경" 절에 목록으로만 |
+| 삭제 | 기준에만 있던 노드·관계 | 인덱스와 해당 도메인의 변경 요약 |
 
-메서드 본문만 바뀐 경우는 그림이 달라지지 않으므로 표시하지 않습니다. 각 도메인 페이지 맨 위 배너가 기준과 신규·변경 수를 알려 주고, 변경이 없는 도메인에는 "구조 변경이 없습니다"라고 표시합니다. git 저장소가 아니거나 기준을 찾지 못하면 맵은 그대로 만들고 표시만 생략하며, 인덱스에 그 이유를 적습니다.
+호출 대상이 바뀌면 관계 변경으로 표시하지만, 계산식·문구만 바뀌어 추출 결과가 같으면 구조 변화는 없습니다. 각 도메인 배너가 기준과 신규·변경·삭제를 알려 주며 삭제만 있어도 변경 없음으로 표시하지 않습니다. git 저장소가 아니거나 기준을 찾지 못하면 맵은 그대로 만들고 표시를 생략한 이유를 알립니다.
 
 ### 도메인 분할
 
 실제 저장소 규모를 한 장으로 그리면 Archify 검증이 대량으로 실패하고 사람이 읽기도 어렵습니다. 그래서 노드를 도메인별로 나눠 각각 별도 문서로 그립니다. `--domain`을 주면 그 도메인만 다시 그리고, 생략하면 찾은 전 도메인을 각각 그립니다.
 
+한 도메인만 갱신해도 다른 도메인은 개요와 검색에 남습니다. 갱신하지 않은 페이지는 원래 생성 시각과 함께 이전 결과로 표시합니다. 아직 생성한 적 없는 도메인은 이동 링크가 비활성화되며, 전체를 최신 상태로 맞추려면 `--domain` 없이 실행합니다. `run-manifest.json`의 `domains`는 이번 렌더 결과이고 `map_domains`는 이 전체 상태를 담습니다.
+
 **도메인마다 개별로 Archify에 넣어 판정합니다 — 전부 성공 아니면 전부 실패로 묶지 않습니다.** 한 저장소 안에서 어떤 도메인은 Archify 그림이, 어떤 도메인은 Mermaid 그림이 나오는 것이 정상입니다. 예를 들어 실제 GX 프로젝트(kreb-grep-2025-admin)를 도메인 8개로 나눴을 때(2026-09-28) 7개는 Archify 그림, 나머지는 Mermaid 그림으로 그려졌습니다 — 이 비율은 해당 저장소 한 곳의 실측값이며 다른 프로젝트에 그대로 적용되는 일반적 보장이 아닙니다. Mermaid 도메인도 `assets/mermaid.min.js`를 확보하면 브라우저에서 실제 다이어그램을 그립니다(소스는 접어서 함께 보존) — 확보하지 못하면 소스만 보여줍니다.
 
-테이블 노드는 파일 경로로 도메인을 정하지 않고, 자신을 참조하는 모든 도메인에 복제됩니다. 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않으므로 조용히 지우지 않고, 관련된 각 도메인 IR의 `missing_inputs`에 `cross-domain-edge`로 남기며 건수를 보고에 포함합니다. 검증에 실패한 도메인의 이전 `ir/{domain}.ir.json`은 덮어쓰지 않으므로 다른 도메인의 갱신에는 영향을 주지 않습니다.
+테이블 노드는 자신을 참조하는 모든 도메인에 복제됩니다. 도메인 경계를 넘는 엣지는 전체 IR에 보존하고 양쪽 상세에 외부 도메인 노드를 표시합니다. 해당 도메인으로 이동해 탐색을 이어갈 수 있으며 이미 확인한 관계를 `missing_inputs`로 세지 않습니다.
+
+`run-manifest.json`이 이번 실행의 정본입니다. 디스크에 남은 과거 정상 HTML을 현재 성공으로 세지 않으며 보존된 과거 결과는 `last_good`로 구분합니다. 빈 스캔이나 없는 도메인도 실패 진단 인덱스를 남깁니다. `index_path`가 있다는 이유만으로 성공으로 판단하지 말고 `validation_status`를 함께 확인하세요.
+
+백엔드 이름과 실제 제공 화면도 구분합니다. `capability`의 `diagram`·`table`·`failed`를 확인하고 Mermaid 자산이 없으면 표와 소스만 제공됨을 보고합니다. 브라우저 그림 생성이 실패해도 표와 근거는 읽을 수 있습니다.
 
 ### 스캔 범위
 
 진입점 체인(화면 → API → 서비스 → 저장소 → 테이블)만 추출합니다. 서비스 인터페이스와 `{X}Impl` 구현체는 한 노드로 합치고, 이름이 `*Facade`인 클래스도 서비스 계층으로 봅니다. 유틸·DTO·설정 클래스는 넣지 않습니다.
 
-스캔이 UTF-8로 읽지 못한 소스는 CP949로 재시도합니다(오래된 한국어 JSP·Java 코드베이스에 흔합니다). 둘 다 실패한 파일은 크래시시키지 않고 결과의 `skipped`에 담아 보고합니다. 스캔이 0개 노드를 반환하면 빈 IR을 쓰지 않고 `missing_inputs`에 `entrypoint-scan`을 기록한 뒤 중단합니다.
+스캔이 UTF-8로 읽지 못한 소스는 CP949로 재시도합니다. 둘 다 실패한 파일은 `skipped`, 해소하지 못한 관계는 `unresolved_edges`에 이유·파일·대상과 함께 남깁니다. 스캔이 0개 노드를 반환하면 `missing_inputs`에 `entrypoint-scan`을 기록하고 실패 진단 인덱스를 만듭니다.
+
+Java Spring·JSP/Servlet·MyBatis/iBATIS XML 대상의 정적 분석이며 완전한 Java/SQL 파서가 아닙니다. `calls`는 메서드 본문에서 확인한 호출, `depends_on`은 주입된 타입 의존성입니다. SQL은 절별 읽기·쓰기와 스키마가 다른 동명 테이블을 구분합니다. 리플렉션·런타임 DI 선택·동적 테이블명·다른 언어의 전체 구조는 보장하지 않습니다.
+
+### 읽는 순서
+
+인덱스 → 도메인 → 기능/API 선택 → 관련 코드 → 파일·행 근거 순서로 탐색합니다. 도메인에서는 기능별 코드 탐색을 먼저 보여주고, 전체 관계도와 전체 근거 목록은 펼쳐서 확인합니다. API가 없는 도메인은 기존 그림·목록으로 시작합니다.
+
+API·메서드·원래 클래스명·모든 HTTP 경로로 검색할 수 있습니다. 선택한 진입점에서 이어지는 API/화면·서비스·저장소/매퍼·테이블을 계층별로 모으고, 구성 요소를 선택하면 해당 코드와 연결 근거를 표시합니다. 타입 의존 선언은 기본 연결과 구분해 옵션으로 포함합니다. 다른 API나 공유 테이블을 거꾸로 따라가 관련 없는 기능을 섞지 않습니다. 연결이 없는 경우에는 ‘추출된 후속 연결 없음’으로 안내합니다.
+
+서비스·저장소 연결은 클래스 단위이므로 선택한 메서드의 실제 실행 경로나 소요 시간을 확정한 결과가 아닙니다. 기능 선택·검색은 저장된 관계 데이터를 브라우저에서 계산하므로 모델을 추가 호출하지 않습니다. `#gx-feature-…` 주소로 선택 API를 공유할 수 있으며 기존 상세 링크도 유지합니다. 한국어 라벨을 적용해도 원래 심볼은 보존합니다. 작은 화면에서도 목록·코드 근거를 이용할 수 있고, 테마 선택은 유지됩니다.
 
 ## 실패와 문제 해결
 
@@ -169,7 +195,7 @@ python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [-
    stdout/stderr를 확인합니다.
 3. 근거 오류라면 프로젝트 루트 상대경로와 실제 파일·라인 또는 `locator`가
    일치하는지 확인합니다.
-4. 자동 선택이 실패하면 `--backend static`으로 재실행합니다. 보고서에는 사용한
+4. service는 build_map 명령으로 재실행하고, 다른 뷰는 필요하면 `--backend static`으로 재실행합니다. 보고서에는 사용한
    재실행 명령을 그대로 남깁니다.
 
 gx-dev의 선택 단계에서 모든 백엔드가 실패하면

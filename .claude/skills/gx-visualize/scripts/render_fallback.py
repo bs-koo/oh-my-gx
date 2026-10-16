@@ -37,6 +37,13 @@ TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
 TEMPLATE_TOKEN = re.compile(r"\{\{(TITLE|SUMMARY|CSS|MERMAID_SECTION|STATIC_CONTENT)\}\}")
 
 
+def _viewer_module():
+    spec = importlib.util.spec_from_file_location("gx_viewer_shell", Path(__file__).with_name("viewer_shell.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _validator_module():
     validator_path = Path(__file__).with_name("validate_ir.py")
     spec = importlib.util.spec_from_file_location("gx_visualize_validate_ir", validator_path)
@@ -121,13 +128,17 @@ def _node_list(nodes: list[dict[str, Any]], suppress_unknown_status: bool) -> st
     return '<section aria-labelledby="nodes-title"><h2 id="nodes-title">노드 목록</h2><ul class="node-list">' + "".join(cards) + "</ul></section>"
 
 
-def _relationship_table(edges: list[dict[str, Any]]) -> str:
+def _relationship_table(edges: list[dict[str, Any]], nodes=None) -> str:
+    viewer = _viewer_module()
+    lookup = {node["id"]: node for node in (nodes or [])}
+    def name(node_id):
+        return viewer.node_link(lookup[node_id]) if node_id in lookup else _escape(node_id)
     rows = "".join(
         "<tr>"
-        f'<td><code>{_escape(edge["id"])}</code></td>'
-        f'<td><code>{_escape(edge["source"])}</code></td>'
-        f'<td>{_escape(edge["relation"])}</td>'
-        f'<td><code>{_escape(edge["target"])}</code></td>'
+        f'<td><details><summary>내부 ID</summary><code>{_escape(edge["id"])}</code></details></td>'
+        f'<td>{name(edge["source"])}</td>'
+        f'<td>{_escape(viewer.RELATIONS.get(edge["relation"], edge["relation"]))}</td>'
+        f'<td>{name(edge["target"])}</td>'
         f'<td>{_escape(CHANGE_LABELS.get(edge.get("change"), ""))}</td>'
         "</tr>"
         for edge in edges
@@ -173,6 +184,7 @@ def _evidence_cards(nodes: list[dict[str, Any]]) -> str:
 def _mermaid_source(
     nodes: list[dict[str, Any]], edges: list[dict[str, Any]], suppress_unknown_status: bool
 ) -> str:
+    viewer = _viewer_module()
     aliases = {node["id"]: f"n{index}" for index, node in enumerate(nodes)}
     lines = ["flowchart LR"]
     for node in nodes:
@@ -191,8 +203,15 @@ def _mermaid_source(
         label = "#10;".join(_mermaid_text(part) for part in label_parts)
         lines.append(f'  {aliases[node["id"]]}["{label}"]')
     for edge in edges:
-        relation = _mermaid_text(edge["relation"])
+        relation = _mermaid_text(viewer.RELATIONS.get(edge["relation"], edge["relation"]))
         lines.append(f'  {aliases[edge["source"]]} -->|{relation}| {aliases[edge["target"]]}')
+    # 계층색은 변경 강조와 별개다. 변경 클래스는 아래에서 나중에 적용한다.
+    colors = {"screen": ("#e1edf2", "#254c60"), "api": ("#dceaff", "#183b76"), "service": ("#d8f0e7", "#164d3a"), "repository": ("#f2e5ff", "#55316e"), "table": ("#fff0ce", "#64450a")}
+    for kind, (fill, ink) in colors.items():
+        members = [aliases[node["id"]] for node in nodes if node.get("kind") == kind]
+        if members:
+            lines.append(f"  classDef gx{kind} fill:{fill},stroke:{ink},color:{ink}")
+            lines.append(f"  class {','.join(members)} gx{kind}")
     # 이번 변경 표시 - 채움색은 classDef, 새 관계는 linkStyle 순번으로 굵게 한다. 줄 끝에
     # `;`를 붙이지 않는다: `#15803d;` 같은 꼴은 Mermaid가 엔티티로 해석한다.
     added = [aliases[node["id"]] for node in nodes if node.get("change") == "added"]
@@ -239,6 +258,7 @@ def _mermaid_section(
     suppress_unknown_status: bool,
 ) -> str:
     source = _escape(_mermaid_source(nodes, edges, suppress_unknown_status))
+    node_anchors = json.dumps([_viewer_module().anchor(node["id"]) for node in nodes], ensure_ascii=True).replace("<", "\\u003c")
     if mermaid_asset_href is None:
         # assets/mermaid.min.js를 확보하지 못했거나 시도하지 않은 호출 - 지금까지처럼
         # 소스만 보여주고 그림이 없다는 사실을 알린다. 없는데 있는 척하지 않는다.
@@ -251,9 +271,16 @@ def _mermaid_section(
     # 않고 <details>로 접어 확인용으로 남긴다.
     return (
         '<section aria-labelledby="mermaid-title"><h2 id="mermaid-title">아키텍처 다이어그램</h2>'
-        f'<pre class="mermaid">{source}</pre>'
+        '<p>그림은 가로·세로로 스크롤할 수 있습니다. 아래 구성 요소 목록에서 관계와 근거를 확인하세요.</p>'
+        '<div class="gx-diagram-tools"><button type="button" data-gx-zoom="0.25">확대</button><button type="button" data-gx-zoom="-0.25">축소</button><button type="button" data-gx-zoom="reset">기본 크기</button><span data-gx-scale>100%</span><a href="#gx-explorer">목록으로 보기</a></div>'
+        '<p class="gx-diagram-error" role="status" hidden>그림을 표시하지 못했습니다. 아래 구성 요소·관계 목록과 Mermaid 소스를 확인하세요.</p>'
+        f'<div class="gx-diagram-scroll" tabindex="0" aria-label="스크롤 가능한 아키텍처 그림"><pre class="mermaid">{source}</pre></div>'
         f'<script src="{_escape(mermaid_asset_href)}"></script>'
-        '<script>mermaid.initialize({startOnLoad: true});</script>'
+        '<script>(async()=>{try{if(!window.mermaid)throw Error("missing asset");mermaid.initialize({startOnLoad:false,securityLevel:"strict"});await mermaid.run({querySelector:".mermaid"});document.querySelectorAll(".mermaid svg").forEach(s=>{const w=Number(s.getAttribute("viewBox")?.split(/\\s+/)[2])||640;s.style.width=Math.max(640,w)+"px"});'
+        f'const anchors={node_anchors};'
+        'document.querySelectorAll(".mermaid .node[id]").forEach(n=>{const m=n.id.match(/^flowchart-n(\\d+)-/);if(!m||!anchors[Number(m[1])])return;const go=()=>{location.hash=encodeURIComponent(anchors[Number(m[1])])};n.setAttribute("tabindex","0");n.setAttribute("role","link");n.setAttribute("aria-label",n.textContent+" 근거 보기");n.style.cursor="pointer";n.addEventListener("click",go);n.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})})'
+        '}catch(_){document.querySelector(".gx-diagram-error").hidden=false;document.querySelector(".gx-diagram-scroll").hidden=true}})();</script>'
+        '<noscript><p>JavaScript가 꺼져 있습니다. 아래 구성 요소와 관계 목록을 이용하세요.</p></noscript>'
         '<details><summary>Mermaid 소스 보기</summary>'
         f'<pre class="mermaid-source"><code>{source}</code></pre></details>'
         '</section>'
@@ -267,7 +294,7 @@ def _no_diagram_section() -> str:
     return f'<p class="fallback-note">{_NO_DIAGRAM_NOTE}</p>'
 
 
-def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str | None = None) -> str:
+def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str | None = None, project_root=None) -> str:
     nodes = _sorted_nodes(ir)
     edges = _sorted_edges(ir)
     template = (TEMPLATE_DIR / "fallback.html").read_text(encoding="utf-8")
@@ -277,16 +304,23 @@ def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str |
     # impact·sequence는 사람이 상태를 채우는 뷰라 unknown이 "확인 필요"라는 실행
     # 가능한 신호이므로 그대로 보여준다(2026-09-21 리뷰 판정 AH).
     suppress_unknown_status = ir.get("view") == "service"
-    static_content = "\n".join((
+    viewer = _viewer_module()
+    static_content = '<div class="gx-viewer">' + "\n".join((
+        viewer.reading_guide(ir),
         _legend(nodes, suppress_unknown_status),
-        _node_list(nodes, suppress_unknown_status),
-        _relationship_table(edges),
-        _evidence_cards(nodes),
-    ))
+        viewer.diagnostics(ir, project_root),
+        viewer.explorer(ir, project_root),
+        _relationship_table(edges, nodes),
+    )) + '</div>'
     mermaid_section = (
         _mermaid_section(nodes, edges, mermaid_asset_href, suppress_unknown_status)
         if backend == "mermaid" else _no_diagram_section()
     )
+    feature = viewer.feature_explorer(ir, project_root)
+    if feature:
+        mermaid_section = feature + viewer.full_map(mermaid_section)
+        static_content = viewer.full_evidence(static_content)
+    static_content += viewer.scripts()
     summary = f'노드 {len(nodes)}개와 관계 {len(edges)}개 · {"Mermaid + 정적 폴백" if backend == "mermaid" else "정적 HTML"}'
     replacements = {
         "TITLE": _escape(ir["title"]),
@@ -295,7 +329,9 @@ def _render_document(ir: dict[str, Any], backend: str, mermaid_asset_href: str |
         "MERMAID_SECTION": mermaid_section,
         "STATIC_CONTENT": static_content,
     }
-    return TEMPLATE_TOKEN.sub(lambda match: replacements[match.group(1)], template)
+    document = TEMPLATE_TOKEN.sub(lambda match: replacements[match.group(1)], template)
+    document = document.replace('<head>', '<head>' + viewer.theme_bootstrap() + viewer.styles(), 1)
+    return inject_banner(document, viewer.navigation(ir))
 
 
 _BODY_TAG_RE = re.compile(r"<body[^>]*>", re.IGNORECASE)
@@ -339,12 +375,18 @@ def change_banner_html(ir: dict[str, Any]) -> str:
         nodes = ir.get("nodes", [])
         added = sum(1 for node in nodes if node.get("change") == "added")
         changed = sum(1 for node in nodes if node.get("change") == "changed")
+        removed = changes.get("removed", [])
+        removed_edges = changes.get("removed_edges", [])
+        removed_count = len(removed) if isinstance(removed, list) else int(removed or 0)
+        removed_edge_count = len(removed_edges) if isinstance(removed_edges, list) else int(removed_edges or 0)
         base = f'{changes.get("base_ref", "")} ({changes.get("base_commit", "")})'
-        if added or changed:
-            text = f"이번 변경 — 기준 {base} 이후 신규 {added}개 · 변경 {changed}개. 그림의 [신규]·[변경] 표시와 굵은 선을 확인하세요."
+        if added or changed or removed_count or removed_edge_count:
+            text = f"이번 변경 — 기준 {base} 이후 신규 {added}개 · 변경 {changed}개 · 삭제 {removed_count}개 · 삭제된 관계 {removed_edge_count}개. 그림의 [신규]·[변경] 표시와 굵은 선을 확인하세요."
+            if isinstance(removed, list) and removed:
+                text += ' 삭제 항목: ' + ', '.join(str(item.get('label', item.get('id', ''))) if isinstance(item, dict) else str(item) for item in removed)
             colors = "background:#dcfce7;color:#14532d;"
         else:
-            text = f"이번 변경 — 기준 {base} 이후 이 도메인에는 구조 변경이 없습니다."
+            text = f"이번 변경 — 기준 {base} 이후 이 도메인에는 구조 변경이 없습니다. 메서드 본문 등 내부 구현의 변경은 이 구조 비교에 포함되지 않습니다."
             colors = "background:#f1f5f9;color:#334155;"
     return (
         f'<p class="change-banner" role="note" style="margin:0;padding:10px 16px;{colors}'
@@ -422,7 +464,11 @@ def render(
     if receipt["status"] == "valid":
         ir = _load_ir(ir_path)
     receipt_path = output_dir / f"{stem}.receipt.json"
-    receipt_payload = {**receipt, "backend": backend}
+    # 실제 로컬 자산이 있을 때만 diagram으로 기록한다. URL 문자열만으로 성공을 추정하지 않는다.
+    asset = (html_dir / mermaid_asset_href).resolve() if mermaid_asset_href else None
+    asset_available = bool(asset and asset.is_file() and asset.stat().st_size > 0)
+    actual_href = mermaid_asset_href if asset_available else None
+    receipt_payload = {**receipt, "backend": backend, "capability": "failed" if receipt["status"] != "valid" else "diagram" if backend == "mermaid" and asset_available else "table", "diagram_runtime": "browser" if backend == "mermaid" and asset_available else None}
     receipt_path.write_text(
         json.dumps(receipt_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -431,7 +477,7 @@ def render(
         (html_dir / f"{stem}.html").unlink(missing_ok=True)
         raise ValueError("IR 검증 실패: " + "; ".join(receipt["errors"]))
 
-    document = _render_document(ir, backend, mermaid_asset_href=mermaid_asset_href)
+    document = _render_document(ir, backend, mermaid_asset_href=actual_href, project_root=project_root)
     banner = change_banner_html(ir)
     if banner:
         document = inject_banner(document, banner)

@@ -38,6 +38,8 @@ Archify는 선택 의존성이지만 없으면 **묻지 않고 자동 설치한�
 
 `--repo-root`는 `architecture`에만 적용되고, 변환된 문서가 `component.sources`를 포함할 때만 붙는다(`render_archify`가 프로젝트의 실제 git HEAD/origin에서 계산 — 얻을 수 없으면 `sources`/`meta.repository`를 함께 비운다). IR이 `component.sources`를 포함하면 Archify는 지정된 리비전의 실제 저장소에 대해 소스 근거를 검증한다 — 해당 리비전에 존재하지 않는 경로는 거부한다.
 
+프로젝트가 Git 저장소의 하위 모듈 폴더여도 `--repo-root`에는 실제 Git 최상위 경로를 전달하고 source 경로에는 모듈 접두사를 붙인다. IR의 근거 경계는 여전히 사용자가 선택한 프로젝트 루트다. 로컬 경로·file origin이나 query·fragment가 붙은 원격 주소에서 유효한 웹 근거를 만들 수 없으면 repository evidence를 생략한다. 자격 증명이나 원격 주소의 비밀 값을 HTML에 노출하지 않는다. 원격 근거를 만들지 못해도 로컬 파일·라인 근거와 구조 자체는 유지한다.
+
 dirty 검사는 워킹 트리 전체가 아니라 **인용될 파일에만** 국한된다(`git status --porcelain -- <cited paths...>`) — `to_archify.cited_paths(ir)`가 실제로 `sources`에 실릴 파일 목록을 미리 계산해 넘긴다. 인용된 파일 중 하나라도 수정·미추적 상태면 HEAD/origin이 정상 조회되더라도 `repository`를 계산하지 않고 `sources`/`meta.repository`를 함께 비운다 — 커밋됐지만 수정된 파일은 Archify의 블롭 존재 검사는 통과하지만 인용한 `line`이 워킹 트리 기준이라 커밋 시점과 다를 수 있기 때문이다. 인용되지 않은 다른 파일이 바뀌거나 새로 생겨도(`.dev/` 아래의 시각화 산출물처럼) 이 검사에 영향을 주지 않는다 — Archify가 인용된 각 경로·줄을 리비전 자체에 대해 검증하므로 개별 인용의 정확성은 그것으로 보장된다. 인용할 파일이 하나도 없으면(코드 근거가 없는 IR) git을 조회하지도 않고 바로 `None`이다.
 
 각 호출의 argv, 종료 코드, stdout, stderr, 예상 artifact 경로를 receipt의 `attempts`에 기록한다. `deliver`가 종료 코드 0을 반환해도 HTML이 없거나 비어 있으면 Archify 실패다.

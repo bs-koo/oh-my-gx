@@ -197,6 +197,20 @@ class AccumulatedMapContractTests(unittest.TestCase):
         self.assertIn("`skipped`", self.skill)
         self.assertIn("`unresolved_edges`", self.skill)
 
+    def test_current_run_and_global_relationship_contract_is_documented(self):
+        for field in ("global.ir.json", "run-manifest.json", "external_domain",
+                      "last_good", "capability", "depends_on", "symbol"):
+            self.assertIn(field, self.skill)
+        self.assertNotIn("`missing_inputs`에 `cross-domain-edge`", self.skill)
+        self.assertNotIn("`index_path`는 `null`이다", self.skill)
+
+    def test_entrypoint_rules_distinguish_static_calls_from_injection(self):
+        rules = (SKILL_DIR / "references" / "entrypoint-rules.md").read_text(encoding="utf-8")
+        for concept in ("`calls`", "`depends_on`", "CTE", "스키마", "implements",
+                        "완전한 Java/SQL 파서는 아니다", "unresolved_edges"):
+            self.assertIn(concept, rules)
+        self.assertNotIn("**같은 파일 안의 타입 참조**로만 판정", rules)
+
     def test_documented_render_commands_pass_project_root(self):
         """IR을 넘기는 렌더 예시는 전부 --project-root를 포함해야 한다.
 

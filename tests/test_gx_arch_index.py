@@ -57,6 +57,8 @@ class BuildIndexTests(unittest.TestCase):
         (ir_dir / f"{domain}.ir.json").write_text(json.dumps(ir, ensure_ascii=False), encoding="utf-8")
         receipt = {"status": status, "backend": backend, "errors": [], "warnings": [], "node_count": nodes, "edge_count": edges, "missing_inputs": []}
         (receipts_dir / f"{domain}.receipt.json").write_text(json.dumps(receipt, ensure_ascii=False), encoding="utf-8")
+        (map_dir / "domains").mkdir(exist_ok=True)
+        (map_dir / "domains" / f"{domain}.html").write_text("<html><body>맵</body></html>", encoding="utf-8")
 
     def _write_fixture_map(self, map_dir):
         self._write_domain(map_dir, "auth", nodes=3, edges=2, missing=0, unresolved=0, backend="archify", status="valid")
@@ -140,6 +142,52 @@ class BuildIndexTests(unittest.TestCase):
         self.assertIn("static", html_text)
         self.assertIn("통과", html_text)
         self.assertIn("폴백", html_text)
+
+    def test_analysis_scope_groups_duplicates_and_collapses_locations(self):
+        reason = "실행 조건을 평가하지 않아 테이블을 확정하지 않았습니다."
+        first = {"code": "dynamic-sql-branch", "file": "mapper/One.xml", "line": 41, "reason": reason}
+        second = {**first, "file": "mapper/Two.xml"}
+        manifest = {"diagnostics": [first, dict(reversed(list(first.items()))), second], "skipped": []}
+        original = json.dumps(manifest, sort_keys=True)
+        viewer = self.builder._fallback_module()._viewer_module()
+        section = self.builder._analysis_scope_section(manifest, viewer)
+        self.assertIn('세부 위치 보기 · 2건 · 1유형', section)
+        self.assertIn('<details><summary>', section)
+        self.assertNotIn('<details open', section)
+        self.assertEqual(1, section.count(reason))
+        self.assertEqual(1, section.count('mapper/One.xml:41'))
+        self.assertIn('mapper/Two.xml:41', section)
+        self.assertNotIn('dynamic-sql-branch', section)
+        self.assertNotIn('&#x27;code&#x27;', section)
+        self.assertEqual(original, json.dumps(manifest, sort_keys=True))
+
+    def test_analysis_scope_keeps_unreadable_and_unknown_details_safe(self):
+        manifest = {"skipped": [{"file": "../secret.xml", "reason": "읽기 실패"}],
+                    "diagnostics": ["<img src=x onerror=alert(1)>",
+                                    {"code": "new-code", "reason": "추가 분석 한계", "evidence": [{"file": "mapper/A.xml", "line": 3}]}]}
+        viewer = self.builder._fallback_module()._viewer_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            section = self.builder._analysis_scope_section(manifest, viewer, temporary)
+        self.assertIn('읽지 못해 분석에서 제외한 항목 1건', section)
+        self.assertIn('세부 위치 보기 · 3건 · 3유형', section)
+        self.assertEqual(1, section.count('추가 분석 한계'))
+        self.assertIn('mapper/A.xml:3', section)
+        self.assertIn('&lt;img', section)
+        self.assertNotIn('<img', section)
+        self.assertNotIn('href="vscode://file/../secret.xml', section)
+        self.assertNotRegex(section, r'href="[^"]*secret.xml')
+
+    def test_analysis_scope_is_rendered_by_index_and_absent_when_empty(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            map_dir = Path(temporary)
+            self._write_domain(map_dir, "auth")
+            self.assertNotIn('id="gx-analysis-scope"', self.builder.build_index(map_dir).read_text(encoding="utf-8"))
+            (map_dir / 'run-manifest.json').write_text(json.dumps({
+                "diagnostics": [{"code": "dynamic-sql-loop", "file": "mapper/A.xml", "line": 9, "reason": "반복 SQL"}]
+            }), encoding='utf-8')
+            page = self.builder.build_index(map_dir).read_text(encoding="utf-8")
+        self.assertIn('id="gx-analysis-scope"', page)
+        self.assertIn('반복문으로 생성하는 SQL · 1건', page)
 
     def test_index_links_point_to_domains_subfolder(self):
         with tempfile.TemporaryDirectory() as temporary:

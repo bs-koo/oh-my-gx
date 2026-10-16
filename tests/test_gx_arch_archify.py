@@ -572,8 +572,10 @@ class ToArchifyTests(unittest.TestCase):
     def test_same_column_edge_gets_explicit_sides(self):
         # service -> service, repository -> repository 는 실제로 존재한다(설계서 5.7.1).
         conn = self.to_archify(_ir_same_layer_chain(), "architecture")[EDGE_KEY][0]
-        self.assertEqual(conn["fromSide"], "bottom")
-        self.assertEqual(conn["toSide"], "top")
+        self.assertEqual(conn["fromSide"], "right")
+        self.assertEqual(conn["toSide"], "right")
+        self.assertEqual(conn["via"][0][0], conn["via"][1][0])
+        self.assertIn("labelAt", conn)
 
     def test_cross_column_edge_has_no_explicit_sides(self):
         conn = self.to_archify(_ir_normal_chain(), "architecture")[EDGE_KEY][0]
@@ -674,7 +676,7 @@ class ToArchifyTests(unittest.TestCase):
         ir["nodes"][0]["change"] = "added"
         component = self.to_archify(ir, "architecture")[NODE_KEY][0]
         self.assertEqual(component["label"], "[신규] UserController.list")
-        self.assertNotIn("tag", component)  # tag는 sources가 있으면 화면에 보이지 않는다
+        self.assertEqual(component["tag"], "API")  # 변경은 접두사, 계층은 태그·공통 범례로 구별한다
         ir["nodes"][0]["change"] = "changed"
         self.assertEqual(self.to_archify(ir, "architecture")[NODE_KEY][0]["label"], "[변경] UserController.list")
 
@@ -749,6 +751,25 @@ class RealArchifyLayoutTests(unittest.TestCase):
                 capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
         self.assertEqual(result.returncode, 0, result.stdout[-3000:])
+
+    def test_same_layer_links_bypass_intermediate_components(self):
+        spec = importlib.util.spec_from_file_location("gx_to_archify_same_layer", TO_ARCHIFY)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for kind in ("service", "repository"):
+            with self.subTest(kind=kind), TemporaryDirectory() as temporary:
+                ir = _ir_same_layer_chain()
+                ir["nodes"] = [{"id": name, "kind": kind, "label": name, "evidence": []}
+                               for name in ("a-source", "b-wide-intermediate-collaborator", "c-intermediate", "z-target")]
+                ir["edges"] = [{"id": "e", "source": "a-source", "target": "z-target", "relation": "calls"}]
+                document = module.to_archify(ir, "architecture")
+                # 외부 연결이 늘어나도 원래 노드 정렬과 행 순서를 바꾸지 않는다.
+                self.assertEqual([0, 1, 2, 3], [item["row"] for item in document["components"]])
+                path = Path(temporary) / "same-layer.archify.json"
+                path.write_text(json.dumps(document), encoding="utf-8")
+                result = subprocess.run([shutil.which("node"), str(ARCHIFY_MJS), "validate", "architecture", str(path), "--json"],
+                                        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+                self.assertEqual(result.returncode, 0, result.stdout[-3000:])
 
 
 if __name__ == "__main__":

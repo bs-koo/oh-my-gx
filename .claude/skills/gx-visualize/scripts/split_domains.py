@@ -10,6 +10,7 @@ Archify 검증이 109건으로 실패하고, 애초에 사람이 읽을 수도 �
 from __future__ import annotations
 
 from typing import Any
+from copy import deepcopy
 
 # 계층 폴더 이름. `api`는 계층 이름이자 도메인 이름일 수 있어(예: .../gseed/api/
 # controller/ApiController.java) 파일명에 가장 가까운 계층 폴더만 계층으로 소비한다.
@@ -54,9 +55,8 @@ def split_by_domain(ir: dict[str, Any]) -> dict[str, dict[str, Any]]:
     때문에 교차 엣지로 잡혔다). 그래서 테이블 노드는 스스로 도메인을 갖지 않고,
     자신을 참조하는 엣지를 따라 그 상대 노드가 속한 모든 도메인에 복제된다.
 
-    한 도메인에 온전히 담기지 않는 엣지(양 끝의 도메인이 다름)는 조용히 지우지
-    않는다 — 관련된 각 도메인 IR의 `missing_inputs`에 `"cross-domain-edge"`를
-    남겨 호출자가 건수를 셀 수 있게 한다.
+    경계를 넘는 관계는 외부 노드와 함께 양쪽 도메인에 보존한다. 이미 확인된
+    관계를 누락으로 표시하지 않고 external_domain으로 원래 상세 화면을 연결한다.
     """
     nodes = ir.get("nodes", [])
     edges = ir.get("edges", [])
@@ -124,22 +124,35 @@ def split_by_domain(ir: dict[str, Any]) -> dict[str, dict[str, Any]]:
         member_ids = members_by_domain[domain]
 
         domain_edges = []
-        dropped: list[str] = []
+        external_ids: set[str] = set()
+        cross_edges = []
         for edge in edges:
             source_in, target_in = edge.get("source") in member_ids, edge.get("target") in member_ids
             if source_in and target_in:
                 domain_edges.append(edge)
             elif (source_in or target_in) and edge["id"] not in fully_contained:
-                dropped.append("cross-domain-edge")
+                domain_edges.append(edge)
+                cross_edges.append(edge["id"])
+                external_ids.add(edge["target"] if source_in else edge["source"])
 
         part = {
             key: value
             for key, value in ir.items()
-            if key not in ("nodes", "edges", "missing_inputs", "skipped", "unresolved_edges")
+            if key not in ("nodes", "edges", "missing_inputs", "skipped", "unresolved_edges", "diagnostics")
         }
-        part["nodes"] = [nodes_by_id[node_id] for node_id in sorted(member_ids)]
+        part["nodes"] = [deepcopy(nodes_by_id[node_id]) for node_id in sorted(member_ids)]
+        for external_id in sorted(external_ids):
+            if external_id not in nodes_by_id:
+                continue
+            external = deepcopy(nodes_by_id[external_id])
+            external["external_domain"] = node_domain.get(external_id)
+            part["nodes"].append(external)
         part["edges"] = sorted(domain_edges, key=lambda edge: edge["id"])
-        part["missing_inputs"] = list(ir.get("missing_inputs", [])) + dropped
+        part["missing_inputs"] = list(ir.get("missing_inputs", []))
+        part["cross_domain_edges"] = cross_edges
+        part["domain"] = domain
+        part["diagnostics"] = [item for item in ir.get("diagnostics", [])
+                               if domain_of(item.get("file", "")) == domain]
         domain_skipped = [path for path in skipped if domain_of(path) == domain]
         if domain_skipped:
             part["skipped"] = domain_skipped

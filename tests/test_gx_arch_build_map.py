@@ -184,7 +184,7 @@ class BuildMapTests(unittest.TestCase):
         report = self.build()
         self.assertEqual(report["validation_status"], "failed")
         self.assertEqual(report["missing_inputs"], ["entrypoint-scan"])
-        self.assertIsNone(report["index_path"])
+        self.assertTrue(Path(report["index_path"]).is_file())
         self.assertFalse((self.map_dir / "ir").exists())
 
     def test_unknown_domain_fails_and_lists_found_domains(self):

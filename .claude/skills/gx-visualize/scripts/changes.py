@@ -124,7 +124,7 @@ def mark_changes(head: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
         if previous is None:
             node["change"] = "added"
             added += 1
-        elif previous.get("technical_label") != node.get("technical_label") or base_out.get(
+        elif previous.get("technical_label") != node.get("technical_label") or previous.get("routes") != node.get("routes") or base_out.get(
             node["id"], set()
         ) != head_out.get(node["id"], set()):
             node["change"] = "changed"
@@ -138,11 +138,17 @@ def mark_changes(head: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
 
     head_ids = {node["id"] for node in head.get("nodes", [])}
     removed = [
-        {"id": node["id"], "kind": node["kind"], "label": node["label"]}
+        {"id": node["id"], "kind": node["kind"], "label": node["label"],
+         "evidence": node.get("evidence", [])}
         for node in base.get("nodes", [])
         if node["id"] not in head_ids and node.get("kind") != "table"
     ]
-    return {"added": added, "changed": changed, "added_edges": added_edges, "removed": removed}
+    head_edge_ids = {edge["id"] for edge in head.get("edges", [])}
+    removed_edges = [{**edge, "source_evidence": base_nodes.get(edge["source"], {}).get("evidence", []),
+                      "target_evidence": base_nodes.get(edge["target"], {}).get("evidence", [])}
+                     for edge in base.get("edges", []) if edge["id"] not in head_edge_ids]
+    return {"added": added, "changed": changed, "added_edges": added_edges,
+            "removed": removed, "removed_edges": removed_edges}
 
 
 def compute_changes(project_root: Path | str, since_ref: str, head: dict[str, Any]) -> dict[str, Any]:

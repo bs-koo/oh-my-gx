@@ -125,11 +125,12 @@ class SplitByDomainTests(unittest.TestCase):
         for domain, part in parts.items():
             self.assertNotIn("cross-domain-edge", part.get("missing_inputs", []), domain)
 
-    def test_edges_crossing_domains_are_dropped_and_reported(self):
-        # 도메인 경계를 넘는 엣지는 어느 한 장에도 온전히 담기지 않는다.
-        # 조용히 버리지 않고 해당 도메인 IR의 missing_inputs에 남긴다.
+    def test_edges_crossing_domains_keep_external_node_and_link(self):
         parts = split_by_domain(ir_cross_domain())
-        self.assertTrue(any("cross-domain-edge" in p.get("missing_inputs", []) for p in parts.values()))
+        for domain, external in (("user", "auth"), ("auth", "user")):
+            self.assertEqual(len(parts[domain]["edges"]), 1)
+            self.assertEqual([n["external_domain"] for n in parts[domain]["nodes"] if "external_domain" in n], [external])
+            self.assertNotIn("cross-domain-edge", parts[domain]["missing_inputs"])
 
     def test_split_is_deterministic(self):
         self.assertEqual(split_by_domain(ir_two_domains()), split_by_domain(ir_two_domains()))

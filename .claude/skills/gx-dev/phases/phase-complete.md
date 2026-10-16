@@ -267,7 +267,7 @@ AskUserQuestion(
 - **아키텍처 맵 갱신** → 프로젝트 전체를 다시 스캔하므로 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알린 뒤, `oh-my-gx:gx-visualize`를 `service --project-root ${PROJECT_ROOT} --changed-since ${BASE_BRANCH}`로 호출한다. 선택이 곧 동의이므로 다시 묻지 않는다. **svn이면** `--changed-since`를 넘기지 않는다 — 변경 표시는 git 기준 시점이 필요하다. 이때는 맵을 변경 표시 없이 갱신했다고 함께 보고한다.
 - **아니요** → 건너뛴다.
 
-호출 결과의 `index_path`·`validation_status`, 도메인별 `backend`·`validation_status`, `changes`(신규·변경·삭제 수 또는 생략 이유)를 그대로 보고한다. `index_path`가 없으면 `visualization_status: failed`로 보고하고 경로를 성공처럼 제시하지 않는다.
+호출 결과의 `index_path`·`validation_status`, 도메인별 `backend`·`capability`·`validation_status`, `changes`(신규·변경·삭제 수 또는 생략 이유)를 그대로 보고한다. `validation_status`가 `failed`이거나 `index_path`가 없으면 `visualization_status: failed`로 보고한다. 실패 시에도 존재하는 인덱스는 진단 화면으로 안내하며 경로를 성공처럼 제시하지 않는다. `last_good`는 이전 정상 결과라는 시점과 함께 구분한다.
 
 이 절의 실패·누락·fallback은 **커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다.** Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
 

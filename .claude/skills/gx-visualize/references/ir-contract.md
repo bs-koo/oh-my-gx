@@ -4,7 +4,7 @@ GX 시각화 입력은 UTF-8 JSON 객체다. `schema_version`은 정수 `1`, `vi
 `trace`, `progress`, `impact`, `service`, `sequence` 중 하나이며 `locale`, `title`,
 `nodes`, `edges`를 필수로 한다. 노드는 `id`, `kind`, `label`, `status`를 갖고,
 상태는 `planned`, `in_progress`, `review`, `verified`, `blocked`, `unknown` 중 하나다.
-한국어 표시명은 `label`, 코드 식별자는 선택적인 `technical_label`로 분리한다.
+한국어 표시명은 `label`, 원래 클래스·메서드는 `symbol`, HTTP 경로 같은 보조 정보는 `technical_label`로 분리한다. `symbol`과 `technical_label`은 선택 필드이며 라벨을 바꿔도 원래 식별자를 유지한다.
 
 노드는 선택적인 `change`(`added` 또는 `changed`), edge는 선택적인 `change`(`added`)를
 가질 수 있다 — `service` 뷰가 두 스캔을 비교해 이번 사이클에 새로 생기거나 바뀐 구조를
@@ -12,6 +12,18 @@ GX 시각화 입력은 UTF-8 JSON 객체다. `schema_version`은 정수 `1`, `vi
 `available`이 참이면 `base_commit`을, 거짓이면 `reason`을 갖는다 — `build_map.py`가
 `compute_changes()` 결과를 도메인 IR에 싣고, 렌더러(`render_fallback.py`)가 이 값으로
 '이번 변경' 배너를 만든다.
+
+`meta.changes.removed`·`removed_edges`는 해당 도메인의 삭제 목록이다. 삭제만 있는 경우에도 변경 배너에 표시한다. `meta.navigation`은 현재 `domain`과 이동 가능한 `domains`를 가진다. 경계 노드의 `external_domain`은 원래 도메인을 가리킨다. 경계 엣지는 전체 IR과 양쪽 도메인에 보존하며 누락 입력으로 취급하지 않는다.
+
+`calls`는 본문에서 확인한 정적 호출, `depends_on`은 타입 주입 의존성이다. 스캐너는 관계에도 파일·라인 근거를 보존한다. 현재 validator의 파일·라인 검사는 노드 evidence에 적용되며 edge evidence의 경로·줄까지 검증했다고 보고하지 않는다. `skipped`·`unresolved_edges` 진단은 이유·파일·대상을 제공한다.
+
+service 출력의 `global.ir.json`은 전체 관계, `run-manifest.json`은 현재 실행 결과의 정본이다. 인덱스는 디스크에 남은 과거 성공 receipt 대신 이번 실행 결과를 읽는다. 과거 정상 산출물을 보존한다면 `last_good`로 구분한다. 실제 표시 능력은 `capability`로 기록해 백엔드 이름과 그림 제공 여부를 혼동하지 않는다.
+
+부분 갱신에서는 manifest의 `domains`가 이번 렌더 결과, `map_domains`가 전체 맵 상태다. 다른 도메인의 기존 결과는 `freshness: retained` 및 원래 `generated_at`·`revision`으로 구분하며 이전 변경 배지는 이번 변경으로 집계하지 않는다. 새 도메인의 `not_generated` 상태는 정상 결과가 아니다. manifest의 `project_root`가 다른 프로젝트의 결과는 승계하지 않는다.
+
+상세 HTML 앵커는 `gx-detail-{id}`로 도표의 ID와 분리한다. 이전 `node-{id}` 해시는 새 상세가 있을 때 정규화한다. `meta.navigation.domains`의 `{name, available}`과 외부 노드의 `external_available`로 미생성 페이지 링크를 비활성화한다. 보존 페이지가 새 상세 앵커를 지원하지 않으면 `external_detail_available: false`로 페이지까지만 연결한다.
+
+기능 선택 UI는 원본 IR을 바꾸지 않고 노드·관계의 브라우저용 부분집합을 만든다. `gx-feature-{id}`는 선택한 진입점의 공유 주소이며 `gx-detail-{id}`와 구분한다. 기본 방향성 탐색은 `calls`·`requests`·`reads`·`writes`를 사용하고 `depends_on`은 선택적 후보다. 다른 진입점·공유 테이블의 역참조·외부 도메인에서 무관한 노드를 확장하지 않는다. 서비스·저장소의 클래스 수준 해상도를 메서드 수준 정확성으로 승격하지 않는다. 전체 IR·접힌 상세 목록·기존 앵커는 보존한다.
 
 `unknown`은 모든 view에서 유효한 상태값이지만 의미가 다르다 — `service`는 코드
 스캐너가 상태를 알아낼 방법이 없어 모든 노드가 구조적으로 `unknown`이므로
