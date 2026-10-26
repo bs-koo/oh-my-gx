@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.sqi.user.UserDAO">
+  <select id="selectRecentBoards" resultType="map">
+    SELECT BOARD_ID FROM TB_BOARD WHERE USER_ID = #{userId}
+  </select>
+</mapper>
