@@ -30,6 +30,7 @@ def skill_text(path: Path) -> str:
             directory / "modes/from-document.md",
             directory / "modes/update.md",
             directory / "modes/sync.md",
+            directory / "modes/plan.md",
         )
     else:
         ordered = (

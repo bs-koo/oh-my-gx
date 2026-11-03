@@ -6,12 +6,12 @@
 
 ### D-1. 기존 문서 읽기
 
-`context/{도메인}/`의 README.md, glossary.md, architecture.md를 Read한다.
+`context/{도메인}/`의 README.md, glossary.md, architecture.md, status.md를 Read한다.
 
 ### D-2. 변경 소스 파악
 
-- `--from` 파일이 있으면: 파일 내용과 기존 context를 비교하여 변경 항목을 식별한다.
-- `--from` 없으면:
+- 문서 기반 모드(C-4)가 위임한 경우: 입력 내용과 기존 context를 비교하여 변경 항목을 식별하고 D-3으로 간다. 요구사항 원장과 작업 계획은 위임한 쪽(C-4-1, C-5)이 처리한다.
+- 직접 갱신 모드로 들어온 경우:
   ```
   AskUserQuestion(
     questions: [{
@@ -19,13 +19,15 @@
       question: "어떤 내용을 갱신하시겠습니까?",
       multiSelect: true,
       options: [
-        { label: "용어 추가", description: "glossary.md에 새 용어를 추가합니다" },
-        { label: "아키텍처 변경", description: "architecture.md를 갱신합니다" },
+        { label: "요구사항 추가·변경", description: "선택하면 후속 질문에서 요구사항 내용이나 파일 경로를 받아 원장과 작업 계획에 반영합니다" },
+        { label: "용어·아키텍처", description: "glossary.md나 architecture.md를 갱신합니다" },
         { label: "담당자 변경", description: "README.md의 담당자 정보를 갱신합니다" }
       ]
     }]
   )
   ```
+  - "요구사항 추가·변경"을 고르면 요구사항 본문이나 파일 경로를 후속 질문으로 받고 실제 답변을 기다린다. 받은 내용을 `REQUIREMENT_INPUT`으로 두고, 이 도메인을 지정 도메인으로, `INPUT_SCOPE`를 `추가분`으로 정해 `Read("modes/from-document.md")`의 C-1부터 실행한다. 함께 고른 다른 항목은 그 절차의 C-4에서 이 파일의 D-3~D-4로 처리한다.
+  - 나머지 항목만 골랐으면 D-3으로 간다. 원장은 바뀌지 않지만, SKILL.md의 공통 마무리가 원장과 작업 계획이 어긋나 있는지 확인한다.
 
 ### D-3. 변경 제안
 

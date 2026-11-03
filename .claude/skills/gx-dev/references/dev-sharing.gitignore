@@ -1,0 +1,7 @@
+# 프로젝트 루트 .dev 공유 예외와 Codex 세션 파일 보호
+!/.dev/
+!/.dev/**
+/.dev/*/pending-question.json
+/.dev/*/answered-question.json
+/.dev/*/.question-lock
+/.dev/*/model-dispatches.jsonl
