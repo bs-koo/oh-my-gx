@@ -598,7 +598,7 @@ done
 grep -q 'docs: \[plan\]' .claude/rules/skill-routing.md || fail "skill-routing 예외 목록에 plan 커밋 미등록"
 grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복에 작업 계획 갱신 누락"
 grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
-CONTEXT_SKILL_TEXT=$(cat .claude/skills/gx-context/SKILL.md .claude/skills/gx-context/modes/{create,from-document,update,sync}.md)
+CONTEXT_SKILL_TEXT=$(cat .claude/skills/gx-context/SKILL.md .claude/skills/gx-context/modes/{create,from-document,update,sync,plan}.md)
 grep -q '\.dev/plan\.md' <<< "$CONTEXT_SKILL_TEXT" || fail "gx-context에 plan.md 생성 절 누락"
 grep -q '예약 도메인' <<< "$CONTEXT_SKILL_TEXT" || fail "gx-context에 예약 도메인 규칙 누락"
 # 소비 프로젝트의 cwd에는 scripts/가 없어 plan-lint를 실행할 수 없고, 번들 경로 규약([15/36])이
@@ -678,7 +678,7 @@ grep -q 'W01 시작해줘' .claude/rules/skill-routing.md || fail "skill-routing
 grep -q '기존 파일이 있으면' <<< "$CONTEXT_SKILL_TEXT"   || fail "plan.md 저장 절에 신규/기존 분기 누락 (재계획 시 덮어쓰기 위험)"
 # S8: 재계획은 "대기는 재조정" 한 줄로 끝나면 안 된다. 겹침·불필요 판정과
 # 폐기 처리가 없으면 낡은 작업이 계획에 남아 의존 확인의 근거가 된다.
-C_REPLAN_TEXT=$(sed -n '/^#### C-5-6\./,/^#### C-5-7\./p' .claude/skills/gx-context/modes/from-document.md)
+C_REPLAN_TEXT=$(sed -n '/^### P-6\./,/^### P-7\./p' .claude/skills/gx-context/modes/plan.md)
 grep -qF '| **겹침** |' <<< "$C_REPLAN_TEXT"   || fail "재계획에 기존 작업 겹침 판정 누락"
 grep -qF '| **폐기** | 요구사항이 삭제되어' <<< "$C_REPLAN_TEXT"   || fail "재계획에 불필요해진 작업 처리 누락"
 grep -q '"폐기"' scripts/plan-lint.py   || fail "plan-lint 허용 상태에 폐기 미등록"

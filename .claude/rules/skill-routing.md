@@ -9,6 +9,7 @@
 | `커밋`, `커밋해`, `커밋해줘`, `commit` | `/gx-commit` |
 | `PR`, `PR 올려`, `PR 생성`, `풀리퀘`, `pull request` | `/gx-pull-request` |
 | `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
+| `요구사항 추가`, `요구사항 정리해줘`, `작업 나눠줘`, `작업 계획 만들어줘`, `작업 계획 갱신` | `/gx-context` (요구사항을 원장에 넣고 `.dev/plan.md`까지 갱신. 구현 요청인 `기능 추가`는 `/gx-dev`) |
 
 **gx-tdd·gx-ralph 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
 - 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.

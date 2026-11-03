@@ -18,6 +18,7 @@ CONTEXT_MODES = {
     "문서 기반": "modes/from-document.md",
     "갱신": "modes/update.md",
     "동기화": "modes/sync.md",
+    "작업 계획": "modes/plan.md",
 }
 
 
@@ -85,6 +86,7 @@ class SkillInstructionLayoutTests(unittest.TestCase):
             "## 모드 E: 동기화 (--sync)": "modes/sync.md",
             "### C-4-1. 요구사항 원장 반영": "modes/from-document.md",
             "## 주제 문서 헤더 템플릿": "modes/update.md",
+            "## 작업 계획 갱신 (모든 모드 공통 마무리)": "modes/plan.md",
         }
         paths = [directory / "SKILL.md", *(directory / p for p in CONTEXT_MODES.values())]
         for heading, owner in expected.items():
