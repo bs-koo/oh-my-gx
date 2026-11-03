@@ -376,6 +376,28 @@ class ContextPlanSyncTests(unittest.TestCase):
         self.assertIn("스캔 또는 신규 모드였다면 요구사항이 있는지 묻는다", entry)
         self.assertIn('`Read("modes/from-document.md")`의 C-1~C-4-1', entry)
 
+    def test_sync_never_exits_before_plan_sync(self):
+        sync = self.text("modes/sync.md")
+        preflight = sync.split("### E-1. 사전 확인", 1)[1].split("### E-2.", 1)[0]
+        self.assertNotIn("출력 후 종료\n", preflight)
+        self.assertIn("E-5로 간다", preflight)
+        self.assertIn("작업 계획 마무리는 실행한다", preflight)
+        final = sync.split("### E-5. 완료 안내", 1)[1]
+        self.assertIn("종료하지 않고 SKILL.md의 작업 계획 마무리로 넘어간다", final)
+
+    def test_in_progress_row_completes_only_with_branch_evidence(self):
+        plan = self.text("modes/plan.md")
+        compare = plan.split("### P-2. 대조", 1)[1].split("### P-3.", 1)[0]
+        rule = compare.split("**진행 행의 완료 판정**", 1)[1]
+        for phrase in (
+            "git ls-remote --heads origin {브랜치}",
+            "git merge-base --is-ancestor {해시} HEAD",
+            "`status: completed`",
+            "판정하지 못한 행은 P-7에서",
+        ):
+            self.assertIn(phrase, rule)
+        replan = plan.split("### P-6.", 1)[1].split("### P-7.", 1)[0]
+        self.assertIn("진행 행 완료 판정을 통과하고 사용자가 승인하면 `완료`", replan)
 
 if __name__ == "__main__":
     unittest.main()
