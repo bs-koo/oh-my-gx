@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(git commit:*)
   - Bash(git show:*)
   - Bash(git branch:*)
+  - Bash(git check-ignore:*)
   # build - 커밋 전 pre-check
   - Bash(./gradlew:*)
   - Bash(npm:*)
@@ -118,6 +119,7 @@ feat: 로그인 기능 추가
 2. 빌드 아티팩트 패턴(`.claude/config.json`의 모든 `projectTypes.*.artifacts`와 레거시 `buildArtifactPatterns`의 **합집합** — 타입별 artifacts가 SSOT)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
 3. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조)이 목록에 있으면 사용자에게 경고하고 스테이징에서 제외할지 확인한다.
 4. 변경 파일이 20개를 초과하면 사용자에게 전체 스테이징 여부를 확인한다.
+4.5. **`.dev` 무시 경고**: `.dev/` 디렉토리가 있고 `git check-ignore -q .dev/gx-ignore-probe`가 종료 코드 0이면 `.dev`가 git에서 무시되는 상태다. `git add -A`가 작업 계획과 산출물을 소리 없이 빼고 커밋하므로, `git check-ignore -v .dev/gx-ignore-probe`의 출처·줄과 함께 "`.dev`가 무시되어 작업 계획·산출물이 이 커밋에 들어가지 않습니다. `/gx-setup`에서 고칠 수 있습니다"를 경고한다. 커밋은 막지 않고 `.gitignore`도 여기서 고치지 않는다 — 커밋 도중 무시 규칙을 바꾸면 사용자가 의도하지 않은 파일까지 스테이징된다.
 5. 스테이징:
    - 제외 파일 없음: `git add -A` 후 런타임 파일과 시각화 산출물을 unstage한다: `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/architecture' '.dev/*/visual/*' 2>/dev/null` (루프 락·반복 로그는 커밋 대상이 아니다 — 커밋되면 다른 사용자의 라우팅·게이트 판별이 오작동한다. 시각화 산출물은 매 실행 다시 만드는 단발성이고 Mermaid 자산만 3.4MB다. `'.dev/*/visual'`처럼 끝의 `/*`를 빼면 하위 파일과 매치되지 않는다)
    - 제외 파일 있음: `git add <나머지 파일 각각 지정>` (위 런타임 파일과 시각화 산출물은 지정하지 않는다)

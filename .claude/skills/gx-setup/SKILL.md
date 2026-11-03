@@ -331,6 +331,10 @@ AskUserQuestion(
 
 이미 있으면 건너뛴다.
 
+### 3.5단계: .dev 공유 확인 (git)
+
+git 저장소면 `Read("../gx-dev/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-dev가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
+
 ### 4단계: Google Chat 알림 연동 (선택)
 
 **svn인 경우** → 건너뛴다. `Google Chat 연동 : 건너뜀 (SVN — PR 기반 알림 미지원)` 출력.
