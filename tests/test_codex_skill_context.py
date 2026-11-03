@@ -343,7 +343,8 @@ class ContextPlanSyncTests(unittest.TestCase):
         for name in ("`UNASSIGNED`", "`DISCARD_CANDIDATES`", "`DONE_CANDIDATES`", "`BROKEN_REFS`"):
             self.assertIn(name, compare)
         self.assertIn("**미배정이 1건이어도 계획에 넣는다.**", compare)
-        self.assertNotIn("2건 이상", plan)
+        self.assertNotIn("요구사항이 **2건 이상**이면", plan)
+        self.assertNotIn("1건이면 건너뛴다", plan)
 
     def test_discard_requires_ledger_tombstone_and_full_scope(self):
         plan = self.text("modes/plan.md")
