@@ -604,8 +604,10 @@ grep -q '예약 도메인' <<< "$CONTEXT_SKILL_TEXT" || fail "gx-context에 예�
 # 소비 프로젝트의 cwd에는 scripts/가 없어 plan-lint를 실행할 수 없고, 번들 경로 규약([15/36])이
 # ${CLAUDE_PLUGIN_ROOT} 조립을 금지한다 — 그래서 무결성 확인은 스킬이 직접 수행해야 한다.
 # 이 항목들이 빠지면 잘못된 계획이 아무 검증 없이 의존 확인의 근거가 된다.
-grep -q '이 시점이 유일한 검증 지점' <<< "$CONTEXT_SKILL_TEXT" \
+grep -qF '**저장 후 검증**' <<< "$CONTEXT_SKILL_TEXT" \
   || fail "gx-context 저장 후 검증 절 누락"
+grep -qF '**변경 없음 판정 전에 항상**' <<< "$CONTEXT_SKILL_TEXT" \
+  || fail "gx-context 변경 없음 판정 전 검증 절 누락"
 for item in 'ID가 중복되지 않는다' '표에 실제로 있다' '서로 물려 순환하지 않는다' '의존하는 행이 없다'; do
   grep -qF "$item" <<< "$CONTEXT_SKILL_TEXT" \
     || fail "plan.md 무결성 확인 항목 누락: $item"
