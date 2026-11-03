@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".claude/skills"
 REFERENCE = SKILLS / "gx-dev/references/dev-ignore-check.md"
+SHARING_BLOCK = REFERENCE.with_name("dev-sharing.gitignore")
 PROBE = ".dev/gx-ignore-probe"
 CONSUMERS = {
     SKILLS / "gx-setup/SKILL.md": SKILLS / "gx-setup",
@@ -33,7 +34,7 @@ class DevIgnoreContractTests(unittest.TestCase):
     def test_reference_fix_rules_cover_broad_patterns_and_global_settings(self):
         ref = text(REFERENCE)
         for phrase in (
-            "`!.dev/`와 `!.dev/**` 두 줄을 추가",
+            'Read("dev-sharing.gitignore")',
             "`.git/info/exclude`",
             "고치지 않는다. 다른 저장소에도 영향을 주므로",
             "헤드리스 세션",
@@ -115,6 +116,58 @@ class DevIgnoreGitBehaviourTests(unittest.TestCase):
                                  capture_output=True, text=True)
         self.assertEqual(verbose.returncode, 0)
         self.assertIn("!.dev/**", verbose.stdout)
+
+    def stage_files(self, paths):
+        for name in paths:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
+        return subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=self.repo,
+                              capture_output=True, text=True, check=True).stdout.splitlines()
+
+    def test_sharing_block_keeps_other_dev_names_ignored(self):
+        self.write(".dev*\n" + text(SHARING_BLOCK))
+        private = (".dev-private/local.json", ".development/settings.json", ".dev.env")
+        for path in private:
+            with self.subTest(path=path):
+                self.assertEqual(self.ignored(path), 0)
+        self.assertEqual(self.ignored(".dev/plan.md"), 1)
+        staged = self.stage_files((".dev/plan.md", *private))
+        self.assertIn(".dev/plan.md", staged)
+        self.assertTrue(set(private).isdisjoint(staged))
+
+    def test_sharing_block_keeps_question_state_out_of_index(self):
+        runtime = ("pending-question.json", "answered-question.json", ".question-lock", "model-dispatches.jsonl")
+        old_rules = "".join(f".dev/*/{name}\n" for name in runtime)
+        for broad in (".*\n", "*\n", ".dev*\n"):
+            with self.subTest(broad=broad):
+                self.write(old_rules + broad + text(SHARING_BLOCK))
+                for name in runtime:
+                    self.assertEqual(self.ignored(f".dev/task/{name}"), 0)
+                self.assertEqual(self.ignored(".dev/plan.md"), 1)
+        staged = self.stage_files((".dev/plan.md", *(f".dev/task/{name}" for name in runtime)))
+        self.assertIn(".dev/plan.md", staged)
+        self.assertTrue(all(f".dev/task/{name}" not in staged for name in runtime))
+
+    def test_sharing_block_preserves_narrow_rules_after_it(self):
+        self.write("*.log\n.dev/private/**\n.*\n" + text(SHARING_BLOCK)
+                   + "/.dev/**/*.log\n/.dev/private/**\n!/.dev/private/public.md\n")
+        self.assertEqual(self.ignored(".dev/plan.md"), 1)
+        for path in (".dev/task/verify.log", ".dev/private/local.json", "outside.log", ".env"):
+            with self.subTest(path=path):
+                self.assertEqual(self.ignored(path), 0)
+        self.assertEqual(self.ignored(".dev/private/public.md"), 1)
+        staged = self.stage_files((".dev/plan.md", ".dev/task/verify.log", ".dev/private/local.json",
+                                   ".dev/private/public.md", "outside.log", ".env"))
+        self.assertIn(".dev/private/public.md", staged)
+        self.assertTrue({".dev/task/verify.log", ".dev/private/local.json", "outside.log", ".env"}.isdisjoint(staged))
+
+    def test_sharing_block_works_in_local_exclude(self):
+        (self.repo / ".git/info/exclude").write_text(".dev*\n" + text(SHARING_BLOCK), encoding="utf-8")
+        self.assertEqual(self.ignored(".dev/plan.md"), 1)
+        self.assertEqual(self.ignored(".dev/task/pending-question.json"), 0)
+        self.assertEqual(self.ignored(".dev-private/local.json"), 0)
 
 
 if __name__ == "__main__":
