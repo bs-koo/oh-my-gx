@@ -48,10 +48,10 @@
 
 config·플래그·자연어·질문 답변이 없으면 잠정 `standard`; **Step 3.0 config 로드 후 `modelProfile`로 재확정한다** (vcs와 동일).
 
-Codex는 [모델 정책](../../gx-dev/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
+Codex는 [모델 정책](../../gx-work/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
 
 Claude Code의 `eco` 안내: "architect는 opus, 지정된 검토 역할은 sonnet입니다. 절차·게이트·Iron Law는 유지하며 메인 세션 모델은 바뀌지 않습니다."
-`standard` 안내: "역할 frontmatter 모델을 유지합니다. 에이전트 절약에는 eco를 사용하세요."
+실제 모델 배정을 한 줄로 알린다.
 Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 공유 규칙 "모델 프로파일"을 따른다.
 
 ## Step 2: 베이스 브랜치 결정
@@ -192,7 +192,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 **git인 경우:**
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
 
-`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-dev/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
+`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
 
 ## Step 6.5: DEV_DIR 결정
 
@@ -211,8 +211,9 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline: gx-tdd`가 아니면(gx-dev 등 다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
+- run-id, goal, stop-at: gx-work handoff의 값을 보존. 직접 호출이면 새 고유 run-id를 생성하고 stop-at은 명시 요청 또는 verify. 다른 실행의 보고서를 섞지 않는다.
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
-- vcs-type, branch, base, project-type, project-root, args, flags 기록 (svn은 branch/base 미사용). `flags`에는 의도 파싱의 RALPH 우선순위 규칙을 **통과해 살아남은** RALPH는(플래그·자연어 `랄프로` 등 출처 무관) `--ralph`로 **정규화하여** 포함한다 — phase-implement Step 0.7의 판정 키이며 별도 필드를 두지 않는다. 우선순위 규칙에서 **무시된 RALPH는 기록하지 않는다** (core 세션에 `--ralph`가 남아 `--status`·Step 0.7이 이중 안내를 내지 않도록). `VCS_TYPE`이 `svn`이면 포함하지 않고 "gx-ralph는 SVN 미지원 — 대화형으로 진행합니다" 1줄을 안내한다 (의도 파싱의 svn 우선 배제가 1차, 이것은 2차 방어). `--isolated`는 있는 그대로 기록한다 — phase-implement Step 2-I와 phase-review 4b의 경로 판정 키다.
+- vcs-type, branch, base, project-type, project-root, args, flags 기록. `flags`에는 의도 파싱의 RALPH 우선순위를 통과한 `--ralph`만 정규화해 기록한다. svn·충돌로 무시된 RALPH는 기록하지 않는다. `--isolated`는 보존한다.
 - mode, intent-source 기록 (의도 파싱 결과)
 - model-profile 기록 (Step 1.5/3.0 결정 값)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.

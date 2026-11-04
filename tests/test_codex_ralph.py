@@ -46,7 +46,7 @@ class RalphTests(unittest.TestCase):
         self.dev.mkdir(parents=True)
         (self.dev / 'state.md').write_text(
             'pipeline: gx-ralph\nstatus: in_progress\nverify-status: pending\n'
-            'branch: feat/t\nmax-iterations: 1\nlast-known-head: none\n', encoding='utf-8')
+            'origin: gx-tdd\nbranch: feat/t\nmax-iterations: 1\nlast-known-head: none\n', encoding='utf-8')
         self.ledger(False)
         (self.dev / 'progress.txt').write_text('# progress\n', encoding='utf-8')
         mock = self.cwd / 'mock_codex.py'
@@ -65,10 +65,13 @@ if case == 'attempt':
     data = json.loads(ledger.read_text(encoding='utf-8'))
     data['acs'][0]['attempts'] += 1
     ledger.write_text(json.dumps(data), encoding='utf-8')
+if case == 'legacy_transition':
+    state = Path('.dev/feat-t/state.md')
+    state.write_text(state.read_text(encoding='utf-8').replace('origin: gx-tdd', 'origin: gx-dev'), encoding='utf-8')
 if case != 'empty':
     response = ('구현 완료\\n<ralph>COMPLETE</ralph>\\n' if case == 'complete_summary'
                 else '<ralph>COMPLETE</ralph>\\n' if case in ('complete', 'nonzero')
-                else '<ralph>CONTINUE</ralph>\\n' if case in ('continue', 'attempt')
+                else '<ralph>CONTINUE</ralph>\\n' if case in ('continue', 'attempt', 'legacy_transition')
                 else '<ralph>BLOCKED: fixture</ralph>\\n')
     if case == 'multi': response += '<ralph>COMPLETE</ralph>\\n'
     if case == 'trailing': response += '추가 설명\\n'
@@ -96,7 +99,8 @@ if case == 'nonzero': raise SystemExit(9)
         self.env['GX_RALPH_CASE'] = case
         return subprocess.run([bash, str(ROOT / 'scripts/gx-ralph.sh'), iterations],
                               cwd=launch_cwd or self.cwd, env=self.env, capture_output=True,
-                              text=True, encoding='utf-8', errors='replace', timeout=30)
+                              text=True, encoding='utf-8', errors='replace',
+                              timeout=90 if os.name == 'nt' else 30)
 
     def test_contract_never_comes_from_event_log(self):
         result = self.run_ralph()
@@ -141,6 +145,39 @@ if case == 'nonzero': raise SystemExit(9)
         self.ledger(True)
         result = self.run_ralph('complete')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('/gx-tdd --phase review', result.stdout)
+
+    def test_legacy_or_missing_origin_blocks_without_mutating_existing_run(self):
+        for origin in ('gx-dev', '', 'unknown', 'gx-tdd\norigin: ', 'gx-tdd\norigin: gx-tdd'):
+            with self.subTest(origin=origin):
+                state = self.dev / 'state.md'
+                text = state.read_text(encoding='utf-8')
+                text = re.sub(r'^origin:.*\n?', '', text, flags=re.MULTILINE)
+                state.write_text(text + (f'origin: {origin}\n' if origin else ''), encoding='utf-8')
+                stale = self.dev / 'iter-1.log'
+                stale.write_text('preserve existing log', encoding='utf-8')
+                before = {p.name: p.read_bytes() for p in self.dev.iterdir() if p.is_file()}
+                result = self.run_ralph('complete')
+                self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
+                self.assertIn('origin', result.stdout + result.stderr)
+                self.assertEqual(before, {p.name: p.read_bytes() for p in self.dev.iterdir() if p.is_file()})
+                self.assertFalse(list(self.dev.glob('logs-*')))
+
+    def test_origin_change_cannot_start_another_iteration(self):
+        result = self.run_ralph('legacy_transition', '3')
+        self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
+        self.assertTrue((self.dev / 'iter-1.final.md').exists())
+        self.assertFalse((self.dev / 'iter-2.log').exists())
+
+    def test_explicit_verify_endpoint_needs_local_commit_confirmation(self):
+        state = self.dev / 'state.md'
+        state.write_text(state.read_text(encoding='utf-8') + 'stop-at: verify\nflags: --stop-at verify\n', encoding='utf-8')
+        result = self.run_ralph()
+        self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
+        self.assertFalse((self.dev / 'iter-1.log').exists())
+        state.write_text(state.read_text(encoding='utf-8') + 'ralph-local-commits: approved\n', encoding='utf-8')
+        self.assertEqual(self.run_ralph().returncode, 2)
+
 
     def test_summary_before_final_contract_is_allowed(self):
         self.ledger(True)
@@ -210,3 +247,24 @@ if case == 'nonzero': raise SystemExit(9)
         self.assertFalse((self.dev / 'ralph.lock').exists())
         self.assertFalse((self.dev / 'iter-1.prompt.md').exists())
         self.assertFalse(list(self.dev.glob('logs-*')))
+
+
+class RalphTddContractTests(unittest.TestCase):
+    def test_plan_push_requires_pr_endpoint_or_separate_explicit_authorization(self):
+        text = (ROOT / '.claude/skills/gx-ralph-iterate/SKILL.md').read_text(encoding='utf-8')
+        section = text[text.index('### Step 5.5:'):text.index('### Step 6:')]
+        self.assertIn('stop-at: pr', section)
+        self.assertIn('별도 원격 반영 요청', section)
+        self.assertIn('push하지 않는다', section)
+
+    def test_iteration_requires_tdd_origin_before_ac_selection(self):
+        text = (ROOT / '.claude/skills/gx-ralph-iterate/SKILL.md').read_text(encoding='utf-8')
+        guard = text[text.index('### Step 0:'):text.index('### Step 1:')]
+        self.assertIn('origin: gx-tdd', guard)
+        self.assertNotIn('oh-my-gx:coder', text)
+
+    def test_prepare_preserves_legacy_ledger_and_requires_explicit_missing_origin_confirmation(self):
+        text = (ROOT / '.claude/skills/gx-ralph/SKILL.md').read_text(encoding='utf-8')
+        self.assertIn('기존 원장을 자동 변환하거나 덮어쓰지 않는다', text)
+        self.assertIn('origin 누락', text)
+        self.assertNotIn('origin: gx-dev | gx-tdd', text)

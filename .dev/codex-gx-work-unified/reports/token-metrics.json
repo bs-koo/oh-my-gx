@@ -1,0 +1,277 @@
+[
+  {
+    "path": ".claude/skills/gx-commit/SKILL.md",
+    "before": {
+      "bytes": 13919,
+      "chars": 8577,
+      "lines": 164,
+      "sentences": 102
+    },
+    "after": {
+      "bytes": 14757,
+      "chars": 8958,
+      "lines": 162,
+      "sentences": 111
+    }
+  },
+  {
+    "path": ".claude/skills/gx-context/SKILL.md",
+    "before": {
+      "bytes": 15082,
+      "chars": 8439,
+      "lines": 198,
+      "sentences": 100
+    },
+    "after": {
+      "bytes": 15787,
+      "chars": 8826,
+      "lines": 204,
+      "sentences": 112
+    }
+  },
+  {
+    "path": ".claude/skills/gx-cross-review/SKILL.md",
+    "before": {
+      "bytes": 35425,
+      "chars": 22945,
+      "lines": 819,
+      "sentences": 246
+    },
+    "after": {
+      "bytes": 19414,
+      "chars": 12749,
+      "lines": 387,
+      "sentences": 161
+    }
+  },
+  {
+    "path": ".claude/skills/gx-dev/SKILL.md",
+    "before": {
+      "bytes": 12318,
+      "chars": 7994,
+      "lines": 216,
+      "sentences": 53
+    },
+    "after": null
+  },
+  {
+    "path": ".claude/skills/gx-green/SKILL.md",
+    "before": {
+      "bytes": 8122,
+      "chars": 4661,
+      "lines": 193,
+      "sentences": 36
+    },
+    "after": {
+      "bytes": 8433,
+      "chars": 4826,
+      "lines": 195,
+      "sentences": 38
+    }
+  },
+  {
+    "path": ".claude/skills/gx-humanizer/SKILL.md",
+    "before": {
+      "bytes": 23984,
+      "chars": 14142,
+      "lines": 378,
+      "sentences": 162
+    },
+    "after": {
+      "bytes": 12648,
+      "chars": 7392,
+      "lines": 229,
+      "sentences": 86
+    }
+  },
+  {
+    "path": ".claude/skills/gx-lens/SKILL.md",
+    "before": {
+      "bytes": 8183,
+      "chars": 4950,
+      "lines": 153,
+      "sentences": 64
+    },
+    "after": {
+      "bytes": 8184,
+      "chars": 4951,
+      "lines": 153,
+      "sentences": 64
+    }
+  },
+  {
+    "path": ".claude/skills/gx-pull-request/SKILL.md",
+    "before": {
+      "bytes": 14952,
+      "chars": 9484,
+      "lines": 228,
+      "sentences": 94
+    },
+    "after": {
+      "bytes": 14953,
+      "chars": 9485,
+      "lines": 228,
+      "sentences": 94
+    }
+  },
+  {
+    "path": ".claude/skills/gx-ralph-iterate/SKILL.md",
+    "before": {
+      "bytes": 15304,
+      "chars": 9314,
+      "lines": 155,
+      "sentences": 113
+    },
+    "after": {
+      "bytes": 16393,
+      "chars": 9844,
+      "lines": 150,
+      "sentences": 129
+    }
+  },
+  {
+    "path": ".claude/skills/gx-ralph/SKILL.md",
+    "before": {
+      "bytes": 16351,
+      "chars": 10243,
+      "lines": 211,
+      "sentences": 91
+    },
+    "after": {
+      "bytes": 18678,
+      "chars": 11413,
+      "lines": 215,
+      "sentences": 115
+    }
+  },
+  {
+    "path": ".claude/skills/gx-red/SKILL.md",
+    "before": {
+      "bytes": 11639,
+      "chars": 6475,
+      "lines": 225,
+      "sentences": 40
+    },
+    "after": {
+      "bytes": 11950,
+      "chars": 6640,
+      "lines": 227,
+      "sentences": 42
+    }
+  },
+  {
+    "path": ".claude/skills/gx-refactor/SKILL.md",
+    "before": {
+      "bytes": 7902,
+      "chars": 4533,
+      "lines": 205,
+      "sentences": 34
+    },
+    "after": {
+      "bytes": 8213,
+      "chars": 4698,
+      "lines": 207,
+      "sentences": 36
+    }
+  },
+  {
+    "path": ".claude/skills/gx-research/SKILL.md",
+    "before": {
+      "bytes": 16381,
+      "chars": 10147,
+      "lines": 375,
+      "sentences": 80
+    },
+    "after": {
+      "bytes": 16382,
+      "chars": 10148,
+      "lines": 375,
+      "sentences": 80
+    }
+  },
+  {
+    "path": ".claude/skills/gx-setup/SKILL.md",
+    "before": {
+      "bytes": 30221,
+      "chars": 18850,
+      "lines": 462,
+      "sentences": 195
+    },
+    "after": {
+      "bytes": 17454,
+      "chars": 11188,
+      "lines": 257,
+      "sentences": 126
+    }
+  },
+  {
+    "path": ".claude/skills/gx-tdd/SKILL.md",
+    "before": {
+      "bytes": 21311,
+      "chars": 14359,
+      "lines": 254,
+      "sentences": 99
+    },
+    "after": {
+      "bytes": 14979,
+      "chars": 9820,
+      "lines": 167,
+      "sentences": 88
+    }
+  },
+  {
+    "path": ".claude/skills/gx-tech-debt/SKILL.md",
+    "before": {
+      "bytes": 13755,
+      "chars": 8137,
+      "lines": 296,
+      "sentences": 120
+    },
+    "after": {
+      "bytes": 13757,
+      "chars": 8139,
+      "lines": 296,
+      "sentences": 120
+    }
+  },
+  {
+    "path": ".claude/skills/gx-verify/SKILL.md",
+    "before": {
+      "bytes": 17759,
+      "chars": 10750,
+      "lines": 283,
+      "sentences": 114
+    },
+    "after": {
+      "bytes": 18541,
+      "chars": 10818,
+      "lines": 273,
+      "sentences": 126
+    }
+  },
+  {
+    "path": ".claude/skills/gx-visualize/SKILL.md",
+    "before": {
+      "bytes": 25271,
+      "chars": 14402,
+      "lines": 224,
+      "sentences": 208
+    },
+    "after": {
+      "bytes": 12940,
+      "chars": 7547,
+      "lines": 129,
+      "sentences": 116
+    }
+  },
+  {
+    "path": ".claude/skills/gx-work/SKILL.md",
+    "before": null,
+    "after": {
+      "bytes": 5559,
+      "chars": 2942,
+      "lines": 41,
+      "sentences": 49
+    }
+  }
+]

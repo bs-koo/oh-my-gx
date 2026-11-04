@@ -141,14 +141,14 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         main = self.text(SKILLS / "gx-context/SKILL.md")
         load_rule = main.split("## 모드 실행", 1)[1].split("---", 1)[0]
         create = self.text(SKILLS / "gx-context/modes/create.md")
-        section = create.split("### B-1. 도메인 확인", 1)[1].split("### B-2. 순차 검증 질문", 1)[0]
+        section = create.split("### B-1. 도메인 확인", 1)[1].split("### B-2. 공통 정보 점검과 필요한 질문", 1)[0]
         self.assertIn("신규 B-1에서 기존 도메인의 갱신을 선택할 때", load_rule)
         self.assertIn("해당 mode 파일을 추가로 Read한다", load_rule)
         self.assertLess(section.index("`context/{도메인}/`이 이미 존재하면"), section.index('"갱신" → `Read("modes/update.md")`'))
         self.assertIn('"갱신" → `Read("modes/update.md")` 후 모드 D를 실행하고 모드 B를 종료한다.', section)
         self.assertIn('"취소" → 작업을 종료한다.', section)
         self.assertEqual(section.count('Read("modes/update.md")'), 1)
-        self.assertLess(section.index('"갱신" → `Read("modes/update.md")`'), create.index("### B-2. 순차 검증 질문"))
+        self.assertLess(section.index('"갱신" → `Read("modes/update.md")`'), create.index("### B-2. 공통 정보 점검과 필요한 질문"))
 
     def test_manual_scan_choice_has_valid_description_and_reads_create_on_branch(self):
         main = self.text(SKILLS / "gx-context/SKILL.md")
@@ -157,8 +157,13 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertNotIn('description: "`Read(', section)
         self.assertIn('"수동 생성" → `Read("modes/create.md")` 후', section)
 
-    def test_dev_references_are_loaded_before_phase_loop(self):
-        self.assert_contract_load("gx-dev")
+    def test_work_entry_loads_runtime_without_creating_a_phase_loop(self):
+        main = self.text(SKILLS / "gx-work/SKILL.md")
+        self.assertIn("references/codex-runtime.md", main)
+        self.assertIn("references/planning.md", main)
+        self.assertIn("references/handoff.md", main)
+        self.assertNotIn("### Phase 실행 루프", main)
+        self.assertFalse((SKILLS / "gx-dev").exists())
 
     def test_tdd_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-tdd")
@@ -172,7 +177,7 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertNotIn('gx-tdd SKILL.md의 "verify 지문"', ralph)
 
     def test_moved_reference_headers_and_tdd_pointers_are_file_relative(self):
-        for name in ("gx-dev", "gx-tdd"):
+        for name in ("gx-tdd",):
             directory = SKILLS / name
             for relative in CONTRACT_REFS:
                 with self.subTest(skill=name, reference=relative):
@@ -202,11 +207,15 @@ class SkillInstructionLayoutTests(unittest.TestCase):
         self.assertLessEqual(len(main.splitlines()), 520)
 
     def test_moved_headings_have_one_owner_per_skill(self):
-        for name in ("gx-dev", "gx-tdd"):
+        for name in ("gx-tdd",):
             self.assert_moved_heading_owner(name)
 
-    def test_dev_moved_headings_have_one_owner(self):
-        self.assert_moved_heading_owner("gx-dev")
+    def test_shared_runtime_has_one_owner_under_work(self):
+        target = SKILLS / "gx-work/references/codex-runtime.md"
+        self.assertTrue(target.is_file())
+        self.assertFalse((SKILLS / "gx-tdd/references/codex-runtime.md").exists())
+        self.assertIn("../../gx-work/references/codex-runtime.md",
+                      self.text(SKILLS / "gx-tdd/references/harness-adaptation.md"))
 
     def assert_moved_heading_owner(self, name: str) -> None:
         expected = {
@@ -227,7 +236,7 @@ class SkillInstructionLayoutTests(unittest.TestCase):
                 self.assertEqual(owners, [directory / owner])
 
     def test_phase_safety_gates_remain_in_main_skills(self):
-        for name in ("gx-dev", "gx-tdd"):
+        for name in ("gx-tdd",):
             with self.subTest(skill=name):
                 main = self.text(SKILLS / name / "SKILL.md")
                 self.assertIn("> **CRITICAL: Phase 스킵 절대 금지.**", main)

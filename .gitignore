@@ -43,3 +43,7 @@ docs/presentation-*.md
 # Python helper·회귀 테스트의 생성 바이트코드
 __pycache__/
 *.pyc
+
+# 검증 원시 로그·실행 증거는 재생성하며, 요약·계획 문서는 계속 공유한다.
+.dev/*/logs/
+.dev/*/evidence/

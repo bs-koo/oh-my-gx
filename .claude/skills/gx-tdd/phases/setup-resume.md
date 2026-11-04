@@ -13,7 +13,7 @@ Codex는 DEV_DIR을 확정한 뒤 공통 질문 helper의 status를 먼저 확�
    - **git**: 현재 브랜치명에서 **임시** 경로를 계산한다: `git branch --show-current` → `/`를 `-`로 치환 → `.dev/{branch-slug}/state.md`.
    - **svn**: `.dev/.active`가 가리키는 `.dev/{slug}/state.md` (`.active` 부재·공백 시 `.dev/trunk/state.md` 폴백. 포인터가 없고 진행 중 `.dev/*/state.md`가 여럿이면 목록을 제시해 선택받는다).
 2. 해당 경로의 state.md를 탐색한다.
-3. 존재하고 `status: in_progress`이면 → `pipeline: gx-tdd` 필드를 확인한다. 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개하지 않고 "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. `/gx-dev --resume`으로 재개하세요." 출력 후 종료. 일치하면 DEV_DIR을 해당 파일의 부모 디렉토리(`.dev/{branch-slug}/`)로 확정하고 바로 재개 (아래 "이어서 진행" 절차).
+3. 존재하고 `status: in_progress`이면 → `pipeline: gx-tdd` 필드를 확인한다. 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개하지 않고 "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. 제거된 비TDD 파이프라인은 자동 재개하지 않습니다. 기존 산출물을 보존하고 `/gx-work 기존 계획을 TDD 작업으로 전환해줘`로 범위와 미완료 항목을 확인하세요." 출력 후 종료. 일치하면 DEV_DIR을 해당 파일의 부모 디렉토리(`.dev/{branch-slug}/`)로 확정하고 바로 재개 (아래 "이어서 진행" 절차).
 4. state.md가 없거나 `status: completed`이면 → "재개할 작업이 없습니다." 출력 후 종료.
 
 ### `--resume` 플래그가 없는 경우 (자동 감지)
@@ -25,7 +25,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
    - **svn**: `.dev/.active`가 가리키는 `.dev/{slug}/state.md` (`.active` 부재·공백 시 `.dev/trunk/state.md` 폴백. 포인터가 없고 진행 중 `.dev/*/state.md`가 여럿이면 목록을 제시해 선택받는다).
 2. 해당 경로의 state.md를 탐색한다.
 3. state.md가 존재하고 `status: in_progress`이면:
-   - `pipeline: gx-tdd` 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개를 제안하지 않는다. "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. `/gx-dev --resume`으로 재개하세요." 안내 후 종료한다 (상태 덮어쓰기 방지).
+   - `pipeline: gx-tdd` 필드가 없거나 값이 다르면(gx-dev 등 다른 파이프라인 산출물) 재개를 제안하지 않는다. "진행 중 작업은 gx-tdd 파이프라인이 아닙니다. 제거된 비TDD 파이프라인은 자동 재개하지 않습니다. 기존 산출물을 보존하고 `/gx-work 기존 계획을 TDD 작업으로 전환해줘`로 범위와 미완료 항목을 확인하세요." 안내 후 종료한다 (상태 덮어쓰기 방지).
    - 사용자에게 AskUserQuestion으로 질문: "이전에 진행하던 작업이 있습니다."
      - "이어서 진행" → 재개
      - "새로 시작" → Step 1로 진행 (Step 7에서 덮어씀)
@@ -63,7 +63,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 ### 착수 기록 보정 (`--work` 세션 재개 시)
 
-재개("이어서 진행")로 진입했고 state.md에 `work-id`가 있으면, `.dev/plan.md`의 해당 행이 이미 `진행`이고 `작업 위치`가 채워져 있는지 확인한다. 아직 `대기`이거나 `작업 위치`가 `-`이면 **Step 5.5가 실행되지 못한 채 중단된 세션**이다 (stash pop 충돌 등으로 Step 5 종료 시점에 멈춘 경우). 지금 기입하고 `docs: [plan] {ID} 착수` 메시지로 커밋한 뒤 `git push -u origin {현재 브랜치}`로 push한다.
+재개("이어서 진행")로 진입했고 state.md에 `work-id`가 있으면, `.dev/plan.md`의 해당 행이 이미 `진행`이고 `작업 위치`가 채워져 있는지 확인한다. 아직 `대기`이거나 `작업 위치`가 `-`이면 **Step 5.5가 실행되지 못한 채 중단된 세션**이다 (stash pop 충돌 등으로 Step 5 종료 시점에 멈춘 경우). 지금 로컬 행을 기입한 뒤 [실행 종료점 계약](../references/execution-boundaries.md)을 적용한다. verify에서는 커밋·push하지 않는다. commit에서는 `docs: [plan] {ID} 착수`로 로컬 커밋만 하고, pr 또는 별도 명시적 원격 반영 요청에만 `git push -u origin {현재 브랜치}`를 수행한다.
 
 재개 경로는 Step 5를 다시 거치지 않으므로 여기서 보정하지 않으면 착수 기록이 영영 남지 않는다 — 브랜치는 있는데 계획에는 흔적이 없어, 다른 팀원이 같은 작업에 착수해도 감지되지 않는다. 이미 기입되어 있으면 아무것도 하지 않는다. `work-id`가 없거나 계획 파일이 없으면 건너뛴다. svn이면 커밋하지 않고 사용자에게 안내한다.
 

@@ -6,13 +6,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNTIME = ROOT / ".claude/skills/gx-dev/references/codex-runtime.md"
+RUNTIME = ROOT / ".claude/skills/gx-work/references/codex-runtime.md"
 SKILLS = (
     ROOT / ".claude/skills/gx-context/SKILL.md",
-    ROOT / ".claude/skills/gx-dev/SKILL.md",
     ROOT / ".claude/skills/gx-tdd/SKILL.md",
 )
-PHASES = tuple((ROOT / f".claude/skills/{skill}/phases").glob("*.md") for skill in ("gx-dev", "gx-tdd"))
+PHASES = tuple((ROOT / f".claude/skills/{skill}/phases").glob("*.md") for skill in ("gx-tdd",))
 PHASES = tuple(path for group in PHASES for path in group)
 INPUT_LABEL = re.compile(
     r"label:\s*[\"'](?:Other(?:로 입력)?|직접 입력|답변 입력|주제 입력)[\"']"
@@ -137,14 +136,11 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_context_correction_choice_waits_for_follow_up_answer(self):
         text = skill_text(SKILLS[0])
-        align = text.split("3. 모든 프레임이 해소되면", 1)[1].split("**모호함 판단 기준**", 1)[0]
-        self.assertIn('"수정 필요" 선택 시', align)
-        self.assertIn("후속 질문", align)
-        self.assertIn("async", align)
-        self.assertIn("자연어", align)
-        self.assertIn("원 질문 UI Other", align)
-        self.assertLess(align.index("답변을 기다린 뒤"), align.index("패턴을 파싱"))
-        self.assertNotIn("선택 후 UI Other에", align)
+        contract = (ROOT / ".claude/skills/gx-context/references/intake.md").read_text(encoding="utf-8")
+        self.assertIn("필요한 변경·제거·계획 승인은", text)
+        self.assertIn("질문은 독립적인 항목을 최대 3개씩 묶는다", contract)
+        self.assertIn("실제 응답을 기다린다", contract)
+        self.assertIn("다섯 사실 전체를 다시 보여주고 align 승인을 받지 않는다", contract)
 
     def test_real_choices_do_not_claim_same_question_other_input(self):
         for path in (*SKILLS, *PHASES):
@@ -155,8 +151,6 @@ class CodexQuestionContractTests(unittest.TestCase):
 
     def test_phase_correction_waits_before_applying_text(self):
         paths = (
-            "gx-dev/phase-requirements.md", "gx-dev/phase-design.md",
-            "gx-dev/phase-core.md", "gx-dev/phase-implement.md",
             "gx-tdd/phase-requirements.md", "gx-tdd/phase-design.md",
             "gx-tdd/phase-implement.md",
         )
@@ -169,10 +163,12 @@ class CodexQuestionContractTests(unittest.TestCase):
                 self.assertLess(text.index("실제 수정 답변을 기다린 뒤"), text.index("수정 내용을 반영"))
 
     def test_dynamic_resume_and_task_routes_keep_all_candidates(self):
-        setup = (ROOT / ".claude/skills/gx-dev/phases/phase-setup.md").read_text(encoding="utf-8")
-        self.assertIn("후보를 잃지 않도록", setup)
-        self.assertIn("2~3개", setup)
-        self.assertIn("다음 후보", setup)
+        setup = (ROOT / ".claude/skills/gx-tdd/phases/setup-resume.md").read_text(encoding="utf-8")
+        runtime = RUNTIME.read_text(encoding="utf-8")
+        self.assertIn("pending", setup)
+        self.assertIn("실제 응답을 기록·해제한 뒤 재개", setup)
+        self.assertIn("질문 1~3개", runtime)
+        self.assertIn("선택지 2~3개", runtime)
         implement = (ROOT / ".claude/skills/gx-tdd/phases/phase-implement.md").read_text(encoding="utf-8")
         for route in ("AC 묶어서 재분해", "작업 계획으로 분할", "무인 루프로 전환", "그대로 진행"):
             self.assertIn(route, implement)
@@ -183,7 +179,7 @@ class CodexQuestionContractTests(unittest.TestCase):
         row = next((line for line in text.splitlines() if line.startswith("| Q2 |")), None)
         self.assertIsNotNone(row)
         for phrase in (
-            "gx-context", "개방형", "gx-dev", "모드·프로파일",
+            "gx-context", "개방형", "gx-work", "종료점 선택",
             "stable snake_case id", "질문 3개 이하", "선택지 3개 이하",
             "명시적 Other option 0개", "UI Other", "같은 id", "decision capture",
             "미실행",

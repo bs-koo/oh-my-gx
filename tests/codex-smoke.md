@@ -16,7 +16,7 @@ Windows 예시: `codex.cmd plugin marketplace add bs-koo/oh-my-gx`, `codex.cmd p
 
 R2는 상세 tool trace가 없으면 `src 미열람`을 **미확인**으로 기록한다. prod 해시 불변만으로 읽기 격리를 입증하지 않는다. 모델/effort 티어도 하네스 이벤트가 제공한 값만 실측으로 적는다. 결과 보고서 파일을 쓰지 못하는 읽기 전용 역할은 자식 반환을 부모가 저장한다.
 
-Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 각각 실행한다. gx-context에는 문서 기반 개방형 답변이 필요한 입력을 주고 UI Other에 답한다. gx-dev에는 모드·프로파일 선택이 필요한 입력을 주고 실제 선택에 답한다. 두 경우 모두 표시된 질문·선택지와 답변 전후 도구 trace, 같은 질문 id로 남은 `codex_hook.py capture` 결정 기록을 보관한다. 질문이 Plan 모드에서만 제공되거나 자연어 질문으로 표시되면 사용한 모드·도구와 실제 답변을 따로 기록한다. 실제 세션을 실행하지 않은 경우 Q2는 `미실행`이다.
+Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 각각 실행한다. gx-context에는 문서 기반 개방형 답변이 필요한 차단 미정을 주고 UI Other에 답한다. gx-work에는 종료점이 충돌하는 입력을 주고 실제 선택에 답한다. 두 경우 모두 표시된 질문·선택지와 답변 전후 도구 trace, 같은 질문 id로 남은 `codex_hook.py capture` 결정 기록을 보관한다. 질문이 Plan 모드에서만 제공되거나 자연어 질문으로 표시되면 사용한 모드·도구와 실제 답변을 따로 기록한다. 실제 세션을 실행하지 않은 경우 Q2는 `미실행`이다.
 
 | ID | 입력·환경 | 필수 증거 | 상태 |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | R2 | red-writer에 실패 테스트 추가 요청 | 구현 src 미열람 trace; prod 해시 불변; 실제 RED 테스트 실패 | PARTIAL (src 미열람 미확인) |
 | R3 | 작은 한국어 문단을 humanizer strict로 처리 | fidelity/naturalness 서로 다른 child id; `04_fidelity.json`의 `audit_verdict`, `05_naturalness.json`의 `verdict` | 역할 분리 확인 / strict 재작성 필요 |
 | Q1 | 기본 모드에서 선택 질문 | 실제 답변 전 의존 작업 없음; 질문 id/선택지/실제 답변의 결정 기록 보존 | 수정 후 PASS |
-| Q2 | gx-context 문서 기반 개방형 질문과 gx-dev 모드·프로파일 질문 | 각 질문의 stable snake_case id; 질문 3개 이하; 질문별 선택지 3개 이하; 명시적 Other option 0개; UI Other 자유 입력과 선택 답변의 decision capture가 같은 id로 기록됨 | 미실행 (1.33.0 후보에서도 UI Other·capture 본시험 미완료) |
+| Q2 | gx-context의 개방형·차단 미정 질문과 gx-work의 종료점 선택 | 각 질문의 stable snake_case id; 질문 3개 이하; 질문별 선택지 3개 이하; 명시적 Other option 0개; UI Other 자유 입력과 선택 답변의 decision capture가 같은 id로 기록됨 | 미실행 (1.33.0 후보에서도 UI Other·capture 본시험 미완료) |
 
 ## Codex 질문·모델 계약 후속 검증 (2026-10-13)
 
@@ -34,7 +34,7 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 |---|---|---|---|
 | Q3 | Default의 async 질문 등록 후 사용자 미응답 | 질문 본문·선택지가 대화에 보임; pending phase 유지; ack 결정 기록 0; 독립 작업 후 턴 종료; 실제 답변 token/id 기록·해제와 원래 phase 재개 | 미실행 |
 | Q4 | 필수 설계 승인 + 질문 도구가 optional/Plan 전용 | 금지된 도구 호출 없음; 자연어 승인 질문과 pending 등록; 실제 승인까지 의존 작업·다음 phase 없음 | 미실행 |
-| M1 | gx-dev standard/eco 전체 역할 | architect 유지; coder/design-critic high→mid; 실제 spawn model/effort 및 fallback 기록 | 미실행 |
+| M1 | gx-work 인계와 gx-tdd standard/eco 역할 | architect 유지; design-critic/test-architect/reviewer high→mid; 실제 spawn model/effort 및 fallback 기록 | 미실행 |
 | M2 | gx-tdd standard/eco, 기본·isolated·태스크 리뷰·fix 4~5 | 기본 구현 부모 유지; isolated mid; task reviewer mid; eco fix4~5 fresh high; 고정 agent_type 대신 role message+fork none | 미실행 |
 | M3 | Astra 부재, mid 후보 부재, effort 미지원 | 허용 모델·effort만 대체; 사유·tier collapse 경고 표시; 지원 불가 exit2 후 디스패치 없음 | 미실행 |
 
@@ -71,12 +71,16 @@ Claude companion을 설치하지 않은 임시 소비 프로젝트에서 `--advi
 
 ## 시각화
 
-`gx-visualize`(1.34.0에서 추가된 18번째 스킬)와 gx-dev·gx-tdd phase-complete의 구조 시각화 제안 게이트(Step 5.5)의 실제 Codex 세션 검증이다. 로컬 단위 테스트나 mock 결과를 PASS 근거로 대체하지 않는다. V1~V3은 기능 표면, V4~V5는 Codex에서만 드러나는 위험이다. 인증된 실제 소비 프로젝트 세션을 실행하지 않은 항목은 `미실행`으로 남긴다.
+`gx-visualize`(1.34.0에서 추가된 18번째 스킬)와 gx-work·gx-tdd phase-complete의 구조 시각화 제안 게이트(Step 5.5)의 실제 Codex 세션 검증이다. 로컬 단위 테스트나 mock 결과를 PASS 근거로 대체하지 않는다. V1~V3은 기능 표면, V4~V5는 Codex에서만 드러나는 위험이다. 인증된 실제 소비 프로젝트 세션을 실행하지 않은 항목은 `미실행`으로 남긴다.
 
 | ID | 입력·환경 | 필수 증거 | 상태 |
 |---|---|---|---|
 | V1 | Codex `/skills`에서 gx-visualize 발견 후, 임의 Git 프로젝트에서 `gx-visualize service` 실행 | `python scripts/build_map.py`가 실행되어 `.dev/architecture/아키텍처-맵.html`·`domains/{domain}.html`·`ir/{domain}.ir.json`이 생성됨(매 실행 전체 재스캔, 커밋하지 않음); 도메인마다 개별 판정(일부 Archify·일부 Mermaid 공존이 정상) | 미실행 |
 | V2 | Archify가 설치되지 않았거나 자동 설치가 실패하는 격리 환경에서 `gx-visualize --backend auto` 실행 | 실패한 Archify 시도가 receipt의 attempts에 기록됨; Mermaid → 정적 HTML로 폴백해 표가 생성됨; report에 그림(다이어그램) 부재가 명시됨 | 미실행 |
 | V3 | Archify·Mermaid·static 백엔드가 모두 실패하는 환경에서 실행 | `html_path: null`; `visualization_status: failed`; 재실행 명령 반환; 이전 stale HTML이 남지 않음 | 미실행 |
-| V4 | gx-dev 또는 gx-tdd phase-complete 대화형 세션이 Step 5.5(구조 시각화 제안)에 도달 | `AskUserQuestion` 자리에 실제 제공되는 질문 도구로 대응했는지, 실제 사용자 응답을 기다렸는지 기록; 동기 질문 도구가 현재 모드에 없을 때의 처리 방식(자연어 질문 등)을 기록; 선택지가 "아키텍처 맵 갱신/아니요" 두 개이고, git이면 `--changed-since ${BASE_BRANCH}`가 전달됨 | 미실행 |
+| V4 | gx-tdd phase-complete 대화형 세션이 Step 5.5(구조 시각화 제안)에 도달 | `AskUserQuestion` 자리에 실제 제공되는 질문 도구로 대응했는지, 실제 사용자 응답을 기다렸는지 기록; 동기 질문 도구가 현재 모드에 없을 때의 처리 방식(자연어 질문 등)을 기록; 선택지가 "아키텍처 맵 갱신/아니요" 두 개이고, git이면 `--changed-since ${BASE_BRANCH}`가 전달됨 | 미실행 |
 | V5 | Archify 자동 설치의 `npx` 실행이 Codex 승인·샌드박스로 차단되는 환경에서 `--backend auto` 실행 | 차단이 예외가 아니라 폴백으로 처리됨; 설치 시도 기록이 receipt에 남음; 이어서 Mermaid → static 폴백까지 진행됨 | 미실행 |
+
+## 2.0.0 후보 검증 (2026-11-04)
+
+소스의 18개 스킬과 skills-only export의 경로·역할·질문·종료점은 오프라인 계약 검사로 확인했다. 실제 설치된 2.0.0 소비 세션의 자동 발견·모델/effort 배정·UI Other 답변·hook 신뢰는 **미실행**이다. 앞선 버전의 PASS를 이 버전의 실제 실행 증거로 승계하지 않는다. `/gx-work`의 이해·계획·재개와 하위 프로젝트의 command/cwd 보존, plan.md의 ready/blocked 판정, 동일 실행 검증 재사용을 실제 소비 프로젝트에서 확인해야 한다. 로컬 확인 범위와 개별 실패 후 재검사는 `.dev/codex-gx-work-unified/reports/verification.md`를 따른다.

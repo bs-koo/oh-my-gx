@@ -3,7 +3,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 PHASES = [
-    REPO / ".claude" / "skills" / "gx-dev" / "phases" / "phase-complete.md",
     REPO / ".claude" / "skills" / "gx-tdd" / "phases" / "phase-complete.md",
 ]
 
@@ -30,13 +29,11 @@ class CompletionGateTests(unittest.TestCase):
             self.assertIn("svn이면", text, path.name)
             self.assertIn("변경 표시 없이", text, path.name)
 
-    def test_both_pipelines_keep_the_same_gate_text(self):
-        # 의도적 중복(maintenance-notes)이 어긋나지 않게 두 절을 통째로 비교한다.
-        sections = []
-        for path in PHASES:
-            text = self._text(path)
-            sections.append(text[text.index("## Step 5.5") : text.index("## Step 6")])
-        self.assertEqual(sections[0], sections[1])
+    def test_work_entry_delegates_completion_to_the_single_tdd_pipeline(self):
+        entry = self._text(REPO / ".claude/skills/gx-work/SKILL.md")
+        self.assertIn('Skill("oh-my-gx:gx-tdd"', entry)
+        self.assertNotIn("## Step 5.5", entry)
+        self.assertFalse((REPO / ".claude/skills/gx-dev").exists())
 
     def test_headless_sessions_skip_without_asking(self):
         for path in PHASES:

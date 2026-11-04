@@ -4,7 +4,7 @@ SKILL.md가 실행 진입 시 이 파일을 가리킨다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../../gx-dev/references/codex-runtime.md")`를 실행한다. 상대경로는 이 파일의 위치 기준이다.
+Codex에서는 먼저 `Read("../../gx-work/references/codex-runtime.md")`를 실행한다. 상대경로는 이 파일의 위치 기준이다.
 역할 index의 실제 경로는 **읽은 runtime.md 파일과 같은 디렉토리**의 `codex-roles/index.json`이다. red-writer·security-auditor 등 역할 파일은 그 index의 `file`을 같은 `codex-roles/`에 붙여 읽는다. 소비 프로젝트 `.claude/codex-roles/`를 찾지 않는다.
 
 | 이 문서의 표기 | Codex 대응 |

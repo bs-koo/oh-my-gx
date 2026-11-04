@@ -57,7 +57,7 @@ make_sandbox() {
     && git config user.email t@t.local && git config user.name t \
     && echo base > base.txt && git add base.txt && git commit -q -m "chore: base" \
     && mkdir -p .dev/feat-t \
-    && printf 'pipeline: gx-ralph\nstatus: in_progress\nverify-status: pending\nbranch: feat/t\nmax-iterations: 10\nlast-known-head: none\n' > .dev/feat-t/state.md \
+    && printf 'pipeline: gx-ralph\nstatus: in_progress\norigin: gx-tdd\nverify-status: pending\nbranch: feat/t\nmax-iterations: 10\nlast-known-head: none\n' > .dev/feat-t/state.md \
     && printf '{"version":1,"branch":"feat/t","created":"t","updated":"t","acs":[{"id":"AC-1","title":"t","passes":false,"attempts":0,"last_error":""}]}\n' > .dev/feat-t/ac-status.json \
     && printf '# gx-ralph progress\n' > .dev/feat-t/progress.txt )
   make_mock "$sandbox"
@@ -140,9 +140,8 @@ ARCHIVED=$(ls -d "$SB"/.dev/feat-t/logs-* 2>/dev/null | wc -l | tr -d ' ')
 assert "아카이브 디렉토리 1개" 1 "$ARCHIVED"
 rm -rf "$SB"
 
-echo "[T9] COMPLETE 복귀 안내 origin 분기 (gx-tdd → /gx-tdd --phase review)"
+echo "[T9] COMPLETE 복귀 안내는 항상 /gx-tdd --phase review"
 SB=$(make_sandbox)
-printf 'origin: gx-tdd\n' >> "$SB/.dev/feat-t/state.md"
 printf '%s\n' COMPLETE > "$SB/scenario.txt"
 OUT=$( cd "$SB" \
   && GX_RALPH_CLAUDE_CMD="bash $SB/mock-claude.sh" \
@@ -223,6 +222,22 @@ rm -rf "$SB"
 SB=$(make_sandbox)
 assert "중복 계약 exit=3" 3 "$(run_runner "$SB" "DUPLICATE")"
 rm -rf "$SB"
+
+echo "[T16] legacy/누락/unknown origin은 실행·원장/로그 변경 전에 차단"
+for ORIGIN in gx-dev missing unknown; do
+  SB=$(make_sandbox)
+  sed '/^origin:/d' "$SB/.dev/feat-t/state.md" > "$SB/.dev/feat-t/state.tmp"
+  mv "$SB/.dev/feat-t/state.tmp" "$SB/.dev/feat-t/state.md"
+  [ "$ORIGIN" = missing ] || printf 'origin: %s\n' "$ORIGIN" >> "$SB/.dev/feat-t/state.md"
+  printf 'preserve\n' > "$SB/.dev/feat-t/iter-1.log"
+  BEFORE=$(cksum "$SB/.dev/feat-t/state.md" "$SB/.dev/feat-t/ac-status.json" "$SB/.dev/feat-t/iter-1.log")
+  assert "$ORIGIN exit=6" 6 "$(run_runner "$SB" COMPLETE)"
+  AFTER=$(cksum "$SB/.dev/feat-t/state.md" "$SB/.dev/feat-t/ac-status.json" "$SB/.dev/feat-t/iter-1.log")
+  assert "$ORIGIN 기존 파일 보존" "$BEFORE" "$AFTER"
+  assert "$ORIGIN 세션 미실행" 0 "$(test -f "$SB/mock-args.txt" && echo 1 || echo 0)"
+  assert "$ORIGIN lock 미생성" 0 "$(test -e "$SB/.dev/feat-t/ralph.lock" && echo 1 || echo 0)"
+  rm -rf "$SB"
+done
 
 echo
 echo "결과: $PASS pass, $FAIL fail"

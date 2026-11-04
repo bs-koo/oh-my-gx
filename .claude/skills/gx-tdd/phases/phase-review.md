@@ -1,6 +1,6 @@
 # phase-review: 통합 리뷰 (reviewer 1석 — spec verdict 선행) + Security 병렬
 
-Codex에서는 이 phase 파일 기준 `../../gx-dev/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/reviewer.md`·`agents/implementer.md` 등 저장소 기준 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 역할 본문·도구 제약을 사용한다. reviewer의 Part 1 spec verdict 선행 및 Part 2 quality verdict와 YAML 반환 계약은 그대로 유지한다.
+Codex에서는 이 phase 파일 기준 `../../gx-work/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/reviewer.md`·`agents/implementer.md` 등 저장소 기준 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 역할 본문·도구 제약을 사용한다. reviewer의 Part 1 spec verdict 선행 및 Part 2 quality verdict와 YAML 반환 계약은 그대로 유지한다.
 
 ## Iron Law
 
@@ -23,28 +23,30 @@ security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
 ## Step 0: Mechanical Gate (build + test)
 
-리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. 실패하는 코드를 리뷰하는 것은 토큰 낭비이다. 이 Gate는 **이번 파이프라인이 만든 테스트와 빌드의 GREEN**을 보장한다 — 태스크마다 그 태스크 테스트만 돌렸으므로 여기서 태스크 간 회귀를 한 번에 확인한다. **기존 스위트 전체 회귀는 phase-complete의 verify 게이트가 1회 맡는다** (이 Gate는 Step 0-2의 전체 폴백 경우가 아니면 전체 스위트를 돌리지 않는다).
+리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. [테스트 실행 계약](../references/test-execution.md)을 읽어 변경·영향 테스트와 빌드를 계획한다. 모든 태스크의 필수 테스트와 명시적 소유 관계를 포함해 태스크 간 회귀를 확인한다. review→verify→commit은 같은 실행의 정확한 증거를 공유한다. 전체 스위트는 미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청 때만 폴백한다. 완료 phase라는 이유로 전체를 반복하지 않는다.
 
 프로젝트 타입은 config.json의 `projectTypes`를, 타임아웃은 `timeouts`를 참조한다.
+
+Git은 공유 helper 계획·정확한 증거 재사용을 사용한다. SVN은 test-execution.md의 전체 test+buildOnly 직접 실행 폴백을 사용하며 Git 지문이나 proof를 요구하지 않는다.
 
 ### Step 0-1: Build
 
 **빌드 명령 결정**:
 
-1. `${PROJECT_ROOT}/CLAUDE.md`를 Read하여 빌드/컴파일 명령을 탐색한다. `build`, `compile`, `빌드` 키워드가 포함된 명령을 찾는다. CLAUDE.md가 없으면 다음 단계로.
-2. CLAUDE.md에 빌드 명령이 없으면 → config `projectTypes`의 `build` 필드를 사용한다. **SSOT는 config다** — 아래는 기본 템플릿 기준 예시(파생 사본):
+1. config `projectTypes`의 `buildOnly`를 사용한다. `${PROJECT_ROOT}/CLAUDE.md`의 추가 필수 빌드 규약도 대조한다.
+2. `buildOnly`가 없으면 **SSOT는 config다** — helper가 아래 기본 Gradle 명령만 제한적으로 변환한다. 다른 custom `build`는 테스트 제외가 확인된 `buildOnly` 설정 없이는 차단한다:
    | 프로젝트 타입 | 빌드 명령 (예시) |
    |---------------|---------------|
    | java-spring (gradle) | `./gradlew build -x test testClasses` (`build` 필드의 테스트 실행 제외 변형) |
-   | node | `bun run build` 또는 `npm run build` (package.json의 scripts.build가 있을 때만. `which bun` → bun, 없으면 npm) |
+   | node | 명시한 `buildOnly` 명령 (예: `npm run build`) |
 
    `build` 필드가 없거나 빈 값인 타입(인터프리터 언어 등)은 빌드 검증을 건너뛰고, 건너뛰었음을 보고에 명시한다.
 3. 프로젝트 타입으로도 결정 불가 → AskUserQuestion: "빌드 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기.
 
-**테스트 제외**: 이 Gate의 빌드는 테스트를 돌리지 않는다. 1·2에서 정한 명령이 테스트를 포함하면(gradle `build`·`clean build` 등) 테스트 제외 변형으로 바꿔 실행하고 `clean`은 붙이지 않는다 — gradle은 `-x test testClasses`(테스트 실행만 빼고 테스트 소스 컴파일은 유지해, 테스트 파일 컴파일 에러를 아래 3의 red-writer 경로로 이 단계에서 잡는다). 테스트 실행은 Step 0-2가 맡는다.
+**테스트 제외**: 이 Gate의 빌드는 테스트를 돌리지 않는다. test-execution.md의 정확한 기본 Gradle 변환만 허용하며 `clean`을 붙이지 않는다. custom/integration 테스트 task도 제외되는지 `buildOnly`의 계약을 확인한다. 테스트 실행은 Step 0-2가 맡는다. 동일 runId·지문·config·command·scope의 빌드 증거가 있으면 재사용한다.
 
 **실행 흐름**:
-1. 감지된 빌드 명령을 `PROJECT_ROOT`에서 실행한다.
+1. 빌드 entry의 `cwd`에서 계획된 명령을 직접 실행한다. 성공/실패를 helper `record`에 전달하고 기존 proof를 갱신한다.
 2. **성공** → Step 0-2로 진행.
 3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:implementer")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 IMPLEMENT 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated)·`green-coder`(파이프라인 미호출) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 implementer가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). implementer 수정 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 재호출한다 (state.md의 `test-file-hash` 대조). 이 수리는 fix loop 라운드에 계상하지 않는다.
 
@@ -58,13 +60,13 @@ security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 **Step 0 테스트 집합** (이 Gate의 첫 실행·재시도와 Step 4.4의 4b·4c 재확인이 모두 이 정의를 쓴다):
 
 1. **무결성 선확인**: state.md `steps.implement`의 모든 태스크 `test-file-hash`를 현재 파일의 해시(`git hash-object`)와 대조한다. 불일치나 파일 부재가 있으면 테스트를 실행하지 않고 해당 파일 목록을 보여 AskUserQuestion으로 묻는다 — "RED 산출물로 원복"(phase-implement verify_implement 3의 무단 수정 처리) / "사용자 변경으로 인정"(현재 해시를 `test-file-hash`에 다시 기록하고 execution-log에 남긴 뒤 진행). 수동 수정 뒤 phase-review를 다시 부른 경로에서는 불일치가 사용자의 정당한 수정일 수 있어 묻지 않고 원복하지 않는다. red-writer 재호출로 생긴 변경은 verify_red가 해시를 다시 기록하므로 이 대조에 걸리지 않는다.
-2. **누적 focused**: 모든 태스크의 `test-file`(경로 하나 또는 경로 목록)을 모아 중복을 제거하고 파일마다 타입을 정한다 — 파일 경로가 어떤 타입의 `detect` 파일이 있는 디렉토리 아래에 있으면 그 타입이고, 감지된 타입이 하나면 그 타입이다. 타입별로 config `focusedTest` 템플릿에 대입한다 (조립 규칙은 phase-implement "focused 테스트 명령 조립"). **이번 파이프라인 테스트 파일이 없는 타입은 빌드만** 하고 테스트는 돌리지 않는다 — execution-log에 남기며, 그 타입의 기존 스위트 회귀는 verify가 맡는다.
-3. **전체 폴백**: 모든 태스크를 **통틀어 `test-file` 기록이 0건**이면(`--phase review` 단독·gx-ralph 루프 이후 리뷰·구 세션) 감지된 모든 타입이 config `test` 명령(전체)을 실행한다. 그 밖에 `test-file` 값을 경로로 해석할 수 없거나 타입을 정할 수 없는 파일이 있음 / 해당 타입에 `focusedTest` 없음 / focused 명령이 명령 자체 오류로 끝남(phase-implement 명령 오류 가드와 같은 판정)이면 그 타입만 전체를 실행한다. 폴백 사유는 execution-log에 남긴다.
+2. **누적 focused**: 모든 태스크의 `test-file`(경로 하나 또는 경로 목록)을 중복 제거해 helper `--tests-file`로 전달한다. 승인 plan의 소유 source/test 관계만 `--ownership-file`로 전달한다. helper가 changed/affected/필수 테스트의 합집합을 프로젝트별로 계획한다. `test-file`만으로 모든 source가 커버된다고 간주하지 않는다. 테스트가 없는 타입도 누락하지 않고 실행/재사용/제외 사유를 기록한다.
+3. **전체 폴백**: 미매핑 변경, 공유/설정/의존성 변경, 삭제·미확정 매핑, `focusedTest` 없음과 related runner 미지원, 사용자 전체 회귀 요청은 test-execution.md의 규칙으로 전체를 계획한다. `test-file` 기록이 0건이어도 지원되는 related runner와 실제 변경 근거가 있으면 관련 테스트를 선택한다. 명령 자체 오류면 전체 명령으로 계획을 다시 만들되 실제 assertion 실패는 폴백으로 숨기지 않는다. 폴백 사유는 execution-log에 남긴다.
 
 타입에 `test` 필드도 없으면 → AskUserQuestion: "테스트 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기. **조용히 건너뛰지 않는다** — 건너뛰기 선택 시 위험 수용으로 간주하고 trust-ledger에 "테스트 미검증 리뷰" 항목을 기록한다.
 
 **실행 흐름**:
-1. Step 0 테스트 집합을 `PROJECT_ROOT`에서 실행한다.
+1. Step 0 테스트 집합의 entry별 `reuse`를 확인한다. 정확한 같은 실행 증거가 없으면 entry의 `cwd`에서 직접 실행하고 결과를 `record`한다. 테스트 0건/미확정/실패는 기존 성공 증거도 무효화한다.
 2. **성공** → Step 1로 진행.
 3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `implementer`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `implementer`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지. implementer 수정 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재호출 — 프로덕션 코드로만 해결).
 
@@ -75,7 +77,7 @@ security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
 ### Gate 통과 기준
 
-**복수 타입이 감지되면 전부 실행한다** — `detect` 매칭이 2개 이상이면 각 타입의 build와 Step 0 테스트 집합을 모두 돌리고 하나라도 실패하면 차단한다 (gx-verify Step 1과 동일 규약). 한쪽만 실행하면 나머지 레이어가 리뷰 대상 코드인데도 기계 검증 없이 통과한다.
+**복수 타입이 감지되면 전부 계획한다** — 같은 타입의 여러 프로젝트도 포함한다. 각 프로젝트 build와 Step 0 테스트 집합의 실행/정확한 증거 재사용/정책상 제외 사유를 확인하고 하나라도 실패하면 차단한다 (gx-verify Step 1과 동일 규약). 한쪽만 선택해 누락하지 않는다.
 
 build, test 모두 통과해야 Step 1로 진행한다. 단일 Gate에서 오케스트레이터가 직접 판단한다 (에이전트 호출 불필요). 경고는 이 Gate에서 차단하지 않는다 — 경고 baseline은 phase-implement Step 0.5(기준선 게이트)가 기록하고, 차단은 verify 게이트(`oh-my-gx:gx-verify`)가 수행한다.
 
@@ -227,6 +229,8 @@ reviewer가 `[검증 필요]`를 남기면 오케스트레이터가 해당 focus
 
 ### SPEC FAIL 처리
 
+`ac_unverified > 0`·`unverified_ids` 또는 ❓ 확인 불가가 있으면 [리뷰 근거 보강](../references/review-evidence.md)을 먼저 적용한다. 변경되지 않은 파일·다른 태스크의 근거 부족을 구현 결함으로 단정해 RED/재구현을 시작하지 않는다. 미해결 확인 불가가 있으면 완료를 보류하고, 보강 후 확정된 결함에만 아래 SPEC FAIL 경로를 적용한다.
+
 분기 선택 전에 Step 4.1(Trust Ledger 저장)을 먼저 수행한다 — 재구현·수동 수정으로 이 라운드가 끝나도 Part 2 quality findings와 병렬 실행된 security 결과가 원장에 남아야 한다.
 
 - **SPEC PASS** (모두 ✅) → Step 4.1 이후 절차 계속
@@ -306,7 +310,7 @@ if refactor_only:
     Ruling(기본값: 수행) → decisions.md에 `Ruling: review 동작 불변 정리 {N}건` 블록 append (phase-implement "판정 기록 (Rulings)" 규약. 항목 목록은 사용자에게 통지만 한다 — 질문이 아니다)
     기본 경로: 오케스트레이터가 직접 정리한다 — phase-implement Step 2-I "세션 IMPLEMENT 절차"의 절대 규칙과 수행 불가능한 정리 목록을 그대로 지키고, 입력은 refactor_only 항목들의 {파일:라인 + 권고}("정리 대상")이며, 정리 한 단위마다 대상 파일 관련 테스트로 조립한 focused 검증을 실행한다. 결과를 `${DEV_DIR}/reports/review-cleanup.md`에 append한다 (리뷰 반복 시 누적).
                state.md flags에 `--isolated`가 있으면 Task(subagent_type="oh-my-gx:implementer") 정리 모드 — 입력 = refactor_only 항목들의 {파일:라인 + 권고}("정리 대상") + 대상 파일 관련 테스트로 조립한 focused 검증 명령 + report 경로 `${DEV_DIR}/reports/review-cleanup.md`. GREEN 유지·동작 변경 금지 계약은 agents/implementer.md의 REFACTOR 규칙을 따르며, GREEN 기준선은 Step 0에서 통과한 Step 0 테스트 집합이다
-               → 어느 경로든 정리 후 오케스트레이터가 Step 0 테스트 집합 ∪ 정리 대상 파일 관련 테스트(중복 제거)를 1회 직접 실행해 GREEN 재확인 (전체 회귀는 phase-complete verify)
+               → 어느 경로든 정리 후 오케스트레이터가 Step 0 테스트 집합 ∪ 정리 대상 파일 관련 테스트(중복 제거)를 1회 직접 실행해 GREEN 재확인 (동일 증거는 완료 verify가 재사용)
     did_fix = true
 
 # 4c: 반복 판단
@@ -348,7 +352,7 @@ steps:
 execution-log:
   - phase: review
     step: mechanical-gate
-    result: "build ✓, test ✓ (Step 0 테스트 집합 — 전체 회귀는 verify)"
+    result: "build ✓, test ✓ (Step 0 테스트 집합 — 변경·영향 계획과 증거는 verify가 공유)"
   - phase: review
     agent: reviewer
     result: "SPEC PASS ([Must] 5/5) · Quality: Critical 0, Important 2, Minor 5"
@@ -380,6 +384,6 @@ execution-log:
 - ❌ 동작 결함을 실패 테스트 없이 implementer(또는 green-coder)로 바로 수정 — RED 선행 필수 (Iron Law 1 위반)
 - ❌ "Critical이지만 이번엔 그냥 진행" — 사용자 명시 승인 없이 우회 금지
 
-**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 정리 모드(기본은 세션 직접, `--isolated`면 implementer)로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 Step 0 테스트 집합으로 GREEN을 반드시 재확인한다 (전체 회귀는 phase-complete verify).
+**허용 (오해 주의)**: 동작 불변 품질 결함(DRY/네이밍/매직넘버/추상화 정리)은 정리 모드(기본은 세션 직접, `--isolated`면 implementer)로 기존 테스트 GREEN을 유지하며 정리한다. 이는 RGR의 REFACTOR 단계와 동일하므로 Iron Law 1 위반이 아니다 (동작이 바뀌지 않아 새 RED가 불필요). 단, 정리 후 Step 0 테스트 집합으로 GREEN을 반드시 재확인한다 (동일 증거는 완료 verify가 재사용).
 
 위반 감지 시 즉시 중단하고 reviewer부터 재시작한다.

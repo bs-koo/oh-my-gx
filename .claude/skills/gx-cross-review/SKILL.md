@@ -1,6 +1,6 @@
 ---
 name: gx-cross-review
-description: dev 산출물(PRD/설계서/Trust Ledger)을 컨텍스트로 주입한 교차 검증 리뷰를 수행한다. "교차 리뷰", "교차 검증", "cross review", "크로스 리뷰" 시 사용. /gx-dev 또는 /gx-tdd 완료 후 단발 호출 전용.
+description: dev 산출물(PRD/설계서/Trust Ledger)을 컨텍스트로 주입한 교차 검증 리뷰를 수행한다. "교차 리뷰", "교차 검증", "cross review", "크로스 리뷰" 시 사용. /gx-work 또는 /gx-tdd 완료 후 단발 호출 전용.
 argument-hint: ""
 allowed-tools:
   # VCS
@@ -33,19 +33,28 @@ allowed-tools:
 
 # gx-cross-review
 
-`/gx-dev` 파이프라인이 만들어낸 dev 산출물(PRD, 설계서, Trust Ledger, 자기점검, 코드 맵)을 컨텍스트로 주입한 교차 검증 리뷰를 수행한다. 일반 `/codex:review`와 달리 **"코드 품질"이 아닌 "산출물 약속 대비 충실도"**를 검증한다.
+`/gx-work` 파이프라인이 만들어낸 dev 산출물(PRD, 설계서, Trust Ledger, 자기점검, 코드 맵)을 컨텍스트로 주입한 교차 검증 리뷰를 수행한다. 일반 `/codex:review`와 달리 **"코드 품질"이 아닌 "산출물 약속 대비 충실도"**를 검증한다.
 
 항상 한국어로 응답한다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
 - `Task(subagent_type="oh-my-gx:{name}")` → 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다.
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
+
+## 자동 수정 금지 원칙
+
+1. advisor 응답에 Critical 항목이 있어도 즉시 coder를 호출하지 않는다.
+2. 모든 수정은 Step 5의 AskUserQuestion을 거쳐 사용자가 명시적으로 승인한 항목만 수행.
+3. coder는 "수정" 모드로만 호출하고, 신규 기능 추가나 리팩토링은 위임 범위 밖.
+4. 승인된 범위만 수정하고 리뷰 결과를 자동으로 구현 작업으로 전환하지 않는다.
+
+---
 
 ## 정체성
 
@@ -79,8 +88,8 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ## 사용 시점
 
-- **권장**: `/gx-dev` 완료 후 단발 호출. PR 생성 직전 추가 검증으로 사용.
-- **비권장**: `/gx-dev` 파이프라인 도중 호출. 자기점검·phase-review와 중복된다.
+- **권장**: `/gx-work` 완료 후 단발 호출. PR 생성 직전 추가 검증으로 사용.
+- **비권장**: `/gx-work` 파이프라인 도중 호출. 자기점검·phase-review와 중복된다.
 
 ## 공유 변수
 
@@ -139,7 +148,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 `--base`가 지정되지 않았으면 다음 우선순위로 결정한다:
 
-1. **state.md 우선**: `${DEV_DIR}/state.md`가 존재하면 Read하여 `base:` 필드를 추출하여 `${BASE_BRANCH}`로 사용한다. `/gx-dev`가 phase-setup에서 결정한 값과 동일하게 정렬된다 (재질문 없음).
+1. **state.md 우선**: `${DEV_DIR}/state.md`가 존재하면 Read하여 `base:` 필드를 추출하여 `${BASE_BRANCH}`로 사용한다. `/gx-work`가 phase-setup에서 결정한 값과 동일하게 정렬된다 (재질문 없음).
 2. **자동 감지** (state.md 없거나 base 필드 없을 때, gx-dev "베이스 브랜치 감지" 규칙과 동일):
    - `git branch --list main master develop`로 존재하는 브랜치 확인.
    - 2개 이상이면 AskUserQuestion으로 선택:
@@ -227,35 +236,11 @@ AskUserQuestion(
 
 선택 결과를 `${ADVISOR}`에 저장한다.
 
-### 1-1. codex 환경 사전 점검 (codex 선택 시)
+### 1-1. advisor 환경 사전 점검
 
-다음 순서로 검증한다:
+ADVISOR가 codex인 경우만 `Read("references/codex-preflight.md")`로 CLI·helper·인증·실행 제약을 확인한다. 자동 설치·인증·권한 우회·advisor 자동 전환은 하지 않는다. native/claude는 codex 점검을 건너뛴다.
 
-1. **CLI 존재 확인**:
-   ```bash
-   which codex
-   ```
-   실패 시 안내 후 종료:
-   ```
-   codex CLI가 설치되어 있지 않습니다.
-
-   설치:
-     npm install -g @openai/codex
-
-   인증:
-     codex login
-     또는 /codex:setup
-
-   설치/인증 완료 후 /gx-cross-review를 다시 호출해주세요.
-   ```
-   자동 설치/인증은 수행하지 않는다 — 사용자 환경 침해 방지.
-
-2. **GX 네이티브 helper 확인**: 이 SKILL.md가 설치된 GX 루트의 절대경로를 `${GX_PLUGIN_ROOT}`로 확정하고 `scripts/codex-run.py` 존재를 확인한다. 없으면 "GX 배포가 불완전합니다: {경로}"를 보고하고 중단한다. 소비 프로젝트나 Claude plugin cache에서 companion을 찾지 않는다.
-3. **인증 상태**: helper 실행 시 Codex CLI가 검사한다. 설치/인증 문제가 나오면 오류를 보고하고 종료한다. 자동 설치/인증은 하지 않는다.
-
-Codex CLI가 설치·인증되어 있어도 **부모 Codex의 workspace-write 세션 안에서 다시 Codex CLI를 실행하면** `CODEX_HOME` 임시 파일이나 앱 서버 초기화에 필요한 쓰기/네트워크가 차단될 수 있다. 이 경우 오류를 그대로 보고하고, 현재 하네스의 역할 리뷰를 원하면 `--advisor native`로 별도 실행한다. 대화형 호스트에서는 필요한 CLI 권한을 기존 승인 절차로 처리한다. 인증 파일 복사, 권한 변경, 자동 우회 재시도는 하지 않는다. 헤드리스 부모가 승인할 수 없는 작업은 성공으로 취급하지 않는다.
-
-`--advisor native`는 현재 하네스의 역할 에이전트 리뷰다. `--advisor claude`는 Claude Code 호스트에서만 기존 역할 리뷰를 수행한다. **Codex 호스트에서 claude를 선택하면 Claude 실행 경로 미지원으로 종료하고 native 또는 codex를 명시적으로 선택하도록 안내한다.** 이름만 자동으로 바꾸지 않는다. 둘 다 codex 환경 사전 점검은 건너뛴다.
+**Codex 호스트에서 claude를 선택하면 Claude 실행 경로 미지원으로 종료하고 native 또는 codex를 명시적으로 선택하도록 안내한다.** 이름만 자동으로 바꾸지 않는다.
 
 ---
 
@@ -301,7 +286,7 @@ git ls-files --others --exclude-standard -z | while IFS= read -r -d '' f; do
   git diff --no-index --binary /dev/null "$f" 2>/dev/null
 done >> "${DIFF_FILE}"
 ```
-> `git diff <merge-base-commit>`는 working tree와 merge-base의 차이를 한 번에 보여주므로 staged + unstaged + 커밋된 변경은 모두 포함되지만, **`git add` 전 untracked 파일은 누락**된다. `/gx-dev` 직후 `git add` 전에 cross-review를 호출하는 흐름을 지원하기 위해 `git ls-files --others --exclude-standard`로 untracked 목록을 별도 수집하여 `git diff --no-index`로 신규 파일 diff를 합산한다.
+> `git diff <merge-base-commit>`는 working tree와 merge-base의 차이를 한 번에 보여주므로 staged + unstaged + 커밋된 변경은 모두 포함되지만, **`git add` 전 untracked 파일은 누락**된다. `/gx-work` 직후 `git add` 전에 cross-review를 호출하는 흐름을 지원하기 위해 `git ls-files --others --exclude-standard`로 untracked 목록을 별도 수집하여 `git diff --no-index`로 신규 파일 diff를 합산한다.
 
 `wc -l < "${DIFF_FILE}"`로 줄 수 확인. **500줄 이상**이거나 `${SCOPE}` == `stat`인 경우:
 ```bash
@@ -321,437 +306,29 @@ codex는 prompt 파일에 저장한 후 인자로 전달, claude는 Task prompt�
 
 ### 3-A. codex 경로
 
-`${ADVISOR}` == `codex`인 경우.
-
-#### 3a-1. prompt 빌드
-
-`${PROMPT_FILE}` (= `${DEV_DIR}/cross-review-prompt.md`)에 다음 형식으로 작성한다.
-
-> **prompt 본문 작성 규칙**: helper가 파일을 UTF-8로 읽어 stdin으로 전달한다. `$`·백틱·따옴표를 임의로 삭제하지 않고 산출물 원문을 보존한다.
-
-```xml
-<task>
-oh-my-gx 파이프라인 산출물(PRD/설계/Trust Ledger)과 변경 코드를 교차 검증한다.
-변경된 코드가 산출물의 약속을 충족하는지, 산출물에 정의되지 않은 신규 위험이 있는지 보고한다.
-
-diff 파일: ${DIFF_FILE}
-이 파일을 Read하여 변경사항을 확인한다.
-</task>
-
-<grounding_rules>
-- 모든 지적은 PRD 또는 설계서의 정확한 인용으로 근거를 제시한다.
-- trust-ledger.md에 이미 보고된 항목은 보고하지 않는다 (중복 금지).
-- self-check.md의 Warning/Info는 중복 보고하지 않는다.
-- 코드를 직접 확인하지 못한 추정은 ASSUMPTION으로 분리한다.
-- PRD 자체가 코드와 일치하지 않을 가능성이 의심되면 ASSUMPTION으로 분류한다.
-</grounding_rules>
-
-<structured_output_contract>
-다음 4개 섹션을 정확히 이 순서로 출력한다:
-
-## AC 충족 매트릭스
-| AC | 충족 | 근거 (파일:라인 또는 PRD 인용) |
-|----|------|--------|
-| AC-1 | O/X/부분 | ... |
-
-## 설계 범위 이탈
-설계서의 "변경 범위"에 명시되지 않은 파일 수정 목록.
-항목별로: 파일 경로 / 변경 요약 / 이탈 사유 추정.
-없으면 "이탈 없음".
-
-## 신규 위험
-trust-ledger.md에 없는 신규 risk/policy/gap/assumption만.
-- [Critical/Warning/Info] [RISK/POLICY/GAP/ASSUMPTION] 항목 설명
-  - 위치: 파일:라인
-  - 근거: ...
-  - 권고: ...
-
-## references 위반 (해당 시)
-references/ 디렉토리의 파일별로 위반 여부.
-없으면 섹션 자체 생략.
-
-## 총평
-- 강점 1-2개
-- Critical/Warning 합산
-- 권고 사항 1줄
-</structured_output_contract>
-
-<language>
-모든 출력은 한국어로 작성한다. 영어 단어는 고유명사·기술 용어에 한해 허용한다.
-</language>
-
-<artifacts>
-다음 산출물을 참조한다.
-
-### PRD 수용 기준
-{prd.md의 "수용 기준" 섹션 내용}
-
-### 설계서 변경 범위 + 구현 순서
-{design.md의 해당 섹션 내용}
-
-### 기존 Trust Ledger (이미 보고된 항목, 중복 금지)
-{trust-ledger.md 전체}
-
-### 자기점검 발견 사항 (중복 금지)
-{self-check.md 전체}
-
-### 코드 맵 (탐색 가이드)
-{codemap.md의 "핵심 파일" 섹션}
-
-### references (외부 표준)
-{references 파일별 요약}
-</artifacts>
-```
-
-#### 3a-2. codex 호출
-
-재실행 전 기존 `${RAW_FILE}`, `${DEV_DIR}/cross-review.events.jsonl`, `${DEV_DIR}/cross-review.events.jsonl.stderr` **세 파일 모두** 존재하는 것만 충돌 없는 timestamp archive로 옮긴다. 하나라도 그대로 남으면 helper가 기존 출력 충돌로 거절할 수 있다. 백업 이름이 이미 있으면 새 suffix를 사용하고 기존 archive를 덮어쓰지 않는다. 이전 성공 응답을 재사용하지 않는다. 아래는 Bash 실행 예시이며 Python 실행 파일은 setup에서 검증한 실제 경로로 치환한다.
-
-```bash
-python3 "$GX_PLUGIN_ROOT/scripts/codex-run.py" --cwd "$PROJECT_ROOT" \
-  --prompt "$PROMPT_FILE" --final "$RAW_FILE" \
-  --events "$DEV_DIR/cross-review.events.jsonl" --mode review --timeout 300
-```
-
-helper가 prompt를 stdin으로 전달하고 read-only 세션을 연다. 프로세스 종료 코드가 0이 아니면 `${RAW_FILE}` 내용이 있어도 실패다. stderr와 이벤트를 보고하고 중단하며 정규화·자동 수정을 진행하지 않는다.
-
-#### 3a-3. 응답 검증
-
-1. 종료 코드 0 확인. 실패 시 stderr 마지막 20줄을 사용자에게 표시하고 중단.
-2. `${RAW_FILE}` 줄 수 확인. 0줄이면 호출 실패로 간주.
-3. 영어 응답 감지: 첫 50줄에서 한국어 문자(가-힣) 비율이 20% 미만이면 영어로 간주. 이 경우 한국어 정규화 단계를 추가:
-   - 오케스트레이터가 직접 응답을 한국어로 재작성한다 (의미는 보존).
+ADVISOR가 codex인 경우만 `Read("references/advisor-codex.md")`의 prompt 빌드·read-only 호출·응답 검증을 수행한다. 다른 advisor 자료는 읽지 않는다. 종료 코드 실패·빈 응답은 결과 정규화/수정 없이 중단한다.
 
 ### 3-B. native/claude 역할 경로
 
-`${ADVISOR}` == `native`이거나 Claude Code 호스트에서 `${ADVISOR}` == `claude`인 경우. Codex native는 공통 실행 규약의 역할 본문·도구 제약과 현재 태스크 prompt 전문을 자식에게 전달한다. Claude Code의 기존 Task 타입은 유지한다.
-
-#### 3b-1. cross-review contract
-
-각 에이전트에 일반 phase-review와 다른 contract를 명시한다.
-
-**Task A: qa-manager (cross-review 미션)**
-
-`Task(subagent_type="oh-my-gx:qa-manager")` — prompt에 다음을 포함:
-
-```
-[중요] 이 호출은 일반 phase-review가 아닌 gx-cross-review이다.
-일반적인 코드 품질 리뷰가 아니라, 다음 미션을 정확히 수행하라:
-
-미션:
-1. AC 충족 매트릭스 작성: PRD의 각 [Must] AC에 대해 충족 여부(O/X/부분)와 근거 파일:라인을 명시.
-2. 설계 범위 이탈 점검: 설계서의 "변경 범위"에 없는 파일이 수정되었는지 확인. 이탈 시 정당성을 평가.
-3. 중복 보고 금지:
-   - trust-ledger.md에 이미 있는 항목은 다시 보고하지 않는다.
-   - self-check.md의 Warning/Info는 중복 보고하지 않는다.
-4. 신규 위험만 보고: trust-ledger에 없는 신규 발견 사항만 Critical/Warning/Info로 분류.
-
-산출물:
-- PRD: ${prd.md 내용}
-- 설계서: ${design.md 내용}
-- Trust Ledger: ${trust-ledger.md 내용}
-- self-check: ${self-check.md 내용}
-- 코드 맵: ${codemap.md 핵심 파일 섹션}
-- diff 파일 경로: ${DIFF_FILE}
-- references (있으면): ${references 요약}
-
-출력 포맷은 cross-review 표준에 맞춘다 (Step 4의 정규화 형식 참조).
-한국어로 출력한다.
-```
-
-**Task B: security-auditor (cross-review 미션)**
-
-`Task(subagent_type="oh-my-gx:security-auditor")` — prompt에 다음을 포함:
-
-```
-[중요] 이 호출은 일반 review가 아닌 gx-cross-review이다.
-다음 미션을 정확히 수행하라:
-
-미션:
-1. PRD 정책/제약 vs 코드 정합성: PRD에 명시된 정책/권한/제약이 코드에 반영되었는지 1:1 검증.
-2. 설계 보안 약속 vs 코드: 설계서의 보안/장애대응(fallback/timeout/재시도)이 구현되었는지 검증.
-3. trust-ledger 신선도: 기존 trust-ledger 항목 중 다시 발생한 것이 있는지 확인.
-4. references 위반: references/ 디렉토리의 외부 표준 위반 여부 검증.
-5. 중복 보고 금지: trust-ledger에 이미 있는 항목은 보고하지 않는다.
-
-산출물 (qa-manager와 동일).
-
-한국어로 출력한다.
-```
-
-#### 3b-2. 병렬 호출
-
-`Task A`와 `Task B`를 **하나의 메시지에서** 동시에 발행한다 (병렬 실행).
-
-#### 3b-3. 결과 통합
-
-두 결과를 합산한다:
-- AC 매트릭스 → qa-manager 결과를 우선 사용.
-- 설계 범위 이탈 → qa-manager 결과 사용.
-- 신규 위험 → 두 결과를 합치고 같은 위치(파일:라인)는 병합.
-- references 위반 → security-auditor 결과 사용.
+ADVISOR가 native 또는 Claude Code 호스트의 claude인 경우만 `Read("references/advisor-native.md")`의 역할별 미션·호출·통합을 수행한다. Codex 호스트의 claude 미지원 중단은 Step 1을 따른다.
 
 ---
 
 ## Step 4: 결과 정규화 + 저장
 
-advisor와 무관하게 동일한 포맷으로 정규화하여 `${RESULT_FILE}`에 저장한다.
-
-### 4-1. 표준 포맷
-
-```markdown
-# Cross-Review 결과
-
-- advisor: codex | native | claude
-- 실행 하네스: Codex CLI | 현재 하네스 | Claude Code
-- 실제 모델: 확인된 모델명 또는 미확인 (이벤트/도구 기록에 있을 때만 기재)
-- 브랜치: ${BRANCH} (base: ${BASE_BRANCH})
-- DEV_DIR: ${DEV_DIR}
-- 실행 시각: 2026-05-04T10:30:00Z
-
-## AC 충족 매트릭스
-
-| AC | 충족 | 근거 |
-|----|------|------|
-| AC-1: 결제 한도 100→200만 변경 | O | PaymentService:42 |
-| AC-2: 한도 초과 시 예외 발생 | X | 검증 로직 누락 |
-
-[Must] 전체 N건 중 N건 충족, [Should] 전체 N건 중 N건 충족.
-
-## 설계 범위 이탈
-
-(없으면 "이탈 없음")
-
-- 파일: PaymentController.kt
-  - 변경 요약: ...
-  - 이탈 사유: 설계서 변경 범위에 없음. 정당성 검토 필요.
-
-## 신규 위험
-
-(trust-ledger에 없는 항목만)
-
-### Critical
-- [RISK] PaymentService.kt:55 — 한도 초과 검증 누락
-  - 근거: ...
-  - 권고: ...
-
-### Warning
-- ...
-
-### Info
-- ...
-
-## references 위반 (해당 시)
-
-(섹션 자체를 생략 가능)
-
-## 총평
-- 강점: ...
-- 합산: Critical N건, Warning N건, Info N건
-- 권고: ...
-```
-
-### 4-2. 파일 저장
-
-```bash
-# RESULT_FILE에 정규화된 결과 작성
-Write(${RESULT_FILE}, normalized_content)
-```
-
-`${RAW_FILE}`(advisor의 원시 응답)도 보존한다 — 사용자가 원본을 확인할 수 있도록.
-
-### 4-3. 사용자 요약
-
-전문은 표시하지 않는다. **요약만** 보고한다:
-
-```
-## Cross-Review 완료
-
-- advisor: codex
-- 실행 하네스/실제 모델: Codex CLI / 확인된 모델명 또는 미확인
-- AC 충족: [Must] 4/5, [Should] 2/3
-- 설계 범위 이탈: 1건
-- 신규 위험: Critical 1, Warning 2, Info 3
-- references 위반: 없음
-
-전문: ${RESULT_FILE}     (= ${DEV_DIR}/cross-review.md)
-원시 응답: ${RAW_FILE}    (= ${DEV_DIR}/cross-review.raw.md)
-```
+advisor 결과를 받은 경우 `Read("references/result-format.md")`의 표준 포맷·파일 저장·사용자 요약을 수행한다. 역할 호출에 표준 포맷이 필요하면 같은 참조를 호출 전에 읽어 전달한다. 원시 응답도 보존하고 사용자에게 전문 대신 요약과 파일 경로를 보고한다.
 
 ---
 
 ## Step 5: 발견 항목 처리 (수정 위임)
 
-자동 수정은 절대 하지 않는다. 모든 항목에 대해 사용자에게 명시적 승인을 받는다.
-
-### 5-1. 처리 대상 식별
-
-다음 항목들이 처리 대상이다:
-- AC 미충족 항목 (X 또는 부분).
-- 설계 범위 이탈 (정당성 부족 시).
-- 신규 위험 (Critical/Warning/Info).
-- references 위반.
-
-각 항목에 일련번호를 부여한다 (1, 2, 3, ...).
-
-### 5-2. 일괄 처리 옵션 선택
-
-```
-AskUserQuestion(
-  questions: [{
-    question: "발견된 N개 항목을 어떻게 처리할까요?",
-    header: "처리 방식",
-    options: [
-      { label: "전부 수정", description: "모든 항목을 coder에 위임하여 수정" },
-      { label: "일부 수정", description: "항목별로 개별 선택" },
-      { label: "직접 입력", description: "Other로 이동해서 수정할 항목 번호를 자연어로 입력 (예: 1, 3, 5번)" },
-      { label: "전부 건너뛰기", description: "기록만 남기고 종료" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-### 5-3. 분기 처리
-
-#### 전부 수정
-
-모든 항목을 한 번에 `Task(subagent_type="oh-my-gx:coder")` 수정 모드로 위임:
-
-prompt:
-- 수정 항목 목록 전체 (각 항목의 위치, 문제, 권고)
-- 코드 맵
-- PROJECT_ROOT
-- "각 항목을 순서대로 수정하고 [N/M] 형식으로 보고하라."
-
-수정 완료 후 `${RESULT_FILE}`에 처리 상태 섹션 추가:
-```markdown
-## 처리 결과
-- 1번 항목 (Critical PaymentService:55): 수정됨
-- 2번 항목 (Warning ...): 수정됨
-- ...
-```
-
-#### 일부 수정
-
-`${BATCH_MODE}` = `none`으로 시작. 항목별로 AskUserQuestion을 수행하되, 매 루프 시작 시 `${BATCH_MODE}`를 확인한다:
-- `AUTO_FIX`이면 질문 생략 후 자동 "수정"으로 처리.
-- `AUTO_SKIP`이면 질문 생략 후 자동 "건너뛰기"로 처리.
-- `none`이면 질문 표시.
-
-질문 결과 "이후 전부 수정"이면 `${BATCH_MODE}` = `AUTO_FIX`, "이후 전부 건너뛰기"면 `${BATCH_MODE}` = `AUTO_SKIP`로 전환하고 다음 항목부터 적용한다.
-```
-AskUserQuestion(
-  questions: [{
-    question: "1번 항목: [Critical] PaymentService:55 — 한도 초과 검증 누락. 수정할까요?",
-    header: "1/N",
-    options: [
-      { label: "수정", description: "이 항목을 coder에 위임" },
-      { label: "건너뛰기", description: "이 항목 건너뛰고 다음으로" },
-      { label: "이후 전부 수정", description: "이 항목부터 끝까지 모두 수정" },
-      { label: "이후 전부 건너뛰기", description: "이 항목부터 끝까지 모두 건너뛰기" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-승인된 항목만 모아서 `Task(subagent_type="oh-my-gx:coder")` 수정 모드로 일괄 위임.
-
-#### 직접 입력
-
-사용자가 Other로 항목 번호 또는 자연어를 입력. 예:
-- "1, 3, 5번"
-- "Critical만"
-- "AC 미충족 전부"
-
-오케스트레이터가 입력을 파싱하여 매칭되는 항목들을 식별한다. 모호하면 재확인:
-```
-AskUserQuestion(
-  questions: [{
-    question: "다음 항목으로 이해했습니다: 1번, 3번, 5번. 맞나요?",
-    header: "확인",
-    options: [
-      { label: "맞음", description: "이 항목들로 진행" },
-      { label: "다시 입력", description: "Other로 다시 입력" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-#### 전부 건너뛰기
-
-수정 없이 종료. `${RESULT_FILE}`에 처리 상태 섹션 추가:
-```markdown
-## 처리 결과
-- 모든 항목 건너뛰기 선택. 사용자가 별도로 처리 예정.
-```
-
-### 5-4. 수정 후 재확인 (선택적)
-
-수정이 발생했으면 사용자에게 묻는다:
-```
-AskUserQuestion(
-  questions: [{
-    question: "수정이 완료되었습니다. cross-review를 다시 실행할까요?",
-    header: "재실행",
-    options: [
-      { label: "재실행", description: "수정된 코드로 cross-review 재수행" },
-      { label: "종료", description: "현재 상태로 종료" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-재실행 선택 시 Step 0부터 다시 시작.
+자동 수정하지 않는다. 발견 항목이 있으면 `Read("references/finding-actions.md")`로 처리 대상 식별·사용자 승인·승인된 수정·선택적 재확인을 수행한다. 발견이 없으면 이 참조를 읽지 않는다.
 
 ---
 
 ## 산출물 부재 fallback
 
-Step 0-3에서 prd.md·ac.md·design.md 셋 다 없으면 이 경로를 따른다.
-
-### F-1. fallback 모드 안내
-
-```
-산출물(prd.md·ac.md·design.md)이 없습니다.
-gx-cross-review의 차별점인 "약속 대비 충실도 검증"을 수행할 수 없습니다.
-일반 모드로 진행하면 기본 /codex:review 또는 qa-manager 일반 리뷰와 거의 동일합니다.
-```
-
-### F-2. 진행 여부 확인
-
-```
-AskUserQuestion(
-  questions: [{
-    question: "일반 모드로 진행할까요?",
-    header: "fallback",
-    options: [
-      { label: "진행", description: "산출물 없이 diff만으로 일반 리뷰 수행" },
-      { label: "중단", description: "/gx-dev로 산출물을 먼저 생성하세요" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-### F-3. fallback 실행
-
-**fallback 승인 후 공통 선행 단계**: Step 1의 advisor 선택과 1-1 환경 확인을 수행한다. `--advisor claude`를 Codex 호스트에서 선택했다면 여기서 중단한다. 이어서 Step 2-2의 diff 수집을 **실제로 실행**하여 `${DIFF_FILE}`을 만든다. 산출물이 없는 경우에도 diff 수집을 건너뛰지 않는다. diff가 비었으면 "변경사항이 없습니다"를 보고 종료한다. 이 선행 단계가 끝난 뒤 F-3으로 돌아온다.
-
-**codex 선택 시**: 일반 리뷰 미션과 `${BASE_BRANCH}`·실제로 수집한 `${DIFF_FILE}` 경로를 `${PROMPT_FILE}`에 기록하고 네이티브 helper의 read-only review 모드로 호출한다. 산출물 없는 경우 AC 매트릭스가 없음을 prompt에 명시한다. 기존 `${RAW_FILE}`, `${DEV_DIR}/cross-review.events.jsonl`, `${DEV_DIR}/cross-review.events.jsonl.stderr` 세 파일 모두 3a-2와 같은 충돌 없는 timestamp archive로 옮긴다.
-```bash
-python3 "$GX_PLUGIN_ROOT/scripts/codex-run.py" --cwd "$PROJECT_ROOT" \
-  --prompt "$PROMPT_FILE" --final "$RAW_FILE" \
-  --events "$DEV_DIR/cross-review.events.jsonl" --mode review --timeout 300
-```
-- 종료 코드가 0이 아니면 결과 정규화 없이 중단한다. diff 수집 범위는 Step 2-2에서 만든 `${DIFF_FILE}`을 따른다.
-
-**native/claude 역할 선택 시**: `qa-manager`만 호출, 일반 contract 사용 (cross-review 미션 제거). security-auditor는 호출하지 않는다 (산출물 없으면 보안 정합성 검증이 불가능). Codex의 claude 선택은 Step 1에서 이미 중단한다.
-
-결과는 동일하게 `${RESULT_FILE}`에 저장. AC 매트릭스 / 설계 범위 이탈 섹션은 생략하고 신규 위험 섹션만 채운다.
+prd.md·ac.md·design.md가 셋 다 없을 때만 `Read("references/fallback.md")`를 읽어 제한을 설명하고 진행/중단을 확인한다. 승인 전 일반 리뷰로 전환하지 않는다.
 
 ---
 
@@ -760,15 +337,6 @@ python3 "$GX_PLUGIN_ROOT/scripts/codex-run.py" --cwd "$PROJECT_ROOT" \
 1. **prompt 강제**: codex prompt의 `<language>` 블록, claude prompt의 명시적 한국어 지시.
 2. **응답 검증**: 응답의 첫 50줄에서 한국어 문자(가-힣) 비율이 20% 미만이면 한국어 정규화 단계를 추가.
 3. **사용자 출력**: 사용자에게 표시하는 모든 메시지는 한국어로 작성. 고유명사·기술 용어는 영문 허용.
-
----
-
-## 자동 수정 금지 원칙
-
-1. advisor 응답에 Critical 항목이 있어도 즉시 coder를 호출하지 않는다.
-2. 모든 수정은 Step 5의 AskUserQuestion을 거쳐 사용자가 명시적으로 승인한 항목만 수행.
-3. coder는 "수정" 모드로만 호출하고, 신규 기능 추가나 리팩토링은 위임 범위 밖.
-4. 승인된 범위만 수정하고 리뷰 결과를 자동으로 구현 작업으로 전환하지 않는다.
 
 ---
 
@@ -812,7 +380,7 @@ processed:
 
 ## 다른 스킬과의 관계
 
-- `/gx-dev`: cross-review의 산출물(prd/design/trust-ledger)을 생성한다. 선행 의존.
+- `/gx-work`: cross-review의 산출물(prd/design/trust-ledger)을 생성한다. 선행 의존.
 - `/gx-tdd`: 산출물 파일 구조(prd/design/trust-ledger)가 동일하므로 gx-tdd 완료물에도 그대로 동작한다. 이때 claude advisor가 호출하는 qa-manager는 "gx-tdd 파이프라인 내부 호출 금지" 대상이 아니다 — cross-review는 파이프라인 완료 후의 독립 스킬이므로 허용된다 (gx-tdd 내부 리뷰는 reviewer(spec+quality 통합 1석)가 담당하며, cross-review는 그와 별개의 사후 검증 층이다).
 - `/codex:review`: 일반 코드 리뷰. cross-review와 별개로 사용 가능.
 - `/codex:adversarial-review`: cross-review의 codex 경로보다 더 공격적인 비판이 필요하면 별도 호출.

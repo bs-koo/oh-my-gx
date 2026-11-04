@@ -9,6 +9,7 @@
 ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 
 **Step 1: 플래그 호환** (기존 사용자 보호)
+- --handoff <JSON>·--from-plan <JSON>·--stop-at verify|commit|pr·--full-tests를 먼저 분리하고 [계획 인계 계약](plan-handoff.md)을 적용한다. 원문 파일명은 자연어 의도 키워드로 해석하지 않는다.
 - **`--work {ID}`는 다른 플래그보다 먼저 추출한다.** 아래 모드 플래그 분기에서 파싱이 종료되기 전에 소비해야 `--work --core`처럼 조합된 경우에도 작업 계획 참조가 유실되지 않는다. 추출 후 남은 인자로 아래 분기를 계속 판정한다.
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--isolated`가 포함되면 **격리 구현 플래그**로 기록한다 — phase-implement Step 2-I가 세션 직접 수행 대신 implementer 디스패치(현행 2석) 경로를 택한다. 모드 판정과 독립이므로 나머지 파싱을 계속한다.
@@ -56,43 +57,14 @@ RALPH 추출: ARGS[0]에 `랄프로`/`ralph로`/`무인 루프로`가 포함되�
 - **플래그 `--ralph` + 자연어 모드 트리거**: Step 2 자연어가 STATUS/RESUME/CORE/PHASE를 판정하면 **플래그 충돌과 동일하게 에러 후 중단**한다 — "`--ralph`는 전체 모드 전용입니다 — 요청의 '{매칭 키워드}'가 {판정된 모드}를 요구합니다. 플래그를 빼거나 문구를 바꿔주세요." (`--ralph --core`가 에러인데 `--ralph 빨리 고쳐`만 조용히 core로 가면 심각도가 어긋난다.)
 - 위에 걸리지 않고 모드가 미결정이면 Step 3으로 진행한다 — 거기서 RALPH가 모드를 확정한다.
 
-**Step 3: 모드·프로파일 확인 (위 패턴에 해당하지 않는 경우)**
+**Step 3: 프로젝트 기본값 적용**
 
-위 자동 판정 패턴에서 모드(STATUS/RESUME/CORE/PHASE)가 결정되지 않으면 — 즉, 일반적인 기능 요청이면 — **반드시** AskUserQuestion으로 모드를 확인한다 (예외: RALPH가 추출된 경우 — 아래 "모드 질문 생략 규칙"). 오케스트레이터가 임의로 모드를 판정하지 않는다. 모델 프로파일이 미확정이면(플래그·자연어 없음) **같은 호출의 두 번째 질문**으로 함께 묻는다 — 한 번의 submit으로 두 축이 함께 결정된다.
+일반 기능 요청은 모드를 `all`로 확정한다. 모델은 명시 플래그 > 자연어 > 이번 실행의 기존 결정 > config.json `modelProfile` > `standard` 순으로 정한다. 매 요청마다 모드·모델 프로파일 질문을 만들지 않는다. 적용 결과만 한 줄로 알리고 진행한다.
 
-```
-AskUserQuestion(
-  questions: [
-    {
-      question: "어떤 방식으로 진행할까요? (요청: {ARGS[0]})",
-      header: "진행 방식",
-      options: [
-        { label: "전체 과정 진행", description: "PRD → 설계 → RED-GREEN-REFACTOR → 리뷰 → verify → PR" },
-        { label: "핵심 과정만 진행", description: "AC(G-W-T) 확인 → RGR → verify → PR. 소형 변경용 — design/정식 review 생략, RGR·verify·긴급 감사는 유지" }
-      ],
-      multiSelect: false
-    },
-    {
-      question: "모델 프로파일을 선택해주세요. 절차·게이트·Iron Law는 동일하고 에이전트 모델 수준만 달라집니다.",
-      header: "모델 프로파일",
-      options: [
-        { label: "표준", description: "설계·testability·최종 리뷰의 high 역할을 유지합니다. 실제 모델은 현재 하네스의 모델 정책으로 결정합니다" },
-        { label: "에코", description: "architect를 유지하고 testability·비판 검토·최종 리뷰를 mid로 낮춥니다. RGR·verify와 메인 세션 모델은 그대로입니다" }
-      ],
-      multiSelect: false
-    }
-  ]
-)
-```
-
-- **프로파일 질문 포함 규칙**: `--eco`/`--standard` 플래그나 자연어(`에코 모드`/`에코로`/`절약 모드`)로 이미 확정됐으면 두 번째 질문을 **생략**한다 (모드 질문만 제시). config.json `modelProfile`이 설정되어 있으면 해당 옵션을 **첫 번째에 배치**하고 label 끝에 `(현재 설정)`을 붙인다 — 이 질문의 답변이 이번 실행의 최종 결정이다.
-- **모드 질문 생략 규칙**: 모드가 미결정이고 RALPH가 추출된 상태이면 **모드를 `all`로 확정하고 모드 질문을 생략**한다 — 무인 루프는 PRD가 필수(gx-ralph Step 1-4)라 core와 양립하지 않으므로 선택지가 하나뿐이다. 프로파일이 미확정이면 프로파일 질문만 단독으로 제시한다. `intent-source`는 `flag` 또는 `natural-language`로 기록한다.
-- "전체 과정 진행" 선택 → 전체 모드(all) (전체 Phase 실행)
-- "핵심 과정만 진행" 선택 → 핵심 모드(core)
-- "표준"/"에코" 선택 → `MODEL_PROFILE`로 확정 (phase-setup Step 1.5가 결정을 확정하고, Step 7이 state.md `model-profile`에 기록)
-
-> **gx-dev의 핵심 모드와 다른 점**: gx-tdd의 핵심 모드는 **RGR 사이클·verify 게이트·G-W-T 게이트·긴급 보안 감사를 전부 유지**하는 경량 경로다 (Iron Law는 모드와 무관하게 불변). 생략되는 것은 design(testability 평가)과 정식 review뿐이며, AC 작성 주체가 product-owner에서 오케스트레이터로 바뀐다. 테스트 작성 강제 없이 즉시 구현하려면 `oh-my-gx:gx-dev`의 핵심 모드를 사용한다.
-
+- **프로파일 질문 포함 규칙**: 사용자에게 선택을 요청했거나 설정·명시 지시가 충돌해서 실제 결정이 필요할 때만 묻는다. 설정된 `modelProfile`은 기본값으로 사용하며 재확인하지 않는다.
+- **모드 질문 생략 규칙**: 일반 요청은 `all`. `--core` 또는 명시적 핵심 모드 요청이 있을 때만 `core`다. 자동으로 검증·설계 게이트를 줄이지 않는다. RALPH는 기존 우선순위를 적용하고 `all`로 진행한다.
+- 이미 승인한 계획·handoff의 실행 방법과 종료점을 보존한다. plan/understand 요청은 gx-work의 읽기 전용 경로로 보내며 구현 setup을 시작하지 않는다.
+- 핵심 모드에서도 RGR·verify·G-W-T·긴급 보안 감사는 유지한다. 비TDD 개발 경로는 제공하지 않는다.
 ### 모드 판정 결과 기록
 
 의도 파싱 결과를 state.md에 기록한다:

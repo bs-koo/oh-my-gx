@@ -8,7 +8,7 @@ import re
 import sys
 
 
-ROLE_DIR = Path(".claude/skills/gx-dev/references/codex-roles")
+ROLE_DIR = Path(".claude/skills/gx-work/references/codex-roles")
 TEMPLATE = Path(".claude/skills/gx-setup/references/config.template.json")
 
 

@@ -1,7 +1,7 @@
 ---
 name: gx-ralph
 version: 1.0.0
-description: "루프 엔지니어링(Ralph 루프) 진입 스킬 - PRD 수용 기준을 AC 원장으로 변환하고 외부 러너의 무인 반복을 준비한다. PRD 확정 후 사용. '랄프 준비', '랄프 루프 준비해줘', 'ralph', '루프 돌려', '랄프 상태' 시 사용. '랄프로 … 개발해줘'처럼 개발 요청에 붙는 발화는 이 스킬이 아니라 /gx-dev·/gx-tdd의 --ralph 전환으로 라우팅한다 (skill-routing.md)."
+description: "루프 엔지니어링(Ralph 루프) 진입 스킬 - PRD 수용 기준을 AC 원장으로 변환하고 외부 러너의 무인 반복을 준비한다. PRD 확정 후 사용. '랄프 준비', '랄프 루프 준비해줘', 'ralph', '루프 돌려', '랄프 상태' 시 사용. '랄프로 … 개발해줘'처럼 개발 요청에 붙는 발화는 이 스킬이 아니라 /gx-work·/gx-tdd의 --ralph 전환으로 라우팅한다 (skill-routing.md)."
 argument-hint: "[--status]"
 allowed-tools:
   - Read
@@ -27,7 +27,7 @@ Ralph Wiggum 루프 패턴의 진입 스킬. PRD의 수용 기준(AC)을 기계 
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-iterate/SKILL.md`의 절대경로인 `GX_RALPH_ITERATE_SKILL`을 전달한다. `GX_RALPH_CODEX_CMD`는 Codex 실행 파일을 별도 지정할 때만 쓴다. 기본 하네스는 Claude다. Codex에서는 네이티브 `scripts/codex-run.py`가 prompt를 stdin으로 보내고 최종 응답 파일만 종료 계약으로 판정한다. 그 파일에는 앞선 요약이 있어도 되지만 **정확한 계약 줄 하나만 마지막 비공백 줄**이어야 한다. 계약 줄이 중복되면 실패다. 이벤트 로그의 가짜 COMPLETE는 판정하지 않으며 nonzero/timeout은 종료 계약보다 우선해 실패한다. COMPLETE라도 원장 `acs` 전 항목의 `passes: true` 확인이 필요하다.
@@ -40,15 +40,15 @@ Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-it
 ## 파이프라인 위치
 
 ```
-[대화형 1회] /gx-dev 또는 /gx-tdd     → PRD(·설계) 사용자 승인까지 확정
+[대화형 1회] /gx-work 또는 /gx-tdd     → PRD(·설계) 사용자 승인까지 확정
 [대화형 1회] /gx-ralph                → AC 원장 생성 + 러너 준비 (이 스킬)
 [무인 반복]  scripts/gx-ralph.sh      → 반복마다 새 claude 세션이 gx-ralph-iterate 실행
                                         (AC 1건 구현 → verify → 커밋 → 원장 갱신)
-[대화형 1회] 사용자 복귀              → {origin 파이프라인} --phase review → --phase complete
-                                        (origin이 gx-tdd면 /gx-tdd, 그 외 /gx-dev)
+[대화형 1회] 사용자 복귀              → /gx-tdd --phase review → --phase complete
+                                        (보존한 stop-at 범위에서 완료)
 ```
 
-진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) `/gx-dev` 또는 `/gx-tdd`에 `--ralph` 플래그(또는 "랄프로 …" 발화)를 주면 phase-implement 진입 시 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출 (기본 경로에서는 묻지 않는다 — 무인 루프는 명시적 opt-in).
+진입 경로는 두 가지이며 동작은 동일하다: (1) 사용자가 `/gx-ralph`를 직접 호출, (2) `/gx-work` 또는 `/gx-tdd`에 `--ralph` 플래그(또는 "랄프로 …" 발화)를 주면 phase-implement 진입 시 파이프라인이 이 스킬을 `Skill(skill: "oh-my-gx:gx-ralph")`로 호출 (기본 경로에서는 묻지 않는다 — 무인 루프는 명시적 opt-in).
 
 핵심 원리 (Ralph 루프): 진행 상태는 대화 이력이 아닌 **파일과 git 히스토리에 영속**하고, 매 반복은 **신선한 컨텍스트**로 시작하며, **verify가 backpressure**, **종료 계약**으로 루프를 탈출한다. 루프당 AC 1건만 처리한다.
 
@@ -80,12 +80,12 @@ Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-it
 
 ### state.md 확장 필드
 
-기존 state.md(gx-dev/gx-tdd 산출)에 아래 필드를 추가/갱신한다. 기존 state.md가 없으면 골격을 생성한다:
+기존 gx-tdd state.md에 아래 필드를 추가/갱신한다. 기존 state.md가 없으면 골격을 생성한다:
 
 ```yaml
 pipeline: gx-ralph        # 훅 G3·스킬 라우팅의 판별 키
 status: in_progress
-origin: gx-dev | gx-tdd   # 반복 세션의 구현 디스패치 방식 (gx-tdd면 red-writer→implementer 2석)
+origin: gx-tdd            # 모든 반복은 red-writer→implementer 2석 TDD
 verify-status: pending    # pending|passed — 전이 규칙은 아래
 verify-fingerprint: ""    # verify 통과 시점의 코드 지문 (../gx-tdd/references/pipeline-state.md "verify 지문" 규약과 동일)
 last-known-head: {sha}    # 러너가 반복 전후 기록 (NO_DRIFT 감지용)
@@ -96,7 +96,7 @@ args: "{원 요청}"
 
 **verify-status 전이 규칙 (주체: 반복 세션)**: 코드 변경 직후 `pending`으로 리셋(`verify-fingerprint`도 빈 값으로) → gx-verify 통과 시 `passed`로 전이하며 **verify가 보고한 지문을 `verify-fingerprint`에 함께 기록** → **커밋은 `passed` + 지문 일치 상태에서만 실행** (훅 G3가 커밋 시점에 둘 다 검사하는 최종 방어선이므로 순서를 지켜야 헤드리스에서 자기 차단되지 않는다 — 지문 기록 후 코드를 더 고치면 게이트가 다시 열린다). 지문 계산 규약은 [gx-tdd pipeline-state.md의 "verify 지문" 절](../gx-tdd/references/pipeline-state.md#verify-지문-verify-fingerprint)이 SSOT이며, 지문 필드가 없는 구 세션은 `verify-status`만으로 판정된다.
 
-**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-dev/gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시한다 — 에이전트(coder·red-writer·implementer)는 각자의 frontmatter 기본 모델로 디스패치되고, 반복 세션의 오케스트레이터 모델만 러너 환경변수 `GX_RALPH_MODEL`로 지정할 수 있다(미지정 시 CLI 기본 = 표준). eco 프로파일 자체는 무인 루프 비범위(후속 과제). 루프 종료 후 origin 파이프라인(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
+**model-profile 필드 (무인 루프 비범위)**: state.md에 `model-profile` 필드가 있어도(gx-tdd에서 eco로 전환된 경우) 무인 루프는 이를 무시한다 — 에이전트(red-writer·implementer)는 각자의 frontmatter 기본 모델로 디스패치되고, 반복 세션의 오케스트레이터 모델만 러너 환경변수 `GX_RALPH_MODEL`로 지정할 수 있다(미지정 시 CLI 기본 = 표준). eco 프로파일 자체는 무인 루프 비범위(후속 과제). 루프 종료 후 gx-tdd(`--phase review`/`--phase complete`)으로 복귀하면 그 파이프라인이 `model-profile`을 다시 적용한다.
 
 ### 종료 계약 (반복 세션 → 러너)
 
@@ -108,7 +108,7 @@ args: "{원 요청}"
 
 ### 회귀 정책 (fail-closed)
 
-verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기존 AC의 테스트를 깨면 verify가 차단되어 커밋 자체가 일어나지 않으므로, 잘못된 상태는 원장에도 git에도 기록되지 않는다. 같은 AC가 3회 차단되면 반복 세션이 BLOCKED를 선언하고 사람이 복귀해 판단한다. `passes: true`의 소급 무효화는 하지 않는다 — 최종 리뷰(`--phase review`)가 base..HEAD 누적 diff와 전체 테스트로 재검증한다.
+verify는 매 반복 현재 코드의 변경·영향 테스트를 검증한다. 테스트 범위는 [공통 실행 계약](../gx-tdd/references/test-execution.md)을 따르며, 미매핑·의존성/공유 설정 변경에는 전체 폴백한다. 새 헤드리스 반복은 이전 반복 세션의 proof를 재사용하지 않는다. 새 AC 구현이 기존 AC의 테스트를 깨면 verify가 차단되어 커밋 자체가 일어나지 않으므로, 잘못된 상태는 원장에도 git에도 기록되지 않는다. 같은 AC가 3회 차단되면 반복 세션이 BLOCKED를 선언하고 사람이 복귀해 판단한다. `passes: true`의 소급 무효화는 하지 않는다 — 최종 gx-tdd 리뷰(`--phase review`)가 base..HEAD 누적 diff와 영향 계획으로 재검증한다.
 
 ---
 
@@ -139,10 +139,14 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
 1. **VCS**: `.claude/config.json`의 `vcs`가 `"svn"`이면 차단 — "SVN 프로젝트에서는 gx-ralph를 사용할 수 없습니다. 무인 루프가 요구하는 자동 커밋을 훅(G2)이 차단하며, 사용자 터미널 커밋으로는 무인 반복이 성립하지 않습니다."
 2. **git repo**: `git rev-parse --is-inside-work-tree` 실패 시 차단.
 3. **브랜치**: `git branch --show-current`가 빈 값(detached HEAD)이면 차단. `main`/`master`/`develop`이면 차단 — "보호 브랜치에서는 루프를 돌릴 수 없습니다. 작업 브랜치를 먼저 생성하세요."
-4. **PRD**: `DEV_DIR = .dev/{branch-slug}` 계산 후 `${DEV_DIR}/prd.md`가 없으면 차단 — "PRD가 없습니다. `oh-my-gx:gx-dev` 또는 `oh-my-gx:gx-tdd`로 PRD를 먼저 확정하세요. 루프는 승인된 PRD를 명세로 읽는 소비자입니다."
+4. **PRD**: `DEV_DIR = .dev/{branch-slug}` 계산 후 `${DEV_DIR}/prd.md`가 없으면 차단 — "PRD가 없습니다. `oh-my-gx:gx-work` 또는 `oh-my-gx:gx-tdd`로 PRD를 먼저 확정하세요. 루프는 승인된 PRD를 명세로 읽는 소비자입니다."
 5. **verify 명령**: `.claude/config.json`의 `projectTypes`에서 감지 파일(`detect`) 매칭으로 테스트 명령을 감지한다 (gx-verify Step 1과 동일 기준). 감지 실패 시 차단 — "검증 명령을 감지하지 못했습니다. 반복 세션의 verify는 비대화 fail-closed라 매 반복 차단되어 루프가 성립하지 않습니다. `.claude/config.json`의 `projectTypes`에 프로젝트 타입을 등록한 뒤 다시 시도하세요."
 6. **lock**: `${DEV_DIR}/ralph.lock`이 존재하면 차단 — "러너가 이미 실행 중이거나 비정상 종료로 lock이 남아 있습니다. 실행 중인 러너가 없다면 `${DEV_DIR}/ralph.lock`을 삭제한 뒤 다시 시도하세요."
-7. **기존 원장**: `${DEV_DIR}/ac-status.json`이 이미 있으면 AskUserQuestion으로 확인:
+7. **TDD origin 게이트**: 기존 원장을 자동 변환하거나 덮어쓰지 않는다. `pipeline: gx-tdd`의 신규 전환(origin 없음 또는 gx-tdd)이거나 기존 Ralph state에 `origin: gx-tdd`가 정확히 한 번이면 진행한다. 아래 legacy/충돌 차단 조건이 이 허용보다 우선한다. `pipeline: gx-dev`, `origin: gx-dev`, 알 수 없는 origin은 state/AC 원장을 보존한 채 차단하고 `/gx-work 기존 계획을 TDD 작업으로 전환해줘`로 범위·미완료 항목·TDD 실행 계획을 명시 확인하도록 안내한다. 과거 passes 값을 TDD 성공 증거로 승격하지 않는다.
+   - **origin 누락 구버전** (`pipeline: gx-ralph`): 헤드리스 러너/반복은 즉시 차단한다. 이 대화형 준비 단계에서만 기존 기록의 TDD 출처와 완료 AC의 RED→GREEN·verify·commit 근거를 확인하고, 사용자에게 `origin: gx-tdd` 정규화를 명시 승인받은 뒤 기록한다. 근거가 없거나 승인하지 않으면 원장을 보존하고 전환 안내 후 중단한다. 단순히 PRD가 있다는 이유로 이전 완료 AC를 인정하지 않는다.
+   - state·원장이 모두 없는 신규 준비는 승인된 PRD와 Step 2의 TDD 실행 확인을 통해 `origin: gx-tdd`로 시작한다. 출처가 불명확한 기존 원장이 있는데 state가 없으면 신규로 간주하지 않고 차단한다.
+8. **종료점 사전 확인**: Ralph를 명시 선택하면 AC별 verify 후 로컬 커밋이 포함된다. 원격 push는 보존한 `stop-at: pr` 또는 실제 별도 원격 반영 요청에 한정한다. 사용자가 명시한 `--stop-at verify`나 "커밋하지 말 것"과 함께 들어오면 조용히 범위를 넓히지 않는다. 실제 대화에서 로컬 커밋을 허용할지 먼저 확인하고, 허용한 경우에만 state에 `ralph-local-commits: approved`와 실제 결정 출처를 기록한다. 거절·미응답이면 원장을 변경하지 않고 일반 gx-tdd verify 경로를 안내한다. 이미 같은 충돌을 해소한 실제 결정은 다시 묻지 않는다. 기존 원장을 이어 쓰며 Step 2를 건너뛰더라도 이 사전 확인은 생략하지 않는다.
+9. **기존 원장**: `${DEV_DIR}/ac-status.json`이 이미 있으면 AskUserQuestion으로 확인:
    ```
    questions: [{
      question: "기존 AC 원장이 있습니다 ({passes 수}/{전체 수} 완료). 어떻게 할까요?",
@@ -190,7 +194,7 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
 
 1. `${DEV_DIR}/state.md`를 갱신한다 (없으면 골격 생성):
    - `pipeline: gx-ralph`, `status: in_progress`, `verify-status: pending`, `verify-fingerprint: ""` (기존 state.md가 `status: completed`였어도 `in_progress`로 되돌리고 두 verify 필드를 리셋한다 — 완료 표식이 남으면 게이트 4곳이 전부 꺼진다)
-   - `origin`: 기존 state.md에 `origin` 필드가 이미 있으면 **그 값을 유지**한다 (재실행 시 뒤집힘 방지). 없으면 gx-tdd 이력(`pipeline: gx-tdd`)이 있으면 `gx-tdd`, 그 외 `gx-dev`
+   - `origin: gx-tdd`: Step 1의 origin 게이트를 통과한 경우에만 기록한다. legacy origin을 자동 변환하지 않는다. 기존 run-id·goal·stop-at·사용자 결정도 보존한다.
    - `max-iterations`: Step 2에서 확정한 값
    - `last-known-head`: `git rev-parse HEAD` 결과
    - `branch`: 현재 브랜치명
@@ -205,7 +209,7 @@ verify는 매 반복 **전체 테스트**를 실행한다. 새 AC 구현이 기�
    - 러너 종료 코드: 0 COMPLETE · 2 BLOCKED(반복 세션이 사유와 함께 중단 선언) · 3 종료 계약 미출력(세션 크래시·타임아웃 의심) · 4 NO_DRIFT(CONTINUE인데 원장·HEAD 무변화 2회 연속) · 5 반복 상한 소진 · 6 사전 조건 실패 · 7 NO_PROGRESS(커밋도 AC 완료도 없는 반복 4회 연속 — 단일 AC 3회 실패의 BLOCKED는 그대로 나오고, 미완료 AC가 여럿이면 전부 소진되기 전에 먼저 중단하며 원장 요약을 출력). 반복 세션 오케스트레이터 모델은 GX_RALPH_MODEL 환경변수로 지정할 수 있습니다 (기본 CLI 기본 모델). 러너는 config.json projectTypes의 test/build 명령 첫 토큰에서 --allowedTools prefix를 파생합니다
    - 진행 관찰: ${DEV_DIR}/progress.txt (요약), ${DEV_DIR}/iter-{N}.log (반복별 상세). Codex는 iter-{N}.final.md 최종 응답과 iter-{N}.events.jsonl도 보존합니다
    - 중간 상태 확인: /oh-my-gx:gx-ralph --status
-   - 루프 종료 후: {origin이 gx-tdd면 /gx-tdd --phase review, 그 외 /gx-dev --phase review} 로 리뷰 → --phase complete 로 인수·PR
-     (gx-tdd 출발 루프는 reviewer 통합 리뷰(spec+quality 1석)가 정본 — gx-dev 리뷰(qa-manager)로 유도하지 않는다)
+   - 루프 종료 후: /gx-tdd --phase review 로 리뷰 → --phase complete 로 보존한 종료점까지 완료
+     (reviewer 통합 리뷰(spec+quality 1석)를 사용하며, commit/PR은 보존한 stop-at과 실제 요청 범위에서 수행한다)
    ```
    이 스킬은 러너를 직접 실행하지 않는다 — 러너는 수 분~수십 분 실행되는 사용자 터미널 프로세스다.

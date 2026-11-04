@@ -47,8 +47,7 @@ class ModelPolicyTests(unittest.TestCase):
             "simplifier": "mid", "test-architect": "high",
         }
         self.assertEqual(set(expected_base), set(policy.read_object(ROOT / policy.ROLE_INDEX)))
-        targets = {"gx-dev": {"coder", "design-critic"},
-                   "gx-tdd": {"design-critic", "test-architect", "reviewer"},
+        targets = {"gx-tdd": {"design-critic", "test-architect", "reviewer"},
                    "standalone": set()}
         for pipeline, eco_roles in targets.items():
             for profile in ("standard", "eco"):
@@ -60,8 +59,12 @@ class ModelPolicyTests(unittest.TestCase):
                         self.assertEqual((result["model"], result["reasoning_effort"]),
                                          ("gpt-6-astra", "low") if tier == "high" else ("gpt-6.1-sol", "medium"))
 
+    def test_removed_dev_pipeline_is_rejected(self):
+        with self.assertRaises(ValueError):
+            self.resolve(pipeline="gx-dev")
+
     def test_architect_preserves_high_in_both_eco_pipelines(self):
-        for pipeline in ("gx-dev", "gx-tdd"):
+        for pipeline in ("gx-tdd", "standalone"):
             self.assertEqual(self.resolve("architect", pipeline=pipeline, profile="eco")["effective_tier"], "high")
 
     def test_task_reviewer_is_mid_in_standard_and_eco(self):
@@ -140,7 +143,7 @@ class ModelPolicyTests(unittest.TestCase):
             "gpt-6.10-sol": ["medium", "high"],
             "gpt-7-astra": ["low", "medium", "high"],
         })
-        for pipeline in ("gx-dev", "gx-tdd", "standalone"):
+        for pipeline in ("gx-tdd", "standalone"):
             for profile in ("standard", "eco"):
                 high = self.resolve("architect", pipeline=pipeline, profile=profile)
                 mid = self.resolve("red-writer", pipeline=pipeline, profile=profile)

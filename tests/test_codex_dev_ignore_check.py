@@ -8,13 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".claude/skills"
-REFERENCE = SKILLS / "gx-dev/references/dev-ignore-check.md"
+REFERENCE = SKILLS / "gx-work/references/dev-ignore-check.md"
 SHARING_BLOCK = REFERENCE.with_name("dev-sharing.gitignore")
 PROBE = ".dev/gx-ignore-probe"
 CONSUMERS = {
     SKILLS / "gx-setup/SKILL.md": SKILLS / "gx-setup",
     SKILLS / "gx-context/modes/plan.md": SKILLS / "gx-context",
-    SKILLS / "gx-dev/phases/phase-setup.md": SKILLS / "gx-dev/phases",
     SKILLS / "gx-tdd/phases/phase-setup.md": SKILLS / "gx-tdd/phases",
 }
 

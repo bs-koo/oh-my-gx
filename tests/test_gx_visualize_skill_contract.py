@@ -11,10 +11,15 @@ CODEX = SKILL_DIR / "references" / "codex-runtime.md"
 EXAMPLE = SKILL_DIR / "examples" / "trace-request.md"
 
 
+def skill_bundle():
+    return "\n".join(path.read_text(encoding="utf-8") for path in (
+        SKILL, SKILL_DIR / "references/service-map.md"))
+
+
 class GxVisualizeSkillContractTests(unittest.TestCase):
     def read(self, path: Path) -> str:
         self.assertTrue(path.is_file(), f"required skill resource is missing: {path}")
-        return path.read_text(encoding="utf-8")
+        return skill_bundle() if path == SKILL else path.read_text(encoding="utf-8")
 
     def test_command_routes_every_view_and_defaults_backend_to_auto(self):
         skill = self.read(SKILL)
@@ -37,9 +42,9 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
             self.assertRegex(mapping, rf"(?m)^\| `{status}` \|")
 
     def test_all_bundled_markdown_references_are_relative_and_resolve(self):
-        resources = (SKILL, MAPPING, CODEX, EXAMPLE)
+        resources = (SKILL, MAPPING, CODEX, EXAMPLE, SKILL_DIR / "references/service-map.md")
         for source in resources:
-            text = self.read(source)
+            text = source.read_text(encoding="utf-8")
             for target in re.findall(r"\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)", text):
                 with self.subTest(source=source.name, target=target):
                     self.assertFalse(re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", target))
@@ -54,7 +59,7 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
             "references/ir-contract.md",
             "references/archify-adapter.md",
             "examples/trace-request.md",
-            "../gx-dev/references/codex-runtime.md",
+            "../gx-work/references/codex-runtime.md",
         ):
             self.assertIn(target, skill)
 
@@ -120,7 +125,7 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
         for trigger in ("시각화 포함", "구조를 그림으로 보여줘", "변경 영향도를 시각화해줘"):
             self.assertIn(trigger, skill)
         self.assertIn("런타임 사실을 추론하지 않는다", skill)
-        self.assertIn("../../gx-dev/references/codex-runtime.md", codex)
+        self.assertIn("../../gx-work/references/codex-runtime.md", codex)
 
         owned_text = "\n".join(self.read(path) for path in (SKILL, MAPPING, CODEX, EXAMPLE))
         self.assertNotRegex(owned_text, r"(?i)\b(?:gpt-\d|opus|sonnet|haiku)\b")
@@ -129,9 +134,7 @@ class GxVisualizeSkillContractTests(unittest.TestCase):
 
 class AccumulatedMapContractTests(unittest.TestCase):
     def setUp(self):
-        self.skill = (
-            ROOT / ".claude" / "skills" / "gx-visualize" / "SKILL.md"
-        ).read_text(encoding="utf-8")
+        self.skill = skill_bundle()
 
     def test_map_dir_default_is_not_committed_location(self):
         self.assertIn(".dev/architecture/", self.skill)
@@ -149,7 +152,7 @@ class AccumulatedMapContractTests(unittest.TestCase):
         self.assertIn("participants", self.skill)
 
     def test_skill_links_entrypoint_rules(self):
-        self.assertIn("references/entrypoint-rules.md", self.skill)
+        self.assertIn("entrypoint-rules.md", self.skill)
         self.assertTrue((ROOT / ".claude" / "skills" / "gx-visualize" / "references" / "entrypoint-rules.md").is_file())
 
     def test_korean_label_enrichment_is_required(self):
@@ -165,7 +168,7 @@ class AccumulatedMapContractTests(unittest.TestCase):
         self.assertNotIn("스냅샷 배너", self.skill)
 
     def test_service_view_runs_one_documented_command(self):
-        self.assertIn("python scripts/build_map.py <PROJECT_ROOT>", self.skill)
+        self.assertIn("python ../scripts/build_map.py <PROJECT_ROOT>", self.skill)
         self.assertTrue((SKILL_DIR / "scripts" / "build_map.py").is_file())
 
     def test_change_marking_is_documented(self):
@@ -221,7 +224,7 @@ class AccumulatedMapContractTests(unittest.TestCase):
         import re
 
         commands = re.findall(
-            r"`(python scripts/render_(?:archify|fallback)\.py[^`]*)`", self.skill
+            r"`(python (?:\.\./)?scripts/render_(?:archify|fallback)\.py[^`]*)`", self.skill
         )
         self.assertTrue(commands, "렌더 예시 명령을 찾지 못했다")
         for command in commands:
@@ -237,7 +240,7 @@ class AccumulatedMapContractTests(unittest.TestCase):
         있으면, 문서를 따라 셸(Bash 도구·PowerShell)로 실행하는 실행자가 다시 같은
         손상 경로를 밟는다.
         """
-        commands = re.findall(r"`(python scripts/render_archify\.py[^`]*)`", self.skill)
+        commands = re.findall(r"`(python (?:\.\./)?scripts/render_archify\.py[^`]*)`", self.skill)
         self.assertTrue(commands, "render_archify.py 예시 명령을 찾지 못했다")
         for command in commands:
             self.assertNotIn("--archify-command", command, command)

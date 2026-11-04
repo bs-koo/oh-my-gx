@@ -1,40 +1,25 @@
-# gx-tdd 유지보수 노트 — 의도적 중복 목록
+# gx-tdd 유지보수 노트
 
-아래는 무엇이 어디에 중복돼 있고 무엇이 SSOT인지의 목록이다. 스킬·phase·에이전트 정의를 **수정할 때** 읽는다. 파이프라인 실행 중에는 읽지 않는다.
+v2의 공통 진입은 gx-work, 개발 실행은 gx-tdd다. gx-dev와 그 phase는 제거했다. 실행 중에는 이 문서를 읽지 않는다. 스킬·역할·검증 계약을 수정할 때 아래 소유 지점과 소비 지점을 함께 대조한다.
 
-Codex 모델 선택과 질문 대기는 gx-dev의 `codex-models.md`·`codex-questions.md` 및 설치 helper가 공통 정본이다. dev/tdd setup·질문 적응표·Phase 실행 루프·resume 안내를 같이 대조한다. `tests/test_codex_model_policy.py`는 역할 matrix·eco·scope·fix·allowlist를 실행하고, `tests/test_codex_question_gate.py`는 미응답·부분 답변·동일 id의 기록·재개를 검사한다. helper 결과를 인증된 실제 모델·앱 UI 실측으로 치환하지 않는다.
+| 계약 | 정본과 함께 확인할 곳 |
+|---|---|
+| 공통 Codex 실행·질문·모델 | gx-work/references의 codex-runtime·codex-questions·codex-models, scripts/codex-* helper, gx-setup 설정 템플릿 |
+| 역할 본문·도구·티어 | agents/*.md → scripts/sync-codex-resources.py → gx-work/references/codex-roles. 생성물은 직접 편집하지 않는다 |
+| 의도·종료점·계획 인계 | gx-work/SKILL·planning/handoff, scripts/gx-work.py, gx-tdd intent-routing·plan-handoff·execution-boundaries |
+| 도메인 원장·업무 W계획 | gx-context modes/plan.md·scripts/plan.py. scripts/plan-lint.py도 같은 파서/check를 사용한다. 기능 units/T태스크와 혼동하지 않는다 |
+| TDD 상태·지문 | gx-tdd pipeline-state, pre-tool-guard G3, gx-commit, gx-pull-request. pipeline/status/verify-status/verify-fingerprint 판별과 트리 성분 비교를 유지한다 |
+| RED·IMPLEMENT·수리 | phase-implement 2-R/2-I, agents/red-writer·implementer, 단독 gx-red·green·refactor. RED 미열람·테스트 불변·현재 태스크만 실행·report/15줄 반환을 함께 확인한다 |
+| 테스트 선택·증거 | scripts/gx-test-plan.py, test-execution.md, baseline·review·verify·commit·Ralph. 실제 Git 변경을 누락하지 않고, 코드/설정/명령/범위/run/log가 달라지면 재사용하지 않는다 |
+| 리뷰 판정 | agents/reviewer가 spec/quality 블록과 동작 마커 정본. phase-implement 2-V·phase-review가 소비. 근거 부족은 review-evidence로 보강한 뒤 결함 여부를 판정한다 |
+| 실패·반복 상한 | phase-implement fix loop와 failure-investigation. 라운드 4~5 격상·총5회·수리2회 등 각 루프의 기존 상한을 매 라운드 복원한다 |
+| UI 테스트 | frontend-testing.md·testing-anti-patterns.md, red-writer, gx-red, phase-implement·design. 스타일/스냅샷을 동작 테스트로 오인하지 않는다 |
+| 조건부 로드 | 모든 SKILL.md는 UTF8 LF 기준20KB미만. 긴 advisor·인증·strict·시각화·지문 설명은 필요 분기에서만 읽고 이동된 파일 기준 상대경로를 확인한다 |
 
-**드리프트 주의**: 아래 정의들이 여러 파일에 **의도적으로 중복**되어 있다(에이전트 자기완결성·라우팅 강제력 목적 — 단일 출처화하면 에이전트/프롬프트가 정의를 못 받아 라우팅이 깨진다). 한쪽을 수정하면 나머지도 함께 갱신해 어긋나지 않게 한다.
-이 중 기계 검증 가능한 불변식(refactor 금지 목록 3파일 일치, green 재호출 상한, 프로젝트 루트 전달, verify 판별식 키, 디스패치 이름↔agents/ 대조)은 `scripts/lint-consistency.sh`가 CI(`.github/workflows/lint.yml`)에서 자동 검사한다. 나머지는 여전히 수동 동기화 대상이다.
-- **메인 지시문 모듈 경계**: gx-dev·gx-tdd는 각자의 `references/intent-routing.md`(인자·모드·플래그 충돌), `references/pipeline-state.md`(코드 맵·공유 규칙·state·gate), `references/interaction-contract.md`(질문 변환·에러 처리)를 필수 실행 계약으로 읽는다. 각 SKILL.md는 Agent/Phase 실행 순서와 안전 게이트를 소유한다. 이동한 문구를 수정할 때는 해당 소유 파일과 `scripts/lint-consistency.sh`의 명시적 계약 bundle을 함께 갱신한다. TDD 전용 verify 지문·`test-file-hash`·RGR 재개 규칙은 gx-tdd의 `pipeline-state.md`에만 둔다.
-- **디스패치 프롬프트**(red-writer/implementer — green/refactor 트리오는 단독 스킬 전용): phase-implement.md(Step 2-R/2-I)와 각 보조 스킬(gx-red/gx-green/gx-refactor) SKILL.md에 정의. phase-review Step 4b는 implementer 정리 모드를 디스패치한다.
-- **세션 IMPLEMENT 계약**(절대 규칙 5항·수행 불가능한 정리 5항·report 형식 5절): phase-implement.md Step 2-I "세션 IMPLEMENT 절차" ↔ `agents/implementer.md`(`--isolated`·fix 4~5·ralph 경로에서 디스패치되는 절대 규칙·REFACTOR 범위·report 파일 형식)에 중복. 린트 [3/36]이 금지 5항목을 양쪽에서 검사하고, [33/36]이 절차 블록 존재를 검사한다.
-- **태스크 리뷰 프롬프트·재리뷰 계약**: phase-implement.md Step 2-V의 reviewer 디스패치 프롬프트(Iron Law·커버리지·불신뢰 문단은 phase-review Task A의 **축약본** — 핵심 문장 `NO QUALITY VERDICT UNTIL SPEC VERDICT IS RENDERED`·`발견 단계의 목표는 커버리지다`는 동일) ↔ `agents/reviewer.md` "태스크 범위 모드" 절(재리뷰 판정 표 형식이 SSOT) ↔ phase-review Task A의 `[태스크 리뷰 유예 Minor]` 절(소비)에 중복. 린트 [34/36]가 세 곳과 핵심 문장 2개·절 순서를 검사한다.
-- **마커 분류**(`[동작결함]`/`[동작불변]`): `agents/reviewer.md`가 SSOT이며, phase-review의 Task A 프롬프트·Step 4.4 의사코드에 라우팅 강제를 위해 재명시된다.
-- **기계 판정 블록**(`spec_verdict`/`quality_verdict`/`security_verdict` YAML): spec·quality는 `agents/reviewer.md`가 SSOT이며 phase-review 프롬프트에 재명시. security는 공유 에이전트(gx-dev·gx-lens 등도 호출)라 **phase-review Task B 프롬프트가 producer**이고 에이전트 정의는 무수정. 소비는 Step 4.0/SPEC FAIL 처리 (블록 우선 → 산문 폴백 → 상충 시 보수적 판정). 개별 항목 라우팅 마커는 기존 산문 계약 유지. 린트가 쌍 존재를 검사. security는 여기에 더해 **블록·산문 집계가 모두 부재하면 재호출 → 위험 수용(원장 기록)·중단** 계층을 갖는다 (린트 [27/36]).
-- **리뷰 발견 단계 커버리지 계약**: 발견은 넓게·필터는 하류에서. `agents/reviewer.md`와 `agents/qa-manager.md` **양쪽 모두**가 커버리지 문단을 갖는다. Codex는 `agents/*.md`를 배포하지 않으므로 gx-tdd·gx-dev의 phase-review 디스패치 프롬프트에도 같은 계약을 재명시한다 — 린트 [28/36]가 4곳을 함께 검사한다.
-- **테스트 무결성 규칙**("테스트 파일 수정 금지" + "테스트 결함 의심" 보고 필드): `agents/green-coder.md`·`agents/implementer.md` ↔ phase-implement.md(Step 2-I, verify_red/verify_implement) ↔ gx-green SKILL.md(Step 1~3)에 중복 (4중).
-- **테스트 품질 가드**(anti-pattern 요약 + Good Tests 3기준): `agents/red-writer.md` ↔ phase-implement.md(Step 2-R) ↔ gx-red SKILL.md(Step 2)에 중복. 상세 기준의 SSOT는 `references/testing-anti-patterns.md`.
-- **UI 가드**(셀렉터 우선순위 + 스타일 assert 금지 + 스냅샷 금지): 위와 같은 3파일에 중복. 상세 기준의 SSOT는 `references/frontend-testing.md`이며, 레이어 분류(동작/표현)는 phase-design의 test-architect 프롬프트가, 하네스 게이트는 phase-implement Step 0.5가 소비한다. 린트 [23/36]이 3중 동기와 소비 지점을 검사한다.
-- **참조 파일 자기신고 + 격리 오염 검증**: `agents/red-writer.md`(출력 형식) ↔ phase-implement.md(Step 2-R 출력·verify_red) ↔ gx-red SKILL.md(Step 2 출력·Step 3)에 중복.
-- **경고 측정 규약**: `gx-verify` SKILL.md Step 2가 SSOT. phase-implement Step 0.5(baseline 기록)는 포인터 참조만 하므로 gx-verify만 고치면 따라온다.
-- **verify 경고 게이트 조건**(`pipeline`/`verify-status`/`verify-fingerprint` 판별): `.claude/hooks/pre-tool-guard.sh`(G3) ↔ `.claude/rules/skill-routing.md` ↔ gx-commit SKILL.md ↔ gx-pull-request SKILL.md에 중복. 판별 키의 SSOT는 `references/pipeline-state.md`의 state.md 스키마이며, 지문 계산 규약의 SSOT도 그 파일의 "verify 지문" 섹션.
-- **도메인 컨텍스트 4요소**(용어·README 핵심·미반영 항목·아키텍처 + 우선순위): gx-tdd/gx-dev phase-setup 3.1이 쌍둥이 producer, phase-requirements(product-owner — 4요소 전부 + FR 인용)·phase-design(architect — 용어·아키텍처만)·phase-complete Step 3(인용 FR 행 매칭)이 쌍둥이 consumer. 각 `references/pipeline-state.md`의 Context Slicing 표는 파생 사본. 린트 [36/36]이 8파일을 검사한다.
-- **질문 공통 계약**: 호출당 질문 1~3개, 질문마다 선택지 2~3개, 명시적 Other option 금지. Claude 예시의 정본은 gx-context SKILL.md, gx-dev·gx-tdd의 각 `references/intent-routing.md`·`references/interaction-contract.md`에 있고, Codex 변환과 현재 도구 스키마 우선 규칙의 정본은 `gx-dev/references/codex-runtime.md`다. 세 스킬과 runtime 중 하나를 고치면 나머지 소비자를 대조한다. `tests/test_codex_skill_questions.py`가 세 스킬의 정적 질문 예시·변환 계약을 검사하고, `tests/codex-smoke.md` Q2가 실제 소비 프로젝트 세션의 답변·결정 기록을 요구한다.
-- **SVN REPOSITORY_ID**: gx-dev·gx-tdd phase-setup과 gx-context A-3 PROJECTS.md producer는 `svn info --show-item url` 종료 코드 != 0이면 진단 후 중단한다. URL 끝에서 `trunk`, `branches/<name>`, `tags/<name>`을 제거하고 마지막 세그먼트를 쓴다. 성공했지만 URL·ID가 비거나 모호하면 경고 후 `basename(PROJECT_ROOT)`로 폴백한다. 세 곳을 함께 수정한다. `tests/test_codex_skill_context.py`가 producer·consumer 계약을, `tests/test_codex_skill_pipeline.py`가 두 pipeline의 동등성을 검사한다.
-- **review 진입 '변경 없음' 판정**: gx-tdd·gx-dev 각 SKILL.md의 실행 루프 2a에 쌍둥이 — 한쪽 보수 시 함께 갱신.
-- **프로젝트 타입 폴백 표**: SSOT는 `.claude/config.json`의 projectTypes. gx-verify Step 1·gx-tdd/gx-dev phase-review의 표는 파생 사본(예시)이다. 힌트 카탈로그(`gx-setup/references/project-type-hints.md`)는 제안용으로 config에 종속되며, 경고 카운트(`warningPattern` — gx-verify Step 2 폴백 포함)와 ignore 보강(`artifacts` — phase-setup Step 6)도 이 SSOT를 따른다. agents/architect.md·coder.md의 타입 감지 표와 gx-commit의 아티팩트 패턴 합집합 규칙도 이 SSOT의 파생 소비자다.
-- **state.md 초기화 필드**: phase-setup Step 7이 정본이며, `--phase` 부트스트랩 골격(환경 감지 5항)은 그 부분집합 사본.
-- **무결성 기준선 규약**(`rgr-t{N}-porcelain.txt`·`test-file-hash`·`test-count`): phase-implement.md(verify_red/verify_implement — porcelain 대조는 테스트 파일 라인 필터, test-count는 오케스트레이터의 focused 직접 실행 결과) ↔ `references/pipeline-state.md`(state.md 스키마·--resume 규칙)에 중복. 단독 gx-green SKILL.md는 해시 단독 비교의 **의도적 경량판**(스냅샷·카운트 없음).
-- **판정 기록 규약**(Ruling 블록 형식·기본값 표·노출): SSOT는 phase-implement.md "판정 기록 (Rulings)" 절. phase-review 4b/4c(판정 지시)·phase-complete Step 2-1(pr-rulings.md 조립)·gx-pull-request SKILL.md(`--extra-section`의 Rulings/Deferred 무요약 규칙)이 소비한다. 린트 [35/36]가 규약 절·폐지된 질문 3곳 부재·기록 지시·PR 노출을 검사한다.
-- **테스트 실행 범위 규칙**(태스크 focused = 그 태스크 `test-file`만·범위 확장 금지·전체는 완료 verify): phase-implement.md 세션 IMPLEMENT 절대 규칙 4 ↔ 격리 경로 프롬프트 규칙 4·`[focused 테스트 명령]` 플레이스홀더 ↔ "focused 테스트 명령 조립" ↔ `agents/implementer.md` 절대 규칙 4·Red Flags에 중복. 플레이스홀더 원문을 바꾸면 `tests/fixtures/behavior/b2/subs.json` 키도 바꾼다. `tests/test_codex_skill_pipeline.py`의 `TestRunBudgetContractTests`가 문구를 검사한다.
-- **수리 모드 호출처**(RED report 없는 수리 — 깨진 테스트 + 에러 + focused 검증 명령, 테스트 파일 무변경 확인): phase-review Step 0(리뷰 Gate 수리)·phase-implement Step 3.5(경계 회귀 수리)·phase-complete Step -1(verify 회귀 수리) ↔ `agents/implementer.md` 수리 모드 문단. 호출처를 늘리거나 계약을 바꾸면 네 곳을 함께 갱신한다.
-- **Step 0 테스트 집합**: phase-review Step 0-2가 정본(무결성 선확인·누적 focused·전체 폴백 4조건). Step 4.4의 4b·4c 재확인과 금지 사항 절이 참조한다.
-- **기준선 사전 실행**: 절차·수용 조건 정본은 phase-implement Step 0.5 "기준선 사전 실행 (Claude Code·git 전용)" 절. phase-requirements "기준선 사전 실행 (진입 직후)" 절은 트리거·적용 조건 요약만, `references/pipeline-state.md`는 `baseline-fingerprint` 필드만, `references/harness-adaptation.md`는 Codex 미지원 행만 가진다. 수용 판정의 실행 근사는 `tests/test_codex_skill_pipeline.py`의 `BASELINE_ACCEPT_PROBE`.
-- **"수동 수정 재주입" 기록 문구**: phase-review(2곳)·phase-complete(Step -1)에 산재 — 문구 변경 시 함께 동기화.
-- **모델 프로파일 규칙**(결정 우선순위 5단계·eco 하향 대상·프로파일 질문 포함 규칙): gx-dev·gx-tdd 각 `references/intent-routing.md`의 질문 규칙 ↔ 각 `references/pipeline-state.md`의 "모델 프로파일" 공유 규칙이 쌍둥이 (하향 대상만 파이프라인별로 다름 — dev: design-critic·coder / tdd: design-critic·test-architect·reviewer. architect 유지는 공통 불변) ↔ 각 phase-setup Step 1.5. 파생 사본은 spec·guide·glossary·CHANGELOG. 린트 [14/36]이 키 문구와 opus 집합↔하향 목록 대조를 검사한다.
-- **ralph 전환 eco 미지원 경고**(`"ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다."`): gx-dev·gx-tdd phase-implement.md의 gx-ralph 전환 절(--ralph)에 동일 문구 중복 — 한쪽 수정 시 함께 갱신 (린트 미검사, 수동 동기화).
-- **gx-ralph opt-in 규칙**(RALPH 추출 트리거·RALPH 우선순위 규칙(svn 우선 배제/자연어 RALPH+선판정 모드/플래그 `--ralph`+자연어 트리거)·Step 3 모드 질문 생략 규칙·`--ralph` 플래그 충돌 검증): gx-dev·gx-tdd 각 `references/intent-routing.md`가 쌍둥이. phase-setup Step 7의 `flags` 기록 기준(무시된 RALPH 미기록)과 phase-implement 전환 절(방어 조건 — `--resume`은 비방어)도 dev/tdd 쌍둥이. 린트 [11/36]이 전환 절 헤더·핵심 규칙 문구 존재를 두 파이프라인에서 대조한다.
-- **fix 라운드 상한**: 파이프라인 phase-implement `라운드 5` ↔ 단독 gx-green SKILL.md `최대 2회` — **의도적 분기**다 (단독 스킬은 fix loop 없이 현행 상한 유지). 린트 [3/36]이 각각을 검사한다.
-- **행동 테스트 프롬프트 추출**: `scripts/behavior-tests.sh`의 `extract_prompt`가 phase-implement(red-writer·implementer)·phase-review(reviewer) Task 블록의 `Task(subagent_type="oh-my-gx:{name}"):` → `  prompt: |` → 4칸 들여쓰기 본문 → 닫는 ``` 형식에 의존한다. 블록 형식을 바꾸면 `scripts/test-behavior-tests.sh` T1이 CI에서 잡는다. 플레이스홀더 원문(`{…}`)을 바꾸면 `tests/fixtures/behavior/b*/subs.json`의 키도 함께 바꾼다 — 안 바꾸면 "없음"으로 치환되어 시나리오가 약해진다. B1의 본문 유입 판정은 픽스처 `tests/fixtures/behavior/node-minimal/src/limit.js`에만 있는 토큰 `Number.isInteger`에 의존한다 — 픽스처를 바꾸면 러너의 leak 검사도 함께 바꾼다.
-- **구현 구조 시각화 제안**(Step 5.5 — 헤드리스 판정·AskUserQuestion 질문·변경 표시 옵션·실패 무관 원칙): gx-dev·gx-tdd 각 phase-complete.md의 `## Step 5: 진행 상태 완료`와 `## Step 6: 다음 단계` 사이에 동일 절로 중복. SSOT 없이 양쪽에 같은 본문을 유지하는 방식 — 한쪽을 수정하면 반드시 다른 쪽도 같은 문구로 갱신한다 (린트 미검사. `tests/test_gx_arch_pipeline.py`의 `test_both_pipelines_keep_the_same_gate_text`가 두 절의 동일성을 검사한다).
+## 검사
+
+- 관련 기능의 좁은 테스트를 먼저 실행한다. 공통 배포·하네스 계약 변경은 통합 시 Codex 계약 검사를 한 번 수행하고, 실패·추가 변경이 있는 대상만 재실행한다.
+- `python scripts/sync-codex-resources.py --check`, `bash scripts/lint-consistency.sh`를 수행한다. 보호 조건은 hook-tests, Ralph 경로는 runner 검사를 더한다.
+- 기존 린트 번호 [3/36]·[23/36]·[33/36]·[34/36]은 역할/TDD/UI/태스크리뷰 불변식, [32/36]는 진입 예산을 확인한다. 테스트를 문구 유지용으로 약화하지 말고 실제 입력·행동·설치 경로와 연결한다.
+- scripts/behavior-tests.sh는 phase의 `Task(subagent_type=...)`·`prompt: |`·4칸 들여쓰기 형식에서 프롬프트를 추출한다. 블록 형식을 바꾸면 mock을 확인하고, placeholder를 바꾸면 fixtures/behavior의 substitutions도 갱신한다.
+- 정적·mock·helper 통과는 실제 설치 발견·모델 배정·질문 UI·훅 신뢰의 증거가 아니다. tests/codex-smoke.md의 미실행은 그대로 구분한다.

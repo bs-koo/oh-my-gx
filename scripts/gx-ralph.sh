@@ -89,6 +89,21 @@ AC_FILE="$DEV_DIR/ac-status.json"
 [ -f "$STATE" ] || fail "$STATE 가 없습니다. /oh-my-gx:gx-ralph 로 먼저 준비하세요"
 grep -q "pipeline: gx-ralph" "$STATE" || fail "state.md가 gx-ralph 파이프라인이 아닙니다"
 grep -q "status: in_progress" "$STATE" || fail "state.md가 in_progress 상태가 아닙니다"
+# Removed non-TDD/unknown origins must fail before lock, log archive or session launch.
+check_tdd_origin() {
+  local origins origin_count
+  origins=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | tr -d '\r')
+  origin_count=$(grep -c '^origin:' "$STATE")
+  [ "$origin_count" = 1 ] && [ "$origins" = "gx-tdd" ] || fail "origin: gx-tdd만 실행할 수 있습니다. 기존 원장은 보존하고 /gx-work에서 TDD 전환을 확인하세요 (origin 누락은 대화형 확인 필요)"
+}
+check_tdd_origin
+check_endpoint() {
+  if grep -Eq '^flags:.*--stop-at([[:space:]]+|=)verify([[:space:]"]|$)' "$STATE" &&
+     ! grep -Eq '^ralph-local-commits:[[:space:]]*approved[[:space:]]*$' "$STATE"; then
+    fail "명시 stop-at verify와 Ralph 로컬 커밋이 충돌합니다. 대화형 준비에서 실제 확인 후 ralph-local-commits: approved를 기록하세요"
+  fi
+}
+check_endpoint
 # tr -d '\r': CRLF state.md 방어 — Git Bash sed는 \r을 투명 처리하지만 Linux/macOS sed는 보존해 비교가 깨진다
 STATE_BRANCH=$(sed -n 's/^branch:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
 [ "$STATE_BRANCH" = "$BRANCH" ] || fail "브랜치 불일치 (state: $STATE_BRANCH, 현재: $BRANCH)"
@@ -157,6 +172,8 @@ NO_DRIFT=0
 NO_PROGRESS=0
 i=1
 while [ "$i" -le "$MAX_ITER" ]; do
+  check_tdd_origin
+  check_endpoint
   PRE_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "none")
   PRE_AC=$(ac_hash)
   PRE_PASSES=$(ac_passes)
@@ -183,6 +200,8 @@ while [ "$i" -le "$MAX_ITER" ]; do
   fi
   EXIT_CODE=$?
   [ "$EXIT_CODE" -eq 0 ] || { echo "[gx-ralph] 반복 실행 실패 (exit: $EXIT_CODE) — $LOG 확인" >&2; exit 3; }
+  check_tdd_origin
+  check_endpoint
   CONTRACT_SOURCE="$LOG"
   [ "$HARNESS" = codex ] && CONTRACT_SOURCE="$FINAL"
   CONTRACT=$("$PYTHON_CMD" - "$CONTRACT_SOURCE" <<'PY'
@@ -211,11 +230,8 @@ except (OSError, ValueError, KeyError, TypeError):
 raise SystemExit(0 if isinstance(items, list) and items and all(isinstance(a, dict) and a.get('passes') is True for a in items) else 1)
 PY
       DONE=$(ac_passes)
-      # 복귀 파이프라인은 origin 분기 — gx-tdd 출발 루프는 spec→quality 리뷰(/gx-tdd)가 정본
-      ORIGIN=$(sed -n 's/^origin:[[:space:]]*//p' "$STATE" | head -1 | tr -d '\r')
-      REVIEW_CMD="/gx-dev"; [ "$ORIGIN" = "gx-tdd" ] && REVIEW_CMD="/gx-tdd"
       echo "[gx-ralph] ✅ COMPLETE — 전 AC 완료 (passes=true: $DONE건, 반복 $i회)"
-      echo "[gx-ralph] 다음 단계: $REVIEW_CMD --phase review 로 리뷰 → --phase complete 로 인수·PR"
+      echo "[gx-ralph] 다음 단계: /gx-tdd --phase review 로 리뷰 → --phase complete 로 보존한 종료점까지 완료"
       exit 0
       ;;
     "<ralph>BLOCKED:"*)

@@ -26,7 +26,7 @@ allowed-tools:
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
@@ -223,3 +223,5 @@ green 에이전트가 통과를 위한 최소 코드를 작성합니다.
 - `Skill("oh-my-gx:gx-commit")` — RED 단계에서 사이클 외부 스킬 호출 금지
 
 **위반 시**: 즉시 중단하고 fully-qualified 이름으로 재호출.
+
+현재 태스크의 테스트 실행은 [공통 실행 계약](../gx-tdd/references/test-execution.md)의 focused CLI를 따른다. 테스트 파일을 저장한 뒤 명시 설정 또는 확인된 runner로 해당 파일만 실행하며, 미지원 명령을 전체 테스트로 조용히 바꾸지 않는다.

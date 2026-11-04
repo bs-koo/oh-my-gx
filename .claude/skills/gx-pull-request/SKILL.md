@@ -27,7 +27,7 @@ allowed-tools:
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex 지문 helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-fingerprint.py](../../../scripts/codex-fingerprint.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-fingerprint.py')).Path`. 아래 지문 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 

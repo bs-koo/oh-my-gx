@@ -30,7 +30,7 @@ allowed-tools:
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex config helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [../../../scripts/codex-project-config.py](../../../scripts/codex-project-config.py)다. 실제 설치된 SKILL.md 절대경로 `SKILL_PATH`에 대해 `Path(SKILL_PATH).resolve().parents[3]`가 `GX_PLUGIN_ROOT`이며, `.codex-plugin/plugin.json`과 helper의 존재를 확인한다. Windows PowerShell: `$skillPath = (Resolve-Path -LiteralPath '<installed SKILL.md>').Path; $pluginRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $skillPath) '..\..\..')).Path; $helper = (Resolve-Path -LiteralPath (Join-Path $pluginRoot 'scripts/codex-project-config.py')).Path`. 아래 config 명령의 `<GX_PLUGIN_ROOT>`는 이 경로로만 치환하고, Windows에서는 확인한 `$helper` 절대경로를 사용한다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
@@ -81,88 +81,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ### 0.5단계: 프로젝트 타입 등록
 
-`.claude/config.json`의 `projectTypes`를 프로젝트에 맞게 등록한다. **SSOT는 config에 등록된 값**이며, 힌트 카탈로그는 제안용이다.
-
-1. **기존 등록 확인**: config `projectTypes` 중 `detect` 파일이 프로젝트 루트에 존재하는 타입이 있으면 → `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 등록 유지)` 출력 후 **7(하네스 확인)으로 진행**한다 (config는 갱신하지 않는다). 등록 내용을 그대로 두더라도 하네스 확인은 수행한다 — 명령이 config에 적혀 있다는 것과 그 명령이 실제로 도는 것은 다른 문제이고, 이 간극이 파이프라인 후반(구현 직전)에야 드러나면 PRD·설계를 다 만든 뒤 되돌아가야 한다.
-   **여러 타입의 detect 파일이 동시에 존재하면** 첫 매칭으로 단락하지 않고 아래 3의 다중 감지 분기로 처리한다.
-2. **빌드 파일 스캔**: Glob으로 `Makefile`, `CMakeLists.txt`, `project.yml`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, `setup.py`, `requirements.txt`, `go.mod`, `*.csproj`, `*.sln`, `composer.json`, `build.gradle`, `build.gradle.kts`, `package.json`을 탐색한다.
-3. **제안 생성**: `Read("references/project-type-hints.md")`로 힌트 카탈로그를 읽어 감지 파일과 매칭한다.
-   - 매칭되면 해당 행의 타입 키·build/test·warningPattern·artifacts를 제안 값으로 사용한다.
-   - **여러 행이 매칭되면** 두 가지 상황을 구분한다. 잘못 고르면 한쪽 레이어가 영구히 검증되지 않으므로 사용자에게 물어본다.
-     - **부수 감지**: 한쪽이 도구용일 뿐 별도 테스트 대상이 아닌 경우 (예: C 프로젝트의 도구용 `package.json`, 문서 사이트용 `package.json`). → 주 타입 하나를 고른다.
-     - **복합 타입**: 양쪽 모두 실제 소스와 테스트를 가진 경우 (예: `build.gradle.kts` + `frontend/package.json`인 풀스택 모노레포). → **한 타입 키에 양쪽을 `&&`로 이은 복합 명령**을 등록한다. 하나만 고르면 나머지 레이어는 verify 게이트가 아예 실행하지 않아 미검증 상태로 통과한다.
-     ```
-     AskUserQuestion(
-       questions: [{
-         header: "타입 구성",
-         question: "빌드 파일이 여러 개 감지되었습니다: {목록}. 어떤 구성인가요?",
-         multiSelect: false,
-         options: [
-           { label: "복합 (양쪽 모두 테스트 대상)", description: "한 타입에 양쪽 build/test를 && 로 이어 등록합니다. 풀스택 모노레포의 기본 선택입니다" },
-           { label: "{주 타입}만 대상", description: "나머지는 도구용이라 테스트 대상이 아닙니다" }
-         ]
-       }]
-     )
-     ```
-     복합을 선택하면 각 행의 명령을 `&&`로 잇고 타입 키는 프로젝트를 나타내는 이름으로 제안한다 (예: `fullstack`). 명령 조합 규칙과 주의점은 힌트 카탈로그의 "복합 타입" 절을 따른다.
-   - 매칭되지 않으면 프로젝트 구조(빌드 스크립트, README, CI 설정)를 근거로 추론해 제안하되 근거를 함께 표시한다. 근거 없는 명령을 지어내지 않는다.
-   - 아무 빌드 파일도 감지되지 않으면 → `프로젝트 타입 등록 : 건너뜀 (감지 실패)` 출력 후 1단계로 진행한다 (파이프라인 게이트가 fail-closed로 처리).
-4. **사용자 확인**:
-   ```
-   AskUserQuestion(
-     questions: [{
-       header: "타입 등록",
-       question: "감지된 프로젝트 타입: {타입키}. 명령을 확인해주세요. build: `{build}`, test: `{test}`",
-       multiSelect: false,
-       options: [
-         { label: "등록 (Recommended)", description: "이 값으로 config.json projectTypes에 기록합니다" },
-         { label: "명령 수정", description: "Other로 이동해서 build/test 명령을 직접 입력해주세요" },
-         { label: "건너뛰기", description: "등록하지 않습니다. 파이프라인 게이트에서 매번 직접 입력해야 합니다" }
-       ]
-     }]
-   )
-   ```
-   - "등록" → 5로 진행. "명령 수정" → 입력값 반영 후 5로 진행. "건너뛰기" → `프로젝트 타입 등록 : 건너뜀 (사용자 선택)` 출력 후 1단계로 진행.
-5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). Codex에서는 위 helper에 `{"projectTypes":{"{타입키}":{확정한 필드만}}}` 형태의 updates만 전달해 기존 타입의 다른 필드와 사용자 정의 필드를 보존한다. Claude Code는 기존 Edit를 사용한다. `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다.
-6. **권한 등록 (Claude Code만)**: build/test 명령의 첫 토큰에서 prefix 권한을 도출하고 (예: `make test` → `Bash(make *)`) 확인받는다. **Codex에서는 이 단계에서 `.claude/settings.local.json`을 읽거나 수정하지 않는다.** 대신 Python/Bash/Git 명령의 실제 실행 가능 여부와 `/hooks`에서 사용자가 GX hook을 검토·신뢰했는지 확인한다. 필요한 명령 권한은 현재 Codex 정책에 따라 처리하며 확인되지 않은 상태를 `권한 설정 완료`로 표시하지 않는다:
-   ```
-   AskUserQuestion(
-     questions: [{
-       header: "권한 등록",
-       question: "등록한 명령을 권한 프롬프트 없이 실행하도록 `.claude/settings.local.json`에 허용을 추가할까요? ({권한 prefix 목록})",
-       multiSelect: false,
-       options: [
-         { label: "추가 (Recommended)", description: "permissions.allow에 병합합니다 (기존 항목 보존)" },
-         { label: "건너뛰기", description: "추가하지 않습니다. 파이프라인 실행 중 권한 프롬프트가 발생할 수 있습니다" }
-       ]
-     }]
-   )
-   ```
-   - "추가" → `.claude/settings.local.json`의 `permissions.allow` 배열에 병합한다. 파일 부재 시 `{"permissions":{"allow":[...]}}`로 생성하고, 기존 항목은 보존하며, 중복은 추가하지 않는다. JSON 파싱 실패 시 갱신하지 않고 수동 설정을 안내한다.
-7. **하네스 확인** (등록·유지 경로 공통, 1회 실행):
-
-   등록된 `test` 명령을 실제로 **한 번 실행**한다. config에 명령이 적혀 있다는 것과 그 명령이 도는 것은 별개이고, 이 차이는 온보딩에서 알면 몇 분이지만 파이프라인 후반에 알면 PRD·설계를 되돌려야 한다. 복합 명령이면 `&&`로 이어진 **각 조각을 나눠 실행**해 어느 레이어가 비어 있는지까지 보고한다.
-
-   타임아웃은 config `timeouts.build`를 쓴다. 실행 결과에 따라:
-
-   | 결과 | 출력 | 안내 |
-   |---|---|---|
-   | 정상 실행, 테스트 1건 이상 | `테스트 하네스 : 확인 ✅ ({N}건)` | 그대로 진행 |
-   | 실행되지만 0건 | `테스트 하네스 : 명령은 동작하나 테스트 0건` | 첫 테스트 작성 필요를 안내 (gx-tdd는 이 상태로 진입하지 않는다) |
-   | 명령 실행 불가 (러너 미설치·스크립트 부재) | `테스트 하네스 : 실행 실패 — {명령}` | 러너 설치를 안내하고 `docs/test-harness-guide.md`를 가리킨다 |
-   | 기존 테스트가 실패 중 | `테스트 하네스 : 확인 ✅ ({N}건, {M}건 실패)` | 실패는 보고만 한다 — 기존 테스트를 고치는 것은 setup의 일이 아니다 |
-
-   복합 명령의 부분 실패는 이렇게 보고한다:
-   ```
-   테스트 하네스 : 부분 확인
-     ./gradlew test           → 7건 ✅
-     pnpm --dir frontend test → 실행 실패 (러너 미설치)
-   ```
-
-   **이 확인은 정보 제공이며 setup을 중단시키지 않는다.** gx-setup은 gx-dev와 공유하는 스킬이고 gx-dev는 테스트를 필수로 요구하지 않으므로, 여기서 차단하면 정상적인 사용을 막게 된다. 하네스가 필수인 쪽은 gx-tdd이며, 그 강제는 phase-implement의 하네스 게이트와 gx-verify가 담당한다. 다만 이 단계에서 미리 알려주면 사용자가 파이프라인을 시작하기 전에 결정할 수 있다.
-
-   test 명령이 등록되지 않은 타입(2에서 건너뛰었거나 test 필드가 없는 경우)은 `테스트 하네스 : 건너뜀 (test 명령 미등록)`을 출력한다.
-8. `프로젝트 타입 등록 : 완료 ✅ ({타입키})` 출력.
+이번 실행의 프로젝트 타입·detect·build/test·focusedTest 등록 및 하네스 확인은 `Read("references/project-type-registration.md")`를 읽고 수행한다. SSOT는 config이며 기존 등록 유지·복수 타입·사용자 확인·권한 보존 게이트를 유지한다.
 
 ### 1단계: 필수 도구 확인
 
@@ -222,7 +141,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
    ```
    ⚠️ SVN CLI가 설치되어 있지 않습니다.
-   /gx-dev의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
+   /gx-work의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
 
    {OS별 안내}
 
@@ -256,73 +175,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ### 2단계: 인증
 
-**git인 경우** → GH 인증을 수행한다:
-
-1. `gh auth status` 로 인증 상태 확인
-2. 인증됨 → `GH 인증 : 완료 ✅` 출력
-3. 미인증 → 아래 절차로 device flow 인증을 진행한다:
-
-#### 2-1. Device code 발급
-
-```bash
-gh auth login --hostname github.com --git-protocol https --web 2>&1
-```
-- `timeout: 120000` (2분, config.json `timeouts.network` 값) 설정
-- 이 명령은 **one-time code**와 인증 URL을 출력한다
-
-#### 2-2. 사용자에게 안내
-
-출력에서 코드와 URL을 파싱하여 아래 형식으로 안내한다:
-
-```
-🔐 GitHub 인증이 필요합니다.
-
-1. 브라우저에서 이 URL을 열어주세요: https://github.com/login/device
-2. 아래 코드를 입력하세요: XXXX-XXXX
-3. GitHub 계정으로 로그인하면 인증이 완료됩니다.
-
-인증을 완료하면 알려주세요.
-```
-
-사용자에게 인증 완료 여부를 묻는다:
-```
-AskUserQuestion(
-  questions: [{
-    header: "GH 인증",
-    question: "GitHub 로그인을 완료하셨나요?",
-    multiSelect: false,
-    options: [
-      { label: "완료", description: "인증을 완료했습니다. 다음 단계로 진행합니다" },
-      { label: "재시도", description: "인증 URL을 다시 표시합니다" }
-    ]
-  }]
-)
-```
-
-#### 2-3. 인증 확인
-
-사용자가 완료를 알리면 `gh auth status`로 인증 성공 여부를 확인한다.
-- 성공 → `GH 인증 : 완료 ✅` 출력
-- 실패 → 에러 메시지를 보여주고, 2-1부터 재시도할지 사용자에게 묻는다
-
-**svn인 경우** → SVN 자격 증명 캐시 여부만 확인한다:
-
-1. `svn info`로 현재 워킹 카피의 인증 상태를 확인한다.
-   - 성공 (자격 증명 캐시됨) → `SVN 인증 : 완료 ✅ (캐시된 자격 증명 사용)` 출력.
-   - 실패 (인증 오류) → 아래 안내 후 **진행한다** (자격 증명을 직접 수집하지 않는다):
-     ```
-     SVN 인증 : 미설정
-
-     보안상 SVN 사용자명/비밀번호를 대화로 수집하지 않습니다.
-     터미널에서 직접 아래 명령으로 자격 증명을 캐시한 뒤 다시 실행해주세요:
-
-       svn info <저장소 URL>
-
-     최초 1회 인증 성공 시 SVN이 자격 증명을 자동 캐시합니다.
-     ```
-   - `SVN 인증 : 건너뜀` 출력 후 다음 단계로 진행.
-
-2. **주의**: 어떤 경우에도 AskUserQuestion으로 사용자명/비밀번호를 수집하지 않는다. 비밀번호는 프롬프트 히스토리, 세션 로그, 옵션 description 등에 노출될 위험이 있다.
+VCS_TYPE이 git이면 `Read("references/authentication-git.md")`, svn이면 `Read("references/authentication-svn.md")`를 읽어 해당 경로만 수행한다. SVN 사용자명·비밀번호를 대화로 수집하지 않는다. git은 gh auth status로 기존 인증을 확인하며 필요할 때만 device flow를 진행한다.
 
 ### 3단계: context/ 초기 구조 안내
 
@@ -333,73 +186,15 @@ AskUserQuestion(
 
 ### 3.5단계: .dev 공유 확인 (git)
 
-git 저장소면 `Read("../gx-dev/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-dev가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
+git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-dev가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
 
 ### 4단계: Google Chat 알림 연동 (선택)
 
-**svn인 경우** → 건너뛴다. `Google Chat 연동 : 건너뜀 (SVN — PR 기반 알림 미지원)` 출력.
-
-**git인 경우:**
-
-1. `.claude/config.json`의 `notifications.googleChat` 확인:
-   - `webhookUrl`이 이미 채워져 있으면 →
-     `Google Chat 연동 : 완료 ✅ (기존 설정 사용)` 출력. 건너뜀.
-   - `webhookUrl`이 비어있으면 → 2번으로.
-
-2. 사용자에게 연동 여부를 묻는다:
-   ```
-   AskUserQuestion(
-     questions: [{
-       header: "Chat 연동",
-       question: "Google Chat 웹훅 알림을 연동하시겠습니까? (PR 생성 시 Chat Space에 알림)",
-       multiSelect: false,
-       options: [
-         { label: "연동", description: "웹훅 URL을 입력받아 연동합니다" },
-         { label: "건너뛰기", description: "연동하지 않고 진행합니다" }
-       ]
-     }]
-   )
-   ```
-   - "건너뛰기" → 건너뜀
-   - "연동" → 3번으로
-
-3. 웹훅 URL 생성 가이드를 표시한 후 AskUserQuestion으로 URL을 받는다:
-
-   ```
-   📋 Google Chat 웹훅 URL 생성 방법
-
-   1. Google Chat에서 알림을 받을 스페이스를 엽니다.
-      (스페이스가 없으면 '+ 새 스페이스'로 먼저 생성하세요)
-   2. 스페이스 상단의 스페이스 이름을 클릭합니다.
-   3. '앱 및 통합' 탭을 선택합니다.
-   4. '+ 웹훅 추가'를 클릭합니다.
-   5. 웹훅 이름(예: 'Claude Code')을 입력하고 '저장'을 누릅니다.
-   6. 생성된 웹훅 URL을 복사합니다.
-   ```
-
-   ```
-   AskUserQuestion(
-     questions: [{
-       header: "웹훅 URL 입력",
-       question: "위 방법으로 생성한 Google Chat 웹훅 URL을 입력해주세요.",
-       multiSelect: false,
-       options: [
-         { label: "Other로 입력", description: "Other로 이동해서 웹훅 URL을 붙여넣어주세요" },
-         { label: "건너뛰기", description: "나중에 설정합니다" }
-       ]
-     }]
-   )
-   ```
-
-   - 건너뛰기 → 건너뜀
-   - URL 입력 → `https://chat.googleapis.com/` 시작 여부 검증
-   - 유효하지 않으면 1회 재입력 요청. 재입력도 유효하지 않으면 건너뜀.
-   - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`). Codex에서는 위 helper에 `{"notifications":{"googleChat":{"enabled":true,"webhookUrl":"{확정 URL}"}}}` updates만 전달한다. Claude Code는 기존 Edit를 사용한다.
-     `Google Chat 연동 : 완료 ✅` 출력
+svn이면 `Google Chat 연동 : 건너뜀 (SVN — PR 기반 알림 미지원)`을 출력한다. git에서 기존 webhookUrl이 있으면 기존 설정을 유지하고 완료를 표시한다. git에서 webhookUrl이 비어있을 때만 `Read("references/google-chat.md")`의 연동 여부 질문부터 수행한다. 사용자 선택 전 URL을 수집하거나 설정을 바꾸지 않는다.
 
 ### 5단계: 모델 프로파일 (선택)
 
-gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파일을 설정한다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
+gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파일을 설정한다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
 
 0. **세션 확정값 우선**: 이 스킬이 파이프라인의 config 부트스트랩(phase-setup config 가드의 `Skill("oh-my-gx:gx-setup")` 호출)으로 실행되었고, 이번 세션에서 모델 프로파일이 이미 확정된 경우(플래그·자연어·모드 확인 질문 답변) → **질문 없이 그 확정 값을 config.json에 기록**하고 `모델 프로파일 : 완료 ✅ ({값}, 세션 확정값 기록)` 출력 후 완료 단계로 진행한다 (프로파일 이중 질문 방지). Codex 기록은 위 helper의 `{"modelProfile":"{확정값}"}` updates만 사용한다.
 1. `.claude/config.json`의 `"modelProfile"` 필드를 확인한다:
@@ -421,7 +216,7 @@ gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파
    ```
 3. 선택 값을 `.claude/config.json`의 `"modelProfile"`에 기록한다 (표준 → `"standard"`, 에코 → `"eco"`). Codex는 위 helper의 `{"modelProfile":"{확정값}"}` updates만 사용한다. Claude Code는 기존 Edit를 사용한다.
 4. 에코 선택 시 1줄 안내: "메인 세션 모델은 플러그인이 제어하지 않습니다. 토큰 절약이 목적이면 세션 모델도 Sonnet 사용을 권장합니다."
-5. `모델 프로파일 : 완료 ✅ ({값})` 출력. 실행별 오버라이드는 `/gx-dev`·`/gx-tdd`의 `--eco`/`--standard` 플래그로 가능하다.
+5. `모델 프로파일 : 완료 ✅ ({값})` 출력. 실행별 오버라이드는 `/gx-work`·`/gx-tdd`의 `--eco`/`--standard` 플래그로 가능하다.
 
 ### 완료: 퀵스타트
 
@@ -430,7 +225,7 @@ gx-dev·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-dev {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-work {요청}           → 전체 개발 사이클 (PRD~PR)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 💡 화면 설계서가 있다면:
@@ -442,17 +237,17 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-dev {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-work {요청}           → 개발 사이클 (PRD~리뷰)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 ⚠️ SVN 프로젝트:
 - /gx-commit, /gx-pull-request는 SVN에서 미지원
-- /gx-dev 리뷰까지 완료 후 svn commit은 직접 수행하세요
+- /gx-work 리뷰까지 완료 후 svn commit은 직접 수행하세요
 ```
 
 ### Codex 모델 설정 안내
 
-Codex에서는 [모델 정책](../gx-dev/references/codex-models.md)을 참조한다. config의 `codex.modelTiers`가 없거나 비어 있으면 helper 기본값을 사용한다. 사용자가 역할 티어별 모델·effort를 지정하면 `codex-project-config.py`에 `{"codex":{"modelTiers":{확정한 티어만}}}` updates를 전달해 기존 사용자 설정을 보존한다. setup은 현재 세션의 spawn allowlist·effort와 대조해 지원 여부를 표시하며, 임의로 전역 `~/.codex/config.toml`이나 메인 모델을 변경하지 않는다. 질문은 공통 pending 계약으로 실제 응답을 기다린다. 세션 정보가 없으면 모델 설정이 검증됐다고 표시하지 않는다.
+Codex에서는 [모델 정책](../gx-work/references/codex-models.md)을 참조한다. config의 `codex.modelTiers`가 없거나 비어 있으면 helper 기본값을 사용한다. 사용자가 역할 티어별 모델·effort를 지정하면 `codex-project-config.py`에 `{"codex":{"modelTiers":{확정한 티어만}}}` updates를 전달해 기존 사용자 설정을 보존한다. setup은 현재 세션의 spawn allowlist·effort와 대조해 지원 여부를 표시하며, 임의로 전역 `~/.codex/config.toml`이나 메인 모델을 변경하지 않는다. 질문은 공통 pending 계약으로 실제 응답을 기다린다. 세션 정보가 없으면 모델 설정이 검증됐다고 표시하지 않는다.
 
 ## 주의사항
 
