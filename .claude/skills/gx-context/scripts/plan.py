@@ -21,12 +21,28 @@ ID_RE = re.compile(r"^W\d{2}$")
 
 def parse_table(text, header, allow_empty=False):
     def cells(line):
-        return [cell.strip() for cell in line.strip().strip("|").split("|")]
+        raw = line.strip()
+        values, start, escaped = [], 0, False
+        for offset, character in enumerate(raw):
+            if character == "|" and not escaped:
+                values.append(raw[start:offset].strip())
+                start = offset + 1
+            # 바로 앞 연속 역슬래시가 홀수일 때만 파이프가 셀 안에 남는다.
+            escaped = character == "\\" and not escaped
+        values.append(raw[start:].strip())
+        if raw.startswith("|"):
+            values.pop(0)
+        if raw.endswith("|") and start == len(raw):
+            values.pop()
+        return values
     lines = text.splitlines()
     start = next((i for i, line in enumerate(lines)
                   if line.strip().startswith("|") and cells(line) == header), None)
     if start is None:
         raise ValueError(f"규약 헤더를 가진 표를 찾지 못했습니다: {header}")
+    separator = cells(lines[start + 1]) if start + 1 < len(lines) else []
+    if len(separator) != len(header) or not all(re.fullmatch(r":?-+:?", cell) for cell in separator):
+        raise ValueError("표 헤더 다음 구분선이 없거나 잘못되었습니다")
     rows = []
     for line in lines[start + 2:]:
         if not line.strip().startswith("|"):
@@ -126,7 +142,7 @@ def requirement_refs(row, domains):
         if (end_kind and end_kind != kind) or last < first:
             raise ValueError(f"{row['ID']}: 요구사항 범위 오류: {token}")
         refs.extend((domain, f"{kind}-{number}") for number in range(first, last + 1))
-    return refs
+    return list(dict.fromkeys(refs))
 
 
 def analyze(rows, ledger):

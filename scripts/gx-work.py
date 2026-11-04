@@ -18,8 +18,13 @@ def text(value):
     return isinstance(value, str) and bool(value.strip())
 
 
+def state_fields(path):
+    fields = dict(re.findall(r"^([a-z][a-z-]*):[ \t]*([^\r\n]*)", path.read_text(encoding="utf-8"), re.M))
+    return {key: value.strip().strip('\"\'') for key, value in fields.items()}
+
+
 def active_state(project_root):
-    """현재 작업의 기존 state만 읽는다. 다른 브랜치를 탐색하거나 전환하지 않는다."""
+    """현재 state를 읽고, SVN 활성 포인터가 없고 후보가 여럿이면 선택만 요청한다."""
     root = Path(project_root).resolve()
     config = root / ".claude" / "config.json"
     try:
@@ -30,7 +35,19 @@ def active_state(project_root):
         settings = {}
     if settings.get("vcs") == "svn":
         active = root / ".dev" / ".active"
-        slug = active.read_text(encoding="utf-8").strip() if active.exists() else "trunk"
+        slug = active.read_text(encoding="utf-8").strip() if active.exists() else ""
+        if not slug:
+            candidates = []
+            for path in sorted((root / ".dev").glob("*/state.md")):
+                if not path.resolve().is_relative_to((root / ".dev").resolve()):
+                    raise ValueError("활성 작업 경로가 .dev 밖을 가리킵니다")
+                if state_fields(path).get("status") == "in_progress":
+                    candidates.append(str(path.resolve()))
+            if len(candidates) > 1:
+                return {"resume-candidates": candidates}, None
+            if candidates:
+                path = Path(candidates[0])
+                return state_fields(path), str(path)
         slug = slug or "trunk"
     else:
         result = subprocess.run(["git", "branch", "--show-current"], cwd=root,
@@ -44,9 +61,7 @@ def active_state(project_root):
     path = directory / "state.md"
     if not path.exists():
         return {}, None
-    fields = dict(re.findall(r"^([a-z][a-z-]*):[ \t]*([^\r\n]*)", path.read_text(encoding="utf-8"), re.M))
-    fields = {key: value.strip().strip('\"\'') for key, value in fields.items()}
-    return fields, str(path)
+    return state_fields(path), str(path)
 
 
 def route(project_root, intent, stop_at=None, goal=""):
@@ -58,6 +73,13 @@ def route(project_root, intent, stop_at=None, goal=""):
     if intent in ("understand", "plan", "status") and stop_at not in (None, default):
         raise ValueError("읽기 전용 intent와 stop-at가 충돌합니다")
     state, state_file = active_state(project_root)
+    if intent in ("implement", "resume") and state.get("resume-candidates"):
+        return {
+            "action": "resume-selection-required", "skill": "oh-my-gx:gx-tdd", "skill-args": "--resume",
+            "read-only": True, "goal": goal, "stop-at": None, "requested-stop-at": stop_at,
+            "run-id": None, "state-file": None, "candidate-state-files": state["resume-candidates"],
+            "existing-pipeline": None, "phase": None,
+        }
     active = state.get("status") == "in_progress"
     action = intent
     if intent in ("implement", "resume"):
@@ -164,21 +186,23 @@ def validate_plan(value):
             if dep not in unit_ids:
                 issue(f"units.{identifier}.depends-on", f"존재하지 않는 입력 단위: {dep}", "conflict")
     visited, visiting = set(), set()
-
-    def visit(identifier):
-        if identifier in visiting:
-            issue("units.depends-on", f"작업 의존성 순환: {identifier}", "conflict")
-            return
-        if identifier in visited:
-            return
-        visiting.add(identifier)
-        for dep in dependencies.get(identifier, []):
-            visit(dep)
-        visiting.remove(identifier)
-        visited.add(identifier)
-
     for identifier in dependencies:
-        visit(identifier)
+        if identifier in visited:
+            continue
+        visiting.add(identifier)
+        stack = [(identifier, iter(dependencies.get(identifier, [])))]
+        while stack:
+            current, remaining = stack[-1]
+            dep = next(remaining, None)
+            if dep is None:
+                stack.pop()
+                visiting.remove(current)
+                visited.add(current)
+            elif dep in visiting:
+                issue("units.depends-on", f"작업 의존성 순환: {dep}", "conflict")
+            elif dep not in visited:
+                visiting.add(dep)
+                stack.append((dep, iter(dependencies.get(dep, []))))
     decisions = value.get("decisions", [])
     if not isinstance(decisions, list):
         issue("decisions", "결정 목록이 필요합니다")

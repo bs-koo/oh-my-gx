@@ -139,6 +139,104 @@ class WorkEntryTests(unittest.TestCase):
                 self.assertEqual(self.snapshot(), before)
 
 
+class SvnWorkEntryTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        config = self.root / ".claude" / "config.json"
+        config.parent.mkdir()
+        config.write_text('{"vcs": "svn"}', encoding="utf-8")
+        self.pointer = self.root / ".dev" / ".active"
+
+    def active(self, slug, pipeline="gx-tdd"):
+        state = self.root / ".dev" / slug / "state.md"
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(f"pipeline: {pipeline}\nstatus: in_progress\nphase: implement\n"
+                         f"run-id: {slug}-run\ngoal: {slug}\nstop-at: commit\n", encoding="utf-8")
+        return state
+
+    def snapshot(self):
+        return {str(p.relative_to(self.root)): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def test_missing_or_blank_pointer_requires_selection_before_resuming(self):
+        first = self.active("alpha")
+        second = self.active("beta")
+        for pointer in (None, "", " \n"):
+            if pointer is not None:
+                self.pointer.write_text(pointer, encoding="utf-8")
+            for intent in ("resume", "implement"):
+                with self.subTest(pointer=pointer, intent=intent):
+                    before = self.snapshot()
+                    result = work.route(self.root, intent, stop_at="pr", goal="이번 요청")
+                    self.assertEqual(result["action"], "resume-selection-required")
+                    self.assertEqual((result["skill"], result["skill-args"]), ("oh-my-gx:gx-tdd", "--resume"))
+                    self.assertTrue(result["read-only"])
+                    self.assertEqual(result["candidate-state-files"], [str(first.resolve()), str(second.resolve())])
+                    self.assertIsNone(result["run-id"])
+                    self.assertIsNone(result["stop-at"])
+                    self.assertEqual(result["requested-stop-at"], "pr")
+                    self.assertEqual(self.snapshot(), before)
+
+    def test_multiple_active_states_do_not_expand_readonly_requests(self):
+        self.active("alpha")
+        self.active("beta")
+        before = self.snapshot()
+        for intent in ("understand", "plan", "status"):
+            with self.subTest(intent=intent):
+                result = work.route(self.root, intent)
+                self.assertEqual(result["action"], intent)
+                self.assertTrue(result["read-only"])
+                self.assertIsNone(result["skill"])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_only_active_svn_state_restores_identity_without_a_pointer(self):
+        for pipeline, locked, action in (("gx-tdd", False, "resume"), ("gx-dev", False, "migration-required"),
+                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "loop-resume-required"),
+                                         ("gx-ralph", True, "loop-active")):
+            state = self.active("beta", pipeline)
+            if locked:
+                state.with_name("ralph.lock").write_text("runner pid", encoding="utf-8")
+            for intent in ("resume", "implement"):
+                with self.subTest(pipeline=pipeline, locked=locked, intent=intent):
+                    before = self.snapshot()
+                    result = work.route(self.root, intent)
+                    self.assertEqual(result["action"], action)
+                    self.assertEqual((result["run-id"], result["stop-at"]), ("beta-run", "commit"))
+                    self.assertEqual(result["read-only"], pipeline != "gx-tdd")
+                    self.assertEqual(self.snapshot(), before)
+
+    def test_mixed_pipeline_candidates_remain_readonly_until_selected(self):
+        self.active("alpha")
+        for pipeline in ("gx-dev", "unknown", "gx-ralph"):
+            second = self.active("beta", pipeline)
+            if pipeline == "gx-ralph":
+                second.with_name("ralph.lock").write_text("runner pid", encoding="utf-8")
+            with self.subTest(pipeline=pipeline):
+                before = self.snapshot()
+                result = work.route(self.root, "resume")
+                self.assertEqual(result["action"], "resume-selection-required")
+                self.assertTrue(result["read-only"])
+                self.assertIsNone(result["run-id"])
+                self.assertIsNone(result["stop-at"])
+                self.assertEqual(self.snapshot(), before)
+
+    def test_explicit_pointer_restores_existing_identity_and_pipeline_guards(self):
+        self.active("alpha")
+        self.pointer.write_text("beta", encoding="utf-8")
+        for pipeline, locked, action in (("gx-tdd", False, "resume"), ("gx-dev", False, "migration-required"),
+                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "loop-resume-required"),
+                                         ("gx-ralph", True, "loop-active")):
+            second = self.active("beta", pipeline)
+            if locked:
+                second.with_name("ralph.lock").write_text("runner pid", encoding="utf-8")
+            with self.subTest(pipeline=pipeline, locked=locked):
+                result = work.route(self.root, "resume")
+                self.assertEqual(result["action"], action)
+                self.assertEqual((result["run-id"], result["stop-at"]), ("beta-run", "commit"))
+                self.assertEqual(result["read-only"], pipeline != "gx-tdd")
+
+
 class NormalizedPlanTests(unittest.TestCase):
     def test_complete_plan_is_valid_without_fabricated_approval(self):
         self.assertEqual(work.validate_plan(plan()), [])
@@ -171,6 +269,31 @@ class NormalizedPlanTests(unittest.TestCase):
         self.assertTrue(any(p["kind"] == "conflict" for p in work.validate_plan(value)))
         value["units"][0]["depends-on"] = ["U1"]
         self.assertTrue(any(p["kind"] == "conflict" for p in work.validate_plan(value)))
+
+    def test_large_external_dependency_chain_returns_json_and_detects_cycles(self):
+        value = plan()
+        template = value["units"].pop()
+        for index in range(1100):
+            unit = copy.deepcopy(template)
+            unit["id"] = f"U{index}"
+            unit["ac"][0]["id"] = f"AC-{index}"
+            unit["depends-on"] = [f"U{index + 1}"] if index < 1099 else []
+            value["units"].append(unit)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "large-plan.json"
+            script = Path(__file__).resolve().parents[1] / "scripts" / "gx-work.py"
+            for cyclic, exit_code in ((False, 0), (True, 2)):
+                if cyclic:
+                    value["units"][-1]["depends-on"] = ["U0"]
+                path.write_text(json.dumps(value), encoding="utf-8")
+                process = subprocess.run([sys.executable, str(script), "validate-plan", "--plan", str(path)],
+                                         capture_output=True, text=True, encoding="utf-8")
+                self.assertEqual(process.returncode, exit_code, process.stderr)
+                self.assertEqual(process.stderr, "")
+                result = json.loads(process.stdout)
+                self.assertEqual(result["valid"], not cyclic)
+                if cyclic:
+                    self.assertTrue(any(issue["kind"] == "conflict" for issue in result["issues"]))
 
     def test_planned_file_paths_cannot_escape_project_scope_on_any_host(self):
         for path in ("../../outside.py", "C:/outside.py", "/outside.py", "C:outside.py", r"..\outside.py", r"\outside.py", r"\\host\share\outside.py", "src/../outside.py"):

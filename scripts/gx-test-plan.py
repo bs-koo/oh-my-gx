@@ -62,6 +62,10 @@ def matches(path, patterns):
                for pattern in patterns)
 
 
+def file_operands(files):
+    return shlex.join('./' + path if path.startswith('-') else path for path in files)
+
+
 def discover(root, types):
     files = []
     for directory, folders, names in os.walk(root):
@@ -74,7 +78,9 @@ def discover(root, types):
             str(Path(file).parent).replace('\\', '/') for file in files
             if matches(Path(file).name, settings.get('detect', []))}
         for directory in sorted(roots):
-            folder = root / directory
+            folder = (root / directory).resolve()
+            if not folder.is_relative_to(root):
+                raise ValueError(f'project root is outside repository: {name}:{directory}')
             if not folder.is_dir() or not any(matches(file.relative_to(folder).as_posix(),
                                                       settings.get('detect', []))
                                               for file in folder.iterdir() if file.is_file()):
@@ -156,7 +162,7 @@ def focused(args):
         files.append(local(path, directory))
     files = sorted(set(files))
     # A root-level filename beginning with '-' must remain an operand, not a runner flag.
-    operands = shlex.join('./' + path if path.startswith('-') else path for path in files)
+    operands = file_operands(files)
     result = {'supported': True, 'project': f'{name}:{directory}', 'cwd': directory, 'scope': files}
 
     def unsupported(reason):
@@ -194,6 +200,7 @@ def focused(args):
 
 def select_tests(root, project, paths, task_tests, global_reason, ownership):
     settings, directory = project['settings'], project['cwd']
+    folder = (root / directory).resolve()
     policy = settings.get('testSelection', {})
     changed = sorted({local(path, directory) for path in paths if under(path, directory)})
     required = {local(path, directory) for path in task_tests if under(path, directory)}
@@ -206,20 +213,26 @@ def select_tests(root, project, paths, task_tests, global_reason, ownership):
         if sources and owned_tests and len(owned_tests) == len(rule['tests']):
             mappings.append({'sources': sources, 'tests': owned_tests})
     for path in changed:
+        if not (folder / path).resolve().is_relative_to(folder):
+            raise ValueError(f'test selection path is outside selected project: {directory}:{path}')
         if configuration_path(path) or matches(path, policy.get('crosscutting', [])):
             full_reason = 'dependency/config/crosscutting change'
             continue
         if matches(path, policy.get('ignore', [])):
             continue
         mapped = [rule for rule in mappings if matches(path, rule['sources'])]
-        if mapped and any(rule.get('tests') for rule in mapped):
+        covered = bool(mapped and any(rule.get('tests') for rule in mapped))
+        if covered:
             selected.update(test for rule in mapped for test in rule['tests'])
-        elif matches(path, policy.get('tests', ['**/test_*.py', '**/*_test.py', '**/*.test.*',
-                                               '**/*.spec.*', '**/*Test.java', '**/*Tests.java',
-                                               '**/*Test.kt', '**/*Tests.kt'])):
+        if matches(path, policy.get('tests', ['**/test_*.py', '**/*_test.py', '**/*.test.*',
+                                            '**/*.spec.*', '**/*Test.java', '**/*Tests.java',
+                                            '**/*Test.kt', '**/*Tests.kt'])):
             selected.add(path)
-        else:
+        elif not covered:
             related.add(path)
+    for path in selected | related:
+        if not (folder / path).resolve().is_relative_to(folder):
+            raise ValueError(f'test selection path is outside selected project: {directory}:{path}')
     if any(not (root / directory / path).is_file() for path in selected):
         full_reason = 'mapped/required test missing or deleted'
     if related and not full_reason:
@@ -240,7 +253,7 @@ def select_tests(root, project, paths, task_tests, global_reason, ownership):
                 template = None
         if template and '{files}' in template:
             files = sorted(related | selected)
-            return template.replace('{files}', shlex.join(files)), files, 'affected runner'
+            return template.replace('{files}', file_operands(files)), files, 'affected runner'
         full_reason = 'unmapped changed file or unsupported affected runner'
     if not full_reason and not changed and not required and policy.get('independent') is True:
         return None, [], 'unaffected independent project'
@@ -250,7 +263,7 @@ def select_tests(root, project, paths, task_tests, global_reason, ownership):
         template = settings.get('focusedTest', '')
         files = sorted(selected)
         if '{files}' in template:
-            return template.replace('{files}', shlex.join(files)), files, 'mapped/changed tests'
+            return template.replace('{files}', file_operands(files)), files, 'mapped/changed tests'
         if '--tests {pattern}' in template and all(path.endswith(('.java', '.kt')) for path in files):
             patterns = ' '.join('--tests ' + shlex.quote(Path(path).stem) for path in files)
             return template.replace('--tests {pattern}', patterns), files, 'mapped/changed tests'
@@ -268,6 +281,9 @@ def plan(args):
                                          (read_json(args.changed_file) if args.changed_file else []))
                     if not relative(p).startswith('.dev/')})
     tests = sorted({relative(p) for p in read_json(args.tests_file)}) if args.tests_file else []
+    for path in set(paths) | set(tests):
+        if not (root / path).resolve().is_relative_to(root):
+            raise ValueError(f'changed/required path is outside repository: {path}')
     ownership = read_json(args.ownership_file) if args.ownership_file else []
     for rule in ownership:
         rule['sources'] = [relative(p) for p in rule['sources']]

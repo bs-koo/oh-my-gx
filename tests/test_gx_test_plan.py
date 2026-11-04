@@ -151,6 +151,88 @@ class SelectionEdgeTests(unittest.TestCase):
         command, scope, _ = self.select({'test': 'npm test'}, ['src/A.js', 'A.test.js'])
         self.assertEqual((command, scope), ('npm test', ['*']))
 
+    def test_broad_source_mapping_preserves_changed_and_required_tests(self):
+        (self.root / 'src').mkdir()
+        for path in ('src/feature.test.js', 'src/smoke.test.js', 'required.test.js'):
+            (self.root / path).write_text('test fixture', encoding='utf-8')
+        settings = {'test': 'npm test', 'focusedTest': 'npm test -- {files}',
+                    'testSelection': {'mappings': [
+                        {'sources': ['src/**'], 'tests': ['src/smoke.test.js']}]}}
+        command, scope, _ = self.module.select_tests(self.root,
+            {'cwd': '.', 'settings': settings}, ['src/feature.test.js'],
+            ['required.test.js'], None, [])
+        self.assertEqual(scope, ['required.test.js', 'src/feature.test.js', 'src/smoke.test.js'])
+        import shlex
+        self.assertEqual(shlex.split(command), ['npm', 'test', '--',
+            'required.test.js', 'src/feature.test.js', 'src/smoke.test.js'])
+
+    def test_option_like_selected_test_remains_a_file_operand(self):
+        import shlex
+        filename = '--ignore=test_sensitive.py'
+        (self.root / filename).write_text('def test_sensitive(): pass', encoding='utf-8')
+        command, scope, _ = self.select({'test': 'pytest', 'focusedTest': 'pytest {files}',
+            'testSelection': {'tests': ['-*']}}, [filename])
+        self.assertEqual(scope, [filename])
+        self.assertEqual(shlex.split(command), ['pytest', './--ignore=test_sensitive.py'])
+
+    def test_external_test_symlinks_are_blocked_for_changed_required_and_mapped_tests(self):
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external) / 'outside.test.js'
+            target.write_text('external test fixture', encoding='utf-8')
+            try:
+                (self.root / 'linked.test.js').symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f'symlinks unavailable: {exc}')
+            settings = {'test': 'all', 'focusedTest': 'runner {files}'}
+            cases = [(['linked.test.js'], [], settings),
+                     ([], ['linked.test.js'], settings),
+                     (['src/a.js'], [], {**settings, 'testSelection': {'mappings': [
+                         {'sources': ['src/a.js'], 'tests': ['linked.test.js']}]}})]
+            for changed, required, config in cases:
+                with self.subTest(changed=changed, required=required):
+                    with self.assertRaisesRegex(ValueError, 'outside selected project'):
+                        self.module.select_tests(self.root, {'cwd': '.', 'settings': config},
+                                                 changed, required, None, [])
+
+    def test_explicit_project_root_symlink_cannot_escape_repository(self):
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external)
+            (target / 'package.json').write_text('{}', encoding='utf-8')
+            try:
+                (self.root / 'linked').symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f'symlinks unavailable: {exc}')
+            with self.assertRaisesRegex(ValueError, 'outside repository'):
+                self.module.discover(self.root, {'node': {
+                    'roots': ['linked'], 'detect': ['package.json'], 'test': 'npm test'}})
+
+    def test_related_source_symlink_cannot_escape_selected_project(self):
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external) / 'source.js'
+            target.write_text('external source fixture', encoding='utf-8')
+            try:
+                (self.root / 'source.js').symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f'symlinks unavailable: {exc}')
+            with self.assertRaisesRegex(ValueError, 'outside selected project'):
+                self.select({'test': 'all', 'affectedTest': 'related {files}'}, ['source.js'])
+
+    def test_changed_symlinks_are_checked_before_config_crosscutting_or_ignore(self):
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external) / 'external.js'
+            target.write_text('external fixture', encoding='utf-8')
+            try:
+                for path in ('vite.config.js', 'source.js'):
+                    (self.root / path).symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f'symlinks unavailable: {exc}')
+            for path, policy in [('vite.config.js', {}),
+                                 ('source.js', {'crosscutting': ['source.js']}),
+                                 ('source.js', {'ignore': ['source.js']})]:
+                with self.subTest(path=path, policy=policy):
+                    with self.assertRaisesRegex(ValueError, 'outside selected project'):
+                        self.select({'test': 'all', 'testSelection': policy}, [path])
+
     def test_kotlin_mapping_uses_gradle_focused_selection(self):
         (self.root / 'LimitTest.kt').write_text('class LimitTest', encoding='utf-8')
         command, scope, _ = self.select({'test': './gradlew test',
@@ -282,6 +364,18 @@ class TestPlanTests(unittest.TestCase):
         tests = self.entries_for_tests(self.plan(['package-lock.json']))
         self.assertEqual(len(tests), 2)
         self.assertTrue(all(e['scope'] == ['*'] for e in tests))
+
+    def test_unowned_changed_symlink_cannot_hide_behind_global_fallback(self):
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external) / 'workspace.yaml'
+            target.write_text('packages: [web]', encoding='utf-8')
+            try:
+                (self.root / 'pnpm-workspace.yaml').symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f'symlinks unavailable: {exc}')
+            result = self.invoke('plan', '--base', 'HEAD', '--run-id', 'run-1')
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn('outside repository', result.stderr)
 
     def test_explicit_full_request_overrides_mapped_selection(self):
         changed = self.write('.dev/changed.json', '["web/src/login.js"]')

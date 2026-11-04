@@ -205,6 +205,49 @@ class ContextPlanTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["ready"], ["W01"])
 
+    def test_repeated_or_overlapping_refs_within_one_task_are_one_assignment(self):
+        for references in ("FR-1, FR-1", "FR-1~2, FR-2"):
+            with self.subTest(references=references):
+                ledger = [self.ledger()]
+                if "FR-2" in references or "~2" in references:
+                    ledger.append(self.ledger(requirement="FR-2"))
+                result = self.helper().analyze([self.row(requirements=references)], ledger)
+                self.assertEqual(result["errors"], [])
+                self.assertEqual(result["ready"], ["W01"])
+
+    def test_escaped_pipe_cells_preserve_backslash_parity(self):
+        module = self.helper()
+        for count in (1, 2, 3, 4):
+            with self.subTest(backslashes=count):
+                first = "A" + "\\" * count
+                if count % 2:
+                    first += "|B"
+                text = "| 값 | 끝 |\n|---|---|\n| " + first + "| 끝 |\n"
+                try:
+                    rows = module.parse_table(text, ["값", "끝"])
+                except ValueError as exc:
+                    self.fail(str(exc))
+                self.assertEqual(rows, [{"값": first, "끝": "끝"}])
+
+    def test_alignment_and_short_separator_cells_remain_valid(self):
+        module = self.helper()
+        for separator in ("|:-:|---:|", ":-: | -----------:", "- | -"):
+            with self.subTest(separator=separator):
+                text = "| 값 | 끝 |\n" + separator + "\n| 실제 값 | 끝 |\n"
+                self.assertEqual(module.parse_table(text, ["값", "끝"]),
+                                 [{"값": "실제 값", "끝": "끝"}])
+
+    def test_missing_or_invalid_table_separators_are_rejected(self):
+        module = self.helper()
+        for separator in (None, "", "not a separator", "|---|", "|---|text|"):
+            with self.subTest(separator=separator):
+                lines = ["| 값 | 끝 |"]
+                if separator is not None:
+                    lines.append(separator)
+                lines.extend(["| 첫 행 | 끝 |", "| 둘째 행 | 끝 |"])
+                with self.assertRaises(ValueError):
+                    module.parse_table("\n".join(lines), ["값", "끝"])
+
     def test_ambiguous_cross_domain_reference_blocks_recommendations(self):
         rows = [self.row(domain="통합")]
         result = self.helper().analyze(rows, [self.ledger(), self.ledger(domain="계량기")])
@@ -258,6 +301,50 @@ class ContextPlanTests(unittest.TestCase):
             self.assertEqual(process.returncode, 0, process.stderr)
             self.assertEqual(json.loads(process.stdout)["ready"], ["W01"])
             self.assertEqual(before, {path: path.read_bytes() for path in (plan, ledger)})
+
+    def test_installed_plan_cli_accepts_escaped_requirement_ac_and_task_cells(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "context/건물/status.md"
+            ledger.parent.mkdir(parents=True)
+            ledger.write_text("| ID | 요구사항 | AC | 상태 | PR |\n|---|---|---|---|---|\n"
+                              "| FR-1 | A \\| B 조회 | A \\| B 표시 | ⬜ | #7 |\n", encoding="utf-8")
+            plan = root / "계획.md"
+            plan.write_text("| ID | 작업 | 도메인 | 요구사항 | 의존 | 작업 위치 | 상태 |\n"
+                            "|---|---|---|---|---|---|---|\n"
+                            "| W01 | A \\| B 조회 | 건물 | FR-1 | - | - | 대기 |\n", encoding="utf-8")
+            before = {path: path.read_bytes() for path in (plan, ledger)}
+            process = subprocess.run([sys.executable, str(HELPER.with_name("plan.py")),
+                                      "--project-root", str(root), "--plan", str(plan)],
+                                     cwd=root, capture_output=True, encoding="utf-8")
+            self.assertEqual(process.returncode, 0, process.stderr + process.stdout)
+            self.assertEqual(json.loads(process.stdout)["ready"], ["W01"])
+            self.assertEqual(before, {path: path.read_bytes() for path in (plan, ledger)})
+
+    def test_plan_cli_blocks_missing_separator_in_plan_or_ledger(self):
+        for missing in ("plan", "ledger"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                ledger = root / "context/건물/status.md"
+                ledger.parent.mkdir(parents=True)
+                ledger_separator = "" if missing == "ledger" else "|---|---|---|---|---|\n"
+                first_status = "⬜" if missing == "ledger" else "✅"
+                ledger.write_text("| ID | 요구사항 | AC | 상태 | PR |\n" + ledger_separator +
+                                  f"| FR-1 | 첫 요구 | - | {first_status} | #7 |\n"
+                                  "| FR-2 | 둘째 요구 | - | ⬜ | - |\n", encoding="utf-8")
+                plan = root / "계획.md"
+                plan_separator = "" if missing == "plan" else "|---|---|---|---|---|---|---|\n"
+                first_task = "| W01 | 첫 작업 | 건물 | FR-1 | - | old/branch | 완료 |\n" if missing == "plan" else ""
+                plan.write_text("| ID | 작업 | 도메인 | 요구사항 | 의존 | 작업 위치 | 상태 |\n" +
+                                plan_separator + first_task +
+                                "| W02 | 둘째 작업 | 건물 | FR-2 | - | - | 대기 |\n", encoding="utf-8")
+                process = subprocess.run([sys.executable, str(HELPER.with_name("plan.py")),
+                                          "--project-root", str(root), "--plan", str(plan)],
+                                         cwd=root, capture_output=True, encoding="utf-8")
+                self.assertEqual(process.returncode, 1, process.stdout)
+                result = json.loads(process.stdout)
+                self.assertTrue(result["errors"])
+                self.assertEqual(result["ready"], [])
 
 
 if __name__ == "__main__":
