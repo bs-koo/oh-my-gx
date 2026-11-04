@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export Codex-consumable role bodies and the setup config template."""
+"""Export UTF-8/LF Codex resources; checks accept checkout CRLF/LF differences only."""
 
 import argparse
 import json
@@ -50,7 +50,7 @@ def expected_files(root: Path) -> dict[Path, bytes]:
     files[root / ROLE_DIR / "index.json"] = (
         json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
-    config = (root / ".claude/config.json").read_bytes()
+    config = (root / ".claude/config.json").read_bytes().replace(b"\r\n", b"\n")
     json.loads(config.decode("utf-8"))
     files[root / TEMPLATE] = config
     return files
@@ -58,8 +58,11 @@ def expected_files(root: Path) -> dict[Path, bytes]:
 
 def check_files(root: Path) -> list[str]:
     files = expected_files(root)
+    # Git may materialize text as CRLF on checkout. Ignore only that byte-pair
+    # difference; preserve BOMs, lone CRs, whitespace and all content drift.
     errors = [str(path) for path, content in files.items()
-              if not path.is_file() or path.read_bytes() != content]
+              if not path.is_file() or
+              path.read_bytes().replace(b"\r\n", b"\n") != content.replace(b"\r\n", b"\n")]
     role_dir = Path(root) / ROLE_DIR
     errors.extend(str(path) for path in sorted(role_dir.glob("*.md")) if path not in files)
     return errors
@@ -78,7 +81,7 @@ def write_files(root: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="생성물 바이트 정합성 검사")
+    parser.add_argument("--check", action="store_true", help="생성물 내용 정합성 검사 (CRLF/LF 차이만 허용)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:

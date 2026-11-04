@@ -24,6 +24,8 @@ jobs:
       - name: 행동 테스트 러너 (mock)
         run: bash scripts/test-behavior-tests.sh
   codex-contract:
+    env:
+      PYTHONUTF8: '1'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]

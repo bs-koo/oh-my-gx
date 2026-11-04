@@ -17,11 +17,17 @@
 
 원시 로컬 출력은 같은 작업의 `logs/`에 보관하며 커밋하지 않는다. 새 검사 총수 80개와 기존 Codex 248개는 개별·통합·실패 재검사 결과의 합성 근거다. 작업 중 매 수정마다 저장소 전체 검사를 반복하지 않았다. 공통 실행 규약·배포·hook을 바꾼 통합 시점의 넓은 검사와 이후 변경한 계약만의 재검사를 구분한다.
 
-최종 소스의 canonical `codex-fingerprint.py` 결과는 `43acaee:5462af1fe1a2`다. 로컬 Windows의 최초 객체 저장에서는 30초 timeout이 발생했다. 진단 trace는 작은 Git 객체를 쓰는 디스크 flush에 지연이 집중됨을 보였고, 실제 stage 후 동일 helper가 정상 완료했다. 이 환경 진단을 위해 제품 helper의 timeout이나 알고리즘을 바꾸지 않았다. `.dev` 산출물은 정해진 지문 계약대로 제외된다.
+첫 커밋 대상 소스의 canonical `codex-fingerprint.py` 결과는 `43acaee:5462af1fe1a2`다. 로컬 Windows의 최초 객체 저장에서는 30초 timeout이 발생했다. 진단 trace는 작은 Git 객체를 쓰는 디스크 flush에 지연이 집중됨을 보였고, 실제 stage 후 동일 helper가 정상 완료했다. 이 환경 진단을 위해 제품 helper의 timeout이나 알고리즘을 바꾸지 않았다. `.dev` 산출물은 정해진 지문 계약대로 제외된다.
 
 ## 리뷰 반영
 
 독립 리뷰가 지적한 setup 단계의 조기 commit/push, TS config 영향 누락, 승인된 design 재생성, 다중 프로젝트 증거 로그 덮어쓰기와 evidence 디렉터리 누락을 수정했다. 마지막 focused 연결 리뷰에서 발견한 하위 프로젝트 cwd 누락도 수정했다. 복원된 내부 RGR 절차·격리 prompt·fixture 치환의 순서를 다시 대조했다.
+
+## PR 97의 Windows CI 후속
+
+첫 원격 검사에서 공통 정합성과 Linux 계약은 통과했고, Windows는 새 gx-work 역할 경로에 이전 gx-dev의 LF 속성이 적용되지 않아 배포 리소스 검사에서 멈췄다. `.gitattributes`의 경로를 수정하고 실제 `git check-attr`로 role/index의 LF를 확인했다. sync 검사는 CRLF쌍만 LF로 정규화하고 writer는 LF를 유지한다. BOM·lone CR·추가 빈줄·본문/설정/잔여 역할 차이는 계속 실패한다. 신규 회귀 2개와 기존 내용 drift 보호 1개가 통과했고 실제 `--check`도 통과했다. 세부 RED→GREEN 근거는 [ci-line-endings.md](ci-line-endings.md)에 있다. CI Python은 UTF-8을 명시한다. 최종 원격 결과는 PR checks를 따른다.
+
+이 보완 뒤 canonical 지문은 `d666372:ac2d9d34f743`이며, 같은 코드의 검증 근거를 보존했다.
 
 ## 확인하지 않은 범위
 
