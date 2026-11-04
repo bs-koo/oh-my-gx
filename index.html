@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>oh-my-gx — AI 워크플로 오케스트레이션 플러그인</title>
-  <meta name="description" content="도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인. Claude Code와 Codex에서 요구사항 분석, 구현 계획, 코드 리뷰, 근거 기반 검증과 PR 작성을 지원합니다.">
+  <title>GX Development — 개발 워크플로</title>
+  <meta name="description" content="요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. Claude Code와 Codex에서 도메인 문서, 작업 계획, 테스트 주도 개발과 최종 검증을 연결합니다.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -683,9 +683,9 @@
 <!-- ===================== TOP NAV ===================== -->
 <header class="topnav">
   <div class="topnav-inner">
-    <a href="#top" class="brand" aria-label="oh-my-gx 홈">
+    <a href="#top" class="brand" aria-label="GX Development 홈">
       <svg class="spike" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l1.6 7.3 5.3-5.2-3.4 6.6 7.1-1.7-6.4 3.5 6.4 3.5-7.1-1.7 3.4 6.6-5.3-5.2L12 22.5l-1.6-7.3-5.3 5.2 3.4-6.6L1.4 15.5l6.4-3.5L1.4 8.5l7.1 1.7-3.4-6.6 5.3 5.2z"/></svg>
-      oh-my-gx
+      GX Development
     </a>
     <nav class="navlinks" aria-label="주요 메뉴">
       <a href="#usage">사용법</a>
@@ -708,15 +708,15 @@
   <div class="container hero-grid">
     <div>
       <span class="badge badge-dot">Claude Code · Codex 플러그인</span>
-      <h1 class="display-xl">프로젝트 이해부터<br>검증된 변경까지.</h1>
-      <p class="lead">도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인. 요구사항 분석·구현 계획·코드 리뷰·검증을 연결하고, 요청한 완료점까지 진행합니다.</p>
+      <h1 class="display-xl">요구사항부터<br>구현과 검증까지.</h1>
+      <p class="lead">요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. Claude Code와 Codex에서 도메인 문서와 작업 계획을 정리하고, 필요한 개발과 검증을 연결합니다.</p>
       <div class="hero-actions">
         <a href="#usage" class="btn btn-primary">시작하기</a>
         <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
       </div>
       <div class="hero-meta">
         <span><strong>18</strong> 스킬</span>
-        <span><strong>17</strong> 역할 정의</span>
+        <span><strong>TDD</strong> 기반 개발</span>
         <span><strong>Git · SVN</strong> 지원</span>
         <span><strong>Claude Code · Codex</strong></span>
       </div>
@@ -725,7 +725,7 @@
       <div class="code-window" role="img" aria-label="gx-work에서 계획을 정리하고 TDD 구현과 검증으로 연결하는 흐름 예시">
         <div class="code-chrome">
           <span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span>
-          <span class="code-title">oh-my-gx — 작업 흐름 예시</span>
+          <span class="code-title">GX Development — 작업 흐름 예시</span>
         </div>
         <div class="code-body">
 <span class="ln"><span class="c-cmd">&gt;</span> /gx-work 조회 기능 구현해줘</span>
@@ -847,14 +847,14 @@
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
       <h2 class="display-lg">18개 스킬, 하나의 작업 흐름</h2>
-      <p>공통 진입·도메인 관리·TDD 실행·분석과 검증을 나눠 제공합니다. 사용자용 스킬과 무인 반복 러너가 사용하는 내부 스킬을 포함합니다.</p>
+      <p>도메인 문서와 계획을 정리하고, 테스트 주도 개발과 변경 검증을 진행합니다. 정책 분석, 기술 조사, 커밋·PR 작성도 작업에 맞게 요청할 수 있습니다.</p>
     </div>
 
     <!-- context -->
     <div class="feature">
       <div class="feature-text">
         <span class="badge">도메인과 작업 계획</span>
-        <h3 class="display-sm">gx-context · 도메인 컨텍스트 관리</h3>
+        <h3 class="display-sm">gx-context · 도메인·요구사항 관리</h3>
         <p>문서·대화·코드에서 도메인 지식과 요구사항을 정리하고, 변경된 요구사항을 원장과 작업 계획에 함께 반영합니다. 후속 작업은 관련 컨텍스트와 결정 근거를 참조합니다.</p>
         <ul class="feature-list">
           <li><strong>도메인 정리</strong> — 용어·정책·아키텍처와 출처를 기록</li>
@@ -883,8 +883,8 @@
     <div class="feature reverse">
       <div class="feature-text">
         <span class="badge">공통 진입점</span>
-        <h3 class="display-sm">gx-work · 개발 워크플로 연결</h3>
-        <p>프로젝트 이해·구현 계획·개발·재개 요청의 공통 진입점입니다. 목표와 완료점을 정리하고, 기존 문서와 결정을 필요한 만큼 보완해 gx-tdd 실행으로 연결합니다.</p>
+        <h3 class="display-sm">gx-work · 개발 작업 진행</h3>
+        <p>프로젝트 파악, 작업 계획, 기능 개발과 작업 재개를 연결합니다. 기존 문서와 결정을 활용하고, 구현이 필요하면 gx-tdd로 이어서 진행합니다.</p>
         <ul class="feature-list">
           <li><strong>이해·계획 모드</strong> — 코드를 변경하지 않고 요청한 분석이나 계획에서 종료</li>
           <li><strong>기존 계획 활용</strong> — 문서의 출처·제약·수용 기준을 보존하고 누락·충돌만 보완</li>
@@ -914,8 +914,8 @@
     <div class="feature">
       <div class="feature-text">
         <span class="badge badge-coral">개발 실행</span>
-        <h3 class="display-sm">gx-tdd · TDD 기반 개발</h3>
-        <p>요구사항·설계·구현·리뷰·검증을 수행하는 개발 실행 스킬입니다. gx-work의 계획을 이어받아 실패 테스트 작성, 최소 구현, 구조 개선을 진행하고 현재 변경의 검증 근거를 확인합니다.</p>
+        <h3 class="display-sm">gx-tdd · 테스트 주도 개발</h3>
+        <p>수용 기준을 테스트로 확인하고 기능을 구현합니다. 실패 테스트 작성, 최소 구현, 코드 정리를 진행한 뒤 문서와 실제 결과를 대조하고 최종 검증합니다.</p>
         <ul class="feature-list">
           <li><strong>수용 기준</strong> — Given-When-Then으로 관찰 가능한 동작 명시</li>
           <li><strong>테스트 우선</strong> — RED 작성과 구현의 역할을 분리하고 실패 근거 확인</li>
@@ -948,7 +948,7 @@
     <div class="grid grid-4" style="margin-top:8px">
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">gx-red · 실패 테스트</div>
+        <div class="card-title">gx-red · 실패 테스트 작성</div>
         <p>요구사항을 테스트로 표현하고 의도한 실패를 확인합니다. RED 단계를 단독 실행할 때 사용합니다.</p>
       </div>
       <div class="card-dark">
@@ -958,12 +958,12 @@
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">gx-refactor · 구조 개선</div>
+        <div class="card-title">gx-refactor · 코드 정리</div>
         <p>테스트 통과와 기존 동작을 유지하며 중복과 복잡한 구조를 정리합니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">gx-verify · 완료 검증</div>
+        <div class="card-title">gx-verify · 변경 검증</div>
         <p>현재 변경의 테스트·빌드 결과와 실행 근거를 확인해 완료 및 커밋·PR 진행 가능 여부를 판단합니다.</p>
       </div>
     </div>
@@ -972,7 +972,7 @@
     <div class="feature reverse">
       <div class="feature-text">
         <span class="badge badge-coral">무인 반복</span>
-        <h3 class="display-sm">gx-ralph · 무인 반복 실행 준비</h3>
+        <h3 class="display-sm">gx-ralph · 반복 개발 준비</h3>
         <p>승인된 요구사항을 수용 기준 원장으로 정리하고 외부 러너의 반복 실행을 준비합니다. 반복 세션은 수용 기준을 한 건씩 구현·검증·커밋하고, 진행 근거를 파일과 Git 이력에 기록합니다.</p>
         <ul class="feature-list">
           <li><strong>명시적 진입</strong> — gx-ralph 직접 요청 또는 gx-work·gx-tdd에서 Ralph 실행 요청</li>
@@ -1018,27 +1018,27 @@
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>gx-tech-debt · 기술 부채 분석</h3>
+        <h3>gx-tech-debt · 기술 부채 진단</h3>
         <p>코드·아키텍처·의존성·테스트의 기술 부채를 조사하고, 심각도·수정 난이도·영향 범위에 따라 개선 순서를 제안합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>gx-research · 도메인 리서치</h3>
+        <h3>gx-research · 도메인·기술 조사</h3>
         <p>웹 검색과 문서 분석으로 도메인·기술 정보를 조사하고, 출처를 포함한 보고서·비교표·요약을 작성합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>gx-cross-review · 요구사항·설계 교차 검증</h3>
+        <h3>gx-cross-review · 구현 교차 검토</h3>
         <p>요구사항·설계·검증 기록을 바탕으로 수용 기준 충족, 범위 이탈, 새 위험을 검토합니다. Codex에서는 <code>--advisor native</code>로 현재 환경의 역할 리뷰를 요청할 수 있습니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>gx-commit · gx-pull-request</h3>
+        <h3>gx-commit / gx-pull-request · 커밋·PR 작성</h3>
         <p><strong>gx-commit</strong>은 변경 검증과 브랜치 조건을 확인하고 한국어 커밋을 작성합니다. <strong>gx-pull-request</strong>는 변경 이력과 검증 결과를 정리해 PR을 생성합니다. 각각 요청한 경우에 실행합니다.</p>
       </div>
       <div class="card" style="background:var(--surface-cream-strong)">
         <span class="card-icon">◆</span>
-        <h3>gx-setup · 실행 환경 설정</h3>
+        <h3>gx-setup · 프로젝트 설정</h3>
         <p>Git·SVN과 개발 도구·인증 상태를 확인하고 프로젝트의 테스트·빌드 명령을 설정합니다. 기존 사용자 설정을 보존하며 필요한 준비 항목을 안내합니다.</p>
       </div>
     </div>
@@ -1047,7 +1047,7 @@
     <div class="feature reverse" style="margin-top:72px; margin-bottom:0;">
       <div class="feature-text">
         <span class="badge badge-coral">문장 검토와 교정</span>
-        <h3 class="display-sm">gx-humanizer · 문체 교정</h3>
+        <h3 class="display-sm">gx-humanizer · 문장 교정</h3>
         <p>한국어·영어 문장의 반복 표현과 과도한 수식을 점검하고 의미를 보존하며 교정합니다. 검토만 하거나, 교정하거나, 별도 검증을 포함하는 정밀 모드를 선택할 수 있습니다.</p>
         <ul class="feature-list">
           <li><strong>audit</strong> — 표현상의 문제와 근거 보고</li>
@@ -1078,7 +1078,7 @@
     <div class="feature" style="margin-top:72px; margin-bottom:0;">
       <div class="feature-text">
         <span class="badge badge-coral">요구사항과 구조 시각화</span>
-        <h3 class="display-sm">gx-visualize · 개발 산출물 시각화</h3>
+        <h3 class="display-sm">gx-visualize · 구조·흐름 시각화</h3>
         <p>요구사항·진행 상태·변경 영향·서비스 구조를 근거와 연결된 한국어 HTML로 시각화합니다. 작업 산출물과 코드 위치를 함께 확인할 때 사용합니다.</p>
         <ul class="feature-list">
           <li><strong>trace · progress</strong> — 요구사항 연결과 작업 단계별 상태</li>
@@ -1200,7 +1200,7 @@
     <div class="section-head">
       <p class="eyebrow">Codex 사용법</p>
       <h2 class="display-lg">설치하고, 채팅으로 요청하세요</h2>
-      <p>마켓플레이스에서 플러그인을 설치하고, 작업할 프로젝트의 새 세션에서 스킬과 훅 상태를 확인하세요. 아래는 PowerShell 기준 설치 예시입니다.</p>
+      <p>설치 패키지는 <code>oh-my-gx</code>입니다. 마켓플레이스에서 설치하고, 작업할 프로젝트의 새 세션에서 스킬과 훅 상태를 확인하세요. 아래는 PowerShell 기준 설치 예시입니다.</p>
     </div>
     <div class="grid grid-2">
       <div class="card">
@@ -1349,8 +1349,8 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
   <div class="container">
     <div class="footer-top">
       <div class="footer-brand">
-        <span class="brand"><svg class="spike" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l1.6 7.3 5.3-5.2-3.4 6.6 7.1-1.7-6.4 3.5 6.4 3.5-7.1-1.7 3.4 6.6-5.3-5.2L12 22.5l-1.6-7.3-5.3 5.2 3.4-6.6L1.4 15.5l6.4-3.5L1.4 8.5l7.1 1.7-3.4-6.6 5.3 5.2z"/></svg> oh-my-gx</span>
-        <p>도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인.</p>
+        <span class="brand"><svg class="spike" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l1.6 7.3 5.3-5.2-3.4 6.6 7.1-1.7-6.4 3.5 6.4 3.5-7.1-1.7 3.4 6.6-5.3-5.2L12 22.5l-1.6-7.3-5.3 5.2 3.4-6.6L1.4 15.5l6.4-3.5L1.4 8.5l7.1 1.7-3.4-6.6 5.3 5.2z"/></svg> GX Development</span>
+        <p>요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. 설치 패키지는 <code>oh-my-gx</code>입니다.</p>
       </div>
       <div class="footer-cols">
         <div class="footer-col">
@@ -1375,7 +1375,7 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
       </div>
     </div>
     <div class="footer-bottom">
-      <span>oh-my-gx — AI 워크플로 오케스트레이션 플러그인</span>
+      <span>GX Development — 개발 워크플로</span>
       <span>Built for Claude Code · Codex</span>
     </div>
   </div>

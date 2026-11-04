@@ -1,12 +1,12 @@
 ---
 name: gx-tdd
 version: 1.0.0
-description: 기능 개발·버그 수정을 TDD로 실행하거나 기존 TDD 작업을 재개할 때 사용한다. gx-work의 계획을 이어받아 RED-GREEN-REFACTOR와 완료 검증을 수행한다.
+description: 기능 개발·버그 수정의 TDD 실행과 기존 TDD 작업 재개 요청에 사용한다. gx-work의 계획을 이어받아 RED-GREEN-REFACTOR와 완료 검증을 수행한다.
 argument-hint: "<자연어 요청>"
 allowed-tools: ["Bash(python *)", "Bash(python3 *)", "Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(wc *)", "Bash(echo *)", "Bash(mktemp *)", "Bash(sort *)", "Bash(rm -f *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(make *)", "Bash(cmake *)", "Bash(ctest *)", "Bash(ceedling *)", "Bash(cargo *)", "Bash(mvn *)", "Bash(dotnet *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
 ---
 
-# gx-tdd
+# GX TDD — 테스트 주도 개발
 
 > **이 스킬**: gx-tdd — TDD 사이클 강제 개발 파이프라인
 > 공통 진입은 oh-my-gx:gx-work, 개발 실행은 이 스킬이 담당한다. RED-GREEN-REFACTOR와 완료 전 verify 게이트는 항상 유지한다.

@@ -1,6 +1,6 @@
 ---
 name: gx-research
-description: 특정 주제의 조사·리서치·검색·비교를 요청할 때 사용한다. 웹 검색과 문서 분석을 통해 출처와 판단 근거를 갖춘 보고서·비교표·요약을 작성한다.
+description: 주제별 조사·리서치·검색·비교 요청에 사용한다. 웹과 문서를 분석해 출처·판단 근거를 갖춘 보고서·비교표·요약을 작성한다.
 argument-hint: "<주제> [--output <경로>] [--format report|comparison|summary]"
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# research
+# 도메인·기술 조사
 
 도메인 리서치를 수행한다. 웹 검색과 문서 분석을 병행하여 출처가 명확한 조사 결과를 산출한다.
 

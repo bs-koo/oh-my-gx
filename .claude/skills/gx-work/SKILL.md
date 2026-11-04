@@ -1,10 +1,10 @@
 ---
 name: gx-work
-description: 프로젝트 파악, 작업 계획, 기능 개발·버그 수정, 진행 상태 조회·작업 재개를 요청할 때 사용하는 공통 진입점이다. 목표·범위·종료점을 정리하고 개발 실행은 gx-tdd로 연결한다.
+description: 프로젝트 파악·작업 계획·기능 개발·버그 수정·진행 상태 조회·작업 재개 요청에 사용한다. 목표·범위·종료점을 정리하고 개발 실행을 gx-tdd로 연결한다.
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 ---
 
-# gx-work
+# GX Work — 개발 작업 진행
 
 사용자의 목표·범위·완료점을 정리하고 **이해 → 계획 → gx-tdd 실행**을 연결한다. 이 스킬은 구현 실행기를 만들지 않는다. 한국어로 응답한다.
 

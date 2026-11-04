@@ -1,7 +1,7 @@
 ---
 name: gx-verify
 version: 1.0.0
-description: 작업 완료 검증, verify 게이트, 커밋·PR 전 검증을 요청할 때 사용한다. 현재 코드의 테스트·빌드 실행 근거를 확인하고 게이트 통과 여부를 판정한다.
+description: 완료 검증·verify 게이트·커밋·PR 전 검증 요청에 사용한다. 현재 코드의 테스트·빌드 실행 근거를 확인하고 검증 통과 여부를 판정한다.
 argument-hint: "[--non-interactive]"
 allowed-tools:
   - Read
@@ -12,7 +12,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-verify
+# 변경 검증
 
 > **이 스킬**: verify — 완료 검증 게이트
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

@@ -1,7 +1,7 @@
 ---
 name: gx-refactor
 version: 1.0.0
-description: 테스트가 모두 통과한 상태에서 REFACTOR 단계를 명시적으로 요청할 때 사용한다. 기존 동작과 테스트 통과를 유지하며 중복을 제거하고 가독성을 개선한다.
+description: 테스트가 모두 통과한 상태에서 명시적인 REFACTOR 단계 요청에 사용한다. 동작과 테스트 통과를 유지하며 중복을 제거하고 가독성을 개선한다.
 argument-hint: ""
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-refactor
+# 코드 정리
 
 > **이 스킬**: refactor — REFACTOR 단계 (안전한 정리)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

@@ -1,6 +1,6 @@
 ---
 name: gx-cross-review
-description: gx-tdd 개발 완료 후 '교차 리뷰', '교차 검증', 'cross review', '크로스 리뷰'를 요청할 때 사용한다. PRD·설계·위험 기록을 기준으로 구현의 충실도를 검토한다.
+description: gx-tdd 개발 완료 후 '교차 리뷰'·'교차 검증'·'cross review'·'크로스 리뷰' 요청에 사용한다. PRD·설계·위험 기록을 기준으로 구현의 충실도를 검토한다.
 argument-hint: ""
 allowed-tools:
   # VCS
@@ -31,7 +31,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-cross-review
+# 구현 교차 검토
 
 gx-tdd 실행이 남긴 개발 산출물(PRD, 설계서, Trust Ledger, 자기점검, 코드 맵)을 기준으로 구현의 충실도를 교차 검증한다. 일반 `/codex:review`와 달리 **"코드 품질"이 아닌 "산출물 약속 대비 충실도"**를 검증한다.
 

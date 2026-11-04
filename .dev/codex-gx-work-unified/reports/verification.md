@@ -50,3 +50,7 @@ PR의 세 CI가 통과한 뒤 새 임시 입력으로 경계 조사를 다시 �
 실제 설치된 2.0.0 소비 세션의 자연어 자동 발견, 실제 model/effort, UI Other와 사용자 응답 capture, hook 신뢰 설치는 **NOT_RUN**이다. helper/mock/정적 계약의 통과를 이 항목의 PASS로 바꾸지 않는다. 실제 소비 프로젝트의 runner/build와 모델 품질·사용 토큰·지연·비용 A/B 실측도 하지 않았다.
 
 연구 원문과 파일·소비 경로별 정적 크기는 [token-efficiency.md](token-efficiency.md)에 있다. 길이 단독의 보편적 성능 법칙이나 GX의 실제 토큰 절감률을 주장하지 않는다. 20KB는 상시 진입 지시문을 제한하는 운영 기준이다.
+
+## GX Design 기준 이름·소개 정렬
+
+후속 문구 변경은 [gx-design-tone-alignment.md](gx-design-tone-alignment.md)를 따른다. gx-design 원격 main b8bbb84와 d100f38 개편을 확인해 GX Development 표시명·공통 소개·18개 스킬 제목과 설명을 정리했다. canonical 소스 지문은 `53f6e58:2d66d58e6dd4`다. 관련 기존 검사 9개, 18개 YAML·호출 ID/본문/도구 보존, 매니페스트 일치·생성물·린트 36절·공백을 확인했다. Chrome 데스크톱/모바일에서 최종 이름·레이아웃·앵커·설치 명령을 확인했고 브라우저를 종료했다. 실행 로직 변경이 없어 로컬 전체 기능 검사를 반복하지 않았으며 실제 설치 메뉴·자동 발견을 검증했다고 주장하지 않는다. 최종 원격 결과는 PR 97의 최신 CI를 따른다.

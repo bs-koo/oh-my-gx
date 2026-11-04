@@ -10,8 +10,8 @@ branch: codex/gx-work-unified
 base: main
 project-root: D:/SQ/oh-my-gx/.claude/worktrees/gx-work-unified
 verify-status: passed
-verify-fingerprint: b6542ee:f89a3032980a
-current-step: 문서 정합성·lens 개선 및 최종 엣지 검토 완료; PR 97 반영·원격 검사
+verify-fingerprint: 53f6e58:2d66d58e6dd4
+current-step: GX Design 기준 이름·소개 문구 및 관련 검사 완료; PR 97 반영·원격 검사
 pr: https://github.com/bs-koo/oh-my-gx/pull/97
 phases:
   setup: completed

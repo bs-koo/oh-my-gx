@@ -1,6 +1,6 @@
 ---
 name: gx-visualize
-description: GX 산출물의 요구사항 추적·진행 상태·변경 영향·서비스 구조·호출 순서 시각화를 명시적으로 요청할 때 사용한다. '시각화 포함', '구조를 그림으로 보여줘' 같은 요청을 근거가 연결된 한국어 HTML로 작성한다.
+description: GX 산출물의 요구사항 추적·진행 상태·변경 영향·서비스 구조·호출 순서를 근거가 연결된 한국어 HTML로 작성한다. '시각화 포함'·'구조를 그림으로 보여줘'처럼 시각화를 명시적으로 요청한 경우에만 사용한다.
 argument-hint: <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>] [--map-dir <path>] [--domain <name>] [--changed-since <ref>] [--labels <path>]
 allowed-tools:
   - Read
@@ -9,7 +9,7 @@ allowed-tools:
   - Bash
 ---
 
-# GX 산출물 시각화
+# 구조·흐름 시각화
 
 GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 변환한다. 이 스킬은 사용자가 시각화를 명시적으로 요청했을 때만 실행하며, 설계·구현·리뷰·커밋 게이트를 대신하지 않는다.
 

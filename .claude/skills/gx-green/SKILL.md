@@ -1,7 +1,7 @@
 ---
 name: gx-green
 version: 1.0.0
-description: 실패가 확인된 테스트를 통과시키는 GREEN 단계를 명시적으로 요청할 때 사용한다. RED 상태를 확인한 뒤 테스트 통과에 필요한 최소 코드를 작성한다.
+description: 실패가 확인된 테스트를 통과시키는 명시적인 GREEN 단계 요청에 사용한다. RED 상태를 확인하고 테스트 통과에 필요한 최소 코드를 작성한다.
 argument-hint: ""
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-green
+# 최소 구현
 
 > **이 스킬**: green — GREEN 단계 (통과를 위한 최소 코드)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

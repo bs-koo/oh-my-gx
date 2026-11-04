@@ -1,6 +1,6 @@
 ---
 name: gx-commit
-description: Git 변경사항의 커밋(commit)을 요청할 때 사용한다. 보호 브랜치와 검증 상태를 확인한 뒤 브랜치 규칙에 맞는 한국어 메시지로 커밋한다.
+description: Git 변경사항의 커밋(commit) 요청에 사용한다. 보호 브랜치·검증 상태를 확인하고 브랜치 규칙에 맞는 한국어 메시지로 커밋한다.
 argument-hint: [커밋 메시지]
 allowed-tools:
   # git - 커밋 핵심
@@ -29,6 +29,8 @@ allowed-tools:
   # 사용자 확인 — 민감 파일 경고, 대량 스테이징 확인
   - AskUserQuestion
 ---
+
+# 커밋 작성
 
 변경사항을 스테이징하고, 브랜치명에서 타입을 파싱하여 `{type}: 한국어 메시지` 형식으로 커밋한다.
 

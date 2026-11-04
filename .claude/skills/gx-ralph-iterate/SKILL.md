@@ -1,7 +1,7 @@
 ---
 name: gx-ralph-iterate
 version: 1.0.0
-description: gx-ralph 외부 러너가 헤드리스 세션에서 호출하는 내부 반복 스킬이다. 미완료 수용 기준(AC) 1건을 구현·검증·커밋하고 원장을 갱신한다. 사용자가 직접 호출하지 않는다.
+description: gx-ralph 외부 러너가 헤드리스 세션에서 호출하는 내부 전용 스킬로, 사용자가 직접 호출하지 않는다. 미완료 수용 기준(AC) 1건의 구현·검증·커밋과 원장 갱신을 수행한다.
 argument-hint: ""
 allowed-tools:
   - Read
@@ -35,7 +35,7 @@ allowed-tools:
   - Bash(grep *)
 ---
 
-# gx-ralph-iterate
+# 반복 개발 실행
 
 > **이 스킬**: gx-ralph-iterate — Ralph 루프의 반복 1회 (헤드리스 전용)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

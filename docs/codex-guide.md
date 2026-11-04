@@ -4,9 +4,9 @@ title: Codex 사용 가이드
 permalink: /codex/
 ---
 
-# Codex에서 oh-my-gx 사용하기
+# Codex에서 GX Development 사용하기
 
-oh-my-gx는 도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인입니다. 요구사항 분석, 실행 계획, TDD, 코드 리뷰, 실행 증거 기반 검증을 연결하고, 커밋·PR은 요청 범위에 따라 진행합니다.
+GX Development는 요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로입니다. Claude Code와 Codex에서 도메인 문서와 작업 계획을 정리하고, 테스트 주도 개발(TDD), 코드 리뷰, 최종 검증을 연결합니다. 설치 패키지는 `oh-my-gx`이며 커밋·PR은 요청한 범위에 따라 진행합니다.
 
 **설치 → 프로젝트에서 Codex 실행 → 환경 설정 → gx-work로 작업 요청** 순서로 시작합니다. 이전 버전의 실측 환경은 Windows Codex CLI 0.154.0입니다.
 

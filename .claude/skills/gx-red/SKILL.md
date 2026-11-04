@@ -1,7 +1,7 @@
 ---
 name: gx-red
 version: 1.0.0
-description: "'RED 단계'나 '실패 테스트 먼저'를 명시적으로 요청할 때 사용한다. 구현 전에 테스트를 작성하고 의도한 실패를 확인하는 단독 단계 스킬이다. gx-tdd의 RED 단계는 red-writer가 담당한다."
+description: 명시적인 'RED 단계'·'실패 테스트 먼저' 요청에 사용한다. 구현 전에 실패 테스트를 작성·확인하는 단독 단계이며, gx-tdd의 RED 단계는 이 스킬을 거치지 않는다.
 argument-hint: "<테스트 대상 설명>"
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-red
+# 실패 테스트 작성
 
 > **이 스킬**: red — RED 단계 (실패 테스트 우선 작성)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

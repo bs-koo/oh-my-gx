@@ -1,7 +1,7 @@
 ---
 name: gx-ralph
 version: 1.0.0
-description: 확정된 PRD로 Ralph 무인 반복을 준비하거나 '랄프 준비', '루프 돌려', '랄프 상태'를 요청할 때 사용한다. 준비·상태 확인을 담당하며, '랄프로 개발해줘' 같은 개발 요청은 gx-work·gx-tdd의 --ralph 경로로 연결한다.
+description: 확정된 PRD로 Ralph 반복 개발을 준비하거나 '랄프 준비'·'루프 돌려'·'랄프 상태'를 요청할 때 사용한다. '랄프로 개발해줘' 같은 개발 요청은 gx-work·gx-tdd의 --ralph 경로로 연결한다.
 argument-hint: "[--status]"
 allowed-tools:
   - Read
@@ -19,7 +19,7 @@ allowed-tools:
   - Bash(pwd *)
 ---
 
-# gx-ralph
+# 반복 개발 준비
 
 > **이 스킬**: gx-ralph — 루프 엔지니어링(Ralph 루프) 진입/관제 스킬
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.

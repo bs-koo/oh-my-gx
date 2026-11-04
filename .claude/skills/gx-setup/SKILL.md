@@ -1,7 +1,7 @@
 ---
 name: gx-setup
 argument-hint: "없음"
-description: GX 플러그인의 초기 설정을 요청할 때 사용한다. 버전 관리와 빌드·테스트 설정을 등록하고 필수 도구와 인증 상태를 확인한다.
+description: GX Development의 초기 설정 요청에 사용한다. 버전 관리·빌드·테스트 설정을 등록하고 필수 도구와 인증 상태를 확인한다.
 disable-model-invocation: true
 allowed-tools:
   - "Bash(echo *)"
@@ -24,7 +24,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# setup
+# 프로젝트 설정
 
 플러그인 초기 설정을 단계별로 수행한다.
 
