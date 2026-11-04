@@ -893,5 +893,48 @@ class DocumentLifecycleContractTests(unittest.TestCase):
         self.assertIn("context/", state)
 
 
+class AdaptiveWorkOrchestrationTests(unittest.TestCase):
+    def test_tdd_entry_is_checked_before_setup_mutations(self):
+        setup = (TDD_PHASES / "phase-setup.md").read_text(encoding="utf-8")
+        self.assertLess(setup.index("validate-handoff"), setup.index("git stash"))
+        entry = TDD.read_text(encoding="utf-8")
+        self.assertIn("ready-for-tdd", entry)
+        consumer = (TDD_PHASES.parent / "references/plan-handoff.md").read_text(encoding="utf-8")
+        self.assertIn("entry-approval", consumer)
+        self.assertIn("execution-authorized: false", entry)
+        self.assertIn("pipeline/state 초기화", consumer)
+        loop = section(entry, "### Phase 실행 루프", "### Phase 파일 경로")
+        self.assertLess(loop.index("if HANDOFF_READ_ONLY"), loop.index("if core"))
+        self.assertLess(loop.index("return  # READ_ONLY_COMPLETE"), loop.index("# 2. Phase별"))
+
+    def test_pending_and_entry_recheck_precede_resume_branch_changes(self):
+        resume = (TDD_PHASES / "setup-resume.md").read_text(encoding="utf-8")
+        self.assertLess(resume.index("validate-handoff"), resume.index("### 0.1"))
+        self.assertIn("pending", resume[:resume.index("### 0.1")])
+
+    def test_method_selection_precedes_first_rgr_and_keeps_red_isolated(self):
+        implementation = (TDD_PHASES / "phase-implement.md").read_text(encoding="utf-8")
+        self.assertLess(implementation.index("### 1.2"), implementation.index("### 1.3"))
+        self.assertLess(implementation.index("### 1.3"), implementation.index("## Step 2:"))
+        method = section(implementation, "### 1.3", "## Step 2:")
+        for marker in ("session", "subagents", "--isolated", "execution-method-plan-sha256", "문서", "RED"):
+            self.assertIn(marker, method)
+        self.assertNotIn('label: "무인', method)
+        split = section(implementation, "### 1.15", "### 1.2")
+        self.assertIn("문서 수정 금지", split)
+        self.assertIn("최종 검증 후", split)
+        self.assertNotIn("스테이징해", split)
+
+    def test_work_and_tdd_keep_distinct_plan_ownership(self):
+        entry = (ROOT / ".claude/skills/gx-work/references/tdd-entry.md").read_text(encoding="utf-8")
+        for marker in ("gx-context", "gx-lens", "gx-research", "다음 단계", "실제 답변", "PRD", "T태스크"):
+            self.assertIn(marker, entry)
+        handoff = (TDD_PHASES.parent / "references/plan-handoff.md").read_text(encoding="utf-8")
+        self.assertIn("handoff-kind: request", handoff)
+        state = (TDD_PHASES.parent / "references/pipeline-state.md").read_text(encoding="utf-8")
+        for field in ("request-file", "entry-approved-run", "implementation-plan-file", "execution-method-run"):
+            self.assertIn(field, state)
+
+
 if __name__ == "__main__":
     unittest.main()

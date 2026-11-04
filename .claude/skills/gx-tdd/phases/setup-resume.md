@@ -31,6 +31,15 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
      - "새로 시작" → Step 1로 진행 (Step 7에서 덮어씀)
 4. state.md가 없거나 `status: completed`이면 → Step 1로 진행.
 
+### 0.05 진입 승인·실행방법 복원 (재개 정합성 체크 전)
+
+pending 질문 확인은 위 계약대로 state 존재·pipeline 판정보다 먼저 수행한다. 답변 해제 후 state를 읽기 전용으로 확인하고, 브랜치 이관·stash 복원·착수 기록·빌드/코드 변경 전에 다음을 수행한다.
+
+1. `run-id`·`goal`·`stop-at`, `handoff-file`·`request-file`·`plan-file`, `entry-approved-run`·`entry-approved-source`·`entry-approved-scope-sha256`를 복원한다. gx-work origin/승인 기록이 있으면 원래 handoff를 찾아 `Read("../references/plan-handoff.md")`의 `validate-handoff --handoff <절대경로> --project-root <현재 실제 루트>`를 재실행한다. exit 0과 `ready-for-tdd: true`, state와 같은 run·원문·범위·종료점이 모두 필요하다. 누락/불일치는 일반 구현 요청 승인으로 대체하지 않고 원래 진입 확인/보완에서 대기한다. 원 handoff를 잃은 gx-work 실행을 standalone으로 바꾸지 않는다. gx-work 인계 이력이 없는 기존 직접 호출에는 진입 승인을 추가하지 않는다.
+2. 내부 T계획의 `implementation-plan-file`·`implementation-plan-sha256`, `plan-approved-run`·`plan-approved-source`·`plan-approved-sha256`와 `execution-method`·`execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`를 복원한다. 계획 파일의 현재 SHA-256을 비교한다. 같은 run·계획·실제 선택 근거면 재질문하지 않는다. TDD 내부 계획 작성은 원래 요청 범위의 진입 승인을 무효화하지 않지만 요구범위/종료점 변경은 별도 확인한다.
+3. `session`인데 복원/이번 명시 flags에 `--isolated`가 있거나, 승인된 `subagents`인데 복원 flags에서 빠졌으면 충돌을 보고하고 실제 결정으로 해소한다. 조용히 플래그를 추가/삭제하거나 방법을 기본값으로 바꾸지 않는다. 기록이 없거나 계획이 바뀌었으면 `phase-implement` Step 1.2~1.3에서 해당 계획 검토·방법을 확정한 뒤 중단 지점으로 복귀한다. 이미 작성한 RED/보고서와 라운드 카운터를 유지하며 새 계획과 충돌하는 증거를 재사용하지 않는다.
+4. `current-step: 계획 문서로 종료`이면 미구현 상태와 계획 경로를 보고한다. 새 실제 실행 응답 없이 RED·complete/commit/PR로 체이닝하지 않는다. 명시 `--ralph`는 기존 전환 계약을 복원하며 두 방법 중 하나로 변환하지 않는다.
+
 ### 0.1 재개 정합성 체크 (이어서 진행 선택 시)
 
 **svn인 경우** → 브랜치/HEAD 정합성 개념이 없으므로 건너뛴다 (trunk 단일 작업).
@@ -52,7 +61,7 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 2. **HEAD 정합성**: state.md에 `last-known-head` 필드가 있고 현재 `git rev-parse HEAD`와 다르면, `git log {last-known-head}..HEAD --oneline`으로 외부 커밋 개수를 센다. 1개 이상이면 사용자에게 보고: "외부 커밋 {N}건이 감지되었습니다: {sha1}..{sha2}. 계속하시려면 확인해주세요." 후 AskUserQuestion으로 진행/중단 선택.
 
 **이어서 진행 시:**
-- state.md에서 VCS_TYPE, GIT_PREFIX, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags, mode, model-profile을 복원하되 PROJECT_ROOT는 Step -1의 절대경로를 유지한다. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다.
+- state.md에서 VCS_TYPE, GIT_PREFIX, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags, mode, model-profile과 0.05의 run·승인·원문 포인터·계획·실행방법을 복원하되 PROJECT_ROOT는 Step -1의 절대경로를 유지한다. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다.
 - **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-tdd {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격(SKILL.md 환경감지가 mode 없이 생성) 등 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
 - `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.

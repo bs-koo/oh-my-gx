@@ -8,9 +8,9 @@ Codex에서는 이 phase 파일 기준 `../../gx-work/references/codex-runtime.m
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
-이 Phase는 **RED 격리 디스패치 → IMPLEMENT 세션 직접 수행**으로 동작한다:
+이 Phase는 **계획 검토·실행방법 확정 → RED 격리 디스패치 → IMPLEMENT**로 동작한다:
 - **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님). 태스크의 AC 시나리오 전부를 테스트 집합으로 한 번에 쓴다
-- **IMPLEMENT** → 통과 최소 코드(GREEN) + 안전한 정리(REFACTOR — 동작 변경 금지). 기본 경로에서는 **오케스트레이터가 직접 수행**한다 (Step 2-I "세션 IMPLEMENT 절차"). `--isolated`면 implementer를 디스패치한다 — 입력은 RED report+시그니처로 한정하되 기존 코드 Read는 허용, 테스트 실행은 focused 집합만. 어느 경로든 verify_implement의 해시·focused 직접 실행 검증은 같다
+- **IMPLEMENT** → 통과 최소 코드(GREEN) + 안전한 정리(REFACTOR — 동작 변경 금지). Step 1.3에서 현재 세션을 선택하면 **오케스트레이터가 직접 수행**한다 (Step 2-I "세션 IMPLEMENT 절차"). 서브에이전트를 선택하면 `--isolated`로 implementer를 디스패치한다 — 입력은 RED report+시그니처로 한정하되 기존 코드 Read는 허용, 테스트 실행은 focused 집합만. 어느 경로든 verify_implement의 해시·focused 직접 실행 검증은 같다
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.
 
@@ -25,7 +25,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 오케스트레이터가 핵심 모드이면:
 - Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장).
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
-- Step 1(태스크 분해)과 Step 1.2(승인 게이트)도 건너뛴다.
+- Step 1의 전체 분해·태스크 수 가드는 생략하고 ac.md의 각 AC를 기본 태스크로 하는 최소 실행표(파일·테스트 의도·명령·순서)를 준비한다. **Step 1.2 계획 검토와 Step 1.3 실행방법 확정은 수행한다**.
 - **RGR 사이클은 유지**한다 (핵심 모드여도 TDD는 강제. Iron Law 1).
   - red-writer 입력: ac.md의 AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
   - IMPLEMENT 입력(세션 또는 implementer): RED report 경로 + 기존 코드 인터페이스 (설계서 없음) + focused 테스트 명령.
@@ -105,11 +105,11 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 
 `--resume` 재진입은 방어 조건이 **아니다** — 재개된 state.md의 `flags`에 `--ralph`가 있으면 그대로 전환한다. PRD·설계 승인 도중 세션이 유실된 정당한 opt-in을 재개 시 조용히 대화형으로 바꾸지 않는다 (구 버전 state.md에는 `--ralph`가 존재하지 않으므로 별도 방어가 필요 없다).
 
-**전환 절차**: `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→implementer 2석으로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
+**전환 절차**: 기존 PRD·설계의 실제 승인 근거를 확인한다. gx-work 진입 응답이나 원래 구현 요청만으로 산출물 승인을 대신하지 않는다. 같은 승인 근거가 있으면 재질문하지 않으며, 없으면 해당 기존 승인 게이트에서 실제 응답을 기다린다. 확인 후 `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→implementer 2석으로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
 
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 
-`--from-plan`·`--handoff`에서 검증한 `units[]`가 있으면 [계획 인계 계약](../references/plan-handoff.md)에 따라 기존 태스크를 그대로 T태스크에 매핑한다. AC·파일·의존 조건이 부족한 태스크만 보완하며 승인된 목록 전체를 다시 분해·재승인하지 않는다. 실제 승인 근거 없이 들어온 외부 계획은 최초 1회 확인한다.
+`--from-plan`·`--handoff`에서 검증한 `units[]`가 있으면 [계획 인계 계약](../references/plan-handoff.md)에 따라 기존 태스크를 그대로 T태스크에 매핑한다. request 인계에는 units가 없을 수 있으므로 기존 PRD·설계에서 이 단계의 구체 계획을 만든다. AC·파일·의존 조건이 부족한 태스크만 보완하며 유효한 목록 전체를 다시 분해하지 않는다. 외부 계획·core·재개도 Step 1.2~1.3의 검토·방법 게이트를 통과한다. 같은 run·계획의 실제 승인 기록은 재사용한다.
 
 설계서의 "구현 순서"와 PRD의 AC를 결합하여 **RGR 사이클 단위 태스크**로 분해한다. 각 태스크는 다음을 만족한다:
 
@@ -134,6 +134,8 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 - T1 (PaymentLimit) → T2 (PaymentService가 PaymentLimit 참조) → T3 (Controller가 Service 참조)
 - T1, T2, T3은 **순차 실행** (의존성 체인).
 ```
+
+태스크마다 정확한 변경/테스트 파일 경로, 공개 인터페이스·제약, G-W-T 시나리오·경계값, RED→GREEN→REFACTOR의 구체 순서, focused 명령·cwd·예상 실패/성공과 검증·리뷰 초점을 기재한다. 코드 전체를 미리 작성하지 않는다. 기존 유효한 구체 계획 파일이 있으면 해당 절을 재사용하고, 없으면 위 내용을 `${DEV_DIR}/implementation-plan.md`에 저장한다. `implementation-plan-file`에 절대 포인터, `implementation-plan-sha256`에 파일의 현재 SHA-256을 기록한다. 외부 request-file/plan-file을 이 내부 계획 포인터로 덮지 않는다.
 
 ### 1.15 태스크 수 가드
 
@@ -171,43 +173,60 @@ AskUserQuestion(
 ```
 
 - **AC 묶어서 재분해** → 조건 1의 묶기 규칙을 적용해 재분해하고 1.1 표를 다시 제시한다. 여전히 8개를 넘으면 이 가드를 한 번 더 거친다 (최대 2회).
-- **작업 계획으로 분할** → `.dev/plan.md`가 없으면 이 선택지를 **제외**하고 제시한다. 있으면 앞 8개 태스크에 대응하는 AC로 범위를 줄이고, 나머지 AC를 `.dev/plan.md`에 `대기` 상태의 새 W행으로 추가한다 (도메인·브랜치명은 현재 실행과 같은 규칙, 선행은 현재 `work-id`). `.dev/plan.md`만 스테이징해 `docs: [plan] 후속 작업 등록` 메시지로 커밋한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
+- **작업 계획으로 분할** → `.dev/plan.md`가 없거나 문서 수정 금지이면 이 선택지를 **제외**한다. 허용된 경우 앞 8개 태스크로 범위를 줄이고 나머지 AC를 `.dev/plan.md`에 `대기` W행으로 로컬 추가한다 (같은 도메인·브랜치 규칙, 선행은 현재 `work-id`). 여기서 stage/commit/push하지 않는다. [실행 종료점](../references/execution-boundaries.md)에 따라 최종 검증 후 요청된 commit/pr 완료 단계에 함께 반영한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
 - **무인 루프로 전환** → `status: cancelled`로 종료하고 `/gx-tdd --ralph {원 요청}` 재실행을 안내한다. svn이면 이 선택지를 제외한다.
 - **그대로 진행** → 1.2로 진행한다. execution-log에 `"태스크 수 가드 통과(사용자 선택): {N}개"`를 남긴다.
 
 첫 질문의 동적 선택지에는 유효한 경로만 넣는다. `svn`이면 "작업 계획으로 분할" 유무에 맞춰 첫 질문을 2~3개로 구성하고 "그대로 진행"을 포함한다. `svn`이며 `.dev/plan.md`가 없으면 "AC 묶어서 재분해"와 "그대로 진행"의 2개를 제시한다.
 
-핵심 모드는 Step 1을 건너뛰므로 이 가드도 타지 않는다 (AC 3~5개 = 태스크 3~5개).
+핵심 모드는 전체 분해를 생략하므로 이 수 가드는 타지 않는다 (AC 3~5개 = 태스크 3~5개). 최소 실행표를 파일에 보존한 뒤 1.2로 간다.
 
-### 1.2 사용자 승인 게이트
+### 1.2 계획 검토·실행방법 확인
+
+계획 링크와 핵심 태스크·범위·순서·명령을 제시하고 **한 질문에서 계획 검토와 실행방법을 함께 확인**한다. 현재 PRD/AC·설계와 달라진 태스크는 계획 파일에 반영해 해시를 갱신한다. gx-work의 진입 승인과 원래 구현 요청은 이 검토 응답을 대신하지 않는다. `plan-approved-run`·`plan-approved-sha256`이 현재 run·내부 계획 파일 해시와 일치하고 `plan-approved-source`에 실제 응답 근거가 있으면 계획은 재질문하지 않고 1.3에서 방법 기록을 검증한다. 외부 계획의 실제 검토 근거도 현재 파일/범위에 대응할 때만 이 필드로 보존해 재사용한다.
 
 ```
 AskUserQuestion(
   questions: [{
-    question: "RGR 태스크 분해를 확인해주세요.",
-    header: "산출물 확인",
+    question: "이 계획을 어떤 방식으로 구현할까요?",
+    header: "계획·실행방법",
     options: [
-      { label: "승인", description: "RGR 사이클 시작" },
-      { label: "수정 요청", description: "별도 후속 질문에서 변경할 항목을 입력합니다" }
+      { label: "현재 세션에서 구현 (Recommended)", description: "계획을 승인하고 이 세션이 GREEN·REFACTOR를 수행합니다. RED와 리뷰는 별도 에이전트가 담당합니다" },
+      { label: "서브에이전트로 구현", description: "계획을 승인하고 implementer에 GREEN·REFACTOR를 위임합니다. RED와 리뷰의 격리는 유지합니다" },
+      { label: "계획 문서로 종료", description: "계획을 전달하고 이번에는 구현하지 않습니다" }
     ],
     multiSelect: false
   }]
 )
 ```
 
-- **승인** → Step 2 (RGR 사이클 시작)
-- **수정 요청** → 수정 선택 시 별도 후속 질문에서 변경할 항목을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영하여 분해를 갱신해 재제시한다 (1회까지). 원 질문 UI Other에 수정 내용을 직접 입력했다면 그 답변을 사용한다.
+- **현재 세션/서브에이전트** → 한 실제 응답으로 `plan-approved-source`·`plan-approved-run`·`plan-approved-sha256`과 `execution-method`·`execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`를 모두 기록하고 Step 1.3에서 검증·flags 반영한다. 승인 질문을 추가하지 않는다.
+- **초기 명시 방법 있음** → 그 선택을 보존해 질문을 "이 계획을 {현재 세션/서브에이전트}으로 진행할까요?"로 바꾸고 "계획 승인"·"수정 요청"·"계획 문서로 종료"를 제시한다. 실제 계획 승인 응답과 원래 명시 선택 근거를 각각 기록해 두 승인 필드를 모두 확정한다. 방법을 다시 고르게 하지 않는다.
+- **계획 승인만 응답, 방법 미정** → plan-approved 세 필드만 기록하고 Step 1.3에서 빠진 방법만 확인한다.
+- **계획 문서로 종료** → Step 1.3의 미구현 종료 처리를 즉시 수행한다.
+- **수정 요청** → 수정 선택 시 별도 후속 질문에서 변경할 항목을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영한다. 원 질문 UI Other에 수정 내용이 있으면 그 답변을 사용한다. 계획을 재제시하며 기존 계획·방법 승인 해시는 새 계획에 재사용하지 않는다.
 
-`current-step`을 `"태스크 분해 승인"`으로 갱신.
+질문 대기 중 `current-step`을 `"태스크 분해 승인"`으로 유지한다. Codex는 [질문 대기 계약](../../gx-work/references/codex-questions.md)의 pending 등록·표시·실제 answer 기록을 수행한다. 무응답·도구 ack·추천 값은 승인이 아니다. 헤드리스는 BLOCKED와 질문을 기록해 중단한다.
 
-### 1.3 건너뛰기 조건
+### 1.3 실행방법 검증·반영
 
-- 핵심 모드: 건너뛴다. AC 1개를 단일 태스크로 간주하여 바로 Step 2 진입.
-- 설계서에 "구현 순서" 없음: AC 단위로 자동 분해 후 진입.
+Step 1.2 이후 첫 RED 전에 수행한다. 설계서에 구현 순서가 없으면 AC 단위 계획을 만들고, core·외부 계획·재개도 같은 게이트를 사용한다. 명시 `--ralph`로 Step 0.7에서 정상 전환한 실행은 별도 계약이며 메뉴에 무인 루프를 추가하지 않는다.
+
+Step 1.2의 응답 또는 기존 기록에서 현재 `run-id`·내부 계획 해시와 `execution-method-run`·`execution-method-plan-sha256`이 같고 `execution-method-source`에 실제 선택 근거가 있으면 추가 질문 없이 flags를 반영한다. 초기 명시 방법도 실제 계획 검토 응답과 연결됐으면 같은 규칙으로 처리한다. **계획 승인만 받았고 방법이 미정일 때에만** Step 1.2의 세 방법 선택지를 사용해 "계획 검토는 완료됐습니다. 어떤 방식으로 진행할까요?"라고 질문한다. 계획 승인 질문을 반복하지 않는다.
+
+- **현재 세션** → `execution-method: session`. 초기 방법 확정에서 `--isolated`를 제외한다.
+- **서브에이전트** → `execution-method: subagents`. 초기 방법 확정에서 `--isolated`를 추가해 Step 2-I가 실제 implementer 경로를 쓰도록 한다. 나머지 플래그는 보존한다.
+- **계획 문서로 종료** → `phase: implement`·`status: in_progress`·`current-step: 계획 문서로 종료`·`verify-status: pending`·빈 verify 지문을 유지한다. 계획 경로와 미구현 범위를 보고하고 **이 파이프라인을 여기서 종료**한다. 방법 승인·implement 완료·verify 통과로 기록하지 않으며 RED/코드 변경·review/complete/commit/PR로 체이닝하지 않는다. 원래 stop-at을 확대하거나 삭제하지 않는다.
+
+확정된 방법에는 `execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`로 현재 run·승인된 계획 해시·실제 선택 출처를 기록한 뒤 Step 2로 간다. 이미 기록된 방법/복원 flags/이번 명시 `--isolated`가 충돌하면 사유를 보고하고 실제 결정으로 해소하기 전 실행하지 않는다. 기존 방법을 기본값으로 바꾸거나 flags를 조용히 재작성하지 않는다. 명시 방법 없는 flags의 부재를 session 선택으로 간주하지 않는다.
+
+질문 대기 중 `current-step: 실행방법 선택`을 유지한다. Codex는 위 질문 계약으로 등록·표시하고 실제 답을 기다린다. 무응답이면 선택 의존 작업을 멈추고 질문을 포함해 응답하며, 헤드리스는 BLOCKED를 기록한다.
 
 ---
 
 ## Step 2: RGR 사이클 (태스크별 순차)
+
+Step 1.2~1.3의 현재 run·계획 검토·방법 기록과 실제 flags의 일치를 확인한 뒤 진입한다. 재개한 RGR 중간 Step도 이 검증을 먼저 수행한다.
 
 각 태스크에 대해 **반드시 RED → IMPLEMENT(GREEN+REFACTOR) 순서로 실행**한다. 병렬 금지 (Iron Law).
 
@@ -608,9 +627,19 @@ phase-review로 인계하기 위해 diff를 수집한다.
 ## state.md 추적
 
 ```yaml
+implementation-plan-file: "/absolute/project/.dev/task/implementation-plan.md"
+implementation-plan-sha256: "계획 파일 SHA-256"
+plan-approved-run: "현재 run-id"
+plan-approved-source: "계획 검토의 실제 응답 출처"
+plan-approved-sha256: "계획 파일 SHA-256"
+execution-method: session
+execution-method-run: "현재 run-id"
+execution-method-plan-sha256: "계획 파일 SHA-256"
+execution-method-source: "실제 방법 선택 출처"
 steps:
   implement:
     - 태스크 분해 승인: completed
+    - 실행방법 선택: completed
     - "RGR T1 (AC-1)":
         red: completed
         test-file: src/test/.../PaymentLimitTest.java   # verify_red 기록 — focused 집합 조립에 사용
@@ -649,8 +678,12 @@ steps:
 
 ## --resume 호환
 
+모든 항목보다 먼저 setup-resume 0.05의 진입 승인·현재 계획 해시·방법/flags를 검증한다. 유효한 같은 run·계획의 선택은 재사용하고, 부족한 계획 검토/방법만 Step 1.2~1.3에서 확정한 후 아래 중단 지점으로 돌아온다. 완료된 RED·태스크/보고서·fix 카운터는 보존한다.
+
 - `"기준선 게이트"` → Step 0.5부터 재실행
-- `"태스크 분해 승인"` → Step 1.1부터 재실행
+- `"태스크 분해 승인"` → 저장된 내부 계획·해시를 읽어 Step 1.2부터 재개. 유효한 계획 전체를 다시 분해하지 않는다.
+- `"실행방법 선택"` → Step 1.3에서 원래 미응답 질문을 복원한다.
+- `"계획 문서로 종료"` → 미구현 상태와 계획 경로를 보고하고 종료한다. 사용자의 새 실제 실행 응답이 있으면 같은 계획의 Step 1.3에서 이어간다.
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)

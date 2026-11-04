@@ -10,8 +10,8 @@ branch: codex/gx-work-unified
 base: main
 project-root: D:/SQ/oh-my-gx/.claude/worktrees/gx-work-unified
 verify-status: passed
-verify-fingerprint: bfec16b:0d1ed1e2ed93
-current-step: oh-my-gx 브랜드·표시명 복원 및 관련 검사 완료; PR 97 반영
+verify-fingerprint: 572160d:675a4c483d74
+current-step: 적응형 총괄·TDD 결정 개선과 최종 엣지 감사 보완 검증 완료, PR CI 대기
 pr: https://github.com/bs-koo/oh-my-gx/pull/97
 phases:
   setup: completed

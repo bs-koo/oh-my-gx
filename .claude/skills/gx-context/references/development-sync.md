@@ -6,7 +6,9 @@ gx-work·gx-tdd의 구현 전후에 사용하는 좁은 대조 경로다. **정�
 
 이 파일 기준 `../scripts/development.py`와 같은 디렉토리의 `plan.py`가 설치된 실제 위치를 확인한다. 소비 프로젝트 cwd에서 helper 경로를 추측하지 않는다. Python stdlib만 사용하며 검사 자체는 파일·Git·네트워크·테스트를 변경/실행하지 않는다.
 
-입력은 기존 normalized plan의 `goal`, `units[].files`, `sources`, `context-paths`, `requirements: [{domain, ids, path?}]`다. `path`가 있으면 해당 `context/<domain>/status.md`여야 한다. requirements 확정 전 발견 단계는 `units: []`를 허용하지만 승인된 AC나 실행 계획으로 간주하지 않는다. 파일 포인터는 프로젝트 경계 안의 파일만 허용하며, symlink/junction의 실제 대상도 검사한다. goal·사용자 결정·실제 run-id를 유지한다.
+입력은 요청 intake 또는 이미 있는 normalized plan의 `goal`, `sources`, `context-paths`, `requirements: [{domain, ids, path?}]`다. `units[].files`는 기존 구현계획에 있을 때만 사용하며 units 생략/빈 목록도 허용한다. `path`가 있으면 해당 `context/<domain>/status.md`여야 한다. 문서 대조를 위해 구현계획·AC를 새로 만들지 않으며 구체화는 gx-tdd가 맡는다. 파일 포인터는 프로젝트 경계 안의 파일만 허용하며, symlink/junction의 실제 대상도 검사한다. goal·사용자 결정·실제 run-id를 유지한다.
+
+TDD 진입 승인에 결박한 원래 request/plan 파일은 덮어쓰지 않는다. TDD 안에서 구체화한 AC·변경 파일은 별도 문서 대조 입력에 보강한다. 진입 요청과 내부 계획/대조 기록을 혼동해 정상 재개에서 승인 지문을 바꾸지 않는다. 실제 목표·범위 변경은 결과를 제시한 뒤 다시 확인한다.
 
 ```text
 python <설치된 gx-context>/scripts/development.py inspect --project-root <project> --plan <normalized-plan.json> --run-id <run> --branch <실제 branch/slug> --phase pre [--work Wnn] [--previous <이전 inspect 보고서.json>] [--no-document-write]

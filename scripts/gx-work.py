@@ -2,6 +2,7 @@
 """gx-work의 상태/계획 계약. 입력을 읽고 stdout JSON만 반환한다."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
@@ -26,6 +27,8 @@ def state_fields(path):
 def active_state(project_root):
     """현재 state를 읽고, SVN 활성 포인터가 없고 후보가 여럿이면 선택만 요청한다."""
     root = Path(project_root).resolve()
+    if not (root / ".dev").resolve().is_relative_to(root):
+        raise ValueError("작업 디렉터리가 프로젝트 밖을 가리킵니다")
     config = root / ".claude" / "config.json"
     try:
         settings = json.loads(config.read_text(encoding="utf-8")) if config.exists() else {}
@@ -43,11 +46,20 @@ def active_state(project_root):
                     raise ValueError("활성 작업 경로가 .dev 밖을 가리킵니다")
                 if state_fields(path).get("status") == "in_progress":
                     candidates.append(str(path.resolve()))
-            if len(candidates) > 1:
-                return {"resume-candidates": candidates}, None
+            questions = []
+            for path in sorted((root / ".dev").glob("*/pending-question.json")):
+                if not path.resolve().is_relative_to(root):
+                    raise ValueError("질문 기록이 프로젝트 밖을 가리킵니다")
+                questions.append(str(path.resolve()))
+            directories = sorted({str(Path(path).parent) for path in candidates + questions})
+            if len(directories) > 1:
+                return {"resume-candidates": candidates, "pending-candidates": questions,
+                        "work-candidates": directories}, None
             if candidates:
                 path = Path(candidates[0])
                 return state_fields(path), str(path)
+            if questions:
+                return {"work-directory": str(Path(questions[0]).parent)}, None
         slug = slug or "trunk"
     else:
         result = subprocess.run(["git", "branch", "--show-current"], cwd=root,
@@ -56,11 +68,13 @@ def active_state(project_root):
             return {}, None
         slug = result.stdout.strip().replace("/", "-")
     directory = (root / ".dev" / slug).resolve()
-    if not directory.is_relative_to((root / ".dev").resolve()):
+    if not directory.is_relative_to(root) or not directory.is_relative_to((root / ".dev").resolve()):
         raise ValueError("활성 작업 경로가 .dev 밖을 가리킵니다")
     path = directory / "state.md"
     if not path.exists():
-        return {}, None
+        return {"work-directory": str(directory)}, None
+    if not path.resolve().is_relative_to(root):
+        raise ValueError("실행 상태가 프로젝트 밖을 가리킵니다")
     return state_fields(path), str(path)
 
 
@@ -73,11 +87,27 @@ def route(project_root, intent, stop_at=None, goal=""):
     if intent in ("understand", "plan", "status") and stop_at not in (None, default):
         raise ValueError("읽기 전용 intent와 stop-at가 충돌합니다")
     state, state_file = active_state(project_root)
-    if intent in ("implement", "resume") and state.get("resume-candidates"):
+    directory = Path(state_file).parent if state_file else Path(state["work-directory"]) if state.get("work-directory") else None
+    pending = directory / "pending-question.json" if directory else None
+    if intent in ("implement", "resume") and pending and pending.exists():
+        if not pending.resolve().is_relative_to(Path(project_root).resolve()):
+            raise ValueError("질문 기록이 프로젝트 밖을 가리킵니다")
+        question = json.loads(pending.read_text(encoding="utf-8"))
+        if not isinstance(question, dict):
+            raise ValueError("질문 기록 형식 오류")
+        return {"action": "awaiting-decision", "skill": None, "read-only": True,
+                "requested-goal": goal,
+                "pending-question-file": str(pending), "state-file": state_file,
+                "run-id": state.get("run-id"), "goal": state.get("goal", goal),
+                "stop-at": state.get("stop-at", stop_at or default),
+                "phase": question.get("phase"), "requires-user-decision": True}
+    if intent in ("implement", "resume") and (state.get("resume-candidates") or state.get("work-candidates")):
         return {
-            "action": "resume-selection-required", "skill": "oh-my-gx:gx-tdd", "skill-args": "--resume",
+            "action": "resume-selection-required", "skill": None if state.get("pending-candidates") else "oh-my-gx:gx-tdd", "skill-args": "--resume",
             "read-only": True, "goal": goal, "stop-at": None, "requested-stop-at": stop_at,
             "run-id": None, "state-file": None, "candidate-state-files": state["resume-candidates"],
+            "candidate-pending-files": state.get("pending-candidates", []),
+            "candidate-work-directories": state.get("work-candidates", []), "requires-user-decision": True,
             "existing-pipeline": None, "phase": None,
         }
     active = state.get("status") == "in_progress"
@@ -92,10 +122,15 @@ def route(project_root, intent, stop_at=None, goal=""):
                 action = "migration-required"
         if active and stop_at and state.get("stop-at") and stop_at != state["stop-at"]:
             raise ValueError("기존 stop-at 변경은 사용자 명시 결정 후 state에 먼저 반영하세요")
+        if (active and state.get("pipeline") == "gx-tdd" and intent == "implement"
+                and goal and goal != state.get("goal", state.get("args", ""))):
+            action = "scope-review-required"
     restore = active and intent in ("implement", "resume")
     return {
         "action": action,
-        "skill": "oh-my-gx:gx-tdd" if action in ("implement", "resume") else None,
+        "skill": "oh-my-gx:gx-tdd" if action == "resume" else None,
+        "requires-user-decision": action in ("implement", "scope-review-required"),
+        "requested-goal": goal,
         "read-only": action not in ("implement", "resume"),
         "goal": state.get("goal", state.get("args", goal)) if restore else goal,
         "stop-at": state.get("stop-at", stop_at or default) if restore else (stop_at or default),
@@ -236,25 +271,116 @@ def validate_plan(value):
     return issues
 
 
-def handoff(plan_path, stop_at="verify", run_id=None, approval_source=None):
+def scope_digest(value, path, kind, root, run_id, stop_at):
+    scope = {"input": value, "file": str(path), "kind": kind, "project-root": str(root),
+             "run-id": run_id, "stop-at": stop_at}
+    return hashlib.sha256(json.dumps(scope, ensure_ascii=False, sort_keys=True,
+                                    separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def local_file(root, value):
+    path = Path(value).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError("인계 입력은 현재 프로젝트 안의 파일이어야 합니다")
+    return path
+
+
+def handoff(plan_path=None, stop_at="verify", run_id=None, approval_source=None, *,
+            request_path=None, project_root=None, entry_approval_source=None, question_set_id=None):
     if stop_at not in ENDPOINTS:
         raise ValueError("알 수 없는 stop-at")
-    path = Path(plan_path).resolve()
+    if (plan_path is None) == (request_path is None):
+        raise ValueError("plan 또는 request 파일 하나만 지정하세요")
+    path = Path(plan_path if plan_path is not None else request_path).resolve()
+    root = Path(project_root).resolve() if project_root is not None else None
+    if root is not None:
+        if not root.is_dir():
+            raise ValueError("유효한 프로젝트 디렉터리가 필요합니다")
+        path = local_file(root, path)
     value = json.loads(path.read_text(encoding="utf-8"))
-    issues = validate_plan(value)
+    kind = "plan" if plan_path is not None else "request"
+    issues = validate_plan(value) if kind == "plan" else []
+    if not isinstance(value, dict) or not text(value.get("goal")):
+        raise ValueError("사용자 목표가 있는 요청 객체가 필요합니다")
+    for key in ("sources", "decisions", "unresolved", "requirements", "context-paths", "observed-facts", "questions"):
+        if not isinstance(value.get(key, []), list):
+            raise ValueError(f"{key}는 목록이어야 합니다")
+    if value.get("work-id") is not None and (not isinstance(value["work-id"], str) or not re.fullmatch(r"W\d{2}", value["work-id"])):
+        raise ValueError("work-id 형식 오류")
     if issues:
         raise ValueError(json.dumps({"issues": issues}, ensure_ascii=False))
     if approval_source is not None and not text(approval_source):
         raise ValueError("실제 사용자 승인 근거가 필요합니다")
+    if entry_approval_source is not None and not text(entry_approval_source):
+        raise ValueError("실제 TDD 진입 응답 근거가 필요합니다")
+    if question_set_id is not None and not text(question_set_id):
+        raise ValueError("실제 질문 식별자가 필요합니다")
+    if entry_approval_source and (root is None or not text(run_id)):
+        raise ValueError("진입 응답을 결박할 project-root와 현재 run-id가 필요합니다")
+    if run_id is not None and not text(run_id):
+        raise ValueError("비어 있지 않은 run-id가 필요합니다")
+    identifier = run_id or (value.get("run-id") if stop_at in ("understand", "plan") else None) or str(uuid.uuid4())
+    fingerprint = scope_digest(value, path, kind, root, identifier, stop_at)
+    readonly = stop_at in ("understand", "plan")
+    ready = bool(entry_approval_source and root)
+    entry_fingerprint = hashlib.sha256(json.dumps(
+        {"scope": fingerprint, "request-source": approval_source or entry_approval_source,
+         "source": entry_approval_source, "question-set-id": question_set_id},
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     result = {
-        "schema-version": 1, "run-id": run_id or (value.get("run-id") if stop_at in ("understand", "plan") else None) or str(uuid.uuid4()),
+        "schema-version": 1, "origin": "gx-work", "handoff-kind": kind, "run-id": identifier,
+        "project-root": str(root) if root else None, "input-sha256": fingerprint,
         "goal": value["goal"], "intent": stop_at if stop_at in ("understand", "plan") else "implement",
-        "stop-at": stop_at, "plan-file": str(path),
-        "approval": {"status": "approved" if approval_source else "unconfirmed", "source": approval_source},
+        "stop-at": stop_at, "plan-file": str(path) if kind == "plan" else None,
+        "request-file": str(path) if kind == "request" else None, "work-id": value.get("work-id"),
+        "approval": {"status": "approved" if approval_source or entry_approval_source else "unconfirmed",
+                     "source": approval_source or entry_approval_source},
+        "entry-approval": {"status": "approved" if ready else "unconfirmed", "source": entry_approval_source,
+                           "question-set-id": question_set_id, "scope-sha256": entry_fingerprint if ready else None},
+        "ready-for-tdd": ready, "read-only": readonly, "execution-authorized": ready and not readonly,
     }
     for key in ("sources", "decisions", "unresolved", "requirements", "context-paths", "observed-facts", "questions"):
         result[key] = value.get(key, [])
     return result
+
+
+def validate_handoff(handoff_path, project_root):
+    """인계를 재검사한다. 응답 source가 실제 사용자 사건인지는 하네스가 확인한다."""
+    try:
+        root = Path(project_root).resolve()
+        data = json.loads(local_file(root, handoff_path).read_text(encoding="utf-8"))
+        if (not isinstance(data, dict) or type(data.get("schema-version")) is not int
+                or data["schema-version"] != 1 or data.get("origin") != "gx-work"):
+            raise ValueError("gx-work 인계 형식 오류")
+        if data.get("project-root") != str(root) or not text(data.get("run-id")):
+            raise ValueError("현재 프로젝트·실행 ID와 인계가 다릅니다")
+        kind = data.get("handoff-kind")
+        if kind not in ("plan", "request"):
+            raise ValueError("지원하지 않는 인계 종류")
+        pointer = "plan-file" if kind == "plan" else "request-file"
+        other = "request-file" if kind == "plan" else "plan-file"
+        if not text(data.get(pointer)) or data.get(other) is not None:
+            raise ValueError("원문 포인터가 없거나 충돌합니다")
+        entry = data.get("entry-approval")
+        approval = data.get("approval")
+        if not isinstance(entry, dict) or not isinstance(approval, dict):
+            raise ValueError("TDD 진입 응답이 없습니다")
+        expected = handoff(**{"plan_path" if kind == "plan" else "request_path": data[pointer]},
+                           stop_at=data.get("stop-at"), run_id=data["run-id"], project_root=root,
+                           approval_source=approval.get("source"), entry_approval_source=entry.get("source"),
+                           question_set_id=entry.get("question-set-id"))
+        for key in ("input-sha256", "goal", "intent", "ready-for-tdd", "read-only", "execution-authorized", "work-id", "sources", "decisions", "unresolved",
+                    "requirements", "context-paths", "observed-facts", "questions", "entry-approval", "approval"):
+            if data.get(key) != expected.get(key):
+                raise ValueError(f"승인한 요청·실행·종료점 또는 인계가 바뀌었습니다: {key}")
+        if not expected["ready-for-tdd"]:
+            raise ValueError("관련 결과와 다음 단계를 제시하고 실제 TDD 진입 응답을 기다리세요")
+        return {"ready-for-tdd": True, "run-id": data["run-id"], "stop-at": data["stop-at"],
+                "handoff-kind": kind, "plan-file": data.get("plan-file"), "request-file": data.get("request-file"),
+                "read-only": expected["read-only"], "execution-authorized": expected["execution-authorized"],
+                "intent": expected["intent"]}
+    except (OSError, ValueError, TypeError, RuntimeError) as error:
+        return {"ready-for-tdd": False, "error": str(error)}
 
 
 def main(argv=None):
@@ -268,10 +394,18 @@ def main(argv=None):
     validation = commands.add_parser("validate-plan")
     validation.add_argument("--plan", required=True)
     transfer = commands.add_parser("handoff")
-    transfer.add_argument("--plan", required=True)
+    inputs = transfer.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--plan")
+    inputs.add_argument("--request")
+    transfer.add_argument("--project-root")
     transfer.add_argument("--stop-at", choices=ENDPOINTS, default="verify")
     transfer.add_argument("--run-id")
     transfer.add_argument("--approval-source")
+    transfer.add_argument("--entry-approval-source")
+    transfer.add_argument("--question-set-id")
+    recheck = commands.add_parser("validate-handoff")
+    recheck.add_argument("--handoff", required=True)
+    recheck.add_argument("--project-root", required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "route":
@@ -279,11 +413,15 @@ def main(argv=None):
         elif args.command == "validate-plan":
             issues = validate_plan(json.loads(Path(args.plan).read_text(encoding="utf-8")))
             result = {"valid": not issues, "issues": issues, "approval": "unconfirmed"}
+        elif args.command == "validate-handoff":
+            result = validate_handoff(args.handoff, args.project_root)
         else:
-            result = handoff(args.plan, args.stop_at, args.run_id, args.approval_source)
+            result = handoff(args.plan, args.stop_at, args.run_id, args.approval_source,
+                             request_path=args.request, project_root=args.project_root,
+                             entry_approval_source=args.entry_approval_source, question_set_id=args.question_set_id)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 2 if args.command == "validate-plan" and issues else 0
-    except (OSError, ValueError) as error:
+        return 2 if (args.command == "validate-plan" and issues) or (args.command == "validate-handoff" and not result["ready-for-tdd"]) else 0
+    except (OSError, ValueError, TypeError) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False))
         return 2
 

@@ -213,10 +213,10 @@
       "sentences": 99
     },
     "after": {
-      "bytes": 16095,
-      "chars": 10432,
-      "lines": 174,
-      "sentences": 94
+      "bytes": 19421,
+      "chars": 12274,
+      "lines": 188,
+      "sentences": 116
     }
   },
   {
@@ -268,10 +268,10 @@
     "path": ".claude/skills/gx-work/SKILL.md",
     "before": null,
     "after": {
-      "bytes": 5902,
-      "chars": 3121,
-      "lines": 41,
-      "sentences": 52
+      "bytes": 8222,
+      "chars": 4275,
+      "lines": 49,
+      "sentences": 69
     }
   }
 ]

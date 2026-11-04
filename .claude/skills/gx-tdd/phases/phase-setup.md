@@ -14,6 +14,10 @@
 
 이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 프로젝트 파일의 상대경로는 이 루트에서 해석한다. 번들 스킬·phase 파일(`Read("setup-resume.md")`, `Read("setup-work.md")` 등)은 지시 파일 위치 기준 상대경로로 읽는다.
 
+## Step -0.5: gx-work 인계 선행 검증
+
+gx-work 인계: `Read("../references/plan-handoff.md")`대로 `validate-handoff --handoff <H> --project-root <실제 루트>` 실행. exit 0 + `ready-for-tdd: true` 전 state·stash·브랜치·빌드/코드 변경 금지.
+
 ## Step 0: 진행 중 작업 감지
 
 `${PROJECT_ROOT}/.dev/*/state.md`를 기준으로 진행 상태를 탐색한다. ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건너뛰고 Step 1로 진행한다.
@@ -86,7 +90,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 1. `AUTO_STASHED=true`이면 **Step 5 종료 시점**에 `git stash pop` 실행.
 2. pop 충돌 시 보고하고 AskUserQuestion:
-   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>`). `DEV_DIR`이 미정이면(2.3은 Step 6.5보다 먼저 실행) Step 6.5 규칙대로 `.dev/{branch-slug}`를 확정하고 `mkdir -p` 후 Write한다. 골격이 없으면 `--resume`이 작업을 못 찾는다. 충돌을 유지한 채 중단하고 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개한다.
+   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>`, Step 7 보존 필드). `DEV_DIR`이 미정이면(2.3은 Step 6.5보다 먼저 실행) Step 6.5 규칙대로 `.dev/{branch-slug}`를 확정하고 `mkdir -p` 후 Write한다. 골격이 없으면 `--resume`이 작업을 못 찾는다. 충돌을 유지한 채 중단하고 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개한다.
    - "stash를 drop하고 계속" → `git stash drop`으로 버리고 다음 단계 진행. 위험 수용을 state.md에 기록.
 3. 복원 성공 시 `AUTO_STASHED=false`로 초기화하고 execution-log에 `auto-stash-restored` 기록.
 
@@ -215,9 +219,10 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline: gx-tdd`가 아니면(gx-dev 등 다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
-- run-id, goal, stop-at: gx-work handoff의 값을 보존. 직접 호출이면 새 고유 run-id를 생성하고 stop-at은 명시 요청 또는 verify. 다른 실행의 보고서를 섞지 않는다.
+- run-id·goal·stop-at: handoff 값을 보존. 직접 호출은 새 고유 run-id와 명시 종료점(기본 verify)을 쓴다. 다른 실행의 보고서를 섞지 않는다.
+- 보존: `Read("../references/pipeline-state.md")`.
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
-- vcs-type, branch, base, project-type, project-root, args, flags 기록. `flags`에는 의도 파싱의 RALPH 우선순위를 통과한 `--ralph`만 정규화해 기록한다. svn·충돌로 무시된 RALPH는 기록하지 않는다. `--isolated`는 보존한다.
+- 실행 환경·args·flags는 상태 계약대로 기록한다. 유효한 `--ralph`만 정규화하며 무시된 RALPH는 기록하지 않는다. `--isolated` 등 나머지 flags는 보존하고 method 충돌은 먼저 해소한다.
 - mode, intent-source 기록 (의도 파싱 결과)
 - model-profile 기록 (Step 1.5/3.0 결정 값)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.

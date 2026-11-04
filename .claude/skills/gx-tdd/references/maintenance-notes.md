@@ -7,6 +7,7 @@ v2의 공통 진입은 gx-work, 개발 실행은 gx-tdd다. gx-dev와 그 phase�
 | 공통 Codex 실행·질문·모델 | gx-work/references의 codex-runtime·codex-questions·codex-models, scripts/codex-* helper, gx-setup 설정 템플릿 |
 | 역할 본문·도구·티어 | agents/*.md → scripts/sync-codex-resources.py → gx-work/references/codex-roles. 생성물은 직접 편집하지 않는다 |
 | 의도·종료점·계획 인계 | gx-work/SKILL·planning/handoff, scripts/gx-work.py, gx-tdd intent-routing·plan-handoff·execution-boundaries |
+| TDD 진입·계획 검토·실행방법 | gx-work의 실제 진입 응답 → validate-handoff → gx-tdd setup 전 게이트. 구체 PRD/설계/T계획은 gx-tdd 내부, phase-implement 1.2 계획 링크·범위와 session/subagents/문서 종료를 한 응답으로 확인 → 1.3 기록 검증·flags 반영 → RGR. 계획 승인만 받아 방법이 빠진 경우에만 추가 선택 질문. pipeline-state·setup Step7/충돌 골격·setup-resume 0.05·단독 --phase 골격에서 원문/승인/run/계획 해시/방법을 함께 보존한다. --isolated 실제 분기와 충돌 처리를 확인하며 Ralph 명시 전환은 별도로 유지한다 |
 | 도메인 원장·업무 W계획 | gx-context modes/plan.md·scripts/plan.py. scripts/plan-lint.py도 같은 파서/check를 사용한다. 기능 units/T태스크와 혼동하지 않는다 |
 | 개발 전후 문서 | gx-context references/development-sync.md·scripts/development.py가 대조 정본. gx-work 진입·gx-tdd document-lifecycle·setup 3.0.4·requirements/implement·complete 순서를 함께 확인한다. 관련 문서/상태 투영 → 최종 verify/proof/지문 → .dev 완료 기록 → 요청한 commit/PR. RED 격리·문서 금지·완료 투영의 조건부 원복을 유지한다 |
 | TDD 상태·지문 | gx-tdd pipeline-state, pre-tool-guard G3, gx-commit, gx-pull-request. pipeline/status/verify-status/verify-fingerprint 판별과 트리 성분 비교를 유지한다 |

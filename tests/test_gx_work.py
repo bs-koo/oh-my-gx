@@ -52,7 +52,8 @@ class WorkEntryTests(unittest.TestCase):
     def test_new_implementation_uses_only_tdd_and_defaults_to_verified_changes(self):
         value = work.route(self.root, "implement", goal="새 기능")
         self.assertEqual((value["action"], value["skill"], value["stop-at"]),
-                         ("implement", "oh-my-gx:gx-tdd", "verify"))
+                         ("implement", None, "verify"))
+        self.assertTrue(value["requires-user-decision"])
 
     def test_implementation_cannot_request_a_read_only_endpoint(self):
         before = self.snapshot()
@@ -63,7 +64,7 @@ class WorkEntryTests(unittest.TestCase):
 
     def test_existing_pipeline_resumes_with_original_run_and_goal(self):
         self.active()
-        value = work.route(self.root, "implement", goal="추가 설명")
+        value = work.route(self.root, "resume", goal="이어서 진행")
         self.assertEqual(value["action"], "resume")
         self.assertEqual((value["run-id"], value["goal"], value["stop-at"]),
                          ("old-run", "기존 목표", "commit"))

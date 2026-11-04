@@ -74,6 +74,26 @@ phase-setup 결정, 모든 Phase 사용.
 - `PROJECT_ROOT`: phase-setup Step -1이 Git `--show-toplevel` > SVN `wc-root` > 현재 디렉토리 절대경로 순으로 결정한 값.
 - Agent에게 `PROJECT_ROOT`를 전달해 파일 도구의 기준점으로 쓰고, Git·SVN·빌드·테스트 명령도 그 디렉토리에서 실행한다.
 
+### gx-work 진입·계획·실행방법 상태
+
+gx-work 인계의 진입 승인은 TDD로 연결할 **원래 요청 범위**에 대한 실제 응답이다. PRD·설계·구체 T태스크 계획과 그 검토는 gx-tdd 안에서 수행한다. 전체 인계 검증은 [계획 인계 계약](plan-handoff.md), 실행방법 질문은 [구현 phase Step 1.2~1.3](../phases/phase-implement.md)이 소유한다. 상태 초기화·stash 충돌 골격·`--phase` 부트스트랩·재개에 아래 필드를 보존한다.
+
+| 필드 | 기록·검증 |
+|---|---|
+| `run-id`, `goal`, `stop-at` | 원래 실행 식별자·목표·종료점. 다른 실행과 섞거나 권한을 확장하지 않는다 |
+| `handoff-file`, `request-file`, `plan-file` | 존재하는 원문/인계의 절대 포인터. request 인계에 없는 plan-file은 생략하며 원문을 프롬프트로 복사하지 않는다 |
+| `entry-approved-run`, `entry-approved-source`, `entry-approved-scope-sha256` | 검증된 gx-work `entry-approval`의 run·실제 응답 출처·scope-sha256. question-set-id는 결정 기록/작업 문맥에도 보존한다. 직접 gx-tdd 호출에는 만들어 넣지 않는다 |
+| `implementation-plan-file`, `implementation-plan-sha256` | TDD 내부의 구체 T태스크·순서·테스트 의도가 담긴 파일과 현재 SHA-256. 기존 유효한 계획을 재사용하며 원래 request-file/plan-file 포인터를 덮지 않는다 |
+| `plan-approved-run`, `plan-approved-source`, `plan-approved-sha256` | Step 1.2에서 실제 검토 응답을 확인한 run·출처·내부 계획 해시 |
+| `execution-method` | 실제 선택한 `session` 또는 `subagents`. 미결정은 비운다. 처음 명시한 선택도 계획 검토 전에는 실행 허가가 아니다 |
+| `execution-method-run`, `execution-method-plan-sha256`, `execution-method-source` | 확정된 방법의 run·승인된 내부 계획 해시·실제 응답 출처. 같은 조합일 때만 재질문 없이 재사용한다 |
+
+Step 1.2에서 현재 세션/서브에이전트로 진행하는 한 실제 응답은 plan-approved와 execution-method 양쪽 필드를 함께 확정한다. 초기 명시 방법이 있으면 실제 계획 검토 응답과 기존 선택 근거를 각각 연결한다. Step 1.3은 이 기록을 검증·반영하고 계획 승인만 받아 방법이 빠진 경우에만 추가 선택 질문을 한다. 수정·미응답·문서 종료는 실행방법 승인을 만들어 넣지 않는다.
+
+`session`은 GREEN/REFACTOR를 현재 세션에서 수행하며 `--isolated`가 없어야 한다. `subagents`는 implementer 디스패치를 위해 `--isolated`를 기록한다. 최초 실제 방법 선택을 반영할 때만 해당 플래그를 맞추고 다른 플래그는 보존한다. 재개/명시 선택/기존 flags가 충돌하면 근거를 보고하고 해소 전 실행하지 않는다. 명시 `--ralph`는 기존 별도 전환 경로이며 이 두 방법으로 대체하지 않는다.
+
+원 handoff의 `validate-handoff` 재검증은 같은 run·원문·scope·종료점·승인과 현재 프로젝트 루트를 검사한다. 내부 T계획 작성만으로 요청 진입 승인을 다시 묻지 않는다. 계획 변경은 plan/method 승인만 재검토하며, 요구범위·종료점까지 달라졌으면 그 변경의 진입 승인을 확인한다. 누락된 gx-work 승인이나 false·exit 2·pending을 일반 구현 요청 문구로 보완하지 않는다.
+
 ### 모델 프로파일 (MODEL_PROFILE)
 
 Codex는 [모델 정책](../../gx-work/references/codex-models.md)의 helper로 아래 역할·프로파일과 태스크 리뷰·fix 격상 예외를 함께 해석한다. opus/sonnet은 원본 티어이며 메인 세션 IMPLEMENT를 mid 디스패치로 기록하지 않는다. `model-dispatches.jsonl`에 계획과 실제 도구 인자·관측값을 구분한다.
@@ -139,6 +159,23 @@ verify-fingerprint: ""
 model-profile: standard
 mode: all
 intent-source: user-selection
+run-id: "현재 실행 UUID"
+goal: "로그인 기능 추가"
+stop-at: verify
+handoff-file: "/absolute/project/.dev/request/handoff.json"
+request-file: "/absolute/project/.dev/request/request.json"
+entry-approved-run: "현재 실행 UUID"
+entry-approved-source: "진입 질문의 실제 사용자 응답"
+entry-approved-scope-sha256: "원래 요청 범위 SHA-256"
+implementation-plan-file: "/absolute/project/.dev/feat-login/implementation-plan.md"
+implementation-plan-sha256: "구체 T계획 SHA-256"
+plan-approved-run: "현재 실행 UUID"
+plan-approved-source: "계획 검토의 실제 사용자 응답"
+plan-approved-sha256: "구체 T계획 SHA-256"
+execution-method: session
+execution-method-run: "현재 실행 UUID"
+execution-method-plan-sha256: "구체 T계획 SHA-256"
+execution-method-source: "현재 세션 선택의 실제 사용자 응답"
 work-id: W01
 flags: ""
 vcs-type: git
@@ -176,6 +213,7 @@ execution-log:
 - **execution-log 기록 규약**: `result:` 등 자유 텍스트에 판별 키 문자열(`verify-status: passed`, `pipeline: gx-tdd`)을 **그대로 쓰지 않는다** — 훅이 부분 문자열로 매칭하면 게이트가 조용히 꺼질 수 있다. 필요하면 "verify 통과 표식 미전이"처럼 키를 인용하지 않고 서술한다 (훅은 `verify-status`에 줄 시작 앵커를 쓰지만, 다른 키까지 앵커를 쓰지는 않는다).
 - **기준선 게이트 결과**: phase-implement Step 0.5에서 최상위 필드 `warnings-baseline: N`을 기록한다. 추출 불가 시 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다. requirements 진입 시 기준선 사전 실행을 시작했으면 최상위 `baseline-fingerprint`를 기록한다 (Claude Code·git 전용 — 절차·수용 조건은 phase-implement Step 0.5 "기준선 사전 실행" 절). 필드가 없으면 사전 실행을 하지 않은 것이다.
 - `--resume` 시 `current-step`에서 재개한다 (Phase 처음부터가 아닌 중단 Step부터). 재개 전에 `../phases/setup-resume.md`의 0.1 정합성 체크(브랜치/HEAD)를 수행한다. RGR 사이클 재개 시 `red/impl` 단계별로 매칭 (태스크의 `test-file-hash`·`test-count`와 `${DEV_DIR}/rgr-t{N}-porcelain.txt` 스냅샷 파일을 함께 사용하여 verify_implement 기준선을 유지).
+- **진입/방법 재개 게이트**: pending 질문은 state 존재 판정보다 먼저 복원한다. `setup-resume.md` 0.05의 원 handoff·승인·실행방법 검증은 0.1의 이관·stash·기록·빌드/코드 변경 전에 통과한다. 문서로 종료를 선택했으면 `phase: implement`·`status: in_progress`·`current-step: 계획 문서로 종료`·`verify-status: pending`을 유지하고 미구현을 보고한다. 실행방법을 선택한 것으로 기록하거나 phase-complete로 넘어가지 않는다.
 - 에이전트 호출 완료 시: `execution-log`에 엔트리 추가 (agent명, result 요약). deprecated 에이전트(coder/qa-manager)는 절대 기록되지 않는다.
 - Gate 실행 결과도 `execution-log`에 기록한다 (mechanical-gate, G-W-T, testability, verify, spec-review, quality-review).
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
