@@ -25,7 +25,7 @@
   "skills": "./.claude/skills/",
   "hooks": "./hooks.json",
   "interface": {
-    "displayName": "GX Development",
+    "displayName": "oh-my-gx",
     "shortDescription": "요구사항·구현·리뷰·검증 개발 워크플로",
     "longDescription": "요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로.",
     "developerName": "bs-koo",

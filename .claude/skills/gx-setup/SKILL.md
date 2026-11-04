@@ -1,7 +1,7 @@
 ---
 name: gx-setup
 argument-hint: "없음"
-description: GX Development의 초기 설정 요청에 사용한다. 버전 관리·빌드·테스트 설정을 등록하고 필수 도구와 인증 상태를 확인한다.
+description: oh-my-gx의 초기 설정 요청에 사용한다. 버전 관리·빌드·테스트 설정을 등록하고 필수 도구와 인증 상태를 확인한다.
 disable-model-invocation: true
 allowed-tools:
   - "Bash(echo *)"

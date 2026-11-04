@@ -1,6 +1,6 @@
 <div align="center">
 
-# GX Development
+# oh-my-gx
 
 **요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로.**
 
