@@ -6,10 +6,13 @@ argument-hint: "[--status]"
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
   - Grep
   - AskUserQuestion
   - Bash(git *)
+  - Bash(python *)
+  - Bash(python3 *)
   - Bash(test *)
   - Bash(ls *)
   - Bash(mkdir *)
@@ -85,7 +88,10 @@ Codex 반복 러너에는 `GX_RALPH_HARNESS=codex`와 **설치된** `gx-ralph-it
 ```yaml
 pipeline: gx-ralph        # 훅 G3·스킬 라우팅의 판별 키
 status: in_progress
+run-id: {보존한 실행 ID}  # 사전 대조에서 최초 생성한 ID도 같은 값으로 저장
+goal: "{원래 사용자 목표}"
 origin: gx-tdd            # 모든 반복은 red-writer→implementer 2석 TDD
+document-sync-pending: true # 루프 후 관련 문서·누적 리뷰·최종 verify가 남음
 verify-status: pending    # pending|passed — 전이 규칙은 아래
 verify-fingerprint: ""    # verify 통과 시점의 코드 지문 (../gx-tdd/references/pipeline-state.md "verify 지문" 규약과 동일)
 last-known-head: {sha}    # 러너가 반복 전후 기록 (NO_DRIFT 감지용)
@@ -102,7 +108,7 @@ args: "{원 요청}"
 
 반복 세션은 **응답의 마지막 줄에 정확히 한 번** 아래 중 하나를 출력한다. 러너는 반복 로그의 **마지막 매치**를 파싱하며, 미출력(크래시 등)은 BLOCKED로 취급한다:
 
-- `<ralph>COMPLETE</ralph>` — 모든 AC `passes: true`. 러너가 루프를 종료한다
+- `<ralph>COMPLETE</ralph>` — 모든 AC `passes: true`. 러너가 구현 루프를 종료한다. W행/전체 개발의 검증 완료 또는 merged 표식은 아니다
 - `<ralph>CONTINUE</ralph>` — 미완료 AC 남음 (이번 반복의 성공/실패와 무관)
 - `<ralph>BLOCKED: {사유 1줄}</ralph>` — 사람 개입 필요. 러너가 루프를 중단한다
 
@@ -146,6 +152,7 @@ verify는 매 반복 현재 코드의 변경·영향 테스트를 검증한다. 
    - **origin 누락 구버전** (`pipeline: gx-ralph`): 헤드리스 러너/반복은 즉시 차단한다. 이 대화형 준비 단계에서만 기존 기록의 TDD 출처와 완료 AC의 RED→GREEN·verify·commit 근거를 확인하고, 사용자에게 `origin: gx-tdd` 정규화를 명시 승인받은 뒤 기록한다. 근거가 없거나 승인하지 않으면 원장을 보존하고 전환 안내 후 중단한다. 단순히 PRD가 있다는 이유로 이전 완료 AC를 인정하지 않는다.
    - state·원장이 모두 없는 신규 준비는 승인된 PRD와 Step 2의 TDD 실행 확인을 통해 `origin: gx-tdd`로 시작한다. 출처가 불명확한 기존 원장이 있는데 state가 없으면 신규로 간주하지 않고 차단한다.
 8. **종료점 사전 확인**: Ralph를 명시 선택하면 AC별 verify 후 로컬 커밋이 포함된다. 원격 push는 보존한 `stop-at: pr` 또는 실제 별도 원격 반영 요청에 한정한다. 사용자가 명시한 `--stop-at verify`나 "커밋하지 말 것"과 함께 들어오면 조용히 범위를 넓히지 않는다. 실제 대화에서 로컬 커밋을 허용할지 먼저 확인하고, 허용한 경우에만 state에 `ralph-local-commits: approved`와 실제 결정 출처를 기록한다. 거절·미응답이면 원장을 변경하지 않고 일반 gx-tdd verify 경로를 안내한다. 이미 같은 충돌을 해소한 실제 결정은 다시 묻지 않는다. 기존 원장을 이어 쓰며 Step 2를 건너뛰더라도 이 사전 확인은 생략하지 않는다.
+   **관련 문서 사전 대조**: `Read("../gx-tdd/references/document-lifecycle.md")`의 사전 대조를 같은 run-id·실제 goal·확정된 G-W-T AC로 확인한다. 직접 준비도 생략하지 않는다. 기존 preflight의 현재 해시/근거를 재사용하고 변경분만 처리하며, 명시 문서 금지 범위는 보존한다. 등록/의미 충돌이 남으면 루프 시작 전 해소한다. 반복마다 이 준비나 전체 문서 갱신을 다시 하지 않는다.
 9. **기존 원장**: `${DEV_DIR}/ac-status.json`이 이미 있으면 AskUserQuestion으로 확인:
    ```
    questions: [{

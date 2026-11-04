@@ -770,7 +770,7 @@ class TestRunBudgetContractTests(unittest.TestCase):
 
     def test_verify_block_repair_contract(self):
         text = self.read("phase-complete.md")
-        step = section(text, "## Step -1: verify 게이트", "## Step 0: 인수 검증")
+        step = section(text, "## Step -1: verify 게이트", "## Step 3.5: 작업 계획")
         self.assertIn('"수정"', step)
         self.assertIn("다른 테스트·빌드 명령을 시작하지 않고", step)
         self.assertNotIn('"RGR 사이클로 수정"', step)
@@ -793,6 +793,104 @@ class TestRunBudgetContractTests(unittest.TestCase):
         self.assertIn("다른 테스트·빌드 명령을 병행하지 않는다", section(verify, "### Step 2", "### Step 3"))
         state = (TDD_PHASES.parent / "references/pipeline-state.md").read_text(encoding="utf-8")
         self.assertIn("verify 회귀 수리", state)
+
+
+class DocumentLifecycleContractTests(unittest.TestCase):
+    def read(self, relative: str) -> str:
+        path = TDD.parent / relative
+        self.assertTrue(path.is_file(), f"배포 가능한 문서 흐름 계약이 없습니다: {relative}")
+        return path.read_text(encoding="utf-8")
+
+    def test_related_preflight_covers_full_partial_resume_and_ralph_return(self):
+        setup = self.read("phases/phase-setup.md")
+        self.assertIn("관련 문서 사전 대조", setup)
+        self.assertLess(setup.index("관련 문서 사전 대조"), setup.index("### 3.0.5 작업 계획 참조"))
+        skill = TDD.read_text(encoding="utf-8")
+        loop = section(skill, "### Phase 실행 루프", "### Phase 파일 경로")
+        self.assertLess(loop.index("문서 사전 대조"), loop.index("# 2a. 산출물 게이트"))
+        self.assertIn("document-lifecycle.md", loop)
+        environment = section(skill, "**환경 감지**", "---")
+        self.assertIn("기존 work-id를 먼저 대조", environment)
+        self.assertLess(environment.index("기존 work-id를 먼저 대조"), environment.index("work-id: {ID}"))
+        for phase in ("requirements", "implement", "complete"):
+            self.assertIn("document-lifecycle.md", self.read(f"phases/phase-{phase}.md"))
+        self.assertIn("문서 사전 대조", self.read("phases/setup-resume.md"))
+        lifecycle = self.read("references/document-lifecycle.md")
+        for origin in ("--core", "--phase", "--resume", "origin: gx-tdd"):
+            self.assertIn(origin, lifecycle)
+
+    def test_related_documents_precede_final_verify_and_delivery(self):
+        complete = self.read("phases/phase-complete.md")
+        headings = (
+            "## Step -2: TDD 이행 게이트", "## Step 0: 인수 검증",
+            "## Step 3: 도메인 status.md", "## Step 4: 관련 문서",
+            "## Step -1: verify 게이트", "## Step 3.5: 작업 계획",
+            "## Step 1: Commit", "## Step 2: PR 생성", "## Step 5: 진행 상태 완료",
+        )
+        for heading in headings:
+            self.assertIn(heading, complete)
+        positions = [complete.index(heading) for heading in headings]
+        self.assertEqual(positions, sorted(positions))
+        final = complete[complete.index("## Step -1: verify 게이트"):]
+        self.assertNotIn("생성된 PR 링크를 기입", final)
+        self.assertIn("최종 verify 뒤에는 context/", final)
+        self.assertIn("새 PR URL은 `${DEV_DIR}/", final)
+
+    def test_status_projection_requires_current_ac_evidence_and_conditional_rollback(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for gate in ("현재 구현 트리", "실제 실행", "위험 수용", "기존 ✅", "journal",
+                     "before-sha256", "after-sha256", "동시 변경", "이번 실행이 만든 ✅"):
+            self.assertIn(gate, lifecycle)
+        complete = self.read("phases/phase-complete.md")
+        rejected = section(complete, "- **❌ verify 차단**:", "**verify 회귀 수리**")
+        self.assertIn("조건부 원복", rejected)
+        self.assertIn("Step 0", complete[complete.index("**verify 회귀 수리**"):])
+
+    def test_document_checks_preserve_source_intent_and_red_isolation(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for scope in ("read-only", "--no-document-write", "understand", "plan", "status"):
+            self.assertIn(scope, lifecycle)
+        for invariant in ("전체 인터뷰", "전체 스캔", "관측 사실", "미래 요구사항", "red-writer", "구현 본문"):
+            self.assertIn(invariant, lifecycle)
+        self.assertIn("development-sync.md", lifecycle)
+        self.assertIn("development.py", lifecycle)
+        self.assertIn("--previous", lifecycle)
+        self.assertIn("--phase post", lifecycle)
+
+    def test_readonly_inspection_is_bounded_without_project_files(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for contract in ("--plan -", "summary --report -", "종료 코드", "stdin", "메모리"):
+            self.assertIn(contract, lifecycle)
+        for path in ("phases/setup-work.md", "phases/setup-resume.md"):
+            text = self.read(path)
+            self.assertIn("--no-document-write", text)
+            self.assertRegex(text, r"계획(?:을)? (?:commit/push|커밋)")
+        work = self.read("phases/setup-work.md")
+        self.assertNotIn('"아니오"면 계획과 무관하게 기존 경로로 진행', work)
+        self.assertIn("실제 goal·요청 AC·원문 source를 보존", work)
+
+    def test_private_projection_journal_tracks_subsequent_same_file_edits(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for contract in ("evidence/document-sync/journal.json", "info/exclude", "커밋 수집",
+                         "파일별 journal", "각 후속 Edit 전", "after 해시를 갱신",
+                         "미검증 투영을 먼저 조건부 원복"):
+            self.assertIn(contract, lifecycle)
+        self.assertNotIn("`${DEV_DIR}/document-journal.json`", lifecycle)
+
+    def test_completion_distinguishes_verified_scope_from_merge_and_partial_acceptance(self):
+        complete = self.read("phases/phase-complete.md")
+        self.assertLess(complete.index("## Step 3.5: 작업 계획"), complete.index("## Step 1: Commit"))
+        plan = section(complete, "## Step 3.5: 작업 계획", "## Step 1: Commit")
+        for gate in ("verify-status", "모든 AC", "위험 수용", "미충족", "폐기"):
+            self.assertIn(gate, plan)
+        lifecycle = self.read("references/document-lifecycle.md")
+        self.assertIn("구현 완료", lifecycle)
+        self.assertIn("검증 완료", lifecycle)
+        self.assertIn("merged", lifecycle)
+        self.assertIn("병합", lifecycle)
+        state = self.read("references/pipeline-state.md")
+        self.assertIn("document-lifecycle.md", state)
+        self.assertIn("context/", state)
 
 
 if __name__ == "__main__":

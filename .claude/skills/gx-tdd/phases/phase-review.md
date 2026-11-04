@@ -344,6 +344,8 @@ else:
 
 ## state.md 추적
 
+Ralph 복귀의 누적 리뷰가 현재 코드에서 정상 종료하면 같은 run-id와 실제 최종 diff/report 경로를 보존하고 `review-run-id`·`review-fingerprint`를 기록한다. 정리/수리가 있었다면 마지막 변경과 직접 검증·확인 리뷰를 마친 뒤 지문을 계산한다. 계산은 [기존 지문 계약](../../gx-verify/references/fingerprint.md)의 현재 하네스 절차를 사용하며, 이 기록으로 verify를 통과 처리하지 않는다. 미확보/실패 리뷰를 성공 증거로 기록하지 않는다. `document-sync-pending`은 complete의 문서/최종 verify 전까지 유지한다.
+
 ```yaml
 steps:
   review:

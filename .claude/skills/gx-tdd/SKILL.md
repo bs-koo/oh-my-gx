@@ -47,8 +47,9 @@ Phase 목록을 계산하기 전에 다음 파일을 순서대로 Read한다.
 2. `Read("references/pipeline-state.md")`
 3. `Read("references/interaction-contract.md")`
 4. `Read("references/roles-and-phases.md")`
+5. `Read("references/document-lifecycle.md")` — 개발 전 관련 문서 사전 대조와 구현 후 최종 검증 순서.
 
-네 파일을 읽은 뒤 아래 TDD Phase 실행 루프를 수행한다. RED → IMPLEMENT → VERIFY와 Given-When-Then 게이트는 아래 본문과 phase 파일 지시를 유지한다.
+다섯 파일을 읽은 뒤 아래 TDD Phase 실행 루프를 수행한다. RED → IMPLEMENT → VERIFY와 Given-When-Then 게이트는 아래 본문과 phase 파일 지시를 유지한다.
 
 ## Phase 라우팅 — 필수 실행 프로토콜
 
@@ -93,6 +94,10 @@ for phase in PHASES:
     # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
     # answer 기록·해제 전 phase 실행·완료 표시는 하지 않는다. 자세한 절차는 codex-runtime 참조.
 
+    # 문서 사전 대조 — setup/explore 이후 모든 진입(--phase/--resume/--core/Ralph 복귀 포함)
+    # references/document-lifecycle.md의 사전 대조를 수행한다. 이미 같은 범위를 확인했으면 차이만 확인한다.
+    # requirements의 AC 확정 후 implement 직전에 다시 대조한다. 리뷰/조회/계획/문서 금지는 읽기만 한다.
+
     # 2a. 산출물 게이트 — 이전 Phase 산출물이 없으면 이전 Phase부터 실행 (순서 중요: 상위 의존성 먼저 체크)
     if phase == "design" and not exists("${DEV_DIR}/prd.md"):
         → phase-requirements부터 실행
@@ -124,7 +129,9 @@ for phase in PHASES:
 
     # 2d. state.md 갱신
     # Codex에서 질문 대기로 phase가 끝나지 않았다면 완료 표시를 하지 않고 현재 phase를 유지한다.
-    Update state.md → phases.{phase}: completed
+    # complete는 Step 5의 실제 완료 조건을 통과했을 때만 완료 표시한다.
+    # 미충족 AC/미검증/문서 충돌/요청한 전달 실패이면 in_progress를 유지하고 중단한다.
+    Update state.md → phases.{phase}: completed (해당 Phase의 모든 완료 조건 통과 시에만)
 
     # 2e. 다음 Phase로 진행
     # Codex에서는 미응답 pending 질문이 있으면 다음 Phase로 진행하지 않고 현재 Phase에서 대기한다.
@@ -152,7 +159,7 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 - `--phase requirements`: `[explore, requirements]`를 실행하여 환경을 읽고 관련 도메인 컨텍스트로 PRD를 작성한다. 실행 setup은 하지 않는다.
 - `--phase design`: `[explore, design]`을 실행한다. 탐색 후 `${DEV_DIR}/prd.md`가 없으면 게이트가 requirements를 먼저 실행한다.
 - `--phase implement`: 환경 감지 + implement 실행. 대화 맥락에 설계서가 없고 `${DEV_DIR}/design.md`도 없으면: "설계서가 필요합니다. `/gx-tdd --phase design`을 먼저 실행하거나 설계 내용을 입력해주세요." 후 중단.
-- `--phase review`: 환경·베이스 브랜치 감지 후 현재 변경사항을 리뷰한다. **결과 보고로 종료하고 phase-complete로 체이닝하지 않는다** (`--phase complete` 별도 실행). 종료 시 부트스트랩 골격 state.md는 `status: completed`로 갱신한다.
+- `--phase review`: 환경·베이스 브랜치 감지 후 현재 변경사항을 리뷰한다. **결과 보고로 종료하고 phase-complete로 체이닝하지 않는다** (`--phase complete` 별도 실행). 리뷰만 요청한 부트스트랩 실행은 `status: completed`로 갱신한다. Ralph 등 원래 개발 실행의 문서/최종 검증이 남았으면 `phases.review`만 완료하고 실행은 진행 상태를 유지한다.
 - `--phase complete`: 환경 감지 + 베이스 브랜치 감지 + complete 실행 (인수 검증, test, commit, PR, status 갱신). TDD 이행 여부는 phase-complete **진입부의 TDD 이행 게이트(Step -2)** 가 모든 진입 경로에서 공통 검사한다.
 
 > **환경 감지**: 위 3개 모드는 phase-setup을 건너뛰므로, Phase 진입 전에 다음을 수행한다:
@@ -162,6 +169,6 @@ Phase 실행 시 반드시 이 스킬에 정의된 Agent 팀(product-owner, arch
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`: `${DEV_DIR}/state.md`의 `model-profile` 값이 있으면 사용하고, 없으면 플래그(`--eco`/`--standard`) > config.json `modelProfile` > `standard` 순으로 결정한다 (phase-setup Step 1.5와 동일 규칙 — eco 디스패치 오버라이드가 이 값에 의존하므로 생략하지 않는다).
 > 6. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, `flags: --phase {name}`). **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌리고 `verify-fingerprint`를 비운다.** 재진입 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다. `pipeline`/`verify-status`는 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)에 필요하다.
-> 7. `--work {ID}`가 지정되었으면 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰어 3.0.5가 실행되지 않으므로, 기록하지 않으면 **지정한 ID가 조용히 무시되고** phase-complete Step 3.5가 `작업 위치` 열로만 행을 찾는다 — 브랜치가 계획에 없으면 아무 일도 일어나지 않는다.
+> 7. `--work {ID}`가 지정되었으면 **기존 work-id를 먼저 대조**한다. 다른 작업이면 기존 연결을 보존하고 명시적인 전환 결정을 받기 전 기록하지 않는다. `references/document-lifecycle.md`의 사전 대조로 행·원장·run/branch 연결을 검증한 뒤에만 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰므로 없는 ID를 만들거나 조용히 무시하지 않는다. work 미지정도 관련 원장·W계획을 확인하며, 조회/계획/문서 금지 범위는 쓰지 않는다.
 
 ---

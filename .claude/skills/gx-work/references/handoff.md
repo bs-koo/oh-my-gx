@@ -51,6 +51,8 @@ gx-work에서 구현을 요청받았거나 gx-tdd가 `--from-plan`·`--handoff`�
 - 유효한 계획의 단위·AC·테스트 의도·경계·명령·리뷰 초점을 gx-tdd가 소비한다. PRD/설계 원문을 새로 반복 작성하거나 재분해하지 않는다. 필수 실행 게이트·RGR 순서·RED 격리는 유지한다.
 - pending 질문, RGR 중단 위치·테스트 해시·focused 결과·verify 지문은 gx-tdd 기존 state 계약이 소유한다. 이 인계 파일이 해당 증거를 대체하지 않는다.
 
+구현 인계에는 [관련 문서 연결](../../gx-context/references/development-sync.md)의 관련 FR/W·context 포인터와 이미 확인한 결정만 보존한다. gx-tdd가 직접 호출·재개에도 같은 대조를 적용한다. 문서를 이미 확인했으면 같은 snapshot/보고서를 재사용하고 전체 context 모드나 인터뷰를 다시 실행하지 않는다. 완료 순서는 **현재 AC 증거 대조 → 관련 문서 차이 반영 → 최종 verify → 요청한 커밋/PR**이며 새 PR URL은 `.dev` 전달 기록에 둔다. 최종 verify 뒤 context에 쓰면 현재 지문을 다시 검증해야 한다.
+
 ## 결정적 helper (선택)
 
 자연어 판단은 하네스가 하고 helper는 확정한 의도와 데이터 계약만 검사한다. helper 자체는 파일을 쓰거나 테스트 명령을 실행하지 않는다.

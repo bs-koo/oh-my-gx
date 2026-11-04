@@ -763,10 +763,11 @@ for f in .claude/skills/gx-tdd/SKILL.md; do
   awk '/\*\*환경 감지\*\*/,/^---/' <(skill_contract_text "$f") | grep 'work-id' >/dev/null \
     || fail "--phase 환경 감지에 work-id 기록 누락 (--work가 조용히 무시된다): $f"
 done
-# ralph의 완료 갱신도 push해야 후속 담당자의 의존 확인이 풀린다
-# 'push' 단순 검색은 같은 구간의 설명 문장("완료로 표시되고 push된다")에 걸려 무력하다 — 지시 문구로 본다
-awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md | grep -E 'stop-at.*pr.*push|push.*stop-at.*pr' >/dev/null \
-  || fail "ralph plan 완료 갱신에 push 지시 누락"
+# Ralph 루프 종료는 구현 완료다. W 완료/push는 누적 리뷰·문서 대조·최종 verify 뒤에만 한다.
+RALPH_HANDOFF=$(awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md)
+for contract in 'document-sync-pending: true' '/gx-tdd --phase review' '/gx-tdd --phase complete' '계획 커밋·push하지 않는다'; do
+  printf '%s' "$RALPH_HANDOFF" | grep -qF "$contract" || fail "ralph 최종 문서/검증 인계 계약 누락: $contract"
+done
 # 브랜치 예시는 영어로 통일한다 (--work 경로만 한글이면 명명이 갈린다)
 grep -rn 'feat/[가-힣]' .claude/skills README.md >/dev/null 2>&1 \
   && fail "한글 브랜치 예시 잔존: $(grep -rl 'feat/[가-힣]' .claude/skills README.md | tr '\n' ' ')"

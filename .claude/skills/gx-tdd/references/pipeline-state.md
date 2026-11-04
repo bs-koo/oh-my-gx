@@ -171,7 +171,7 @@ execution-log:
 - **RGR 사이클**: 각 태스크의 red/impl 단계를 `"RGR T{N} (AC-N)"` 형식의 중첩 객체로 추적한다 (구 green/refactor 키는 3석 세대 전용 — 신규 기록에 사용 금지). (옛 "coder 구현/자기점검" 형식 사용 금지)
 - **G-W-T / testability 게이트 결과**: `execution-log`에 `gate: G-W-T` 또는 `agent: test-architect` 엔트리로 기록.
 - **verify 게이트 결과**: complete Step -1의 verify 게이트 결과를 `execution-log`에 기록 (gx-commit은 gx-dev와 공유하는 스킬이라 verify 실행을 포함하지 않는다 — 조건부 경고 게이트만 있음). verify가 "위험 수용"으로 통과를 보고하면 오케스트레이터가 trust-ledger에도 기록한다.
-- **verify-status 전이**: phase-complete Step -1 verify 통과 시 최상위 `verify-status: passed`로 갱신하고, **같은 시점의 코드 지문을 `verify-fingerprint`에 함께 기록한다**. 이후 코드 변경으로 phase-complete를 재진입하면 `pending`으로 리셋(지문은 빈 값으로) 후 Step -1을 재실행한다. phase-complete Step -1에서 "수정"(verify 회귀 수리)을 고른 때에도 즉시 `pending`·빈 지문으로 둔다. 새 파이프라인 시작·부트스트랩 시 초기값은 `pending`.
+- **verify-status 전이**: [문서 수명주기](document-lifecycle.md)에 따라 현재 AC/인수 대조와 관련 context/원장 반영 후 phase-complete Step -1 최종 verify를 수행한다. 통과 시 최상위 `verify-status: passed`와 **같은 시점의 문서 포함 코드 지문을 `verify-fingerprint`에 함께 기록한다**. 이후 코드 또는 context/ 변경이 있으면 즉시 `pending`·빈 지문으로 리셋하고 AC/문서 대조부터 다시 수행한다. 차단/취소/수리 전 이번 실행이 투영한 새 ✅만 journal 해시를 확인해 조건부 원복한다. "수정"(verify 회귀 수리)을 고른 때에도 pending·빈 지문을 유지한다. 새 파이프라인 시작·부트스트랩 시 초기값은 `pending`.
 - **status 수명주기**: `status: completed`인 state.md에 **어떤 Phase든 재진입하면 `status: in_progress`로 되돌리고 `verify-status: pending`·`verify-fingerprint: ""`로 리셋한다**. 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 판별 조건으로 쓰므로, 완료 표식이 남은 채 재작업하면 게이트가 전부 꺼진다.
 - **execution-log 기록 규약**: `result:` 등 자유 텍스트에 판별 키 문자열(`verify-status: passed`, `pipeline: gx-tdd`)을 **그대로 쓰지 않는다** — 훅이 부분 문자열로 매칭하면 게이트가 조용히 꺼질 수 있다. 필요하면 "verify 통과 표식 미전이"처럼 키를 인용하지 않고 서술한다 (훅은 `verify-status`에 줄 시작 앵커를 쓰지만, 다른 키까지 앵커를 쓰지는 않는다).
 - **기준선 게이트 결과**: phase-implement Step 0.5에서 최상위 필드 `warnings-baseline: N`을 기록한다. 추출 불가 시 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다. requirements 진입 시 기준선 사전 실행을 시작했으면 최상위 `baseline-fingerprint`를 기록한다 (Claude Code·git 전용 — 절차·수용 조건은 phase-implement Step 0.5 "기준선 사전 실행" 절). 필드가 없으면 사전 실행을 하지 않은 것이다.
@@ -179,7 +179,9 @@ execution-log:
 - 에이전트 호출 완료 시: `execution-log`에 엔트리 추가 (agent명, result 요약). deprecated 에이전트(coder/qa-manager)는 절대 기록되지 않는다.
 - Gate 실행 결과도 `execution-log`에 기록한다 (mechanical-gate, G-W-T, testability, verify, spec-review, quality-review).
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
-- phase-complete 완료 시: `status: completed`로 갱신.
+- phase-complete 완료 시: 현재 요청 범위의 AC/인수·문서 대조·최종 verify·요청한 종료점이 모두 성공한 경우만 `status: completed`로 갱신한다. 구현 완료, 검증 완료, PR 생성, 실제 merged는 구분한다. 미충족/미검증/위험 수용 AC가 남은 W행은 진행을 유지한다. pending 질문·충돌·요청한 commit/PR 실패도 완료로 덮지 않는다.
+- **문서 대조 기록**: 같은 run-id의 document-pre/post 결과·snapshot·document-journal과 reports/document-lifecycle.md를 복원한다. 완료 투영의 원래 값·before/after 해시·현재 AC 실행 근거를 보존한다. 최종 verify 후 새 PR URL은 .dev 전달 기록에만 쓴다. context/ 원장 갱신은 후속 명시적 sync 또는 문서 대조/최종 verify 재실행에서 처리한다.
+- **Ralph 복귀**: 모든 AC passes는 구현 루프 종료다. `document-sync-pending: true`와 원래 goal/run/source를 유지하고 누적 review 뒤 `review-run-id`·`review-fingerprint`를 기록한다. complete는 같은 실행·현재 트리의 정상 리뷰 증거를 확인하고 문서 대조/최종 verify까지 마친 뒤에만 pending을 해제한다. per-AC 문서 갱신·추가 리뷰/verify를 넣지 않는다.
 - 새 파이프라인 시작 시 기존 state.md를 덮어쓴다. `config-setup-attempts`도 0으로 초기화.
 
 ### verify 지문 (verify-fingerprint)
@@ -188,6 +190,7 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 
 - **계산 규약** (훅·gx-commit·gx-pull-request·라우팅이 동일하게 사용): 임시 인덱스에 워킹트리 전체를 `add -A`한 뒤 `.dev`를 인덱스에서 제거하고 `write-tree`한 **트리 해시**(앞 12자)를 `git rev-parse --short HEAD`와 `:`로 이은 값 (예: `7c9e814:59ca4aacfeab`). **`git diff HEAD`가 아니라 트리 해시**를 쓰는 이유는 신규 파일이 스테이징되면 diff 기반 값이 바뀌어, verify(스테이징 전) → `git add -A` → commit 순서에서 게이트가 오발동하기 때문이다 (RGR은 새 파일 생성이 기본).
 - **`.dev/` 제외 이유**: state.md·diff.txt 등 파이프라인 산출물은 코드가 아니며, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다 (ignore 누락 저장소에서도 안정).
+- **context/는 제외하지 않는다**: README·원장·정책·아키텍처 문서의 실제 변경을 최종 verify 전에 끝낸다. proof/지문을 만든 뒤 문서 완료 표시를 추가하고 기존 지문을 그대로 쓰지 않는다. `.dev` 진행 기록만 검증 후에 갱신할 수 있다.
 - **대조는 트리 성분(콜론 뒤)만 수행한다** — HEAD 성분은 기록·추적용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다 (커밋 → PR 정상 경로의 상시 오경고 방지). 단 트리 성분이 `notree`(계산 실패)면 값이 같아도 일치로 보지 않는다 — 코드 동일성이 입증되지 않으므로 보수적으로 재검증을 권고한다.
 - **기록 주체**: `oh-my-gx:gx-verify`는 Write 권한이 없으므로 **통과 보고에 지문 값을 실어 보내고, 오케스트레이터가 state.md에 기록한다**. gx-ralph 루프에서는 반복 세션(`oh-my-gx:gx-ralph-iterate`)이 기록 주체다.
 - **적용 파이프라인**: `pipeline: gx-tdd`와 `pipeline: gx-ralph` 모두 동일한 규약을 쓴다.

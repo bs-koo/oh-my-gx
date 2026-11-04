@@ -58,10 +58,13 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 - `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.1 병렬 수집의 5번 항목)을 재실행하여 `REFERENCES`를 복원한다.
 - Step 3.1의 도메인 컨텍스트 탐색(4번 항목)을 재실행하여 `DOMAIN_CONTEXT`를 복원한다.
+- `Read("../references/document-lifecycle.md")`의 문서 사전 대조를 같은 run-id·snapshot·journal로 복원한다. 현재 관련 문서 해시와 미해결 차이만 확인한다. 중단된 완료 투영은 검증 완료가 아니며, 승인·질문·계획을 새로 만들지 않는다.
 - phases 맵에서 마지막 in_progress Phase를 찾아 재개.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.
 
 ### 착수 기록 보정 (`--work` 세션 재개 시)
+
+read-only·`--no-document-write`·명시 문서 수정 금지이면 W행 Edit·계획 commit/push를 하지 않는다. 아래 보정은 생략하고 착수 추적 미반영과 대상 W ID를 대화/허용된 실행 기록에만 남긴다.
 
 재개("이어서 진행")로 진입했고 state.md에 `work-id`가 있으면, `.dev/plan.md`의 해당 행이 이미 `진행`이고 `작업 위치`가 채워져 있는지 확인한다. 아직 `대기`이거나 `작업 위치`가 `-`이면 **Step 5.5가 실행되지 못한 채 중단된 세션**이다 (stash pop 충돌 등으로 Step 5 종료 시점에 멈춘 경우). 지금 로컬 행을 기입한 뒤 [실행 종료점 계약](../references/execution-boundaries.md)을 적용한다. verify에서는 커밋·push하지 않는다. commit에서는 `docs: [plan] {ID} 착수`로 로컬 커밋만 하고, pr 또는 별도 명시적 원격 반영 요청에만 `git push -u origin {현재 브랜치}`를 수행한다.
 

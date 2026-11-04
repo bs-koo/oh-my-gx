@@ -51,8 +51,12 @@ human = names("gx-humanizer", "SKILL.md")
 setup = names("gx-setup", "SKILL.md")
 visualize = names("gx-visualize", "SKILL.md")
 verify = names("gx-verify", "SKILL.md")
+lens_query = names("gx-lens", "SKILL.md", "phases/phase-prepare.md", "phases/phase-explore.md",
+                   "phases/phase-report.md", "references/report-guide.md")
 routes = [
-    ("gx-tdd 직접 진입 필수 계약", tdd, tdd + names("gx-tdd", "references/roles-and-phases.md")),
+    ("gx-tdd 직접 진입·문서 연결 필수 계약", tdd, tdd + names("gx-tdd", "references/roles-and-phases.md", "references/document-lifecycle.md")
+     + names("gx-context", "references/development-sync.md")),
+    ("lens 조회 기본 지시문", lens_query, lens_query + names("gx-lens", "references/evidence-contract.md")),
     ("cross-review codex, 산출물 있음·수정 처리 없음", cross, cross + names("gx-cross-review", "references/codex-preflight.md", "references/advisor-codex.md", "references/result-format.md")),
     ("cross-review native, 산출물 있음·수정 처리 없음", cross, cross + names("gx-cross-review", "references/advisor-native.md", "references/result-format.md")),
     ("humanizer 한국어 audit/rewrite·기술문서", human, human + names("gx-humanizer", "references/quick-ko.md")),

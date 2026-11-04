@@ -6,7 +6,7 @@
 NO COMMIT/PR WITHOUT VERIFY GATE PASS
 ```
 
-complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한다. 통과 못 하면 commit/PR 진입 차단.
+관련 문서 반영 후 최종 검증에서 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한다. 통과 못 하면 commit/PR 진입 차단.
 
 이유:
 - phase-review가 통과해도 시간이 지나며 외부 환경 변화(의존성 업데이트, 다른 브랜치 머지 등)로 회귀 가능
@@ -20,11 +20,13 @@ complete Phase 진입 시 **반드시 `Skill("oh-my-gx:gx-verify")` 호출**한�
 
 ---
 
+모든 진입에서 `Read("../references/document-lifecycle.md")`의 사전 대조와 구현 후 계약을 수행한다. 실행 순서는 **TDD 이행 → 현재 AC/인수 대조 → 관련 문서/상태 투영 → 최종 verify → .dev 계획 완료 → 요청한 commit/PR → 상태 완료**다. Step 번호는 기존 참조 호환을 유지하며 아래 파일 순서대로 실행한다.
+
 ## Step -2: TDD 이행 게이트 (모든 진입 경로 공통)
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-0. **ralph 무인 루프 예외 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 반복 세션이 red-writer→implementer 2석(v1.25.0 이전 루프는 트리오)으로 AC를 구현한 산출물이다 (구현 상태는 phases가 아니라 ac-status.json 원장에 있다). **이 게이트를 통과 처리하고 Step -1로 진행한다** — 아래 phases 기반 조건(implement/review 미완)을 적용하지 않는다. gx-tdd 출발 루프의 복귀 경로(`/gx-tdd --phase complete`)에서 phases.implement가 completed가 아니라는 이유로 오탐이 뜨는 것을 막는다.
+0. **ralph 복귀 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 구현 상태는 phases 대신 ac-status.json 원장에 있다. phases.implement 부재만으로 TDD 미이행을 판정하지 않는다. 다만 모든 AC의 passes 표식과 별도로, 같은 run-id의 정상 누적 리뷰 report·`review-run-id`·`review-fingerprint`를 현재 트리와 대조한다. 지문은 [기존 계산 규약](../../gx-verify/references/fingerprint.md)으로 확인하고 트리 성분을 비교한다. 누락·불일치·실패이면 `document-sync-pending: true`를 유지하고 `/gx-tdd --phase review`로 복귀하도록 안내 후 중단한다. 현재 리뷰 증거가 유효하면 재실행하지 않고 Step 0으로 진행한다. 현재 AC 실행 증거·관련 문서 대조·최종 verify는 생략하지 않는다.
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
@@ -32,9 +34,75 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 모드)를 안내한다.
 3. 전체 모드의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
 
+## Step 0: 인수 검증 (ProductOwner / 핵심 모드는 AC 자가 검증)
+
+먼저 [문서 수명주기](../references/document-lifecycle.md)의 현재 AC 증거 대조를 수행한다. RGR 테스트의 실제 실행·로그·해시가 현재 구현을 뒷받침해야 한다. 근거가 없거나 변경으로 오래된 AC는 관련 focused 명령을 직접 실행한다. 산문/예전 PASS로 인수하지 않는다. Ralph 복귀는 ac-status.json의 passes 표식만 믿지 않고 각 AC의 실제 실행 근거까지 대조한다. 위험 수용·제외·미검증 AC는 충족 목록에 넣지 않는다. 인수 결과와 남은 AC를 .dev에 기록한다.
+
+**diff 갱신** (모드 무관 공통): phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
+- **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
+- **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
+
+**핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (현재 RGR/AC의 실제 실행 증거를 위에서 대조했으며 최종 verify는 문서 반영 후 수행한다):
+1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
+2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
+3. 모두 충족 → Step 3 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
+   ```
+   AskUserQuestion(
+     questions: [{
+       header: "AC 자가 검증",
+       question: "AC 자가 검증에서 미충족 항목이 있습니다. 어떻게 진행할까요?",
+       multiSelect: false,
+       options: [
+         { label: "RGR 수정", description: "미충족 AC를 새 태스크로 phase-implement RGR 사이클을 재실행합니다" },
+         { label: "건너뛰기", description: "위험 수용으로 진행합니다 (trust-ledger에 기록)" }
+       ]
+     }]
+   )
+   ```
+   - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
+   - "건너뛰기" → 위험 수용을 trust-ledger에 기록하고 미충족 목록을 유지한 채 Step 3으로 진행한다. 해당 AC/FR·원래 W행을 완료로 표시하지 않는다.
+
+**전체 모드**는 아래를 따른다. PRD가 없으면 ac.md 또는 Ralph의 승인된 AC 원문으로 대조한다. 원문/실행 증거를 복원할 수 없으면 인수 미확인으로 기록하고 AC/FR·W행·실행 완료 표시는 보류한다.
+
+PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
+
+`Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
+- PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
+- 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
+- 코드 맵
+- "인수 검증"으로 동작할 것
+
+**결과를 사용자에게 요약만 보고한다** (Agent 전문 출력 금지):
+- **ACCEPT**: "인수 검증 통과. 모든 [Must] 수용 기준 충족." Step 3으로 진행.
+- **REJECT**: "인수 검증 미통과. [Must] 미충족 N건:" + 미충족 항목 목록만 표시. 수정 여부를 확인한다.
+  - **RGR 수정 선택** → phase-implement로 복귀하여 미충족 AC를 새 태스크로 RGR 사이클 실행. (coder 직접 호출 금지 — Iron Law 1)
+  - 수동 수정 선택 → 사용자가 직접 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록)
+  - 건너뛰기 선택 → 다음 단계 진행 (위험 수용. trust-ledger에 기록)
+
+PRD 부재만으로 인수 통과를 만들지 않는다. 복원한 AC와 실제 실행 증거의 대조 결과가 없으면 미확인으로 남긴다.
+
+## Step 3: 도메인 status.md 갱신 후보 투영
+
+`DOMAIN_CONTEXT`가 비어 있어도 사전 대조의 requirements/work 포인터에서 관련 원장을 찾는다. `--phase complete`·core·Ralph 복귀·SVN도 이번 범위만 동일하게 확인한다. 문서 금지이면 차이만 보고한다.
+
+1. Step 0에서 실제 테스트와 인수 대조를 통과한 AC만 사용한다. 위험 수용·제외·미충족·미검증 AC는 완료 후보가 아니다.
+2. `FR-N (status.md 미반영)` 인용 및 승인된 domain+FR/AC 연결로 원래 행을 찾는다. 해당 FR의 이번 범위 모든 AC가 충족될 때만 `⬜ → ✅`를 최종 검증 후보로 투영한다. 부분 통과 FR, AC가 `-`이고 명시 연결도 없는 행은 바꾸지 않는다.
+3. [문서 수명주기](../references/document-lifecycle.md)의 journal에 원문 값·전후 해시·이번 실행의 새 ✅와 근거를 보존한 뒤 Edit한다. 기존 ✅·PR 링크·폐기 항목은 유지한다. 완료 FR의 버그 수정은 별도 W/태스크로 추적한다.
+4. 새 PR은 아직 없으므로 PR 열을 미리 채우지 않는다. 결과와 미충족 항목을 보고하고 Step 4로 진행한다. 이 투영은 최종 verify 또는 merged 표식이 아니다.
+
+## Step 4: 관련 문서 구현 후 대조
+
+[문서 수명주기](../references/document-lifecycle.md)의 구현 후 대조를 수행한다. 기존 계획·사용자 goal·실제 변경과 관련 README/원장/정책/인터페이스/아키텍처/W계획을 항상 대조하되, 필요한 차이만 Edit한다. `DOMAIN_CONTEXT` 유무나 도메인 레포 매칭만으로 생략하지 않는다. 전체 context 생성·인터뷰·스캔을 시작하지 않는다.
+
+**임의 반영 금지**: 기존 승인·위임 source가 유효한 관련 차이는 같은 승인을 다시 묻지 않는다. 새 의미·범위·위험 또는 아직 받지 않은 저장 승인이 필요한 경우 그 차이만 확인한다. 문서 금지·read-only는 실제 파일을 수정하지 않고 차이/예외를 기록한다. 코드 관측에서 미래 요구사항을 발명하거나 요구사항을 구현에 맞춰 조용히 바꾸지 않는다.
+
+같은 run-id/plan/branch와 보존한 사전 inspect 보고서로 `development.py inspect --phase post --previous <document-pre.json>`을 실행한다. 전체 결과는 파일에 받고 bounded summary만 읽는다. 관련 실제 문서 반영과 구조/의미 대조가 끝나야 Step -1의 최종 영향 계획·proof·fingerprint를 만들 수 있다. 변경 없음도 확인 근거를 .dev 보고서에 남긴다. 충돌·미응답이면 새 ✅를 조건부 원복하고 여기서 대기한다.
+
+`stop-at: verify`는 로컬 문서/검증까지다. 문서 변경만을 이유로 commit·push하지 않는다. 이어서 Step -1로 진행한다.
+
 ## Step -1: verify 게이트 (commit/PR 진입 전 필수)
 
-`Skill("oh-my-gx:gx-verify")`를 호출한다.
+관련 문서 반영을 완료한 현재 트리에서 `Skill("oh-my-gx:gx-verify")`를 호출한다. 최종 영향 계획과 proof를 현재 run-id·문서 포함 지문으로 새로 생성/확인한다. 이전 proof의 지문을 임의로 갱신하거나 context/를 지문에서 제외하지 않는다.
 
 verify 실행 중에는 다른 테스트·빌드 명령을 시작하지 않고 테스트를 실행하는 서브에이전트도 디스패치하지 않는다 — 같은 빌드 데몬·DB·CPU를 나눠 쓰면 시간 제한 테스트가 오탐하고 테스트 프로세스가 메모리 부족으로 죽는다.
 
@@ -42,13 +110,14 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 **verify 결과 처리**:
 
-- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 0 (인수 검증)으로 진행. 코드 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step -1부터 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
+- **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 3.5 (작업 계획 완료)로 진행. 코드 또는 context/ 문서 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step 0의 현재 AC 대조·관련 문서 반영 후 Step -1을 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
+  - 먼저 [문서 수명주기](../references/document-lifecycle.md)의 journal로 이번 실행이 만든 새 ✅만 조건부 원복한다. 동시 변경이면 덮어쓰지 않고 중단한다. W행/실행은 진행 상태로 유지하고 verify는 pending·빈 지문으로 둔다.
   1. verify가 실패 테스트·빌드·신규 경고 항목을 보고함
   2. 사용자에게 표시 후 AskUserQuestion:
      - "수정" → 아래 **verify 회귀 수리**를 수행한다
-     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step -1 verify부터 재실행)
-     - "중단" → state.md에 `status: cancelled` 기록
+     - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step 0의 현재 AC·문서 대조 후 최종 verify 재실행)
+     - "중단" → 조건부 원복 후 state.md에 `status: cancelled` 기록
   3. 자동 수정은 시도하지 않음 (사용자가 "수정"을 고른 경우에만 수리한다. coder 직접 호출 금지)
 
 **verify 회귀 수리** ("수정" 선택 시):
@@ -64,79 +133,49 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
    | 신규 경고 — 고치려면 동작이 바뀜 | 실패 항목을 새 AC로 정의해 phase-implement로 복귀 (RGR) | 필요 |
    | 테스트를 고쳐야만 해결됨 (테스트 기대가 틀렸다고 의심되거나 테스트 소스가 컴파일되지 않음) | 수리하지 않는다. 근거(실패 단언·관련 AC)를 보여 주고 "수동 수정"·"중단"으로 안내한다 | — |
 
-3. 처리 뒤 Step -1(verify)을 다시 실행한다.
+3. 처리 뒤 Step 0의 현재 AC/인수 대조와 Step 3·4의 문서 반영을 다시 수행한 다음 Step -1(verify)을 실행한다. 구현 수리 전 완료 투영을 복원하지 않고 옛 proof를 재사용하지 않는다.
 4. **수리 라운드 상한 2회**: 이번 phase-complete 진입 이후 execution-log의 `verify 회귀 수리 R{n}` 항목 수로 센다. 2회 수행한 뒤에도 차단되면 "수정" 선택지를 빼고 "수동 수정"·"중단"만 묻는다. RGR로 phase-implement에 복귀했다가 다시 들어오면 새로 센다.
 5. 수리 diff는 다시 리뷰하지 않는다. execution-log에 `{ phase: complete, gate: "verify 회귀 수리 R{n}", result: "{분류} — {대상} — {결과}" }`를 남긴다.
-6. `--resume`이 `"verify 회귀 수리"`에서 재개되면 Step -1부터 재실행한다 (state는 1에서 이미 pending이다).
+6. `--resume`이 `"verify 회귀 수리"`에서 재개되면 Step 0의 현재 AC/문서 대조 후 최종 Step -1을 실행한다 (state는 1에서 이미 pending이다).
 
-**Iron Law 위반 감지**: verify 통과 없이 Step 0 이후를 진입하려는 시도가 감지되면 즉시 중단.
+**Iron Law 위반 감지**: verify 통과 없이 Step 3.5 또는 commit/PR을 진입하려는 시도가 감지되면 즉시 중단.
 
 `current-step`을 `"verify 게이트"`로 갱신.
 
 ---
 
-## Step 0: 인수 검증 (ProductOwner / 핵심 모드는 AC 자가 검증)
+최종 verify 뒤에는 context/·원장·기타 지문 대상 문서를 쓰지 않는다. 새 PR URL은 `${DEV_DIR}/delivery.md`에만 남기고 후속 명시적 sync에서 반영한다. 요청받은 추가 문서 변경은 다시 문서 대조·최종 verify를 거친다.
 
-**diff 갱신** (모드 무관 공통): phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
-- **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
-- **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
+## Step 3.5: 작업 계획(plan.md) 갱신
 
-**핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (verify 게이트가 테스트 실행 증거를 이미 강제하므로 여기서는 AC 충족 대조만 한다):
-1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
-2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
-3. 모두 충족 → Step 1 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
-   ```
-   AskUserQuestion(
-     questions: [{
-       header: "AC 자가 검증",
-       question: "AC 자가 검증에서 미충족 항목이 있습니다. 어떻게 진행할까요?",
-       multiSelect: false,
-       options: [
-         { label: "RGR 수정", description: "미충족 AC를 새 태스크로 phase-implement RGR 사이클을 재실행합니다" },
-         { label: "건너뛰기", description: "위험 수용으로 진행합니다 (trust-ledger에 기록)" }
-       ]
-     }]
-   )
-   ```
-   - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
-   - "건너뛰기" → 위험 수용을 trust-ledger에 기록 후 Step 1 진행.
+**Step 3과 독립적으로 판정한다.** `DOMAIN_CONTEXT`·PRD의 존재가 아니라 사전/사후 대조의 W행·현재 AC/인수 증거와 최종 verify를 사용한다. `.dev/plan.md`가 없으면 새로 만들지 않는다. 문서 금지이면 기존 행의 Edit/완료 표시도 하지 않고 차이만 보고한다.
 
-**전체 모드**는 아래를 따른다. PRD가 없으면 이 단계를 건너뛴다.
+1. `work-id`가 있으면 그 ID, 없으면 확인된 현재 branch/slug와 승인된 범위로 행을 찾는다. 명시한 ID가 없거나 여러 행이 맞으면 repair-required로 보고하며 임의 행을 완료 처리하지 않는다.
+2. 최상위 `verify-status: passed`와 현재 트리의 일치 지문, 관련 문서 대조 완료, 해당 W행의 **모든 AC**의 실제 테스트·인수 충족을 확인한다. 미충족·미검증·위험 수용·제외 AC가 있으면 원래 W행은 `진행`으로 유지하고 남은 범위를 보고한다. 기존 FR의 ✅만으로 새 버그 수정 W행을 완료 처리하지 않는다.
+3. 위 조건이 충족된 행만 `완료`로 바꾼다. `폐기`이면 바꾸지 않고 "폐기된 작업이 완료 처리 대상입니다 — 계획을 확인하세요"를 경고한다. 완료는 검증된 작업 범위이며 병합/배포 완료가 아니다.
+4. **전용 반영**은 [실행 종료점 계약](../references/execution-boundaries.md)을 따른다. verify는 로컬 갱신만, commit/pr는 다음 Step 1의 허용된 커밋에 함께 포함한다. 이미 포함된 변경에 `docs: [plan] {ID} 완료` 전용 커밋을 중복 생성하지 않는다. 원격 반영은 pr 또는 별도 명시적 요청에서만 현재 작업 브랜치로 수행하고 베이스 브랜치로 보내지 않는다. svn이면 로컬 갱신·미공유 상태를 알린다.
 
-PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
+**status.md는 건드리지 않는다.** 최종 verify 후 바꿀 수 있는 것은 `.dev` 진행/전달 기록뿐이다. 필요한 context 수정이 생기면 Step 0·3·4를 거쳐 새 최종 검증을 한다.
 
-`Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
-- PRD의 "요구사항" + "수용 기준" (Context Slicing 규칙 참조)
-- 변경사항 diff 파일 경로 (`DIFF_FILE`) + Read 지시
-- 코드 맵
-- "인수 검증"으로 동작할 것
-
-**결과를 사용자에게 요약만 보고한다** (Agent 전문 출력 금지):
-- **ACCEPT**: "인수 검증 통과. 모든 [Must] 수용 기준 충족." 다음 단계 진행.
-- **REJECT**: "인수 검증 미통과. [Must] 미충족 N건:" + 미충족 항목 목록만 표시. 수정 여부를 확인한다.
-  - **RGR 수정 선택** → phase-implement로 복귀하여 미충족 AC를 새 태스크로 RGR 사이클 실행. (coder 직접 호출 금지 — Iron Law 1)
-  - 수동 수정 선택 → 사용자가 직접 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록)
-  - 건너뛰기 선택 → 다음 단계 진행 (위험 수용. trust-ledger에 기록)
-
-위 Step 0 진입 조건에 의해 PRD 부재이면 이 단계 전체가 건너뛰어진다.
+**되돌림은 여기서 하지 않는다.** 완료한 작업에 재진입할 때의 `완료 → 진행`은 phase-setup Step 7에서 처리한다. 최종 verify 실패 시 새 ✅의 조건부 원복은 Step -1이 즉시 처리한다.
 
 ## Step 1: Commit
 
-`stop-at: verify`이면 이 Step을 실행하지 않고 Step 3으로 이동한다. 종료점이 없는 구 세션은 기존 사용자 요청에서 복원하며, 요청 없는 커밋을 기본값으로 삼지 않는다.
+`stop-at: verify`이면 이 Step을 실행하지 않고 Step 5로 이동한다. 종료점이 없는 구 세션은 기존 사용자 요청에서 복원하며, 요청 없는 커밋을 기본값으로 삼지 않는다.
 
-**svn인 경우** → `gx-commit` 스킬은 git 전용이므로 건너뛴다. "SVN 프로젝트입니다. verify 게이트 통과를 확인하고, `svn add --force .`로 신규 파일(.dev 산출물 포함)이 등록되었는지 확인한 뒤 `svn commit`을 직접 실행해주세요." 출력 후 Step 3으로 진행한다.
+**svn인 경우** → `gx-commit` 스킬은 git 전용이므로 건너뛴다. "SVN 프로젝트입니다. verify 게이트 통과를 확인하고, `svn add --force .`로 신규 파일(.dev 산출물 포함)이 등록되었는지 확인한 뒤 `svn commit`을 직접 실행해주세요." 출력 후 Step 5로 진행한다.
 
 **git인 경우:**
 `Skill("oh-my-gx:gx-commit")`을 호출하여 커밋한다 (Step -1 verify 게이트 통과 후 → commit).
 
 > 주의: `oh-my-gx:gx-commit`은 독립적으로도 사용하는 스킬로 verify 실행(테스트 실행 증거 수집)을 포함하지 않는다 (`verify-status` 기반 조건부 경고 게이트만 있다).
-> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step -1의 영향 계획을 다시 생성하고 유효한 동일 증거만 재사용한다.
+> verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step 0·3·4에서 문서를 다시 대조/반영한 뒤 Step -1의 최종 영향 계획을 생성하고 유효한 동일 증거만 재사용한다.
 
 **build/test 실패 시**: Step -1 verify 게이트의 차단 처리 분기를 그대로 따른다 (동일 절차의 이중 서술을 피하기 위해 **Step -1이 단일 기준**이다). `coder`(deprecated) 직접 호출 금지 — 수정은 RGR 사이클로만 한다.
 
 ## Step 2: PR 생성
 
-`stop-at: pr`인 경우에만 실행한다. `commit`·`verify`이면 Step 3으로 이동한다. PR 생성·push의 실제 권한은 이번 요청 또는 보존한 결정 기록에 있어야 한다.
+`stop-at: pr`인 경우에만 실행한다. `commit`·`verify`이면 Step 5로 이동한다. PR 생성·push의 실제 권한은 이번 요청 또는 보존한 결정 기록에 있어야 한다.
 
 **svn인 경우** → 건너뛴다 (Step 1에서 이미 건너뜀. SVN은 PR 개념이 없다).
 
@@ -182,59 +221,10 @@ pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background +
 - pull-request 스킬이 전제조건 미충족(gh 미설치, remote 미설정 등)으로 종료하면, 오케스트레이터는 후속 안내를 추가한다: "나중에 `/oh-my-gx:gx-pull-request`로 PR을 생성할 수 있습니다."
 - **PR 생성 후 알림**: pull-request 스킬이 알림까지 처리한다. 스킬 종료 후 알림이 누락된 정황이 있으면 (PR URL은 있으나 알림 미전송) 오케스트레이터가 알림 전송을 직접 수행한다.
 
-## Step 3: 도메인 status.md 갱신
-
-**svn인 경우** → 건너뛴다 (PR 링크 기입 등 git 전제이며, Step 1에서 커밋도 건너뛰므로 동기화 대상이 없다. status.md를 갱신해야 하면 `svn commit`으로 직접 반영).
-
-`DOMAIN_CONTEXT`가 있고 (phase-setup에서 도메인 매칭 성공), Step 0 인수 검증이 ACCEPT이면 실행한다. 그 외에는 건너뛴다.
-
-1. Step 0 인수 검증 결과에서 **통과한 AC 목록**을 추출한다 (예: AC-1, AC-4, AC-7).
-2. 매칭된 도메인의 `context/{domain}/status.md`를 Read한다.
-3. 통과한 AC와 일치하는 행의 상태를 `⬜`→`✅`로, PR 열에 생성된 PR 링크를 기입한다. PRD가 `FR-N (status.md 미반영)` 형식으로 FR ID를 인용한 AC는 그 FR 행을 대상으로 한다 (행의 AC 열이 비어 있거나 `-`여도 매칭되며, AC 열에 이번 AC ID를 기입한다).
-4. AC가 `-`인 행은 변경하지 않는다 (PR 머지 시 수동 판정). 단, 항목 3의 `FR-N (status.md 미반영)` 인용으로 매칭된 행은 예외다.
-5. Edit으로 status.md를 갱신한다.
-6. 갱신 결과를 사용자에게 보고한다:
-   ```
-   status.md 갱신: ✅ AC-1, AC-4, AC-7 (FR-1, FR-16, FR-19)
-   ```
-
-## Step 3.5: 작업 계획(plan.md) 갱신
-
-**Step 3과 독립적으로 판정한다.** Step 3은 `DOMAIN_CONTEXT` 존재와 인수 검증 결과를 조건으로 하지만, 이 단계는 그와 무관하게 아래만 확인한다. `--phase complete` 경로는 phase-setup을 거치지 않아 `DOMAIN_CONTEXT`가 비어 있으므로, Step 3에 종속시키면 갱신이 영영 일어나지 않는다. 핵심 모드에서 Step 3이 건너뛰어지는 경우에도 이 단계는 실행된다.
-
-**진입 조건**: `.dev/plan.md`가 존재한다.
-
-1. 행을 찾는다. state.md에 `work-id`가 있으면 그 ID의 행을, 없으면 `작업 위치` 열이 현재 브랜치(svn은 `.dev/.active`의 slug)와 일치하는 행을 쓴다.
-2. **행이 없으면 아무것도 하지 않고 다음 Step으로 넘어간다.** `--work` 없이 시작한 작업은 계획에 없는 것이 정상이며, 이 시점은 커밋·PR이 이미 끝난 뒤라 중단할 수 없다.
-3. `상태` 열을 `완료`로 바꾼다. 단, 현재 값이 `폐기`면 **바꾸지 않고** "폐기된 작업이 완료 처리 대상입니다 — 계획을 확인하세요"를 경고한다. 폐기는 요구사항이 사라졌다는 뜻이므로, 완료로 덮으면 왜 사라졌는지가 지워진다.
-4. **전용 반영**: [실행 종료점 계약](../references/execution-boundaries.md)을 적용한다. verify에서는 로컬 행만 갱신한다. commit에서는 `.dev/plan.md`만 `docs: [plan] {ID} 완료`로 로컬 커밋하고, pr 또는 별도 명시적 원격 반영 요청에서만 **현재 작업 브랜치로** push한다. 베이스 브랜치로 직접 보내지 않는다. svn이면 자동 커밋하지 않고 로컬 갱신·미공유 상태를 알린다.
-
-**status.md는 건드리지 않는다.** status.md 갱신은 Step 3이 AC 축으로 수행한다. plan.md의 `요구사항` 열은 참조 표기일 뿐이며, 여기서 전파하면 부분 통과한 AC까지 완료로 뒤집힌다.
-
-**되돌림은 여기서 하지 않는다.** 완료한 작업에 다시 들어갈 때의 `완료 → 진행` 복원은 phase-setup Step 7(진행 상태 초기화)이 담당한다 — 이 단계는 완료를 기록할 뿐 재진입 시점을 알지 못하므로, 여기에 규칙을 두면 실행되지 않는다.
-
-## Step 4: context 환류 제안
-
-`stop-at: verify`에서는 context 문서 커밋도 하지 않는다. `commit`에서는 로컬 커밋까지만 수행하고, 원격 push는 `pr` 종료점 또는 별도 사용자 요청이 있을 때만 수행한다.
-
-
-`DOMAIN_CONTEXT`가 있으면 실행한다. 없으면 건너뛴다.
-
-PRD와 설계서에서 context 갱신 후보를 추출하여 사용자에게 제안한다:
-
-1. **glossary 후보**: PRD/설계서에 등장하는 도메인 용어 중, 현재 `glossary.md`에 없는 것을 추출한다.
-2. **주제 문서 후보**: PRD 제목과 배경을 기반으로, 주제 문서 생성을 제안한다.
-3. **architecture.md 갱신 후보**: 설계서에 새로운 구조적 결정(레이어, 의존관계 등)이 있으면 인덱스 갱신을 제안한다.
-
-사용자에게 AskUserQuestion으로 제안:
-- "context 문서에 반영할까요?" + 후보 목록 표시
-- 반영 선택 → 해당 파일 Edit/Write. 주제 문서 생성 시 architecture.md 인덱스에 링크 추가.
-- 건너뛰기 선택 → 다음 단계 진행.
-
-**임의 반영 금지**: 사용자 승인 없이 context 문서를 수정하지 않는다.
+새 PR URL과 전달 결과는 `${DEV_DIR}/delivery.md`에만 기록한다. context/status.md의 PR 열은 여기서 수정하지 않는다. PR 생성은 pr-open이며 실제 merged 근거 없이 병합 완료로 표시하지 않는다.
 
 ## Step 5: 진행 상태 완료
-`${DEV_DIR}/state.md`의 `status`를 `completed`, `phases.complete`를 `completed`로 갱신한다.
+현재 트리의 최종 verify·관련 문서 대조·요청 범위 모든 AC/인수 충족·요청한 종료점의 성공을 확인한 뒤에만 `${DEV_DIR}/state.md`의 `status`와 `phases.complete`를 `completed`, `document-sync-pending`을 false로 갱신한다. pending 질문·미충족/미검증 AC·commit/PR 실패가 남으면 진행 상태를 유지하고 남은 조건을 보고한다. 구현 완료와 검증 완료를 구분하며, completed는 merged 표식이 아니다. 코드·context 변경이 뒤따르면 pending·빈 지문으로 되돌리고 문서 대조부터 다시 수행한다.
 
 ## Step 5.5: 구현 구조 시각화 제안
 

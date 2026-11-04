@@ -23,10 +23,10 @@
       "sentences": 100
     },
     "after": {
-      "bytes": 15703,
-      "chars": 8772,
-      "lines": 204,
-      "sentences": 111
+      "bytes": 15986,
+      "chars": 8937,
+      "lines": 206,
+      "sentences": 113
     }
   },
   {
@@ -93,10 +93,10 @@
       "sentences": 64
     },
     "after": {
-      "bytes": 8275,
-      "chars": 4975,
-      "lines": 153,
-      "sentences": 63
+      "bytes": 7868,
+      "chars": 4314,
+      "lines": 81,
+      "sentences": 78
     }
   },
   {
@@ -123,10 +123,10 @@
       "sentences": 113
     },
     "after": {
-      "bytes": 16409,
-      "chars": 9830,
-      "lines": 150,
-      "sentences": 131
+      "bytes": 16778,
+      "chars": 10023,
+      "lines": 154,
+      "sentences": 137
     }
   },
   {
@@ -138,10 +138,10 @@
       "sentences": 91
     },
     "after": {
-      "bytes": 18506,
-      "chars": 11314,
-      "lines": 215,
-      "sentences": 114
+      "bytes": 19349,
+      "chars": 11789,
+      "lines": 222,
+      "sentences": 120
     }
   },
   {
@@ -213,10 +213,10 @@
       "sentences": 99
     },
     "after": {
-      "bytes": 14961,
-      "chars": 9807,
-      "lines": 167,
-      "sentences": 88
+      "bytes": 16076,
+      "chars": 10423,
+      "lines": 174,
+      "sentences": 94
     }
   },
   {
@@ -268,10 +268,10 @@
     "path": ".claude/skills/gx-work/SKILL.md",
     "before": null,
     "after": {
-      "bytes": 5490,
-      "chars": 2912,
+      "bytes": 5907,
+      "chars": 3125,
       "lines": 41,
-      "sentences": 49
+      "sentences": 52
     }
   }
 ]

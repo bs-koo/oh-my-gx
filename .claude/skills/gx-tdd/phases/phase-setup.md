@@ -118,9 +118,13 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 - **존재 시**: Read하여 `vcs`, `modelProfile`, `projectTypes`, `sensitiveFilePatterns`, `buildArtifactPatterns`, `timeouts`, `contextLimits`를 변수에 로드. **Step 1에서 config 부재로 `VCS_TYPE`을 git으로 잠정했다면 여기서 `vcs` 값으로 재확정한다** (이후 Phase에 반영). Step 1.5에서 플래그·자연어·질문 답변 없이 잠정 `standard`였다면 `modelProfile` 값(비어있으면 `standard` 유지)으로 `MODEL_PROFILE`을 재확정한다.
 - JSON 파싱 실패 시: "config.json이 손상되었습니다. 백업 후 재설정하세요." 출력 후 중단.
 
+### 3.0.4 관련 문서 사전 대조
+
+`Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 관련 context/원장/W행의 필요한 차이만 반영한다. 명시 `--work` 오류와 문서 금지 범위를 지키며, AC 확정 전 검사 입력은 `units: []`로 둔다.
+
 ### 3.0.5 작업 계획 참조 (`--work` 사용 시)
 
-의도 파싱이 `--work {ID}`(플래그 또는 WORK 추출)로 작업 ID를 확정했으면 `Read("setup-work.md")`의 "작업 계획 참조" 절을 수행한다 — 계획 행에서 도메인·요구사항·브랜치명을 확정하고 의존·중복 착수를 확인하며, Step 7에서 state.md에 `work-id`를 기록한다. 작업 ID가 없어도 `.dev/plan.md`가 존재하면 같은 파일의 "계획이 있으나 작업 ID가 지정되지 않은 경우" 소절만 수행한다 (요청을 계획의 대기 작업과 대조). 작업 ID도 계획 파일도 없으면 이 Step을 건너뛴다.
+`--work`/WORK 추출 또는 3.0.4에서 W행을 확정했으면 `Read("setup-work.md")`의 "작업 계획 참조"를 수행한다. 도메인·요구사항·브랜치·의존·중복 착수를 확인하고 Step 7에 `work-id`를 기록한다. 같은 연결 승인은 반복하지 않는다. ID 없이 계획만 있으면 같은 파일의 "계획이 있으나 작업 ID가 지정되지 않은 경우"를 따른다. 문서 금지의 명시 예외로 둘 다 없으면 차이를 보고하고 건너뛴다.
 
 ### 3.1 병렬 수집
 

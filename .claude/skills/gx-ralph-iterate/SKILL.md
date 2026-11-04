@@ -85,7 +85,7 @@ Codex 반복 프롬프트에 러너가 전달한 **설치된 GX 루트와 `scrip
 
 1. `acs` 배열에서 `passes: false`이고 `attempts < 3`인 **첫 항목**을 선택한다.
 2. 선택할 항목이 없으면:
-   - 전 항목이 `passes: true` → `<ralph>COMPLETE</ralph>` 출력 후 종료.
+   - 전 항목이 `passes: true` → 구현/verify를 반복하지 않고 Step 5.5의 최종 문서 인계 기록 후 Step 6으로 진행한다.
    - `passes: false`인데 전부 `attempts >= 3` → `<ralph>BLOCKED: {해당 AC id 목록} 3회 연속 실패 — 사람 판단 필요</ralph>` 출력 후 종료.
 
 ### Step 2: 구현 (에이전트 디스패치)
@@ -134,17 +134,21 @@ RED의 실제 assertion 실패와 테스트 파일 해시를 확인한 뒤에만
 1. ac-status.json: 해당 AC `passes: true`, `updated` 갱신.
 2. progress.txt에 1줄 append: `[iter] {id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
 
-### Step 5.5: 작업 계획(plan.md) 갱신 (**모든 AC 완료 시에만**)
+### Step 5.5: 루프 구현 완료와 문서 인계 (**모든 AC 통과 시에만**)
 
 **선행 조건**: ac-status.json의 모든 AC가 `passes: true`여야 한다. 하나라도 `passes: false`이면 이 단계를 건너뛴다.
 
-루프는 AC를 1건씩 처리하므로, 이 조건 없이 갱신하면 첫 반복에서 작업 전체가 `완료`로 표시되고 push된다. 그러면 이 작업에 의존하는 다른 작업의 담당자가 phase-setup 3.0.5의 의존 확인을 통과해, 1/N만 끝난 산출물 위에서 착수하게 된다.
+모든 AC 통과는 **루프 구현 완료**다. 관련 문서 대조·누적 최종 리뷰·최종 verify가 아직 남으므로 전체 개발 완료나 merged로 보고하지 않는다. `.dev/plan.md`의 W행은 `진행`으로 유지하고 여기서 완료로 바꾸거나 계획 커밋·push하지 않는다. 기존 완료/폐기 행도 덮어쓰지 않는다.
 
-조건을 만족하면: `.dev/plan.md`가 존재하고 state.md에 `work-id`가 있을 때 해당 행의 `상태`를 `완료`로 바꾸고 `docs: [plan] {ID} 완료` 메시지로 로컬 커밋한다. **현재 브랜치 push는 보존한 `stop-at: pr` 또는 실제 별도 원격 반영 요청이 있는 경우에만 수행한다.** `verify`·`commit` 종료점만 있으면 push하지 않는다. 원격 미반영으로 협업 원장 갱신이 남았다는 사실을 결과에 기록하고 요청 범위를 보존한다. 이 루프는 phase-complete를 거치지 않으므로 여기서 직접 수행한다. 파일이 없거나 행을 찾지 못하면 건너뛴다. 현재 값이 `폐기`이면 바꾸지 않는다.
+같은 run-id·goal·work-id·원문 source·종료점을 보존하고 state.md에 `document-sync-pending: true`를 기록한다. 대화형 복귀 시 `/gx-tdd --phase review`로 누적 변경을 리뷰하고 `/gx-tdd --phase complete`에서 현재 AC/인수·관련 문서·최종 verify를 마치도록 안내한다. 이 기록은 `.dev` 진행 상태이며 이후 허용된 커밋에 포함한다. 문서 금지이면 허용된 실행 기록/최종 요약에만 남긴다.
+
+이 단계에서 context/원장 전체 갱신, 추가 에이전트 디스패치, 추가 verify를 실행하지 않는다. AC별 문서 갱신도 하지 않는다. Step 4의 기존 로컬 커밋 opt-in·지문/테스트 게이트·원격 권한은 유지한다. 이어서 Step 6의 기존 러너 종료 계약을 출력한다.
 
 ### Step 6: 종료 계약 출력
 
 - 남은 미완료 AC(`passes: false`)가 있으면 → `<ralph>CONTINUE</ralph>`
 - 모두 `passes: true` → `<ralph>COMPLETE</ralph>`
+
+COMPLETE는 루프 구현 종료 표식이다. 문서/최종 검증 대기는 Step 5.5의 인계 기록을 사용하고 전체 개발 완료와 구분한다.
 
 응답의 **마지막 줄**에 위 문자열만 출력하고 종료한다.

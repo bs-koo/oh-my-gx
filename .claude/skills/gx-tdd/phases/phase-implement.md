@@ -20,6 +20,8 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 ## 핵심 모드 분기 (core)
 
+모드 분기와 Ralph 전환보다 먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 확정된 G-W-T AC·FR/W 연결과 현재 관련 문서 해시를 검사한다. `--phase implement`·`--resume`에서도 생략하지 않는다. 기존 입력을 재사용하고 차이만 보완하며, RED에는 이 보고서나 구현 본문을 추가하지 않는다.
+
 오케스트레이터가 핵심 모드이면:
 - Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장).
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).

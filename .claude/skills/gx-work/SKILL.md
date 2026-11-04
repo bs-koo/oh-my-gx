@@ -32,7 +32,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 
 계획이 필요한 요청에서만 [references/planning.md](references/planning.md)를 읽는다. `--from-plan`은 문서 경로를 가져오는 기능이며 승인 표시가 아니다. 이미 있는 계획을 다시 쓰지 않고 실행에 필요한 부족·충돌만 보완한다. 도메인 context·외부 문서·대화 결정은 출처 포인터로 정규화한다. 사용자가 승인한 범위의 일상적 구현 판단을 추가 승인 단계로 만들지 않는다.
 
-구현 요청이면 [references/handoff.md](references/handoff.md)를 읽고 **한 개의 normalized plan 파일과 handoff 파일**을 만든다. 원문·계획 본문을 여러 프롬프트로 복사하지 않고 파일 포인터와 관련 단위 ID만 전달한다:
+구현 요청이면 [references/handoff.md](references/handoff.md)를 읽고 **한 개의 normalized plan 파일과 handoff 파일**을 만든다. [관련 문서 연결](../gx-context/references/development-sync.md)로 context·요구사항 원장·작업계획의 이번 범위를 대조하고 필요한 최소 연결만 보강한다. 실행 중의 최종 AC 확정·문서 대조·실패 복구는 gx-tdd가 같은 자료를 재사용한다. 전체 context 등록 인터뷰·스캔을 추가하지 않으며, 읽기 전용·명시 문서 금지는 우선한다. 원문·계획 본문을 여러 프롬프트로 복사하지 않고 파일 포인터와 관련 단위 ID만 전달한다:
 
 `Skill("oh-my-gx:gx-tdd", args="--from-plan <정규화 계획.json> --handoff <인계.json>")`
 

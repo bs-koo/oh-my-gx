@@ -1,6 +1,6 @@
 [
   {
-    "route": "gx-tdd 직접 진입 필수 계약",
+    "route": "gx-tdd 직접 진입·문서 연결 필수 계약",
     "before-files": [
       ".claude/skills/gx-tdd/SKILL.md",
       ".claude/skills/gx-tdd/references/intent-routing.md",
@@ -12,15 +12,43 @@
       ".claude/skills/gx-tdd/references/intent-routing.md",
       ".claude/skills/gx-tdd/references/pipeline-state.md",
       ".claude/skills/gx-tdd/references/interaction-contract.md",
-      ".claude/skills/gx-tdd/references/roles-and-phases.md"
+      ".claude/skills/gx-tdd/references/roles-and-phases.md",
+      ".claude/skills/gx-tdd/references/document-lifecycle.md",
+      ".claude/skills/gx-context/references/development-sync.md"
     ],
     "before": [
       65906,
       41291
     ],
     "after": [
-      65135,
-      40555
+      86139,
+      51967
+    ]
+  },
+  {
+    "route": "lens 조회 기본 지시문",
+    "before-files": [
+      ".claude/skills/gx-lens/SKILL.md",
+      ".claude/skills/gx-lens/phases/phase-prepare.md",
+      ".claude/skills/gx-lens/phases/phase-explore.md",
+      ".claude/skills/gx-lens/phases/phase-report.md",
+      ".claude/skills/gx-lens/references/report-guide.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-lens/SKILL.md",
+      ".claude/skills/gx-lens/phases/phase-prepare.md",
+      ".claude/skills/gx-lens/phases/phase-explore.md",
+      ".claude/skills/gx-lens/phases/phase-report.md",
+      ".claude/skills/gx-lens/references/report-guide.md",
+      ".claude/skills/gx-lens/references/evidence-contract.md"
+    ],
+    "before": [
+      26856,
+      15597
+    ],
+    "after": [
+      25744,
+      13009
     ]
   },
   {

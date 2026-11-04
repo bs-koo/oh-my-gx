@@ -22,6 +22,8 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 
 ## 핵심 모드 분기 (core)
 
+먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 확인한다. 관련 문서·FR/W 연결을 기존 계획에서 재사용하고 누락/변경만 보완한다. 조회·계획만 요청했으면 읽기만 한다. 아래 G-W-T 확정 후 검사 입력에 해당 AC/FR 연결만 보강하고, 구현 직전에 같은 run-id로 다시 검사한다. 문서 관측이나 helper의 ready 표시는 요구사항/승인을 대신하지 않는다.
+
 유효한 계획·handoff에 이번 범위의 승인된 G-W-T AC가 있으면 이를 `ac.md`에 연결해 재사용한다. 이미 확인한 배경·수치·결정을 다시 인터뷰하지 않는다. 아래 G-W-T 검증은 실행하고, 누락·변경된 AC에 대해서만 실제 결정을 확인한다. 기존 승인 근거가 없으면 최초 승인을 받는다.
 
 핵심 모드이면 **오케스트레이터가 ac.md를 직접 작성한다** (product-owner 디스패치 없음):

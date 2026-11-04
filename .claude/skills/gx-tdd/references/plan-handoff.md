@@ -7,6 +7,7 @@ gx-tdd의 `--handoff <JSON>`·`--from-plan <JSON>` 실행 시에만 읽는다. �
 1. handoff의 `goal`·`intent`·`stop-at`·`run-id`·`plan-file`·`sources`·`decisions`·`unresolved`를 읽는다. 기존 진행 중 상태가 같은 실행인지 먼저 확인한다. 서로 다른 실행의 보고서·테스트 증거를 섞지 않는다.
 2. 확인된 설치 플러그인 루트의 `scripts/gx-work.py validate-plan --plan <정규화 JSON>`을 실행한다. exit 0인 계획만 소비한다. 잘못된 AC·의존 순환·파일 범위 충돌·미결정은 원문 위치와 함께 보완한다.
 3. 외부 계획의 `approved` 문구만으로 승인했다고 판정하지 않는다. 사용자 메시지나 결정 기록에서 이번 범위에 대한 실제 승인 근거를 확인한다. 이미 이번 범위를 승인했다면 동일 승인 질문을 반복하지 않는다. 범위·동작·위험이 바뀌면 그 변경만 확인한다.
+4. `requirements`·`context-paths`·`sources`와 기존 문서 대조 근거를 [문서 수명주기](document-lifecycle.md)로 넘긴다. 사전/사후 대조는 같은 계획과 run-id를 사용하며 문서 금지·read-only·원래 종료점을 유지한다. 기존 질문/계획을 다시 만들거나 코드 관측에서 미래 요구사항을 추가하지 않는다.
 
 ## 산출물과 실행
 

@@ -8,6 +8,7 @@ v2의 공통 진입은 gx-work, 개발 실행은 gx-tdd다. gx-dev와 그 phase�
 | 역할 본문·도구·티어 | agents/*.md → scripts/sync-codex-resources.py → gx-work/references/codex-roles. 생성물은 직접 편집하지 않는다 |
 | 의도·종료점·계획 인계 | gx-work/SKILL·planning/handoff, scripts/gx-work.py, gx-tdd intent-routing·plan-handoff·execution-boundaries |
 | 도메인 원장·업무 W계획 | gx-context modes/plan.md·scripts/plan.py. scripts/plan-lint.py도 같은 파서/check를 사용한다. 기능 units/T태스크와 혼동하지 않는다 |
+| 개발 전후 문서 | gx-context references/development-sync.md·scripts/development.py가 대조 정본. gx-work 진입·gx-tdd document-lifecycle·setup 3.0.4·requirements/implement·complete 순서를 함께 확인한다. 관련 문서/상태 투영 → 최종 verify/proof/지문 → .dev 완료 기록 → 요청한 commit/PR. RED 격리·문서 금지·완료 투영의 조건부 원복을 유지한다 |
 | TDD 상태·지문 | gx-tdd pipeline-state, pre-tool-guard G3, gx-commit, gx-pull-request. pipeline/status/verify-status/verify-fingerprint 판별과 트리 성분 비교를 유지한다 |
 | RED·IMPLEMENT·수리 | phase-implement 2-R/2-I, agents/red-writer·implementer, 단독 gx-red·green·refactor. RED 미열람·테스트 불변·현재 태스크만 실행·report/15줄 반환을 함께 확인한다 |
 | 테스트 선택·증거 | scripts/gx-test-plan.py, test-execution.md, baseline·review·verify·commit·Ralph. 실제 Git 변경을 누락하지 않고, 코드/설정/명령/범위/run/log가 달라지면 재사용하지 않는다 |

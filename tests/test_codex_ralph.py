@@ -250,12 +250,44 @@ if case == 'nonzero': raise SystemExit(9)
 
 
 class RalphTddContractTests(unittest.TestCase):
-    def test_plan_push_requires_pr_endpoint_or_separate_explicit_authorization(self):
+    def test_all_ac_passes_only_requests_final_document_review_and_verify(self):
         text = (ROOT / '.claude/skills/gx-ralph-iterate/SKILL.md').read_text(encoding='utf-8')
         section = text[text.index('### Step 5.5:'):text.index('### Step 6:')]
-        self.assertIn('stop-at: pr', section)
-        self.assertIn('별도 원격 반영 요청', section)
+        self.assertIn('document-sync-pending: true', section)
+        self.assertIn('루프 구현 완료', section)
+        self.assertIn('--phase review', section)
+        self.assertIn('--phase complete', section)
+        self.assertIn('진행', section)
+        self.assertIn('plan.md', section)
         self.assertIn('push하지 않는다', section)
+        self.assertNotIn('docs: [plan]', section)
+        self.assertNotIn('git commit', section)
+        selection = text[text.index('### Step 1:'):text.index('### Step 2:')]
+        self.assertIn('Step 5.5', selection)
+        ending = text[text.index('### Step 6:'):]
+        self.assertIn('<ralph>COMPLETE</ralph>', ending)
+
+    def test_prepare_checks_related_preflight_without_per_ac_document_updates(self):
+        prepare = (ROOT / '.claude/skills/gx-ralph/SKILL.md').read_text(encoding='utf-8')
+        guard = prepare[prepare.index('### Step 1:'):prepare.index('### Step 2:')]
+        self.assertIn('document-lifecycle.md', guard)
+        self.assertIn('사전 대조', guard)
+        iterate = (ROOT / '.claude/skills/gx-ralph-iterate/SKILL.md').read_text(encoding='utf-8')
+        final = iterate[iterate.index('### Step 5.5:'):iterate.index('### Step 6:')]
+        self.assertIn('에이전트', final)
+        self.assertIn('verify', final)
+
+    def test_complete_requires_current_cumulative_review_before_document_projection(self):
+        complete = (ROOT / '.claude/skills/gx-tdd/phases/phase-complete.md').read_text(encoding='utf-8')
+        guard = complete[complete.index('## Step -2:'):complete.index('## Step 0:')]
+        for evidence in ('review-run-id', 'review-fingerprint', '현재 트리', '--phase review'):
+            self.assertIn(evidence, guard)
+        review = (ROOT / '.claude/skills/gx-tdd/phases/phase-review.md').read_text(encoding='utf-8')
+        self.assertIn('review-run-id', review)
+        self.assertIn('review-fingerprint', review)
+        self.assertIn('document-sync-pending', review)
+        finish = complete[complete.index('## Step 5:'):complete.index('## Step 5.5:')]
+        self.assertIn('`document-sync-pending`을 false', finish)
 
     def test_iteration_requires_tdd_origin_before_ac_selection(self):
         text = (ROOT / '.claude/skills/gx-ralph-iterate/SKILL.md').read_text(encoding='utf-8')
