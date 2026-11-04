@@ -1,7 +1,7 @@
 ---
 name: gx-ralph-iterate
 version: 1.0.0
-description: "gx-ralph 루프의 반복 1회 실행 스킬 (헤드리스 전용) - 미완료 AC 1건을 구현·verify·커밋한다. 러너(scripts/gx-ralph.sh)가 호출하며 사용자가 직접 호출하지 않는다."
+description: gx-ralph 외부 러너가 헤드리스 세션에서 호출하는 내부 반복 스킬이다. 미완료 수용 기준(AC) 1건을 구현·검증·커밋하고 원장을 갱신한다. 사용자가 직접 호출하지 않는다.
 argument-hint: ""
 allowed-tools:
   - Read

@@ -1,7 +1,7 @@
 ---
 name: gx-red
 version: 1.0.0
-description: "RED 단계 - 실패 테스트를 우선 작성. Iron Law: 코드 작성 전 반드시 호출. 'RED 단계'·'실패 테스트 먼저' 키워드로 단독 호출하는 스킬. gx-tdd 파이프라인은 이 스킬을 거치지 않고 red-writer 에이전트를 직접 디스패치한다."
+description: "'RED 단계'나 '실패 테스트 먼저'를 명시적으로 요청할 때 사용한다. 구현 전에 테스트를 작성하고 의도한 실패를 확인하는 단독 단계 스킬이다. gx-tdd의 RED 단계는 red-writer가 담당한다."
 argument-hint: "<테스트 대상 설명>"
 allowed-tools:
   - Read

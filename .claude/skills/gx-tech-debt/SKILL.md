@@ -1,6 +1,6 @@
 ---
 name: gx-tech-debt
-description: 코드베이스의 기술 부채를 분석하고 우선순위 로드맵을 제공한다. "기술 부채", "부채 분석", "부채 확인" 시 사용.
+description: 코드베이스의 기술 부채 분석이나 개선 우선순위를 요청할 때 사용한다. 코드·아키텍처·의존성·테스트 부채를 읽기 전용으로 진단하고 심각도와 수정 비용에 따른 로드맵을 제시한다.
 argument-hint: "[도메인|경로] [--type code|arch|deps|test|all]"
 allowed-tools:
   # 파일시스템 (읽기 전용)

@@ -1,7 +1,7 @@
 ---
 name: gx-green
 version: 1.0.0
-description: "GREEN 단계 - 실패 테스트를 통과시키는 최소 코드 작성. red 단계 완료 후 호출. 과잉 구현 시 즉시 차단."
+description: 실패가 확인된 테스트를 통과시키는 GREEN 단계를 명시적으로 요청할 때 사용한다. RED 상태를 확인한 뒤 테스트 통과에 필요한 최소 코드를 작성한다.
 argument-hint: ""
 allowed-tools:
   - Read

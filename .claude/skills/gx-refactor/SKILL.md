@@ -1,7 +1,7 @@
 ---
 name: gx-refactor
 version: 1.0.0
-description: "REFACTOR 단계 - GREEN 상태 유지하며 중복 제거. 테스트 깨지면 즉시 롤백. 동작 변경 절대 금지."
+description: 테스트가 모두 통과한 상태에서 REFACTOR 단계를 명시적으로 요청할 때 사용한다. 기존 동작과 테스트 통과를 유지하며 중복을 제거하고 가독성을 개선한다.
 argument-hint: ""
 allowed-tools:
   - Read

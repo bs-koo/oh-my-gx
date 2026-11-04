@@ -1,6 +1,6 @@
 ---
 name: gx-research
-description: 웹 검색과 문서 분석을 병행하여 도메인 리서치를 수행한다. "조사해줘", "리서치", "검색", "비교해줘" 시 사용.
+description: 특정 주제의 조사·리서치·검색·비교를 요청할 때 사용한다. 웹 검색과 문서 분석을 통해 출처와 판단 근거를 갖춘 보고서·비교표·요약을 작성한다.
 argument-hint: "<주제> [--output <경로>] [--format report|comparison|summary]"
 allowed-tools:
   - Read

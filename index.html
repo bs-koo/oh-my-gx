@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>oh-my-gx — GX 사업본부 개발 자동화 플러그인</title>
-  <meta name="description" content="Claude Code와 Codex에서 사용하는 GX 개발 자동화 플러그인. Codex 설치부터 setup·TDD·리뷰·검증까지 시작하는 방법을 안내합니다.">
+  <title>oh-my-gx — AI 워크플로 오케스트레이션 플러그인</title>
+  <meta name="description" content="도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인. Claude Code와 Codex에서 요구사항 분석, 구현 계획, 코드 리뷰, 근거 기반 검증과 PR 작성을 지원합니다.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -271,6 +271,7 @@
       gap: 56px;
       align-items: center;
     }
+    .hero-grid > * { min-width: 0; }
     .hero h1 { margin: 18px 0 24px; }
     .hero .lead { max-width: 520px; margin-bottom: 32px; }
     .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
@@ -406,7 +407,7 @@
       border-radius: var(--r-sm);
     }
 
-    /* ---------- Comparison table (dev vs tdd) ---------- */
+    /* ---------- Comparison table ---------- */
     .compare {
       display: grid;
       grid-template-columns: 1.1fr 1fr 1fr;
@@ -689,7 +690,7 @@
     <nav class="navlinks" aria-label="주요 메뉴">
       <a href="#usage">사용법</a>
       <a href="#codex-start">Codex 시작</a>
-      <a href="#dev-tdd">dev vs tdd</a>
+      <a href="#workflow">작업 흐름</a>
       <a href="#skills">스킬</a>
       <a href="#agents">에이전트</a>
       <a href="#safeguards">안전장치</a>
@@ -707,35 +708,35 @@
   <div class="container hero-grid">
     <div>
       <span class="badge badge-dot">Claude Code · Codex 플러그인</span>
-      <h1 class="display-xl">자연어 한 줄로<br>개발 사이클 전체를.</h1>
-      <p class="lead">GX 사업본부 개발자를 위한 자동화 플러그인입니다. PRD·설계·구현·리뷰·PR까지, 역할을 나눠 맡은 에이전트 팀이 단계마다 승인을 받으며 처리합니다.</p>
+      <h1 class="display-xl">프로젝트 이해부터<br>검증된 변경까지.</h1>
+      <p class="lead">도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인. 요구사항 분석·구현 계획·코드 리뷰·검증을 연결하고, 요청한 완료점까지 진행합니다.</p>
       <div class="hero-actions">
         <a href="#usage" class="btn btn-primary">시작하기</a>
         <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
       </div>
       <div class="hero-meta">
         <span><strong>18</strong> 스킬</span>
-        <span><strong>17</strong> 에이전트</span>
+        <span><strong>17</strong> 역할 정의</span>
         <span><strong>Git · SVN</strong> 지원</span>
         <span><strong>Claude Code · Codex</strong></span>
       </div>
     </div>
     <div class="feature-art">
-      <div class="code-window" role="img" aria-label="Claude Code에서 개발 요청을 실행하는 터미널 예시">
+      <div class="code-window" role="img" aria-label="gx-work에서 계획을 정리하고 TDD 구현과 검증으로 연결하는 흐름 예시">
         <div class="code-chrome">
           <span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span>
-          <span class="code-title">claude code — oh-my-gx</span>
+          <span class="code-title">oh-my-gx — 작업 흐름 예시</span>
         </div>
         <div class="code-body">
-<span class="ln"><span class="c-cmd">&gt;</span> 사용량 분석 대시보드 기능 개발해줘</span>
+<span class="ln"><span class="c-cmd">&gt;</span> /gx-work 조회 기능 구현해줘</span>
 <span class="ln"></span>
-<span class="ln"><span class="c-dim">▸ requirements</span>  PRD 작성 · Q&amp;A 승인       <span class="c-ok">✓</span></span>
-<span class="ln"><span class="c-dim">▸ design</span>        기술 설계 · 비판 검토      <span class="c-ok">✓</span></span>
-<span class="ln"><span class="c-dim">▸ implement</span>     coder 병렬 배치 · 자기점검  <span class="c-ok">✓</span></span>
-<span class="ln"><span class="c-dim">▸ review</span>        qa + security 교차 검증    <span class="c-ok">✓</span></span>
-<span class="ln"><span class="c-dim">▸ complete</span>      커밋 → PR 생성             <span class="c-ok">✓</span></span>
+<span class="ln"><span class="c-dim">▸ understand</span>  관련 코드 · 도메인 정책</span>
+<span class="ln"><span class="c-dim">▸ plan</span>        범위 · 수용 기준 · 테스트 경계</span>
+<span class="ln"><span class="c-dim">▸ gx-tdd</span>      RED → GREEN → REFACTOR</span>
+<span class="ln"><span class="c-dim">▸ review</span>      요구사항 충족 · 코드 품질</span>
+<span class="ln"><span class="c-dim">▸ verify</span>      현재 변경의 실행 근거 확인</span>
 <span class="ln"></span>
-<span class="ln"><span class="c-com"># PR #42 생성됨 — 머지는 사람이 직접</span></span>
+<span class="ln"><span class="c-com"># 기본: verify · PR은 요청 시</span></span>
         </div>
       </div>
     </div>
@@ -747,95 +748,95 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">사용법</p>
-      <h2 class="display-lg">명령어를 외울 필요 없습니다</h2>
-      <p>명령어를 외울 필요는 없습니다. 자연어로 말하면 의도에 맞는 스킬이 알아서 발동되고, "TDD로" 같은 키워드가 있으면 tdd 파이프라인으로 갈립니다.</p>
+      <h2 class="display-lg">목표와 완료점을 요청하세요</h2>
+      <p><code>gx-work</code>가 프로젝트 이해·계획·개발 요청을 연결합니다. 자연어로 목적을 설명하거나 스킬 이름을 명시하세요. 계획만 요청하면 계획에서, 구현을 요청하면 기본적으로 검증에서 종료합니다.</p>
     </div>
 
     <div class="usage-list">
-      <div class="usage-row"><span class="usage-say">"기획서 보고 context 만들어줘"</span><span class="usage-arrow">→</span><span class="usage-skill">context</span></div>
-      <div class="usage-row"><span class="usage-say">"현재 로깅 정책 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">lens</span></div>
-      <div class="usage-row"><span class="usage-say">"대시보드 기능 개발해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev</span></div>
-      <div class="usage-row"><span class="usage-say">"TDD로 결제 검증 만들어줘"</span><span class="usage-arrow">→</span><span class="usage-skill">tdd</span></div>
-      <div class="usage-row"><span class="usage-say">"실패 테스트 먼저 작성해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">red</span></div>
-      <div class="usage-row"><span class="usage-say">"테스트 통과시켜줘"</span><span class="usage-arrow">→</span><span class="usage-skill">green</span></div>
-      <div class="usage-row"><span class="usage-say">"중복 제거 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">refactor</span></div>
-      <div class="usage-row"><span class="usage-say">"완료 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">verify</span></div>
-      <div class="usage-row"><span class="usage-say">"랄프 루프 준비해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">ralph</span></div>
-      <div class="usage-row"><span class="usage-say">"긴급 수정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
-      <div class="usage-row"><span class="usage-say">"구현만 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">dev·tdd · core</span></div>
-      <div class="usage-row"><span class="usage-say">"AI 흔적 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">humanizer</span></div>
-      <div class="usage-row"><span class="usage-say">"클라우드 트렌드 조사해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">research</span></div>
-      <div class="usage-row"><span class="usage-say">"기술 부채 확인해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">tech-debt</span></div>
-      <div class="usage-row"><span class="usage-say">"교차 리뷰 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">cross-review</span></div>
-      <div class="usage-row"><span class="usage-say">"커밋해줘 / PR 만들어줘"</span><span class="usage-arrow">→</span><span class="usage-skill">commit · PR</span></div>
+      <div class="usage-row"><span class="usage-say">"이 프로젝트 구조를 파악해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
+      <div class="usage-row"><span class="usage-say">"이 요구사항의 구현 계획만 세워줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
+      <div class="usage-row"><span class="usage-say">"이 계획대로 구현하고 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
+      <div class="usage-row"><span class="usage-say">"중단한 개발을 이어서 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
+      <div class="usage-row"><span class="usage-say">"요구사항을 등록하고 작업을 나눠줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-context</span></div>
+      <div class="usage-row"><span class="usage-say">"현재 로깅 정책을 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-lens</span></div>
+      <div class="usage-row"><span class="usage-say">"TDD 실행 단계를 진행해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-tdd</span></div>
+      <div class="usage-row"><span class="usage-say">"실패 테스트부터 작성해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-red</span></div>
+      <div class="usage-row"><span class="usage-say">"실패한 테스트를 통과시켜줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-green</span></div>
+      <div class="usage-row"><span class="usage-say">"동작을 유지하며 구조를 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-refactor</span></div>
+      <div class="usage-row"><span class="usage-say">"현재 변경을 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-verify</span></div>
+      <div class="usage-row"><span class="usage-say">"랄프 루프를 준비해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-ralph</span></div>
+      <div class="usage-row"><span class="usage-say">"문장을 자연스럽게 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-humanizer</span></div>
+      <div class="usage-row"><span class="usage-say">"기술 부채의 우선순위를 분석해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-tech-debt</span></div>
+      <div class="usage-row"><span class="usage-say">"요구사항과 변경 영향을 시각화해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-visualize</span></div>
+      <div class="usage-row"><span class="usage-say">"구현하고 PR까지 만들어줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
     </div>
   </div>
 </section>
 
-<!-- ===================== DEV vs TDD ===================== -->
-<section class="band-dark" id="dev-tdd">
+<!-- ===================== WORKFLOW ===================== -->
+<section class="band-dark" id="workflow">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow">두 가지 개발 파이프라인</p>
-      <h2 class="display-lg">dev vs tdd — 어떤 걸 쓰나</h2>
-      <p>둘은 같은 6단계 골격을 공유하지만 <strong>구현을 끌고 가는 방식이 정반대</strong>입니다. dev는 설계를 확정한 뒤 구현하고, tdd는 실패 테스트를 먼저 쓰고 그걸 통과시키며 구현합니다.</p>
+      <p class="eyebrow">공통 진입과 개발 실행</p>
+      <h2 class="display-lg">이해와 계획을 TDD 실행으로 연결</h2>
+      <p><code>gx-work</code>가 목표·기존 자료·완료점을 정리하고, 구현 요청을 <code>gx-tdd</code>로 전달합니다. 이미 정리한 계획과 결정은 이어서 사용합니다.</p>
     </div>
 
     <div class="compare">
       <div class="ch">구분</div>
-      <div class="ch">dev — 설계 우선</div>
-      <div class="ch ch-tdd">tdd — 테스트 우선</div>
+      <div class="ch">gx-work · 공통 진입</div>
+      <div class="ch ch-tdd">gx-tdd · 개발 실행</div>
 
-      <div class="rk">접근</div>
-      <div>설계 확정 → 구현 → 사후 검증</div>
-      <div class="hl">실패 테스트 먼저 → 통과시키며 구현</div>
+      <div class="rk">역할</div>
+      <div>프로젝트 이해 · 계획 · 실행 인계</div>
+      <div class="hl">요구사항 · 설계 · 구현 · 리뷰 · 검증</div>
 
-      <div class="rk">요구사항</div>
-      <div>자연어 수용 기준</div>
-      <div class="hl">Given-When-Then 강제</div>
+      <div class="rk">입력</div>
+      <div>자연어 목표 · 도메인 문서 · 외부 계획</div>
+      <div class="hl">정리된 계획 · 수용 기준 · 테스트 경계</div>
 
-      <div class="rk">설계</div>
-      <div>비판 검토</div>
-      <div class="hl">+ testability 점수 (7 미만 재설계)</div>
+      <div class="rk">계획</div>
+      <div>범위 · 제약 · 작업 의존성 정리</div>
+      <div class="hl">기존 계획과 결정을 검증해 재사용</div>
 
-      <div class="rk">구현 방식</div>
-      <div>coder가 설계대로 한 번에</div>
-      <div class="hl">RED → GREEN → REFACTOR 격리 사이클</div>
+      <div class="rk">구현</div>
+      <div>구현 요청 시 gx-tdd로 인계</div>
+      <div class="hl">RED → GREEN → REFACTOR</div>
 
-      <div class="rk">리뷰</div>
-      <div>qa + security 병렬</div>
-      <div class="hl">spec(AC) → quality(품질) 순차</div>
+      <div class="rk">검증</div>
+      <div>계획의 테스트 의도와 경계 전달</div>
+      <div class="hl">영향 범위에 맞는 테스트와 실행 근거 확인</div>
 
-      <div class="rk">완료 게이트</div>
-      <div>qa 통과 → commit</div>
-      <div class="hl">verify 게이트(테스트 실행 증거) → commit</div>
+      <div class="rk">종료점</div>
+      <div>이해 · 계획만 요청하면 해당 결과에서 종료</div>
+      <div class="hl">기본 verify · 요청 시 commit 또는 PR</div>
 
-      <div class="rk">테스트</div>
-      <div>선택 — 있으면 좋음</div>
-      <div class="hl">필수 — 없으면 진행 불가</div>
+      <div class="rk">재개</div>
+      <div>기존 목표 · 완료점 · 중단 단계 복원</div>
+      <div class="hl">같은 실행의 상태와 근거를 이어서 사용</div>
 
-      <div class="rk">언제 쓰나</div>
-      <div>UI·설정·문서, 외부 연동, 프로토타입, 레거시</div>
-      <div class="hl">핵심 로직(결제·인증), 계산·검증, 버그 수정, 리팩토링</div>
+      <div class="rk">직접 사용</div>
+      <div>새 작업을 시작하거나 기존 작업을 이어갈 때</div>
+      <div class="hl">TDD 실행이나 특정 개발 단계를 요청할 때</div>
     </div>
 
     <p style="margin:28px auto 0; max-width:780px; text-align:center; font-size:15px; line-height:1.7;">
-      <strong style="color:var(--accent-amber)">한 줄 기준</strong> — "이 작업의 정답을 자동 테스트로 표현할 수 있고, 그래야 하는가?" 예면 <strong>tdd</strong>, 아니오·애매하면 <strong>dev</strong>.
+      <strong style="color:var(--accent-amber)">시작 예시</strong> — <code>/gx-work 이 문서대로 구현하고 검증해줘</code>. PR까지 필요하면 요청에 완료점을 함께 적으세요.
     </p>
 
-    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">전체 모드 (all) · dev·tdd 공통 6단계 — 소형 변경은 핵심 모드(core)가 단계를 줄입니다</p>
+    <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">gx-tdd 전체 실행 흐름 · 핵심 모드(core)에서도 TDD와 검증 기준은 유지합니다</p>
     <div class="pipeline">
       <div class="pipe-step"><div class="ps-name">Setup</div><div class="ps-sub">환경 준비</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Requirements</div><div class="ps-sub">PRD Q&amp;A</div></div>
+      <div class="pipe-step"><div class="ps-name">Requirements</div><div class="ps-sub">요구사항 · 수용 기준</div></div>
       <div class="pipe-arrow">→</div>
       <div class="pipe-step"><div class="ps-name">Design</div><div class="ps-sub">기술 설계</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Implement</div><div class="ps-sub">구현 · RGR</div></div>
+      <div class="pipe-step"><div class="ps-name">Implement</div><div class="ps-sub">TDD 구현</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Review</div><div class="ps-sub">리뷰 · 보안</div></div>
+      <div class="pipe-step"><div class="ps-name">Review</div><div class="ps-sub">수용 기준 · 품질</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="ps-name">Complete</div><div class="ps-sub">커밋 · PR</div></div>
+      <div class="pipe-step"><div class="ps-name">Complete</div><div class="ps-sub">검증 · 요청한 완료점</div></div>
     </div>
   </div>
 </section>
@@ -845,20 +846,21 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
-      <h2 class="display-lg">18개 스킬이 사이클을 나눠 맡습니다</h2>
-      <p>스킬 하나는 한 가지 역할만 맡습니다. 단독으로 불러 써도 되고, dev/tdd 파이프라인 안에서 자동으로 엮여 돌아가기도 합니다.</p>
+      <h2 class="display-lg">18개 스킬, 하나의 작업 흐름</h2>
+      <p>공통 진입·도메인 관리·TDD 실행·분석과 검증을 나눠 제공합니다. 사용자용 스킬과 무인 반복 러너가 사용하는 내부 스킬을 포함합니다.</p>
     </div>
 
     <!-- context -->
     <div class="feature">
       <div class="feature-text">
-        <span class="badge">도메인 지식</span>
-        <h3 class="display-sm">context</h3>
-        <p>기획서·요구사항 문서·코드베이스를 분석해 도메인 지식을 <code>context/{도메인}/</code>에 등록합니다. 한번 등록해두면 dev·tdd를 실행할 때 자동으로 참조됩니다.</p>
+        <span class="badge">도메인과 작업 계획</span>
+        <h3 class="display-sm">gx-context · 도메인 컨텍스트 관리</h3>
+        <p>문서·대화·코드에서 도메인 지식과 요구사항을 정리하고, 변경된 요구사항을 원장과 작업 계획에 함께 반영합니다. 후속 작업은 관련 컨텍스트와 결정 근거를 참조합니다.</p>
         <ul class="feature-list">
-          <li><strong>스캔</strong> — 패키지 구조·엔티티·API 분석으로 도메인 자동 생성</li>
-          <li><strong>문서 기반</strong> — PDF·이미지·텍스트에서 context 추출</li>
-          <li><strong>동기화</strong> — git log·PR 분석으로 status.md 진행도 갱신</li>
+          <li><strong>도메인 정리</strong> — 용어·정책·아키텍처와 출처를 기록</li>
+          <li><strong>계획 동기화</strong> — 요구사항 변경을 작업 단위와 의존성에 반영</li>
+          <li><strong>준비 상태 구분</strong> — 실행 가능한 작업과 미정·차단 항목을 표시</li>
+          <li><strong>진행도 갱신</strong> — Git 이력과 PR 근거로 상태를 동기화</li>
         </ul>
       </div>
       <div class="feature-art">
@@ -867,43 +869,42 @@
           <div class="code-body">
 <span class="ln"><span class="c-key">context/사용량분석/</span></span>
 <span class="ln"><span class="c-dim">├─</span> README.md        <span class="c-com"># 도메인 개요</span></span>
-<span class="ln"><span class="c-dim">├─</span> PROJECTS.md      <span class="c-com"># 레포 매핑</span></span>
+<span class="ln"><span class="c-dim">├─</span> PROJECTS.md      <span class="c-com"># 저장소 매핑</span></span>
 <span class="ln"><span class="c-dim">├─</span> glossary.md      <span class="c-com"># 용어 사전</span></span>
 <span class="ln"><span class="c-dim">├─</span> architecture.md  <span class="c-com"># 구조 요약</span></span>
-<span class="ln"><span class="c-dim">├─</span> status.md        <span class="c-com"># AC별 ✅/⬜</span></span>
+<span class="ln"><span class="c-dim">├─</span> status.md        <span class="c-com"># 요구사항 진행도</span></span>
 <span class="ln"><span class="c-dim">└─</span> 집계/README.md   <span class="c-com"># 주제별 정책</span></span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- dev (reverse, dark art) -->
+    <!-- work (reverse, dark art) -->
     <div class="feature reverse">
       <div class="feature-text">
-        <span class="badge">전체 개발 사이클</span>
-        <h3 class="display-sm">dev</h3>
-        <p>자연어 요청 한 줄이면 PRD 작성부터 PR 생성까지 전체 사이클이 돌아갑니다. 요청을 분석해 all(전체)·core(핵심)·단일단계·재개 가운데 알맞은 모드를 스스로 고릅니다. 핵심 모드는 소형 변경용 경량 경로 — 기록(AC·변경 요약)과 빌드·테스트 게이트는 유지합니다.</p>
+        <span class="badge">공통 진입점</span>
+        <h3 class="display-sm">gx-work · 개발 워크플로 연결</h3>
+        <p>프로젝트 이해·구현 계획·개발·재개 요청의 공통 진입점입니다. 목표와 완료점을 정리하고, 기존 문서와 결정을 필요한 만큼 보완해 gx-tdd 실행으로 연결합니다.</p>
         <ul class="feature-list">
-          <li>단계마다 <strong>사용자 승인</strong> — 승인 없이 다음으로 넘어가지 않음</li>
-          <li>구현은 의존성 분석 후 <strong>coder 병렬 배치</strong>로 처리</li>
-          <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 설계 확정 후 gx-ralph 무인 루프로 전환 — 기본 경로는 묻지 않고 대화형 구현</li>
-          <li><strong>핵심 모드(core)</strong> — AC 확인 → 구현 → 빌드·테스트 게이트 → 기록. 소형 변경을 에이전트 왕복 없이 처리하되 산출물(ac.md·summary.md)은 유지</li>
-          <li><strong>에코 모드(eco)</strong> — 절차·게이트는 그대로, 에이전트 디스패치만 sonnet 중심으로 하향해 토큰 절약. 설계(architect)는 opus 유지 (Pro 요금제 권장. 모드 질문에서 함께 선택하거나 --eco·/gx-setup 설정)</li>
-          <li><strong>"이어서 해줘"</strong>로 중단 지점부터 정확히 재개</li>
+          <li><strong>이해·계획 모드</strong> — 코드를 변경하지 않고 요청한 분석이나 계획에서 종료</li>
+          <li><strong>기존 계획 활용</strong> — 문서의 출처·제약·수용 기준을 보존하고 누락·충돌만 보완</li>
+          <li><strong>결정 재사용</strong> — 이미 답한 선택은 유지하고 결과에 영향을 주는 미정만 질문</li>
+          <li><strong>요청한 완료점</strong> — 기본 verify, 명시 요청 시 commit 또는 PR까지 진행</li>
+          <li><strong>중단 작업 재개</strong> — 기존 목표·완료점·현재 단계를 복원</li>
         </ul>
       </div>
       <div class="feature-art">
-        <div class="code-window" role="img" aria-label="dev 모드 분기 예시">
-          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">자연어 → 모드 분기</span></div>
+        <div class="code-window" role="img" aria-label="gx-work 요청별 수행 범위 예시">
+          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">요청 → 수행 범위</span></div>
           <div class="code-body">
-<span class="ln"><span class="c-cmd">&gt;</span> 집계 스케줄러 오류 긴급 수정해줘</span>
-<span class="ln">  <span class="c-str">→ CORE</span> <span class="c-dim">(AC 확인 → 구현 → Gate → 기록)</span></span>
+<span class="ln"><span class="c-cmd">&gt;</span> 이 프로젝트를 파악해줘</span>
+<span class="ln">  <span class="c-str">→ 이해</span> <span class="c-dim">관련 코드와 근거 보고</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-cmd">&gt;</span> PRD만 작성해줘</span>
-<span class="ln">  <span class="c-str">→ 단일 Phase</span></span>
+<span class="ln"><span class="c-cmd">&gt;</span> 이 요구사항의 계획만 세워줘</span>
+<span class="ln">  <span class="c-str">→ 계획</span> <span class="c-dim">작업 단위와 테스트 경계 정리</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-cmd">&gt;</span> 이어서 해줘</span>
-<span class="ln">  <span class="c-str">→ RESUME</span> <span class="c-dim">(.dev/{branch-slug}/state.md)</span></span>
+<span class="ln"><span class="c-cmd">&gt;</span> 이 계획대로 구현해줘</span>
+<span class="ln">  <span class="c-str">→ gx-tdd</span> <span class="c-dim">구현 → 리뷰 → verify</span></span>
           </div>
         </div>
       </div>
@@ -912,33 +913,32 @@
     <!-- tdd -->
     <div class="feature">
       <div class="feature-text">
-        <span class="badge badge-coral">TDD 강제</span>
-        <h3 class="display-sm">tdd</h3>
-        <p>dev와 같은 6단계 골격을 쓰지만 <strong>구현을 테스트가 끌고 가는</strong> 별도 파이프라인입니다. 실패 테스트를 먼저 쓰고 통과시키며 구현하고 정리하며, 완료 전에는 verify 게이트를 반드시 통과해야 합니다. 결제·인증·계산처럼 정답을 테스트로 표현할 수 있는 작업에 씁니다.</p>
+        <span class="badge badge-coral">개발 실행</span>
+        <h3 class="display-sm">gx-tdd · TDD 기반 개발</h3>
+        <p>요구사항·설계·구현·리뷰·검증을 수행하는 개발 실행 스킬입니다. gx-work의 계획을 이어받아 실패 테스트 작성, 최소 구현, 구조 개선을 진행하고 현재 변경의 검증 근거를 확인합니다.</p>
         <ul class="feature-list">
-          <li><strong>requirements</strong> — AC를 Given-When-Then으로 강제</li>
-          <li><strong>design</strong> — test-architect가 testability 점수(1–10) 산정, 7 미만이면 재설계</li>
-          <li><strong>implement</strong> — red-writer → implementer 격리 순차</li>
-          <li><strong>--ralph</strong> 또는 "랄프로 …"로 시작한 실행만 기준선 게이트 통과 후 gx-ralph 무인 루프로 전환 — 루프 안에서도 RGR 유지</li>
-          <li><strong>complete</strong> — verify 게이트(신선한 테스트 실행 증거) 통과 후 commit</li>
-          <li><strong>핵심 모드(core)</strong> — 설계·정식 리뷰만 생략하는 경량 경로. AC(G-W-T) 직접 확인 → RGR → 긴급 감사 → verify는 그대로</li>
-          <li><strong>에코 모드(eco)</strong> — architect를 제외한 opus 에이전트를 sonnet으로 하향 디스패치. RGR·verify 게이트는 무변경</li>
+          <li><strong>수용 기준</strong> — Given-When-Then으로 관찰 가능한 동작 명시</li>
+          <li><strong>테스트 우선</strong> — RED 작성과 구현의 역할을 분리하고 실패 근거 확인</li>
+          <li><strong>검증 범위 선택</strong> — 변경 영향에 맞는 테스트를 실행하고 근거가 부족하면 전체 검사로 확대</li>
+          <li><strong>검증 근거 재사용</strong> — 같은 실행에서 코드·명령·설정·범위가 일치할 때만 사용</li>
+          <li><strong>핵심 모드(core)</strong> — 단계를 줄여도 수용 기준·TDD·verify 유지</li>
+          <li><strong>Ralph 전환</strong> — 명시 요청 시 기준선 확인 후 무인 반복 경로로 인계</li>
         </ul>
       </div>
       <div class="feature-art">
         <div class="code-window" role="img" aria-label="RED-GREEN-REFACTOR 사이클 예시">
           <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">RED · GREEN · REFACTOR</span></div>
           <div class="code-body">
-<span class="ln"><span class="c-key">RED</span>      red-writer    <span class="c-dim">실패 테스트 작성</span></span>
-<span class="ln">         <span class="c-dim">▸ test FAILED  (의도된 실패)</span></span>
+<span class="ln"><span class="c-key">RED</span>      <span class="c-dim">실패 테스트 작성</span></span>
+<span class="ln">  <span class="c-dim">▸ test FAILED · 의도한 실패</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-ok">GREEN</span>    implementer   <span class="c-dim">통과 최소 코드</span></span>
-<span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
+<span class="ln"><span class="c-ok">GREEN</span>    <span class="c-dim">통과 최소 구현</span></span>
+<span class="ln">  <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-key">REFACTOR</span> implementer    <span class="c-dim">GREEN 유지하며 정리</span></span>
-<span class="ln">         <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
+<span class="ln"><span class="c-key">REFACTOR</span> <span class="c-dim">통과 상태에서 정리</span></span>
+<span class="ln">  <span class="c-dim">▸ test PASSED  </span><span class="c-ok">✓</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-cmd">verify</span>   실제 실행 증거 없으면 commit 차단</span>
+<span class="ln"><span class="c-cmd">verify</span>   현재 변경의 근거 확인</span>
           </div>
         </div>
       </div>
@@ -948,23 +948,23 @@
     <div class="grid grid-4" style="margin-top:8px">
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">red</div>
-        <p>실패하는 테스트를 먼저 짭니다. 의도한 실패를 눈으로 확인한 뒤에야 다음 단계로 넘어갑니다.</p>
+        <div class="card-title">gx-red · 실패 테스트</div>
+        <p>요구사항을 테스트로 표현하고 의도한 실패를 확인합니다. RED 단계를 단독 실행할 때 사용합니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">green</div>
-        <p>테스트를 통과시킬 최소한의 코드만 짭니다. YAGNI 원칙으로 과잉 구현을 막습니다.</p>
+        <div class="card-title">gx-green · 최소 구현</div>
+        <p>확인된 실패 테스트를 통과시키는 최소 코드를 작성하고, 요청 범위를 벗어난 구현을 점검합니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">refactor</div>
-        <p>GREEN을 유지하면서 중복을 제거하고 구조를 정리합니다. 매 단계 테스트로 검증합니다.</p>
+        <div class="card-title">gx-refactor · 구조 개선</div>
+        <p>테스트 통과와 기존 동작을 유지하며 중복과 복잡한 구조를 정리합니다.</p>
       </div>
       <div class="card-dark">
         <span class="card-icon">✻</span>
-        <div class="card-title">verify</div>
-        <p>"should work" 같은 추측성 표현을 막습니다. 실제 테스트 실행 증거가 없으면 완료로 쳐주지 않습니다.</p>
+        <div class="card-title">gx-verify · 완료 검증</div>
+        <p>현재 변경의 테스트·빌드 결과와 실행 근거를 확인해 완료 및 커밋·PR 진행 가능 여부를 판단합니다.</p>
       </div>
     </div>
 
@@ -972,28 +972,28 @@
     <div class="feature reverse">
       <div class="feature-text">
         <span class="badge badge-coral">무인 반복</span>
-        <h3 class="display-sm">ralph</h3>
-        <p>루프 엔지니어링(Ralph 루프) 스킬입니다. PRD를 승인하고 나면 외부 러너가 반복마다 <strong>새 claude 세션</strong>을 기동해 수용 기준(AC)을 1건씩 구현·verify·커밋합니다. 진행 상태는 대화가 아니라 파일과 git 히스토리에 남고, 사람은 루프가 끝난 뒤 리뷰·인수·PR만 진행합니다. 진입은 <code>/gx-ralph</code> 직접 호출 또는 <code>/gx-dev --ralph</code>·<code>/gx-tdd --ralph</code>(또는 "랄프로 …" 발화) — 두 경로의 동작은 같고, 기본 경로에서는 묻지 않습니다.</p>
+        <h3 class="display-sm">gx-ralph · 무인 반복 실행 준비</h3>
+        <p>승인된 요구사항을 수용 기준 원장으로 정리하고 외부 러너의 반복 실행을 준비합니다. 반복 세션은 수용 기준을 한 건씩 구현·검증·커밋하고, 진행 근거를 파일과 Git 이력에 기록합니다.</p>
         <ul class="feature-list">
-          <li><strong>루프당 AC 1건</strong> — 매 반복 신선한 컨텍스트로 작게, 확실하게</li>
-          <li><strong>verify backpressure</strong> — 매 반복 테스트 통과 없이는 커밋 불가</li>
-          <li><strong>5중 안전장치</strong> — 최대 반복·타임아웃·무변화 감지(NO_DRIFT)·무진전 감지(NO_PROGRESS, 커밋도 AC 완료도 없는 반복 4회)·lock</li>
-          <li><strong>AC별 시도 상한</strong> — 같은 AC 3회 실패 시 건너뛰고, 전부 소진하면 BLOCKED</li>
-          <li>svn·보호 브랜치·PRD 부재·verify 명령 미감지 시 진입 차단</li>
-          <li>에코 모드는 아직 미적용 — 오케스트레이터 모델만 GX_RALPH_MODEL로 지정 가능(미지정 시 표준)</li>
+          <li><strong>명시적 진입</strong> — gx-ralph 직접 요청 또는 gx-work·gx-tdd에서 Ralph 실행 요청</li>
+          <li><strong>반복 제어</strong> — 횟수·시간·무변화·무진전·중복 실행을 감시</li>
+          <li><strong>검증 기준 유지</strong> — 테스트 실패나 필요한 커밋 권한 부재 시 진행 중단</li>
+          <li><strong>내부 실행 스킬</strong> — <code>gx-ralph-iterate</code>는 러너가 반복 한 회를 수행할 때 사용</li>
+          <li><strong>진입 조건</strong> — Git 작업 브랜치·요구사항·검증 명령 등 실행 준비 상태 확인</li>
         </ul>
       </div>
       <div class="feature-art">
         <div class="code-window" role="img" aria-label="ralph 무인 루프 실행 예시">
-          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">scripts/gx-ralph.sh</span></div>
+          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">Ralph 반복 흐름 예시</span></div>
           <div class="code-body">
-<span class="ln"><span class="c-cmd">&gt;</span> /gx-ralph              <span class="c-dim">AC 원장 준비</span></span>
-<span class="ln"><span class="c-cmd">&gt;</span> bash scripts/gx-ralph.sh</span>
-<span class="ln">  <span class="c-str">반복 1</span>  AC-1 구현 → verify <span class="c-ok">✓</span> → commit</span>
-<span class="ln">  <span class="c-str">반복 2</span>  AC-2 구현 → verify <span class="c-ok">✓</span> → commit</span>
+<span class="ln"><span class="c-cmd">&gt;</span> /gx-ralph <span class="c-dim">AC 원장 준비</span></span>
+<span class="ln"><span class="c-dim">▸ 설치된 외부 러너에서 반복 실행</span></span>
+<span class="ln">  <span class="c-str">반복 1</span>  AC-1 구현 → 검증 → 커밋</span>
+<span class="ln">  <span class="c-str">반복 2</span>  AC-2 구현 → 검증 → 커밋</span>
 <span class="ln">  <span class="c-ok">&lt;ralph&gt;COMPLETE&lt;/ralph&gt;</span></span>
 <span class="ln"></span>
-<span class="ln"><span class="c-cmd">&gt;</span> /gx-dev --phase review  <span class="c-dim">사람 복귀</span></span>
+<span class="ln"><span class="c-cmd">&gt;</span> /gx-tdd --phase review</span>
+<span class="ln">  <span class="c-dim">루프 종료 후 리뷰 재개</span></span>
           </div>
         </div>
       </div>
@@ -1005,54 +1005,54 @@
 <section class="band-soft">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow">분석 · 글쓰기 스킬</p>
-      <h2 class="display-lg">코드를 읽고, 글을 다듬습니다</h2>
-      <p>구현 파이프라인과 따로 단독으로 부르는 읽기 전용·문서 스킬입니다.</p>
+      <p class="eyebrow">분석 · 협업 · 글쓰기</p>
+      <h2 class="display-lg">분석과 협업을 지원합니다</h2>
+      <p>정책·기술 조사, 교차 검토, 환경 설정, 커밋·PR 작성과 문장 교정을 목적에 맞게 요청할 수 있습니다.</p>
     </div>
 
     <div class="grid grid-3">
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>lens</h3>
-        <p>코드에 묻혀 있는 비즈니스 정책을 찾아 PO·PD가 읽을 수 있는 보고서로 뽑아냅니다. 코드는 건드리지 않습니다. 변경 아이디어를 이어 말하면 복잡도와 리스크까지 분석해줍니다.</p>
+        <h3>gx-lens · 비즈니스 정책 분석</h3>
+        <p>코드에 구현된 비즈니스 정책을 근거와 함께 정리하고, 정책 변경의 영향 범위와 위험을 분석합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>tech-debt</h3>
-        <p>기술 부채를 코드·아키텍처·의존성·테스트 네 가지 유형으로 나눠 스캔하고, 심각도 × 수정 용이성 × 영향 범위를 따져 우선순위 로드맵과 A~F Health Score를 내놓습니다. 읽기 전용이라 코드는 손대지 않습니다.</p>
+        <h3>gx-tech-debt · 기술 부채 분석</h3>
+        <p>코드·아키텍처·의존성·테스트의 기술 부채를 조사하고, 심각도·수정 난이도·영향 범위에 따라 개선 순서를 제안합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>research</h3>
-        <p>웹 검색과 문서 분석을 함께 돌려 도메인 리서치를 수행합니다. 결과는 종합 리포트·비교표·핵심 요약 형태로 <code>.research/</code>에 저장되고, 모든 발견에 출처 URL이 붙어 context에 그대로 반영할 수 있습니다.</p>
+        <h3>gx-research · 도메인 리서치</h3>
+        <p>웹 검색과 문서 분석으로 도메인·기술 정보를 조사하고, 출처를 포함한 보고서·비교표·요약을 작성합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>cross-review</h3>
-        <p>dev·tdd를 끝낸 뒤 한 번만 부릅니다. PRD·설계서·Trust Ledger를 바탕으로 AC 충족·범위 이탈·신규 위험을 검토합니다. Codex에서는 <code>--advisor native</code>로 현재 하네스의 역할 리뷰를 사용하세요. 외부 Codex CLI 리뷰는 <code>--advisor codex</code>, Claude Code의 기존 역할 리뷰는 <code>--advisor claude</code>입니다.</p>
+        <h3>gx-cross-review · 요구사항·설계 교차 검증</h3>
+        <p>요구사항·설계·검증 기록을 바탕으로 수용 기준 충족, 범위 이탈, 새 위험을 검토합니다. Codex에서는 <code>--advisor native</code>로 현재 환경의 역할 리뷰를 요청할 수 있습니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>commit · pull-request</h3>
-        <p>브랜치명에서 타입을 파싱해 한국어 커밋 메시지를 만들고, 커밋 히스토리를 분석해 PR 제목·본문을 자동으로 써줍니다. Git 전용이라 SVN에서는 <code>svn commit</code>을 직접 실행하세요.</p>
+        <h3>gx-commit · gx-pull-request</h3>
+        <p><strong>gx-commit</strong>은 변경 검증과 브랜치 조건을 확인하고 한국어 커밋을 작성합니다. <strong>gx-pull-request</strong>는 변경 이력과 검증 결과를 정리해 PR을 생성합니다. 각각 요청한 경우에 실행합니다.</p>
       </div>
       <div class="card" style="background:var(--surface-cream-strong)">
         <span class="card-icon">◆</span>
-        <h3>setup</h3>
-        <p>플러그인을 설치한 뒤 한 번만 실행하면 됩니다. VCS(Git/SVN)를 자동으로 감지하고 gh CLI·인증·Google Chat 웹훅을 점검합니다.</p>
+        <h3>gx-setup · 실행 환경 설정</h3>
+        <p>Git·SVN과 개발 도구·인증 상태를 확인하고 프로젝트의 테스트·빌드 명령을 설정합니다. 기존 사용자 설정을 보존하며 필요한 준비 항목을 안내합니다.</p>
       </div>
     </div>
 
     <!-- humanizer feature (dark art) -->
     <div class="feature reverse" style="margin-top:72px; margin-bottom:0;">
       <div class="feature-text">
-        <span class="badge badge-coral">v4.0 · 3모드</span>
-        <h3 class="display-sm">humanizer</h3>
-        <p>AI 글쓰기 패턴 40여 종(한국어 K1–K19 / 영어 E1–E19 / 공통 C1–C6)을 감지하고 교정합니다. "정밀/꼼꼼히/--strict"라고 명시하거나 입력이 8,000자를 넘으면 자동으로 strict로 올라갑니다.</p>
+        <span class="badge badge-coral">문장 검토와 교정</span>
+        <h3 class="display-sm">gx-humanizer · 문체 교정</h3>
+        <p>한국어·영어 문장의 반복 표현과 과도한 수식을 점검하고 의미를 보존하며 교정합니다. 검토만 하거나, 교정하거나, 별도 검증을 포함하는 정밀 모드를 선택할 수 있습니다.</p>
         <ul class="feature-list">
-          <li><strong>audit</strong> — 감지 리포트만 (수정 안 함)</li>
-          <li><strong>rewrite</strong> — 감지 + 교정 + 변경률 상한(30% 경고 / 50% 중단)</li>
-          <li><strong>strict</strong> — rewrite + 의미 보존 검증(humanizer-fidelity) + 과윤문 검토(humanizer-naturalness)</li>
+          <li><strong>audit</strong> — 표현상의 문제와 근거 보고</li>
+          <li><strong>rewrite</strong> — 문장 교정과 변경 범위 점검</li>
+          <li><strong>strict</strong> — 교정 후 의미 보존과 과도한 윤문을 별도 검토</li>
         </ul>
       </div>
       <div class="feature-art">
@@ -1060,14 +1060,15 @@
           <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">AI 흔적 교정</span></div>
           <div class="code-body">
 <span class="ln"><span class="c-key">- before</span> <span class="c-dim">(AI 초안)</span></span>
-<span class="ln"><span class="c-com">  "혁신적인 솔루션으로, 이를 통해</span></span>
-<span class="ln"><span class="c-com">   효율적으로 수행할 수 있습니다."</span></span>
-<span class="ln"><span class="c-dim">  감지 — P1 18 · P2 9 · P3 5 = 32건</span></span>
+<span class="ln"><span class="c-com">  "혁신적인 솔루션을 통해 요구사항과</span></span>
+<span class="ln"><span class="c-com">   구현 계획을 정리하여 TDD 구현과</span></span>
+<span class="ln"><span class="c-com">   검증을 효율적으로 수행합니다."</span></span>
+<span class="ln"><span class="c-dim">  검토 — 추상적 수식과 중복 표현</span></span>
 <span class="ln"></span>
 <span class="ln"><span class="c-ok">+ after</span> <span class="c-dim">(교정)</span></span>
-<span class="ln"><span class="c-str">  "한 줄이면 PRD → 설계 → 구현 →</span></span>
-<span class="ln"><span class="c-str">   리뷰 → PR을 알아서 수행합니다."</span></span>
-<span class="ln"><span class="c-dim">  수식어 12회 → 0회</span></span>
+<span class="ln"><span class="c-str">  "요구사항과 구현 계획을 정리하고</span></span>
+<span class="ln"><span class="c-str">   TDD 구현과 검증으로 연결합니다."</span></span>
+<span class="ln"><span class="c-dim">  교정 — 수행 대상과 작업을 구체화</span></span>
           </div>
         </div>
       </div>
@@ -1076,26 +1077,27 @@
     <!-- visualize feature -->
     <div class="feature" style="margin-top:72px; margin-bottom:0;">
       <div class="feature-text">
-        <span class="badge badge-coral">18번째 스킬 · 아키텍처 맵</span>
-        <h3 class="display-sm">visualize</h3>
-        <p>GX 작업 산출물을 근거가 추적되는 JSON IR과 한국어 HTML로 바꿉니다. 직접 호출 외에 "시각화 포함", "구조를 그림으로 보여줘", "요구사항 추적 맵을 시각화해줘", "변경 영향도를 시각화해줘" 같은 자연어도 명시 요청으로 인식합니다.</p>
+        <span class="badge badge-coral">요구사항과 구조 시각화</span>
+        <h3 class="display-sm">gx-visualize · 개발 산출물 시각화</h3>
+        <p>요구사항·진행 상태·변경 영향·서비스 구조를 근거와 연결된 한국어 HTML로 시각화합니다. 작업 산출물과 코드 위치를 함께 확인할 때 사용합니다.</p>
         <ul class="feature-list">
-          <li><strong>1차 필수 뷰</strong> — trace · progress · impact · service (요구사항 연결 · Phase 상태 · 변경 영향 · 서비스 구조)</li>
-          <li><strong>service 뷰</strong> — 화면 → API → 서비스 → 리포지토리 → 테이블 진입점 체인을 코드에서 직접 스캔하고, 모든 노드에 실제 <code>file:line</code> 근거를 붙입니다</li>
-          <li><strong>백엔드 순서</strong> — <code>Archify → Mermaid → 정적 HTML</code>. Archify가 없거나 실행에 실패하면 자동 설치를 1회 시도한 뒤 폴백합니다</li>
-          <li>기본 출력은 <code>.dev/{branch-slug}/visual/</code>, 구조(<code>service</code>) 뷰는 도메인별 아키텍처 맵을 <code>.dev/architecture/</code>에 만들고 이번 사이클의 변경을 <code>[신규]</code>·<code>[변경]</code>으로 표시합니다 — 모두 단발성 산출물이며 커밋하지 않습니다</li>
-          <li>정적 근거만 사용하며 실제 배포 토폴로지나 운영 인프라를 자동 탐색하지 않습니다</li>
+          <li><strong>trace · progress</strong> — 요구사항 연결과 작업 단계별 상태</li>
+          <li><strong>impact · service</strong> — 변경 영향과 화면·API·서비스·데이터의 연결</li>
+          <li><strong>코드 근거</strong> — 구조도에 관련 <code>file:line</code> 위치 표시</li>
+          <li><strong>출력 경로</strong> — 작업별 결과는 <code>.dev/{branch-slug}/visual/</code>, 도메인 구조는 <code>.dev/architecture/</code></li>
+          <li><strong>분석 범위</strong> — 작업 산출물과 코드의 정적 근거를 사용하며 운영 인프라 탐색은 제외</li>
         </ul>
-        <p>자세한 뷰별 계약은 <code>docs/gx-visualize-guide.md</code>를 참고하세요.</p>
+        <p><a href="https://github.com/bs-koo/oh-my-gx/blob/main/docs/gx-visualize-guide.md">시각화 사용 가이드</a>에서 뷰별 출력과 검증 기준을 확인하세요.</p>
       </div>
       <div class="feature-art">
         <div class="code-window" role="img" aria-label="gx-visualize 한국어 출력 흐름 예시">
           <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">gx-visualize impact</span></div>
           <div class="code-body">
 <span class="ln"><span class="c-cmd">&gt;</span> 변경 영향도를 시각화해줘</span>
-<span class="ln">  <span class="c-str">→ impact.json</span>         <span class="c-dim">근거: file:line</span></span>
-<span class="ln">  <span class="c-str">→ impact.html</span>         <span class="c-dim">backend: archify</span></span>
-<span class="ln">  <span class="c-str">→ impact.receipt.json</span> <span class="c-dim">validation_status: verified</span></span>
+<span class="ln">  <span class="c-str">→ impact.json</span> <span class="c-dim">구조와 근거</span></span>
+<span class="ln">  <span class="c-str">→ impact.html</span> <span class="c-dim">한국어 시각화</span></span>
+<span class="ln">  <span class="c-str">→ impact.receipt.json</span></span>
+<span class="ln">    <span class="c-dim">출력 검증 결과</span></span>
           </div>
         </div>
       </div>
@@ -1108,8 +1110,8 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">에이전트 팀</p>
-      <h2 class="display-lg">17개 에이전트, 하나의 관점씩</h2>
-      <p>스킬은 내부적으로 직무별 에이전트 팀을 부릅니다. 에이전트 하나는 관점 하나만 맡고, 작업 성격에 따라 Opus나 Sonnet 모델이 배정됩니다.</p>
+      <h2 class="display-lg">17개 역할로 나누는 책임</h2>
+      <p>요구사항·설계·구현·리뷰·분석의 책임을 나눕니다. 표시된 Opus·Sonnet은 Claude Code의 기본 티어이며, Codex에서는 설정과 현재 사용 가능한 모델에 따라 대응합니다. 이전 실행 경로의 호환 정의도 포함합니다.</p>
     </div>
 
     <div class="agent-group">
@@ -1117,17 +1119,17 @@
       <div class="agent-grid">
         <div class="agent"><div class="agent-name">product-owner <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">요구사항 구체화, PRD 작성, 인수 검증</div></div>
         <div class="agent"><div class="agent-name">architect <span class="tag tag-opus">Opus</span></div><div class="agent-role">기술 설계 — 변경 범위, API, 구현 순서</div></div>
-        <div class="agent"><div class="agent-name">test-architect <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계의 testability 평가 + 점수 산정 (tdd)</div></div>
-        <div class="agent"><div class="agent-name">design-critic <span class="tag tag-opus">Opus</span></div><div class="agent-role">암묵적 가정 도전, 과잉 설계 식별</div></div>
+        <div class="agent"><div class="agent-name">test-architect <span class="tag tag-opus">Opus</span></div><div class="agent-role">테스트 가능성과 격리 전략 평가</div></div>
+        <div class="agent"><div class="agent-name">design-critic <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계 가정과 과도한 복잡성 검토</div></div>
       </div>
     </div>
 
     <div class="agent-group">
       <div class="agent-group-head"><h3 class="display-sm">구현</h3><span class="count">5</span></div>
       <div class="agent-grid">
-        <div class="agent"><div class="agent-name">coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">설계 기반 코드 구현 (dev)</div></div>
-        <div class="agent"><div class="agent-name">red-writer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">실패 테스트 작성 전담 (tdd)</div></div>
-        <div class="agent"><div class="agent-name">implementer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN+REFACTOR 통합 구현 (tdd)</div></div>
+        <div class="agent"><div class="agent-name">coder <span class="tag tag-opus">Opus</span></div><div class="agent-role">이전 구현 경로의 호환 정의 · 기본 TDD 경로에서는 미사용</div></div>
+        <div class="agent"><div class="agent-name">red-writer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">요구사항에 따른 실패 테스트 작성</div></div>
+        <div class="agent"><div class="agent-name">implementer <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">격리 실행 시 GREEN·REFACTOR 구현</div></div>
         <div class="agent"><div class="agent-name">green-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">통과 최소 코드 작성 (단독 스킬 전용)</div></div>
         <div class="agent"><div class="agent-name">refactor-coder <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">GREEN 유지하며 정리 (단독 스킬 전용)</div></div>
       </div>
@@ -1136,8 +1138,8 @@
     <div class="agent-group">
       <div class="agent-group-head"><h3 class="display-sm">리뷰</h3><span class="count">3</span></div>
       <div class="agent-grid">
-        <div class="agent"><div class="agent-name">qa-manager <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드 리뷰 + 스펙 충족 검증 (dev)</div></div>
-        <div class="agent"><div class="agent-name">reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">AC 충족 → 코드 품질 통합 1석 (tdd, spec verdict 선행)</div></div>
+        <div class="agent"><div class="agent-name">qa-manager <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">이전 리뷰 경로의 호환 정의 · 기본 TDD 경로에서는 미사용</div></div>
+        <div class="agent"><div class="agent-name">reviewer <span class="tag tag-opus">Opus</span></div><div class="agent-role">수용 기준 충족을 먼저 판정한 뒤 코드 품질 검토</div></div>
         <div class="agent"><div class="agent-name">security-auditor <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">정책 · 보안 · 허점 교차 검증</div></div>
       </div>
     </div>
@@ -1145,10 +1147,10 @@
     <div class="agent-group">
       <div class="agent-group-head"><h3 class="display-sm">윤문 검증 · 분석 · 복구</h3><span class="count">5</span></div>
       <div class="agent-grid">
-        <div class="agent"><div class="agent-name">humanizer-fidelity <span class="tag tag-opus">Opus</span></div><div class="agent-role">의미 보존 감사 (strict)</div></div>
-        <div class="agent"><div class="agent-name">humanizer-naturalness <span class="tag tag-opus">Opus</span></div><div class="agent-role">과윤문 · AI티 잔존 검토 (strict)</div></div>
+        <div class="agent"><div class="agent-name">humanizer-fidelity <span class="tag tag-opus">Opus</span></div><div class="agent-role">정밀 교정 결과의 의미 보존 검증</div></div>
+        <div class="agent"><div class="agent-name">humanizer-naturalness <span class="tag tag-opus">Opus</span></div><div class="agent-role">정밀 교정 결과의 과도한 윤문과 반복 표현 검토</div></div>
         <div class="agent"><div class="agent-name">researcher <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">코드베이스 조사 + 기술 비교</div></div>
-        <div class="agent"><div class="agent-name">hacker <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">제약 우회, 정체 탈출</div></div>
+        <div class="agent"><div class="agent-name">hacker <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">작업 정체 원인 분석과 대안 탐색</div></div>
         <div class="agent"><div class="agent-name">simplifier <span class="tag tag-sonnet">Sonnet</span></div><div class="agent-role">복잡도 제거, 범위 축소</div></div>
       </div>
     </div>
@@ -1160,32 +1162,32 @@
   <div class="container">
     <div class="callout-coral">
       <p class="eyebrow">안전장치</p>
-      <h2 class="display-md">자동화하되, 위험한 일은 사람에게.</h2>
-      <p>자동화는 PR 생성까지입니다. 강제 푸시·민감 파일은 설정 수준에서 막히고, 머지는 사람이 직접 합니다.</p>
+      <h2 class="display-md">요청 범위와 검증 근거를 지킵니다</h2>
+      <p>기본 완료점은 검증입니다. 커밋·PR·머지는 각각 사용자 요청에 따라 수행하며, 훅은 설치와 신뢰 상태를 확인해야 작동 여부를 판단할 수 있습니다.</p>
       <div class="safeguard-grid">
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>PR 머지는 사람이</strong> 직접. <code>gh pr merge</code>는 도구 차단이 아니라 운영 원칙 — 사용자가 명시적으로 요청할 때만 수행합니다.</span>
+          <span class="sg-text"><strong>명시한 완료점</strong> — 계획·검증·커밋·PR 가운데 요청한 범위에서 종료합니다. 머지도 별도 명시 요청이 필요합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><code>git push --force</code> 차단. 저장소 강제 푸시를 허용하지 않습니다.</span>
+          <span class="sg-text"><strong>강제 푸시 금지</strong> — 강제 푸시를 허용하지 않는 운영 규칙과 훅 가드를 제공합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>보호 브랜치</strong> — main/master/develop에서 직접 커밋을 막고 작업 브랜치를 먼저 생성합니다.</span>
+          <span class="sg-text"><strong>브랜치 확인</strong> — 커밋 스킬은 main·master·develop과 detached HEAD에서 중단합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>민감 파일 감지</strong> — <code>.env* · *.key · *.pem · credentials* · *secret*</code> 커밋 전 경고.</span>
+          <span class="sg-text"><strong>민감 파일 점검</strong> — 환경 설정·키·인증 정보가 변경에 포함되면 커밋 전에 경고합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>빌드 아티팩트</strong> — <code>build/ · node_modules/</code> tracked 시 .gitignore 보강 제안.</span>
+          <span class="sg-text"><strong>생성 파일 점검</strong> — 빌드 결과나 의존성 폴더가 추적되면 제외 규칙 보완을 제안합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>verify 게이트</strong> — 추측 표현을 차단, 실제 테스트 실행 증거 없이 commit 불가 (tdd).</span>
+          <span class="sg-text"><strong>완료 검증</strong> — 현재 코드와 검증 근거가 맞지 않으면 완료·커밋·PR 진행을 보류합니다.</span>
         </div>
       </div>
     </div>
@@ -1198,32 +1200,33 @@
     <div class="section-head">
       <p class="eyebrow">Codex 사용법</p>
       <h2 class="display-lg">설치하고, 채팅으로 요청하세요</h2>
-      <p>Windows Codex CLI 0.154.0에서 실제 설치와 setup → TDD → native 리뷰 → verify를 확인했습니다. 아래 설치 명령은 <a href="https://github.com/bs-koo/oh-my-gx/pull/89">PR #89</a>의 수정 브랜치를 선택합니다.</p>
+      <p>마켓플레이스에서 플러그인을 설치하고, 작업할 프로젝트의 새 세션에서 스킬과 훅 상태를 확인하세요. 아래는 PowerShell 기준 설치 예시입니다.</p>
     </div>
     <div class="grid grid-2">
       <div class="card">
         <h3>1. PowerShell에서 설치</h3>
         <p>Codex 로그인, Git, Python 3.10 이상과 Git Bash를 준비합니다. 처음 설치할 때 아래 두 명령을 실행하세요.</p>
-        <div class="code-window"><pre class="code-body"><code>codex.cmd plugin marketplace add bs-koo/oh-my-gx --ref feat/codex-native-validation
+        <div class="code-window"><pre class="code-body"><code>codex.cmd plugin marketplace add bs-koo/oh-my-gx
 codex.cmd plugin add oh-my-gx@oh-my-gx</code></pre></div>
-        <p>PR이 main에 반영된 뒤 기본 브랜치를 처음 설치할 때는 <code>--ref feat/codex-native-validation</code>을 생략합니다. Bash에서는 <code>codex.cmd</code> 대신 <code>codex</code>를 사용합니다.</p>
+        <p>Bash에서는 <code>codex.cmd</code> 대신 <code>codex</code>를 사용합니다. <a href="https://github.com/bs-koo/oh-my-gx/releases/latest">최신 릴리스 노트</a>에서 배포 변경사항을 확인할 수 있습니다.</p>
       </div>
       <div class="card">
         <h3>2. 프로젝트에서 Codex 실행</h3>
-        <p>작업할 프로젝트 폴더에서 새 세션을 엽니다. <code>/skills</code>로 GX 스킬을, <code>/hooks</code>로 훅 정의와 신뢰 상태를 확인하세요.</p>
+        <p>작업할 프로젝트 폴더에서 새 세션을 엽니다. <code>/skills</code>에서 GX 스킬을, <code>/hooks</code>에서 훅 정의와 신뢰 상태를 확인하세요.</p>
         <div class="code-window"><pre class="code-body"><code>cd C:\path\to\your-project
 codex.cmd</code></pre></div>
-        <p>setup은 프로젝트 테스트·빌드 명령과 설정을 준비합니다. 기존 사용자 설정은 보존합니다.</p>
+        <p>테스트·빌드 설정이 필요하면 gx-setup을 요청합니다. 프로젝트 이해나 계획 요청은 설정 변경 없이 시작할 수 있습니다.</p>
       </div>
     </div>
     <div class="card" style="margin-top:20px">
-      <h3>3. Codex 채팅창에 한 단계씩 요청</h3>
-      <p>아래 문장은 터미널 명령이 아닙니다. 요구사항이나 승인 질문이 나오면 답변한 뒤 진행하세요.</p>
-      <div class="code-window"><pre class="code-body"><code>oh-my-gx:gx-setup 스킬로 이 프로젝트를 준비해줘.
-oh-my-gx:gx-tdd --core로 로그인 입력 검증을 테스트 먼저 구현해줘.
+      <h3>3. 채팅에서 목표와 완료점 요청</h3>
+      <p>아래는 Codex 채팅에 입력할 요청 예시입니다. 필요한 스킬 이름을 명시하고, 중요한 미정 사항에 대한 질문이 나오면 답변하세요.</p>
+      <div class="code-window"><pre class="code-body"><code>oh-my-gx:gx-work로 이 프로젝트 구조를 파악해줘.
+oh-my-gx:gx-work로 로그인 입력 검증의 구현 계획만 세워줘.
+oh-my-gx:gx-work로 이 계획대로 구현하고 검증해줘.
 oh-my-gx:gx-cross-review --advisor native로 변경사항을 검토해줘.
-oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre></div>
-      <p>검증 후 커밋·PR도 원하면 <code>oh-my-gx:gx-commit으로 커밋해줘</code>, <code>oh-my-gx:gx-pull-request로 PR을 만들어줘</code>라고 요청합니다. 커밋에는 작업 브랜치와 Codex의 일반 권한 승인이 필요할 수 있습니다.</p>
+oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code></pre></div>
+      <p>기본 완료점은 verify입니다. 검증된 변경의 커밋·PR만 필요하면 <code>oh-my-gx:gx-commit</code>, <code>oh-my-gx:gx-pull-request</code>를 직접 요청할 수 있습니다. 작업 브랜치와 환경별 실행 권한은 각 스킬에서 확인합니다.</p>
       <p><a class="btn btn-primary" href="codex/">Codex 사용 가이드</a></p>
     </div>
   </div>
@@ -1235,7 +1238,7 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
     <div class="section-head">
       <p class="eyebrow">하네스 지원</p>
       <h2 class="display-lg">Claude Code와 Codex에서</h2>
-      <p>공통 스킬 원본에 Codex용 역할·설정 리소스와 훅·실행 어댑터를 함께 제공합니다. 실제 검증 범위와 하네스별 권한 제약을 구분해 안내합니다.</p>
+      <p>같은 스킬 원본에 환경별 도구 대응과 Codex용 역할·설정 파일을 함께 제공합니다. 설치 발견·모델·훅의 실제 동작은 사용하는 세션에서 확인해야 합니다.</p>
     </div>
 
     <div class="compare">
@@ -1245,27 +1248,27 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
 
       <div class="rk">스킬 인식·로드</div>
       <div>지원</div>
-      <div class="hl">지원 — 17개 로드 확인</div>
+      <div class="hl">18개 스킬 배포 · 새 세션에서 로드 상태 확인</div>
 
       <div class="rk">설정 준비</div>
       <div>지원</div>
-      <div class="hl">템플릿 동봉 · 기존 사용자 설정 보존 확인</div>
+      <div class="hl">설정 템플릿 동봉 · 기존 사용자 설정 보존</div>
 
-      <div class="rk">번들 파일 스킬 4개<br>(dev · tdd · lens · setup)</div>
-      <div>지원</div>
+      <div class="rk">번들 파일 참조</div>
+      <div>스킬 파일 위치 기준</div>
       <div class="hl">설치 위치 기준 리소스 참조 · 공통 실행 지침 연결</div>
 
-      <div class="rk">서브에이전트 17개</div>
-      <div>자동 로드</div>
-      <div class="hl">역할 본문·도구·티어 동봉 후 자식에게 전달</div>
+      <div class="rk">역할 정의 17개</div>
+      <div>에이전트 정의 제공</div>
+      <div class="hl">역할 본문·도구 목록·티어를 자식 에이전트에 전달</div>
 
-      <div class="rk">훅 게이트 (verify · 강제푸시)</div>
-      <div>자동 적용</div>
-      <div class="hl">플러그인 훅 배포 · /hooks 신뢰 확인 · pending/stale 차단 실측</div>
+      <div class="rk">훅과 보호 게이트</div>
+      <div>훅 정의와 스킬별 보호 분기 제공</div>
+      <div class="hl">플러그인 훅 배포 · /hooks에서 로드·신뢰 상태 확인</div>
     </div>
 
     <p style="margin:28px auto 0; max-width:820px; text-align:center; font-size:15px; line-height:1.7;">
-      <strong style="color:var(--accent-amber)">검증 기준: Windows Codex CLI 0.154.0</strong>. 내부 리뷰는 <code>--advisor native</code>로 실제 실행했습니다. 중첩 외부 CLI는 홈 경로 권한으로 막힐 수 있고, 무인 Ralph는 커밋 권한이 없으면 BLOCKED로 종료합니다. 역할 도구 목록은 권한 경계가 아니며 RED의 소스 미열람은 독립 trace로 확인하지 못했습니다. Linux 실제 모델 세션과 macOS도 미측정입니다. <a href="https://github.com/bs-koo/oh-my-gx/blob/feat/codex-native-validation/docs/reports/2026-09-14-codex-validation.md">상세 실측 보고서</a>에서 성공·실패와 수정 이력을 확인하세요.
+      <strong style="color:var(--accent-amber)">기존 버전의 실측 근거</strong> — Windows Codex CLI 0.154.0에서 당시 17개 스킬의 로드와 setup → TDD → native 리뷰 → verify 흐름을 확인했습니다. 이 기록은 현재 18개 스킬 전체의 설치·질문 UI·실제 모델 실행을 입증하지 않습니다. 역할의 도구 목록은 권한 경계가 아니며, 무인 실행에는 별도 커밋 권한이 필요할 수 있습니다. <a href="https://github.com/bs-koo/oh-my-gx/blob/main/docs/reports/2026-09-14-codex-validation.md">기존 실측 보고서</a>에서 확인 범위와 제한을 볼 수 있습니다.
     </p>
   </div>
 </section>
@@ -1275,45 +1278,45 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">자주 묻는 질문</p>
-      <h2 class="display-lg">궁금할 만한 것들</h2>
+      <h2 class="display-lg">시작 전에 확인할 사항</h2>
     </div>
 
     <div class="faq-list">
       <details open>
-        <summary>dev와 tdd 중 뭘 써야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">판단 기준은 "정답을 자동 테스트로 표현할 수 있고, 그래야 하는가"입니다. 결제·인증·정산 같은 핵심 로직, 계산·검증, 버그 수정(재현 테스트 먼저), 리팩토링이라면 tdd가 맞습니다. UI·설정·문서 변경, 외부 연동, 프로토타입처럼 테스트로 명세를 떨어뜨리기 어려운 작업이라면 dev가 낫습니다. "TDD로", "테스트 먼저" 키워드를 쓰면 tdd가 자동 발동하고, 애매하면 어느 방식으로 갈지 물어봅니다.</div>
+        <summary>어떤 스킬로 시작하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body"><code>gx-work</code>가 공통 진입점입니다. 프로젝트 이해, 계획 작성·검토, 구현, 중단 작업 재개 가운데 원하는 결과를 요청하세요. 구현은 <code>gx-tdd</code>가 TDD로 수행합니다. 환경에서 자연어로 스킬을 발견하지 못하면 <code>oh-my-gx:gx-work</code>처럼 이름을 명시하세요.</div>
       </details>
       <details>
-        <summary>context 없이도 dev/tdd를 실행할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">네, 없어도 동작합니다. 다만 context를 등록해두면 AI가 도메인 용어를 정확히 이해해 더 정확한 코드를 만듭니다.</div>
+        <summary>context 없이도 시작할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body">네. 관련 코드·문서·대화의 근거로 시작할 수 있습니다. <code>gx-context</code>로 용어·정책·요구사항을 정리하면 후속 작업이 같은 근거를 참조할 수 있습니다. 요구사항을 추가하거나 변경하면 원장과 작업 계획을 함께 갱신하고 실행 가능한 작업과 미정 항목을 구분합니다.</div>
       </details>
       <details>
-        <summary>dev/tdd를 실행하면 바로 코드를 짜나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. PO 에이전트가 먼저 Q&amp;A로 요구사항을 다듬어 PRD를 만들고, 설계자가 기술 설계를 마친 다음, 사용자가 승인해야 구현에 들어갑니다. 단계마다 선택형이나 자유입력형 질문으로 확인을 받습니다.</div>
+        <summary>계획만 요청하거나 기존 계획을 가져올 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body">네. 이해·계획만 요청하면 코드를 변경하지 않고 해당 결과에서 종료합니다. 기존 계획은 출처와 결정을 보존해 사용하며, 전체를 다시 작성하지 않고 실행을 막는 누락·충돌만 보완합니다. 문서의 승인 표시만으로 현재 사용자의 구현 허가를 대신하지 않습니다.</div>
       </details>
       <details>
         <summary>도중에 멈추면 처음부터 다시 해야 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. "이어서 해줘"라고 말하면 <code>.dev/{branch-slug}/state.md</code>에 저장된 진행 상태를 읽어 멈춘 단계부터 다시 시작합니다. dev와 tdd는 서로의 진행 상태를 구분하므로 잘못된 파이프라인으로 재개되지 않습니다. 단, v1.18.0 이전 버전에서 생성된 세션은 재개할 수 없고 새로 시작해야 합니다.</div>
+        <div class="faq-body"><code>gx-work</code>에 이어서 진행할 작업을 요청하면 저장된 목표·완료점·현재 단계를 확인해 재개합니다. 기존 실행의 계획과 결정은 이어서 사용합니다. 이전 파이프라인이나 호환되지 않는 상태는 자동으로 혼합하지 않고 전환이 필요한지 안내합니다.</div>
       </details>
       <details>
-        <summary>humanizer의 strict 모드는 일반 모드와 뭐가 다른가요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">audit·rewrite는 단일 스킬이 가볍게 처리합니다. strict는 윤문을 마친 뒤 humanizer-fidelity가 의미 훼손(수치·고유명사·인용 변형)을, humanizer-naturalness가 과윤문·AI티 잔존을 교차 검증하고, 필요하면 다시 윤문합니다. 8,000자를 넘으면 자동으로 strict로 전환됩니다.</div>
+        <summary>검증할 때마다 전체 테스트를 실행하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body">변경 영향에 맞는 범위를 선택합니다. 같은 실행에서 코드·명령·설정·검증 범위가 정확히 일치하는 결과만 재사용합니다. 필요한 근거가 부족하거나 영향 범위를 판단하기 어렵거나 사용자가 전체 회귀 검사를 요청하면 검사를 확대합니다.</div>
       </details>
       <details>
-        <summary>PR이 자동으로 머지되나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">아닙니다. 자동화는 PR 생성까지입니다. 머지는 사용자가 명시적으로 요청할 때만 수행합니다 (설정 차단이 아니라 운영 원칙입니다).</div>
+        <summary>커밋·PR·머지까지 자동으로 진행하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body">구현 요청의 기본 완료점은 검증입니다. 커밋이나 PR이 필요하면 처음부터 완료점으로 지정하거나 검증 후 요청하세요. 같은 범위에서 이미 허용한 작업은 허가를 반복해서 묻지 않으며, 머지는 별도 명시 요청이 있을 때 수행합니다.</div>
       </details>
       <details>
         <summary>SVN 프로젝트에서도 사용할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">네. <code>/gx-setup</code>을 실행하면 VCS를 자동으로 감지합니다. SVN 프로젝트에서도 <code>dev</code>·<code>tdd</code> 파이프라인의 PRD·설계·구현·리뷰가 똑같이 동작하고, 커밋만 <code>svn commit</code>으로 직접 하면 됩니다. <code>context</code>·<code>lens</code>·<code>research</code>·<code>humanizer</code> 같은 다른 스킬도 모두 그대로 쓸 수 있습니다.</div>
+        <div class="faq-body">네. <code>gx-setup</code>에서 VCS를 확인하고 요구사항·설계·구현·리뷰를 진행할 수 있습니다. Git 전용 커밋·PR 스킬과 무인 Ralph 반복은 적용되지 않으며, SVN 커밋은 직접 수행합니다. SVN 검증은 Git의 영향 범위 선택·증거 재사용 대신 프로젝트별 테스트·빌드 명령을 직접 실행합니다.</div>
       </details>
       <details>
         <summary>Codex에서도 쓸 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">Windows Codex CLI 0.154.0에서 설치 스킬 17개와 setup → TDD → native 리뷰 → verify 흐름을 실제 확인했습니다. <a href="#codex-start">Codex 시작 안내</a>의 두 설치 명령을 실행하고 새 세션에서 <code>/skills</code>·<code>/hooks</code>를 확인하세요. 채팅에는 <code>oh-my-gx:gx-setup 스킬로 준비해줘</code>처럼 이름을 명시합니다. 역할·설정 파일은 플러그인에 동봉됩니다. 외부 CLI·무인 커밋에는 권한 제약이 있으므로 <a href="codex/">사용 가이드</a>도 확인하세요.</div>
+        <div class="faq-body">Codex용 역할·설정·실행 규약과 훅을 함께 제공합니다. <a href="#codex-start">Codex 시작 안내</a>에 따라 설치한 뒤 새 세션에서 <code>/skills</code>·<code>/hooks</code>를 확인하세요. 기존 Windows 실측 기록과 현재 배포 내용의 차이는 <a href="#harness">하네스 지원</a>에 표시했습니다. 세부 절차와 권한 제약은 <a href="codex/">Codex 사용 가이드</a>에서 확인할 수 있습니다.</div>
       </details>
       <details>
-        <summary>플러그인 업데이트는 어떻게 하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body"><code>/plugin marketplace update oh-my-gx</code> 를 실행하면 됩니다.</div>
+        <summary>설치·업데이트 정보는 어디서 확인하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
+        <div class="faq-body">환경별 설치와 업데이트 절차는 <a href="https://github.com/bs-koo/oh-my-gx#readme">저장소 README</a>와 <a href="codex/">Codex 사용 가이드</a>를 참고하세요. 배포 변경사항은 <a href="https://github.com/bs-koo/oh-my-gx/releases/latest">릴리스 노트</a>에서 확인할 수 있습니다. 업데이트 후에는 새 세션에서 스킬 목록과 훅 상태를 확인하세요.</div>
       </details>
     </div>
   </div>
@@ -1322,15 +1325,15 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
 <!-- ===================== CTA BAND (dark) ===================== -->
 <section class="band-dark cta-band">
   <div class="container">
-    <h2 class="display-lg">지금 설치하고 한 줄로 시작하세요</h2>
-    <p>마켓플레이스 등록과 플러그인 설치 후, 프로젝트에서 setup으로 시작합니다.</p>
+    <h2 class="display-lg">프로젝트의 다음 작업을 연결하세요</h2>
+    <p>플러그인을 설치한 뒤 gx-work에 목표와 완료점을 요청하세요.</p>
     <div class="cta-actions">
       <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-primary">GitHub 저장소</a>
       <a href="https://github.com/bs-koo/oh-my-gx/releases/latest" class="btn btn-on-dark">릴리스 노트</a>
     </div>
     <div class="install">
       <span class="prompt">$</span>
-      <span>/plugin marketplace add bs-koo/oh-my-gx&nbsp;&nbsp;&amp;&amp;&nbsp;&nbsp;/plugin install oh-my-gx@oh-my-gx</span>
+      <span>Claude Code: /plugin marketplace add bs-koo/oh-my-gx<br>/plugin install oh-my-gx@oh-my-gx</span>
     </div>
     <div class="install">
       <span class="prompt">$</span>
@@ -1347,7 +1350,7 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
     <div class="footer-top">
       <div class="footer-brand">
         <span class="brand"><svg class="spike" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l1.6 7.3 5.3-5.2-3.4 6.6 7.1-1.7-6.4 3.5 6.4 3.5-7.1-1.7 3.4 6.6-5.3-5.2L12 22.5l-1.6-7.3-5.3 5.2 3.4-6.6L1.4 15.5l6.4-3.5L1.4 8.5l7.1 1.7-3.4-6.6 5.3 5.2z"/></svg> oh-my-gx</span>
-        <p>GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD·설계·구현·리뷰·PR까지 에이전트 팀이 처리합니다.</p>
+        <p>도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인.</p>
       </div>
       <div class="footer-cols">
         <div class="footer-col">
@@ -1366,13 +1369,13 @@ oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.</code></pre
         </div>
         <div class="footer-col">
           <h4>시작</h4>
-          <a href="#dev-tdd">dev vs tdd</a>
+          <a href="#workflow">작업 흐름</a>
           <a href="#top">개요</a>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>oh-my-gx — GX 사업본부 개발 자동화 플러그인</span>
+      <span>oh-my-gx — AI 워크플로 오케스트레이션 플러그인</span>
       <span>Built for Claude Code · Codex</span>
     </div>
   </div>

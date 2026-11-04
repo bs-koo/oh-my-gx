@@ -1,6 +1,6 @@
 ---
 name: gx-pull-request
-description: 커밋 히스토리를 분석하여 PR을 자동 생성한다. "PR", "PR 올려", "풀리퀘" 시 사용.
+description: 현재 Git 브랜치의 PR 생성이나 'PR 올려', '풀리퀘'를 요청할 때 사용한다. 검증 상태를 확인하고 커밋 이력을 바탕으로 제목·본문을 작성해 PR을 생성한다.
 argument-hint: [base-branch]
 allowed-tools:
   - Read

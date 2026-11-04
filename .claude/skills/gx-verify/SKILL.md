@@ -1,7 +1,7 @@
 ---
 name: gx-verify
 version: 1.0.0
-description: "완료 검증, verify 게이트, commit/PR 전 검증 근거 확인 요청에 사용한다."
+description: 작업 완료 검증, verify 게이트, 커밋·PR 전 검증을 요청할 때 사용한다. 현재 코드의 테스트·빌드 실행 근거를 확인하고 게이트 통과 여부를 판정한다.
 argument-hint: "[--non-interactive]"
 allowed-tools:
   - Read

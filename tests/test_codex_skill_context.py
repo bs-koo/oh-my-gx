@@ -330,7 +330,7 @@ class ContextPlanSyncTests(unittest.TestCase):
 
     def test_description_triggers_on_requirements_and_plan(self):
         front = self.text("SKILL.md").split("---", 2)[1]
-        for phrase in (".dev/plan.md", "요구사항 추가", "작업 나눠줘", "plan.md를 말하지 않아도"):
+        for phrase in (".dev/plan.md", "요구사항 추가", "작업 나눠줘"):
             self.assertIn(phrase, front)
 
     def test_plan_sync_reconciles_ledger_not_only_this_input(self):

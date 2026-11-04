@@ -8,8 +8,8 @@
       "sentences": 102
     },
     "after": {
-      "bytes": 14757,
-      "chars": 8958,
+      "bytes": 14830,
+      "chars": 8987,
       "lines": 162,
       "sentences": 111
     }
@@ -23,10 +23,10 @@
       "sentences": 100
     },
     "after": {
-      "bytes": 15787,
-      "chars": 8826,
+      "bytes": 15703,
+      "chars": 8772,
       "lines": 204,
-      "sentences": 112
+      "sentences": 111
     }
   },
   {
@@ -38,10 +38,10 @@
       "sentences": 246
     },
     "after": {
-      "bytes": 19414,
-      "chars": 12749,
+      "bytes": 19349,
+      "chars": 12700,
       "lines": 387,
-      "sentences": 161
+      "sentences": 160
     }
   },
   {
@@ -63,8 +63,8 @@
       "sentences": 36
     },
     "after": {
-      "bytes": 8433,
-      "chars": 4826,
+      "bytes": 8493,
+      "chars": 4844,
       "lines": 195,
       "sentences": 38
     }
@@ -78,10 +78,10 @@
       "sentences": 162
     },
     "after": {
-      "bytes": 12648,
-      "chars": 7392,
+      "bytes": 12730,
+      "chars": 7425,
       "lines": 229,
-      "sentences": 86
+      "sentences": 85
     }
   },
   {
@@ -93,10 +93,10 @@
       "sentences": 64
     },
     "after": {
-      "bytes": 8184,
-      "chars": 4951,
+      "bytes": 8275,
+      "chars": 4975,
       "lines": 153,
-      "sentences": 64
+      "sentences": 63
     }
   },
   {
@@ -108,8 +108,8 @@
       "sentences": 94
     },
     "after": {
-      "bytes": 14953,
-      "chars": 9485,
+      "bytes": 15051,
+      "chars": 9524,
       "lines": 228,
       "sentences": 94
     }
@@ -123,10 +123,10 @@
       "sentences": 113
     },
     "after": {
-      "bytes": 16393,
-      "chars": 9844,
+      "bytes": 16409,
+      "chars": 9830,
       "lines": 150,
-      "sentences": 129
+      "sentences": 131
     }
   },
   {
@@ -138,10 +138,10 @@
       "sentences": 91
     },
     "after": {
-      "bytes": 18678,
-      "chars": 11413,
+      "bytes": 18506,
+      "chars": 11314,
       "lines": 215,
-      "sentences": 115
+      "sentences": 114
     }
   },
   {
@@ -153,10 +153,10 @@
       "sentences": 40
     },
     "after": {
-      "bytes": 11950,
-      "chars": 6640,
+      "bytes": 11906,
+      "chars": 6613,
       "lines": 227,
-      "sentences": 42
+      "sentences": 41
     }
   },
   {
@@ -168,8 +168,8 @@
       "sentences": 34
     },
     "after": {
-      "bytes": 8213,
-      "chars": 4698,
+      "bytes": 8294,
+      "chars": 4721,
       "lines": 207,
       "sentences": 36
     }
@@ -183,8 +183,8 @@
       "sentences": 80
     },
     "after": {
-      "bytes": 16382,
-      "chars": 10148,
+      "bytes": 16435,
+      "chars": 10162,
       "lines": 375,
       "sentences": 80
     }
@@ -198,10 +198,10 @@
       "sentences": 195
     },
     "after": {
-      "bytes": 17454,
-      "chars": 11188,
+      "bytes": 17560,
+      "chars": 11229,
       "lines": 257,
-      "sentences": 126
+      "sentences": 127
     }
   },
   {
@@ -213,8 +213,8 @@
       "sentences": 99
     },
     "after": {
-      "bytes": 14979,
-      "chars": 9820,
+      "bytes": 14961,
+      "chars": 9807,
       "lines": 167,
       "sentences": 88
     }
@@ -228,8 +228,8 @@
       "sentences": 120
     },
     "after": {
-      "bytes": 13757,
-      "chars": 8139,
+      "bytes": 13853,
+      "chars": 8170,
       "lines": 296,
       "sentences": 120
     }
@@ -243,10 +243,10 @@
       "sentences": 114
     },
     "after": {
-      "bytes": 18541,
-      "chars": 10818,
+      "bytes": 18646,
+      "chars": 10855,
       "lines": 273,
-      "sentences": 126
+      "sentences": 128
     }
   },
   {
@@ -258,18 +258,18 @@
       "sentences": 208
     },
     "after": {
-      "bytes": 12940,
-      "chars": 7547,
+      "bytes": 12949,
+      "chars": 7544,
       "lines": 129,
-      "sentences": 116
+      "sentences": 117
     }
   },
   {
     "path": ".claude/skills/gx-work/SKILL.md",
     "before": null,
     "after": {
-      "bytes": 5559,
-      "chars": 2942,
+      "bytes": 5490,
+      "chars": 2912,
       "lines": 41,
       "sentences": 49
     }

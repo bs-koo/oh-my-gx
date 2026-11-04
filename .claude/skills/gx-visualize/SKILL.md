@@ -1,6 +1,6 @@
 ---
 name: gx-visualize
-description: Use when 사용자가 GX 산출물의 요구사항 추적, 진행 상태, 변경 영향, 서비스 구조, 호출 순서를 시각화해 달라고 하거나 "시각화 포함", "구조를 그림으로 보여줘", "변경 영향도를 시각화해줘"라고 요청한다.
+description: GX 산출물의 요구사항 추적·진행 상태·변경 영향·서비스 구조·호출 순서 시각화를 명시적으로 요청할 때 사용한다. '시각화 포함', '구조를 그림으로 보여줘' 같은 요청을 근거가 연결된 한국어 HTML로 작성한다.
 argument-hint: <trace|progress|impact|service|sequence> [--input <path>] [--input-path <path>]... [--dev-dir <path>] [--output <path>] [--backend auto|archify|mermaid|static] [--project-root <path>] [--map-dir <path>] [--domain <name>] [--changed-since <ref>] [--labels <path>]
 allowed-tools:
   - Read

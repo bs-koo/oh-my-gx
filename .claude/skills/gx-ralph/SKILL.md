@@ -1,7 +1,7 @@
 ---
 name: gx-ralph
 version: 1.0.0
-description: "루프 엔지니어링(Ralph 루프) 진입 스킬 - PRD 수용 기준을 AC 원장으로 변환하고 외부 러너의 무인 반복을 준비한다. PRD 확정 후 사용. '랄프 준비', '랄프 루프 준비해줘', 'ralph', '루프 돌려', '랄프 상태' 시 사용. '랄프로 … 개발해줘'처럼 개발 요청에 붙는 발화는 이 스킬이 아니라 /gx-work·/gx-tdd의 --ralph 전환으로 라우팅한다 (skill-routing.md)."
+description: 확정된 PRD로 Ralph 무인 반복을 준비하거나 '랄프 준비', '루프 돌려', '랄프 상태'를 요청할 때 사용한다. 준비·상태 확인을 담당하며, '랄프로 개발해줘' 같은 개발 요청은 gx-work·gx-tdd의 --ralph 경로로 연결한다.
 argument-hint: "[--status]"
 allowed-tools:
   - Read

@@ -1,11 +1,11 @@
 {
   "name": "oh-my-gx",
-  "description": "gx-work 하나로 맥락·계획·TDD 개발·검증을 연결하는 개발 자동화 플러그인.",
+  "description": "도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인.",
   "version": "2.0.0",
   "author": {
     "name": "bs-koo"
   },
-  "homepage": "https://github.com/bs-koo/oh-my-gx",
+  "homepage": "https://bs-koo.github.io/oh-my-gx/",
   "repository": "https://github.com/bs-koo/oh-my-gx",
   "keywords": [
     "java",
@@ -15,7 +15,10 @@
     "korean",
     "dev-workflow",
     "prd",
-    "code-review"
+    "code-review",
+    "ai-workflow",
+    "tdd",
+    "domain-context"
   ],
   "skills": "./.claude/skills/",
   "hooks": {

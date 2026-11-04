@@ -1,6 +1,6 @@
 ---
 name: gx-work
-description: "프로젝트를 이해하거나 계획하고, 기능·버그 수정을 실행하고 이어간다. ‘이 프로젝트 파악해줘’, ‘계획만’, ‘이 문서대로 구현’, ‘이어서 개발’, ‘구현 후 PR’ 같은 사용자 목표의 공통 진입점. 구현은 gx-tdd가 수행한다."
+description: 프로젝트 파악, 작업 계획, 기능 개발·버그 수정, 진행 상태 조회·작업 재개를 요청할 때 사용하는 공통 진입점이다. 목표·범위·종료점을 정리하고 개발 실행은 gx-tdd로 연결한다.
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 ---
 

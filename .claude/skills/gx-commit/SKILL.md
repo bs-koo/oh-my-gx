@@ -1,6 +1,6 @@
 ---
 name: gx-commit
-description: 브랜치 타입을 파싱하여 한국어 커밋 메시지를 생성한다. "커밋", "commit" 시 사용.
+description: Git 변경사항의 커밋(commit)을 요청할 때 사용한다. 보호 브랜치와 검증 상태를 확인한 뒤 브랜치 규칙에 맞는 한국어 메시지로 커밋한다.
 argument-hint: [커밋 메시지]
 allowed-tools:
   # git - 커밋 핵심

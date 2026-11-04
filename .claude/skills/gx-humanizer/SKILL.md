@@ -1,7 +1,7 @@
 ---
 name: gx-humanizer
 argument-hint: "<파일 경로 또는 텍스트>"
-description: AI 글쓰기 흔적을 감지하여 자연스러운 문체로 교정한다. "AI 티 빼줘", "자연스럽게 고쳐줘" 시 사용.
+description: "'AI 티 빼줘', '자연스럽게 고쳐줘'처럼 AI 글쓰기 패턴의 점검·교정을 요청할 때 사용한다. 텍스트의 의미와 문서 유형을 유지하며 문장을 자연스럽게 다듬는다."
 allowed-tools:
   - Read
   - Write

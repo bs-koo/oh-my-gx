@@ -4,13 +4,13 @@
     "name": "bs-koo"
   },
   "metadata": {
-    "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인"
+    "description": "도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인."
   },
   "plugins": [
     {
       "name": "oh-my-gx",
       "source": "./",
-      "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 구현, 리뷰, PR까지 에이전트 팀이 처리합니다.",
+      "description": "도메인 컨텍스트와 TDD를 기반으로 개발 전 과정을 연결하는 AI 워크플로 오케스트레이션 플러그인.",
       "version": "2.0.0"
     }
   ]
