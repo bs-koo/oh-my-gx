@@ -14,6 +14,10 @@
 
 이후 `.claude/config.json`, `.dev/`, `context/`, `references/`와 모든 Git·SVN·빌드·테스트 명령은 `PROJECT_ROOT` 기준으로 읽고 실행한다. 프로젝트 파일의 상대경로는 이 루트에서 해석한다. 번들 스킬·phase 파일(`Read("setup-resume.md")`, `Read("setup-work.md")` 등)은 지시 파일 위치 기준 상대경로로 읽는다.
 
+## Step -0.5: gx-work 인계 선행 검증
+
+gx-work 인계: `Read("../references/plan-handoff.md")`대로 `validate-handoff --handoff <H> --project-root <실제 루트>` 실행. exit 0 + `ready-for-tdd: true` 전 state·stash·브랜치·빌드/코드 변경 금지.
+
 ## Step 0: 진행 중 작업 감지
 
 `${PROJECT_ROOT}/.dev/*/state.md`를 기준으로 진행 상태를 탐색한다. ARGS[0]이 있고 `--resume`이 없으면 새 작업이다 — 이 Step을 건너뛰고 Step 1로 진행한다.
@@ -48,10 +52,10 @@
 
 config·플래그·자연어·질문 답변이 없으면 잠정 `standard`; **Step 3.0 config 로드 후 `modelProfile`로 재확정한다** (vcs와 동일).
 
-Codex는 [모델 정책](../../gx-dev/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
+Codex는 [모델 정책](../../gx-work/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
 
 Claude Code의 `eco` 안내: "architect는 opus, 지정된 검토 역할은 sonnet입니다. 절차·게이트·Iron Law는 유지하며 메인 세션 모델은 바뀌지 않습니다."
-`standard` 안내: "역할 frontmatter 모델을 유지합니다. 에이전트 절약에는 eco를 사용하세요."
+실제 모델 배정을 한 줄로 알린다.
 Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 공유 규칙 "모델 프로파일"을 따른다.
 
 ## Step 2: 베이스 브랜치 결정
@@ -86,7 +90,7 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 
 1. `AUTO_STASHED=true`이면 **Step 5 종료 시점**에 `git stash pop` 실행.
 2. pop 충돌 시 보고하고 AskUserQuestion:
-   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>`). `DEV_DIR`이 미정이면(2.3은 Step 6.5보다 먼저 실행) Step 6.5 규칙대로 `.dev/{branch-slug}`를 확정하고 `mkdir -p` 후 Write한다. 골격이 없으면 `--resume`이 작업을 못 찾는다. 충돌을 유지한 채 중단하고 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개한다.
+   - "stash를 유지하고 수동 해결" → **중단 전에 `${DEV_DIR}/state.md` 골격을 Write한다** (`pipeline: gx-tdd`, `status: in_progress`, `auto-stashed: true`, execution-log에 `auto-stash: <ref>`, Step 7 보존 필드). `DEV_DIR`이 미정이면(2.3은 Step 6.5보다 먼저 실행) Step 6.5 규칙대로 `.dev/{branch-slug}`를 확정하고 `mkdir -p` 후 Write한다. 골격이 없으면 `--resume`이 작업을 못 찾는다. 충돌을 유지한 채 중단하고 stash ref와 수동 복원 명령(`git stash pop`)을 안내한다. 사용자가 해결 후 재개한다.
    - "stash를 drop하고 계속" → `git stash drop`으로 버리고 다음 단계 진행. 위험 수용을 state.md에 기록.
 3. 복원 성공 시 `AUTO_STASHED=false`로 초기화하고 execution-log에 `auto-stash-restored` 기록.
 
@@ -118,9 +122,13 @@ Step 5 (작업 브랜치 생성)가 완료된 후에만 stash를 복원한다. �
 - **존재 시**: Read하여 `vcs`, `modelProfile`, `projectTypes`, `sensitiveFilePatterns`, `buildArtifactPatterns`, `timeouts`, `contextLimits`를 변수에 로드. **Step 1에서 config 부재로 `VCS_TYPE`을 git으로 잠정했다면 여기서 `vcs` 값으로 재확정한다** (이후 Phase에 반영). Step 1.5에서 플래그·자연어·질문 답변 없이 잠정 `standard`였다면 `modelProfile` 값(비어있으면 `standard` 유지)으로 `MODEL_PROFILE`을 재확정한다.
 - JSON 파싱 실패 시: "config.json이 손상되었습니다. 백업 후 재설정하세요." 출력 후 중단.
 
+### 3.0.4 관련 문서 사전 대조
+
+`Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 관련 context/원장/W행의 필요한 차이만 반영한다. 명시 `--work` 오류와 문서 금지 범위를 지키며, AC 확정 전 검사 입력은 `units: []`로 둔다.
+
 ### 3.0.5 작업 계획 참조 (`--work` 사용 시)
 
-의도 파싱이 `--work {ID}`(플래그 또는 WORK 추출)로 작업 ID를 확정했으면 `Read("setup-work.md")`의 "작업 계획 참조" 절을 수행한다 — 계획 행에서 도메인·요구사항·브랜치명을 확정하고 의존·중복 착수를 확인하며, Step 7에서 state.md에 `work-id`를 기록한다. 작업 ID가 없어도 `.dev/plan.md`가 존재하면 같은 파일의 "계획이 있으나 작업 ID가 지정되지 않은 경우" 소절만 수행한다 (요청을 계획의 대기 작업과 대조). 작업 ID도 계획 파일도 없으면 이 Step을 건너뛴다.
+`--work`/WORK 추출 또는 3.0.4에서 W행을 확정했으면 `Read("setup-work.md")`의 "작업 계획 참조"를 수행한다. 도메인·요구사항·브랜치·의존·중복 착수를 확인하고 Step 7에 `work-id`를 기록한다. 같은 연결 승인은 반복하지 않는다. ID 없이 계획만 있으면 같은 파일의 "계획이 있으나 작업 ID가 지정되지 않은 경우"를 따른다. 문서 금지의 명시 예외로 둘 다 없으면 차이를 보고하고 건너뛴다.
 
 ### 3.1 병렬 수집
 
@@ -192,7 +200,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 **git인 경우:**
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
 
-`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-dev/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
+`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
 
 ## Step 6.5: DEV_DIR 결정
 
@@ -211,8 +219,10 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`이며 `pipeline: gx-tdd`가 아니면(gx-dev 등 다른 파이프라인 산출물), 덮어쓰면 해당 파이프라인 상태가 유실됨을 경고하고 AskUserQuestion으로 덮어쓰기/중단을 확인받는다.
 `${DEV_DIR}/state.md`에 초기 상태를 Write한다:
 - phase: setup, status: in_progress
+- run-id·goal·stop-at: handoff 값을 보존. 직접 호출은 새 고유 run-id와 명시 종료점(기본 verify)을 쓴다. 다른 실행의 보고서를 섞지 않는다.
+- 보존: `Read("../references/pipeline-state.md")`.
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
-- vcs-type, branch, base, project-type, project-root, args, flags 기록 (svn은 branch/base 미사용). `flags`에는 의도 파싱의 RALPH 우선순위 규칙을 **통과해 살아남은** RALPH는(플래그·자연어 `랄프로` 등 출처 무관) `--ralph`로 **정규화하여** 포함한다 — phase-implement Step 0.7의 판정 키이며 별도 필드를 두지 않는다. 우선순위 규칙에서 **무시된 RALPH는 기록하지 않는다** (core 세션에 `--ralph`가 남아 `--status`·Step 0.7이 이중 안내를 내지 않도록). `VCS_TYPE`이 `svn`이면 포함하지 않고 "gx-ralph는 SVN 미지원 — 대화형으로 진행합니다" 1줄을 안내한다 (의도 파싱의 svn 우선 배제가 1차, 이것은 2차 방어). `--isolated`는 있는 그대로 기록한다 — phase-implement Step 2-I와 phase-review 4b의 경로 판정 키다.
+- 실행 환경·args·flags는 상태 계약대로 기록한다. 유효한 `--ralph`만 정규화하며 무시된 RALPH는 기록하지 않는다. `--isolated` 등 나머지 flags는 보존하고 method 충돌은 먼저 해소한다.
 - mode, intent-source 기록 (의도 파싱 결과)
 - model-profile 기록 (Step 1.5/3.0 결정 값)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.

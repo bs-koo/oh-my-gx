@@ -1,6 +1,6 @@
 ---
 name: gx-tech-debt
-description: 코드베이스의 기술 부채를 분석하고 우선순위 로드맵을 제공한다. "기술 부채", "부채 분석", "부채 확인" 시 사용.
+description: 기술 부채 분석·개선 우선순위 요청에 사용한다. 코드·아키텍처·의존성·테스트를 읽기 전용으로 진단하고 심각도·수정 비용에 따른 개선 로드맵을 제시한다.
 argument-hint: "[도메인|경로] [--type code|arch|deps|test|all]"
 allowed-tools:
   # 파일시스템 (읽기 전용)
@@ -34,13 +34,15 @@ allowed-tools:
   - AskUserQuestion
 ---
 
+# 기술 부채 진단
+
 코드베이스의 기술 부채를 유형별로 분석하고, 심각도와 수정 비용을 기반으로 우선순위 로드맵을 제공한다.
 
 항상 한국어로 응답한다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → `request_user_input`. 그 도구를 쓸 수 없으면 자연어로 묻되, **승인 없이 다음 단계로 넘어가지 않는다**는 계약은 그대로 지킨다.
@@ -85,7 +87,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 1. VCS에 따라 프로젝트 루트를 확인한다.
    - git: `git rev-parse --show-toplevel`
    - svn: `svn info`의 Working Copy Root Path, 또는 `pwd`
-2. `.claude/config.json`의 `projectTypes.detect` 설정을 기준으로 프로젝트 타입을 우선 감지한다 (gx-commit/gx-dev 스킬과 동일한 방식).
+2. `.claude/config.json`의 `projectTypes.detect` 설정을 기준으로 프로젝트 타입을 우선 감지한다 (gx-commit/gx-work 스킬과 동일한 방식).
 3. config에서 타입을 판단할 수 없는 경우에만 빌드/설정 파일을 추가 단서로 사용한다:
    - `build.gradle.kts` / `build.gradle` → java/kotlin
    - `package.json` → node

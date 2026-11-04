@@ -1,7 +1,7 @@
 ---
 name: gx-ralph-iterate
 version: 1.0.0
-description: "gx-ralph 루프의 반복 1회 실행 스킬 (헤드리스 전용) - 미완료 AC 1건을 구현·verify·커밋한다. 러너(scripts/gx-ralph.sh)가 호출하며 사용자가 직접 호출하지 않는다."
+description: gx-ralph 외부 러너가 헤드리스 세션에서 호출하는 내부 전용 스킬로, 사용자가 직접 호출하지 않는다. 미완료 수용 기준(AC) 1건의 구현·검증·커밋과 원장 갱신을 수행한다.
 argument-hint: ""
 allowed-tools:
   - Read
@@ -35,7 +35,7 @@ allowed-tools:
   - Bash(grep *)
 ---
 
-# gx-ralph-iterate
+# 반복 개발 실행
 
 > **이 스킬**: gx-ralph-iterate — Ralph 루프의 반복 1회 (헤드리스 전용)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.
@@ -46,7 +46,7 @@ allowed-tools:
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `Task(subagent_type="oh-my-gx:{name}")` → 공통 실행 규약의 `codex-roles/index.json`과 역할 본문·도구 제약을 읽어 `spawn_agent`의 message에 태스크 prompt 전문과 함께 전달한다. 격리 시 `fork_turns: "none"`을 쓴다.
@@ -78,32 +78,25 @@ Codex 반복 프롬프트에 러너가 전달한 **설치된 GX 루트와 `scrip
 3. `${DEV_DIR}/state.md` Read. 파싱 실패 또는 `pipeline: gx-ralph`가 아니거나 `status: in_progress`가 아니면 → `<ralph>BLOCKED: state.md 부재/불일치</ralph>`
 4. state.md의 `branch` 필드와 현재 브랜치가 다르면 → `<ralph>BLOCKED: 브랜치 불일치 (state: {A}, 현재: {B})</ralph>`
 5. `${DEV_DIR}/ac-status.json` Read. JSON 파싱 실패 → `<ralph>BLOCKED: ac-status.json 파싱 실패</ralph>`
+6. state.md의 `origin: gx-tdd`가 정확히 한 번 있어야 한다. gx-dev·다른 값·origin 누락·중복이면 파일·원장을 변경하거나 에이전트를 호출하지 않고 `<ralph>BLOCKED: TDD origin 확인 필요 — 기존 원장을 보존하고 /gx-work에서 명시 전환하세요</ralph>`로 종료한다. 헤드리스에서 origin을 추정하거나 누락 필드를 자동 보완하지 않는다.
+7. 사용자가 명시한 `stop-at: verify` 또는 "커밋하지 말 것"이 Ralph의 반복별 로컬 커밋과 충돌하고 실제 확인 기록이 없으면 파일 변경 전에 BLOCKED로 종료한다. 명시 플래그 `--stop-at verify`는 `ralph-local-commits: approved`와 실제 결정 출처가 있어야 한다. 기본 종료점이나 무응답을 push 권한으로 해석하지 않는다.
 
 ### Step 1: AC 선택
 
 1. `acs` 배열에서 `passes: false`이고 `attempts < 3`인 **첫 항목**을 선택한다.
 2. 선택할 항목이 없으면:
-   - 전 항목이 `passes: true` → `<ralph>COMPLETE</ralph>` 출력 후 종료.
+   - 전 항목이 `passes: true` → 구현/verify를 반복하지 않고 Step 5.5의 최종 문서 인계 기록 후 Step 6으로 진행한다.
    - `passes: false`인데 전부 `attempts >= 3` → `<ralph>BLOCKED: {해당 AC id 목록} 3회 연속 실패 — 사람 판단 필요</ralph>` 출력 후 종료.
 
 ### Step 2: 구현 (에이전트 디스패치)
 
 컨텍스트 수집: `${DEV_DIR}/prd.md`의 해당 AC 관련 요구사항, `${DEV_DIR}/design.md`(있으면 해당 AC 관련 섹션), `${DEV_DIR}/codemap.md`(있으면), `${DEV_DIR}/progress.txt` 마지막 20줄(이전 반복의 학습 — 특히 같은 AC의 `last_error`가 있으면 반드시 포함).
 
-state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:` 접두사 필수):
+검증된 TDD origin으로만 디스패치한다 (`subagent_type`은 `oh-my-gx:` 접두사 필수).
 
-- **origin: gx-dev** → `oh-my-gx:coder` 단일 디스패치:
-  ```
-  {id}: {title}을 구현하라.
-  - PROJECT_ROOT: ./
-  - 요구사항/설계 발췌: {수집한 컨텍스트}
-  - 이전 시도 실패 사유 (있으면): {last_error + progress 발췌}
-  - 이 AC 하나만 구현한다. 다른 AC 범위를 건드리지 않는다.
-  - 완료 후 변경 파일 목록과 요약을 보고하라.
-  ```
-- **origin: gx-tdd** → 2석 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:implementer`(GREEN 최소 구현 + REFACTOR 정리 — 루프 모드). 각 단계 프롬프트는 `gx-tdd/phases/phase-implement.md`의 Step 2-R/2-I 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정하고 **report 파일·15줄 반환 계약은 제외**한다 — 루프에는 reports/ 디렉토리와 태스크 번호가 없으므로 RED 산출물은 인라인으로 인계하고 implementer는 루프 모드(agents/implementer.md)로 동작한다. focused 검증 명령은 이 AC의 테스트 파일로 조립한다(config `focusedTest` 템플릿 — 미지원 시 해당 타입의 전체 `test` 명령으로 폴백하고 반복 로그에 기록). phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다. (v1.25.0 이전에 시작된 루프의 잔여 반복도 다음 반복부터 이 2석으로 디스패치한다 — 반복은 서로 독립이다)
+- **origin: gx-tdd** → 2석 순차 디스패치: `oh-my-gx:red-writer`(해당 AC의 실패 테스트 작성·실패 확인) → `oh-my-gx:implementer`(GREEN 최소 구현 + REFACTOR 정리 — 루프 모드). 각 단계 프롬프트는 `../gx-tdd/phases/phase-implement.md`의 Step 2-R/2-I 디스패치 프롬프트를 따르되, 대상을 이 AC 1건으로 한정하고 **report 파일·15줄 반환 계약은 제외**한다 — 루프에는 reports/ 디렉토리와 태스크 번호가 없으므로 RED 산출물은 인라인으로 인계하고 implementer는 루프 모드(agents/implementer.md)로 동작한다. focused 검증 명령은 테스트 파일을 저장한 뒤 공통 `gx-test-plan.py focused`로 이 AC의 파일만 조립한다. 반환된 `command`와 프로젝트 루트 상대 `cwd`를 RED→IMPLEMENT 인라인 인계에 함께 보존하고 `${PROJECT_ROOT}/${focused.cwd}`에서 실행한다. 명시 focusedTest 또는 확인된 runner만 사용하며, 미지원이면 설정 부족을 BLOCKED로 보고하고 전체 스위트를 반복하지 않는다. phase-implement.md를 Read할 수 없으면(플러그인 설치 환경의 경로 차이 등) BLOCKED로 중단하지 않는다 — 위 괄호의 각 에이전트 기본 역할 계약대로 이 AC 1건 한정 프롬프트를 직접 구성해 디스패치한다. 대상이 UI(화면 컴포넌트·컴포저블·스토어·라우팅 가드)이면 red-writer 프롬프트에 `../gx-tdd/references/frontend-testing.md`의 UI 가드(셀렉터 우선순위·스타일 assert 금지)를 함께 전달한다. (v1.25.0 이전에 시작된 루프의 잔여 반복도 다음 반복부터 이 2석으로 디스패치한다 — 반복은 서로 독립이다)
 
-  **하네스 사전 확인 (origin: gx-tdd 전용, 디스패치 전 1회)**: 이 AC가 요구하는 레이어에 실행 가능한 테스트 러너가 있는지 먼저 확인한다. 대화형 파이프라인은 phase-implement Step 0.5의 하네스 게이트에서 사용자에게 물어보지만, **헤드리스에는 답할 사람이 없다.** 러너가 없는 채로 RED를 디스패치하면 "실패"가 아니라 "실행 불가"가 나오고, 그 AC는 attempts만 3회 소진한 뒤 BLOCKED가 된다 — 러너 부재라는 진짜 원인은 로그에 묻힌다.
+  **하네스 사전 확인 (모든 반복, 디스패치 전 1회)**: 이 AC가 요구하는 레이어에 실행 가능한 테스트 러너가 있는지 먼저 확인한다. 대화형 파이프라인은 phase-implement Step 0.5의 하네스 게이트에서 사용자에게 물어보지만, **헤드리스에는 답할 사람이 없다.** 러너가 없는 채로 RED를 디스패치하면 "실패"가 아니라 "실행 불가"가 나오고, 그 AC는 attempts만 3회 소진한 뒤 BLOCKED가 된다 — 러너 부재라는 진짜 원인은 로그에 묻힌다.
 
   판별: 이 AC의 대상 파일 경로가 속한 레이어의 test 명령(복합 명령이면 해당 조각)을 실행해 **테스트가 1건 이상 수집되는지** 확인한다. 0건이거나 명령 자체가 실행 불가이면 디스패치하지 않고 즉시 종료한다:
 
@@ -112,6 +105,8 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
   ```
 
   `attempts`를 증가시키지 않는다 — 구현 실패가 아니라 전제 미충족이며, 시도 횟수를 소진시키면 하네스를 갖춘 뒤에도 그 AC가 3회 초과로 막힌다. `progress.txt`에 사유를 1줄 기록한다.
+
+RED의 실제 assertion 실패와 테스트 파일 해시를 확인한 뒤에만 implementer를 호출한다. 명령 실행 불가·컴파일/수집 오류를 RED 성공으로 인정하지 않는다. 구현 뒤 테스트 파일 무변경·해시 대조도 유지한다.
 
 디스패치가 코드 변경을 보고하면 즉시 state.md에 `verify-status: pending`을 기록한다 (`verify-fingerprint`도 빈 값으로 리셋 — 직전 반복의 지문이 남아 있으면 판정이 흐려진다).
 
@@ -139,17 +134,21 @@ state.md의 `origin`에 따라 디스패치한다 (`subagent_type`은 `oh-my-gx:
 1. ac-status.json: 해당 AC `passes: true`, `updated` 갱신.
 2. progress.txt에 1줄 append: `[iter] {id} 완료: {커밋 sha 앞 7자} {학습/특이사항 1줄}`
 
-### Step 5.5: 작업 계획(plan.md) 갱신 (**모든 AC 완료 시에만**)
+### Step 5.5: 루프 구현 완료와 문서 인계 (**모든 AC 통과 시에만**)
 
 **선행 조건**: ac-status.json의 모든 AC가 `passes: true`여야 한다. 하나라도 `passes: false`이면 이 단계를 건너뛴다.
 
-루프는 AC를 1건씩 처리하므로, 이 조건 없이 갱신하면 첫 반복에서 작업 전체가 `완료`로 표시되고 push된다. 그러면 이 작업에 의존하는 다른 작업의 담당자가 phase-setup 3.0.5의 의존 확인을 통과해, 1/N만 끝난 산출물 위에서 착수하게 된다.
+모든 AC 통과는 **루프 구현 완료**다. 관련 문서 대조·누적 최종 리뷰·최종 verify가 아직 남으므로 전체 개발 완료나 merged로 보고하지 않는다. `.dev/plan.md`의 W행은 `진행`으로 유지하고 여기서 완료로 바꾸거나 계획 커밋·push하지 않는다. 기존 완료/폐기 행도 덮어쓰지 않는다.
 
-조건을 만족하면: `.dev/plan.md`가 존재하고 state.md에 `work-id`가 있을 때 해당 행의 `상태`를 `완료`로 바꾸고 `docs: [plan] {ID} 완료` 메시지로 커밋한 뒤 **현재 브랜치로 push한다** — phase-complete Step 3.5와 같은 층위이며, push하지 않으면 이 작업에 의존하는 담당자의 의존 확인이 계속 막힌다. 이 루프는 phase-complete를 거치지 않으므로 여기서 직접 수행한다. 파일이 없거나 행을 찾지 못하면 건너뛴다. 현재 값이 `폐기`이면 바꾸지 않는다.
+같은 run-id·goal·work-id·원문 source·종료점을 보존하고 state.md에 `document-sync-pending: true`를 기록한다. 대화형 복귀 시 `/gx-tdd --phase review`로 누적 변경을 리뷰하고 `/gx-tdd --phase complete`에서 현재 AC/인수·관련 문서·최종 verify를 마치도록 안내한다. 이 기록은 `.dev` 진행 상태이며 이후 허용된 커밋에 포함한다. 문서 금지이면 허용된 실행 기록/최종 요약에만 남긴다.
+
+이 단계에서 context/원장 전체 갱신, 추가 에이전트 디스패치, 추가 verify를 실행하지 않는다. AC별 문서 갱신도 하지 않는다. Step 4의 기존 로컬 커밋 opt-in·지문/테스트 게이트·원격 권한은 유지한다. 이어서 Step 6의 기존 러너 종료 계약을 출력한다.
 
 ### Step 6: 종료 계약 출력
 
 - 남은 미완료 AC(`passes: false`)가 있으면 → `<ralph>CONTINUE</ralph>`
 - 모두 `passes: true` → `<ralph>COMPLETE</ralph>`
+
+COMPLETE는 루프 구현 종료 표식이다. 문서/최종 검증 대기는 Step 5.5의 인계 기록을 사용하고 전체 개발 완료와 구분한다.
 
 응답의 **마지막 줄**에 위 문자열만 출력하고 종료한다.

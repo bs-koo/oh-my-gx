@@ -1,4 +1,4 @@
-"""현재 지원하는 완료 단계 opt-in 계약을 양쪽 파이프라인에서 검증한다."""
+"""현재 지원하는 완료 단계 opt-in 계약을 단일 TDD 파이프라인에서 검증한다."""
 import re
 import unittest
 from pathlib import Path
@@ -10,7 +10,7 @@ SKILLS = ROOT / ".claude" / "skills"
 
 class GxVisualizeRoutingTests(unittest.TestCase):
     def complete_sections(self):
-        for name in ("gx-dev", "gx-tdd"):
+        for name in ("gx-tdd",):
             text = (SKILLS / name / "phases" / "phase-complete.md").read_text(encoding="utf-8")
             section = text.split("## Step 5.5:", 1)[1].split("## Step 6:", 1)[0]
             yield name, section
@@ -59,7 +59,7 @@ class GxVisualizeRoutingTests(unittest.TestCase):
                 self.assertIn("시각화 성공으로 그 실패를 덮지 않는다", section)
 
     def test_removed_design_review_hooks_are_not_required(self):
-        for name in ("gx-dev", "gx-tdd"):
+        for name in ("gx-tdd",):
             for phase in ("design", "review"):
                 with self.subTest(pipeline=name, phase=phase):
                     text = (SKILLS / name / "phases" / f"phase-{phase}.md").read_text(encoding="utf-8")

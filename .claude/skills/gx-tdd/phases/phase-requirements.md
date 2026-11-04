@@ -16,18 +16,22 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 
 **최대 1회 반복.**
 
-## 기준선 사전 실행 (진입 직후)
+## 기준선 준비
 
-본문(핵심 모드의 ac.md 작성, 전체 모드의 PRD 사이클)보다 먼저 같은 디렉토리 `phase-implement.md` Step 0.5의 "기준선 사전 실행 (Claude Code·git 전용)" 절차로 기준선 측정을 백그라운드에서 시작한다. 판정은 RGR 진입 시 Step 0.5가 한다. **이번 실행의 phase 목록에 implement가 있을 때만**(전체·핵심 모드) **Claude Code·git에서** 시작한다 — `--phase requirements`·`--phase design` 단독 실행은 같은 실행에서 결과를 쓸 Step 0.5가 없어 시작하지 않고, Codex와 svn은 시작하지 않고 Step 0.5가 동기 실행한다. 재진입 시 이미 진행 중이거나 완료된 실행이 있으면 다시 시작하지 않는다.
+요구사항을 이해하기 전에 전체 테스트·빌드를 시작하지 않는다. 관련 소스·기존 테스트의 경로만 식별해 계획으로 넘긴다. 기준선 실행은 phase-implement Step 0.5에서 영향 범위를 확정한 뒤 수행한다. 같은 실행 증거의 재사용 규약은 `references/test-execution.md`를 따른다.
 
 ## 핵심 모드 분기 (core)
+
+먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 확인한다. 관련 문서·FR/W 연결을 기존 계획에서 재사용하고 누락/변경만 보완한다. 조회·계획만 요청했으면 읽기만 한다. 아래 G-W-T 확정 후 검사 입력에 해당 AC/FR 연결만 보강하고, 구현 직전에 같은 run-id로 다시 검사한다. 문서 관측이나 helper의 ready 표시는 요구사항/승인을 대신하지 않는다.
+
+유효한 계획·handoff에 이번 범위의 승인된 G-W-T AC가 있으면 이를 `ac.md`에 연결해 재사용한다. 이미 확인한 배경·수치·결정을 다시 인터뷰하지 않는다. 아래 G-W-T 검증은 실행하고, 누락·변경된 AC에 대해서만 실제 결정을 확인한다. 기존 승인 근거가 없으면 최초 승인을 받는다.
 
 핵심 모드이면 **오케스트레이터가 ac.md를 직접 작성한다** (product-owner 디스패치 없음):
 - ARGS[0] + 코드 맵 + DOMAIN_CONTEXT(있으면 — 미반영 항목과 겹치는 AC는 그 FR ID를 `FR-N (status.md 미반영)` 형식으로 인용한다)를 기반으로 `${PROJECT_ROOT}/${DEV_DIR}/ac.md`를 작성한다.
 - 포함 섹션: `## 배경`(2~3줄) + `## 요구사항 (AC)` — **AC는 Given-When-Then 형식 강제** (core여도 RGR 사이클이 강제되므로. 위 Iron Law의 형식·예시를 그대로 따른다). AC는 3~5개 이내.
 - 긴급 버그 수정 요청이면 AC를 재현 조건 관점으로 구성한다 — AC-1은 재현 조건(Given 현재 상태 / When 트리거 / Then 잘못된 동작이 아닌 **기대 동작**), 필요 시 회귀 방지 AC 추가. 재현 조건 정보가 부족하면 추측하지 말고 사용자에게 확인한다.
 - 저장 전에 **G-W-T 검증 게이트**(아래 섹션)를 정상 플로우와 동일하게 수행한다 (core에서도 RGR이 강제되므로 그 전제인 게이트도 유지).
-- 게이트 통과 후 사용자에게 전문 표시 + 승인 확인 (AskUserQuestion 1회: 승인/수정 요청).
+- 게이트 통과 후 승인 근거가 없거나 범위가 달라진 경우에만 전문 표시와 최초/변경 승인을 받는다 (승인/수정 요청). 기존 실제 승인과 범위가 유효하면 경로·변경 요약만 보고하고 같은 승인을 반복하지 않는다.
 - 승인 → 저장 후 phase-implement로 진행.
 - 수정 요청 → 수정 선택 시 별도 후속 질문으로 수정할 부분을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영한다. 원 질문 UI Other에 직접 입력한 수정 답변은 별도 경로에서 사용한다. **G-W-T 게이트 재수행 + 재승인**을 거쳐 저장한다 (수정이 형식을 깨뜨릴 수 있으므로 게이트는 저장 전 불변식이다).
 
@@ -35,7 +39,9 @@ NO ACCEPTANCE CRITERIA WITHOUT EXECUTABLE SCENARIO
 
 ---
 
-**Step 1**: product-owner agent를 호출한다 (PRD 작성).
+**기존 계획 재사용 분기 (전체 모드)**: 검증된 `--from-plan`·`--handoff`가 있으면 [계획 인계 계약](../references/plan-handoff.md)으로 이번 범위의 G-W-T AC·제약·원문 포인터를 기존 PRD에 연결한다. 아래 G-W-T 게이트를 통과하고 실제 승인 근거가 있으면 이 Phase를 완료한다. 기존 PRD를 새로 작성하거나 전문 인터뷰·승인을 반복하지 않는다. 승인되지 않은 외부 계획이면 이번 범위만 최초 확인하고, 누락·변경이 있으면 그 항목만 product-owner에게 보완하도록 요청한다.
+
+**Step 1**: 재사용할 유효 계획이 없으면 product-owner agent를 호출한다 (PRD 작성).
 `Task(subagent_type="oh-my-gx:product-owner")` — prompt에 다음을 포함:
 - 기능/버그 설명: ARGS[0]
 - 코드 맵 (phase-setup에서 생성한 초기 맵)

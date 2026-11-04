@@ -24,6 +24,8 @@ jobs:
       - name: 행동 테스트 러너 (mock)
         run: bash scripts/test-behavior-tests.sh
   codex-contract:
+    env:
+      PYTHONUTF8: '1'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -36,7 +38,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Windows Git Bash 경로
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $gxGitBin = Join-Path $env:ProgramFiles 'Git/bin'
+          $gxGitBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Codex 리소스 정합성
         run: python scripts/sync-codex-resources.py --check
       - name: Codex 오프라인 계약 테스트
         run: python -m unittest discover -s tests -p "test_codex_*.py" -v
+      - name: 공통 진입·배포·지시문 예산
+        run: python -m unittest discover -s tests -p "test_gx_work*.py" -v
+      - name: 컨텍스트 인계·작업계획 정합성
+        run: python -m unittest discover -s tests -p "test_gx_context_workflow.py" -v
+      - name: 개발 전후 관련 문서 대조
+        run: python -m unittest discover -s tests -p "test_gx_development_context.py" -v
+      - name: 정책 근거·영향 분석 계약
+        run: python -m unittest discover -s tests -p "test_gx_lens*.py" -v
+      - name: 영향 범위 선택·증거 재사용
+        run: python -m unittest discover -s tests -p "test_gx_test_plan.py" -v

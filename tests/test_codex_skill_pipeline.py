@@ -1,4 +1,6 @@
 import json
+import importlib.util
+from types import SimpleNamespace
 import os
 import shutil
 import subprocess
@@ -8,10 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEV = ROOT / ".claude/skills/gx-dev/SKILL.md"
 TDD = ROOT / ".claude/skills/gx-tdd/SKILL.md"
 SETUPS = (
-    ROOT / ".claude/skills/gx-dev/phases/phase-setup.md",
     ROOT / ".claude/skills/gx-tdd/phases/phase-setup.md",
 )
 TDD_RESUME = ROOT / ".claude/skills/gx-tdd/phases/setup-resume.md"
@@ -23,6 +23,7 @@ def skill_bundle(directory: Path) -> str:
         directory / "references/intent-routing.md",
         directory / "references/pipeline-state.md",
         directory / "references/interaction-contract.md",
+        directory / "references/roles-and-phases.md",
     )
     return "\n".join(path.read_text(encoding="utf-8") for path in ordered)
 
@@ -122,48 +123,44 @@ esac
 
 class PipelineBootstrapContractTests(unittest.TestCase):
     def read(self, path: Path) -> str:
-        if path in (DEV, TDD):
+        if path in (TDD,):
             return skill_bundle(path.parent)
         return path.read_text(encoding="utf-8")
 
     def test_partial_phase_lists_include_setup(self):
-        for path in (DEV, TDD):
+        for path in (TDD,):
             text = self.read(path)
             loop = text[
                 text.index("### Phase 실행 루프") : text.index("### Phase 파일 경로")
             ]
             self.assertIn('elif --phase == "requirements":', loop, path)
-            self.assertIn("PHASES = [setup, requirements]", loop, path)
+            self.assertIn("PHASES = [explore, requirements]", loop, path)
             self.assertIn('elif --phase == "design":', loop, path)
-            self.assertIn("PHASES = [setup, design]", loop, path)
+            self.assertIn("PHASES = [explore, design]", loop, path)
             remaining = "PHASES = [해당 phase만]"
             self.assertIn(remaining, loop, path)
-            self.assertLess(loop.index("PHASES = [setup, design]"), loop.index(remaining))
+            self.assertLess(loop.index("PHASES = [explore, design]"), loop.index(remaining))
 
     def test_phase_selection_matches_loop(self):
-        for path in (DEV, TDD):
+        for path in (TDD,):
             text = self.read(path)
             selection = text[text.index("## Phase 선택") :]
-            self.assertIn(
-                "requirements`: `[setup, requirements]`를 실행하여 작업환경과 "
-                "도메인 컨텍스트를 확정한 뒤 PRD를 작성한다.",
-                selection,
-                path,
-            )
-            self.assertIn("design`: `[setup, design]`", selection, path)
+            self.assertIn("requirements`: `[explore, requirements]`", selection, path)
+            self.assertNotIn("[setup, requirements]", selection, path)
+            self.assertIn("design`: `[explore, design]`", selection, path)
 
     def test_design_gate_precedes_phase_file_execution(self):
-        for path in (DEV, TDD):
+        for path in (TDD,):
             text = self.read(path)
             loop_start = text.index("### Phase 실행 루프")
             loop_end = text.index("### Phase 파일 경로", loop_start)
             loop = text[loop_start:loop_end]
-            design_list = "PHASES = [setup, design]"
+            design_list = "PHASES = [explore, design]"
             design_gate = (
                 'if phase == "design" and not exists("${DEV_DIR}/prd.md"):\n'
                 "        → phase-requirements부터 실행"
             )
-            phase_execution = '# 2b. Phase 파일 Read (필수)\n    Read("phases/phase-{phase}.md")'
+            phase_execution = 'Read("phases/phase-{phase}.md")'
 
             self.assertIn(design_gate, loop, path)
             self.assertIn(phase_execution, loop, path)
@@ -225,7 +222,8 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             self.assertIn("마지막", rule, path)
             self.assertIn("비거나 모호하면", rule, path)
             svn_rules.append(rule)
-        self.assertEqual(*svn_rules)
+        self.assertEqual(len(svn_rules), 1)
+        self.assertIn("svn info --show-item url", svn_rules[0])
 
     def test_svn_url_failure_stops_before_ambiguous_fallback(self):
         for path in SETUPS:
@@ -272,7 +270,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             "PROJECT_ROOT`가 기본값 `./`",
             "기본값 `./`이면 **bare 명령**",
         )
-        for path in (DEV, TDD):
+        for path in (TDD,):
             text = self.read(path)
             for phrase in legacy_forms:
                 self.assertNotIn(phrase, text, path)
@@ -404,7 +402,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             self.assertNotIn("둘 다 실패하면", root_step, path)
 
     def test_tdd_config_guard_quotes_spaced_project_root(self):
-        path = SETUPS[1]
+        path = SETUPS[0]
         text = self.read(path)
         guard_start = text.index("### 3.0 config.json 가드")
         guard = text[guard_start : text.index("**Iron Law", guard_start)]
@@ -651,26 +649,6 @@ class PipelineBootstrapContractTests(unittest.TestCase):
 
 # Executable approximation of the acceptance rule in phase-implement Step 0.5
 # "기준선 사전 실행". It checks the decision table, not a model run.
-BASELINE_ACCEPT_PROBE = r'''
-accept() {
-  local done="$1" start="$2" current="$3" dir="$4"; shift 4
-  test -f "$done" || { echo sync; return; }
-  test "$(head -n 1 "$done")" = "start=$start" || { echo sync; return; }
-  test "$(tail -n 1 "$done")" = DONE || { echo sync; return; }
-  local end; end=$(sed -n 's/^fingerprint-end=//p' "$done")
-  test -n "$end" || { echo sync; return; }
-  test "${start#*:}" = "${end#*:}" && test "${start#*:}" = "${current#*:}" || { echo sync; return; }
-  local t k
-  for t in "$@"; do
-    for k in test build; do
-      test "$(grep -c "^$t $k rc=[0-9][0-9]*$" "$done")" = 1 || { echo sync; return; }
-      test -f "$dir/baseline-$t-$k.log" || { echo sync; return; }
-    done
-  done
-  echo accept
-}
-accept "$DONE_FILE" "$START" "$CURRENT" "$DIR" $TYPES
-'''
 
 TDD_PHASES = ROOT / ".claude/skills/gx-tdd/phases"
 IMPLEMENTER = ROOT / "agents/implementer.md"
@@ -689,23 +667,13 @@ class TestRunBudgetContractTests(unittest.TestCase):
     def test_review_gate_runs_pipeline_tests_not_full_suite(self):
         text = self.read("phase-review.md")
         gate = section(text, "## Step 0: Mechanical Gate", "## Step 1:")
-        for needle in (
-            "Step 0 테스트 집합",
-            "무결성 선확인",
-            "사용자 변경으로 인정",
-            "누적 focused",
-            "`detect` 파일이 있는 디렉토리",
-            "테스트 파일이 없는 타입은 빌드만",
-            "전체 폴백",
-            "통틀어 `test-file` 기록이 0건",
-            "`focusedTest` 없음",
-            "명령 자체 오류",
-            "-x test testClasses",
-            "기존 스위트 전체 회귀는 phase-complete의 verify 게이트가 1회 맡는다",
-            "SSOT는 config",
-            "복수 타입",
-        ):
+        contract = (TDD_PHASES.parent / "references/test-execution.md").read_text(encoding="utf-8")
+        for needle in ("test-execution.md", "모든 태스크의 필수 테스트", "정확한 증거를 공유",
+                       "미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청", "완료 phase라는 이유로 전체를 반복하지 않는다"):
             self.assertIn(needle, gate)
+        for needle in ("configHash", "command + scope", "build -x test testClasses",
+                       "0건", "focused 미지원", "buildOnly", "전체 폴백"):
+            self.assertIn(needle, contract)
         handling = section(text, "### Step 4.4", "## state.md 추적")
         self.assertNotIn("전체 테스트 1회 직접 실행", handling)
         self.assertGreaterEqual(handling.count("Step 0 테스트 집합"), 3)
@@ -715,9 +683,14 @@ class TestRunBudgetContractTests(unittest.TestCase):
         text = self.read("phase-implement.md")
         implementer = IMPLEMENTER.read_text(encoding="utf-8")
         assembly = section(text, "**focused 테스트 명령 조립**:", "**명령 오류 가드**")
-        self.assertIn("이 태스크의 `test-file` 기록 파일만", assembly)
+        for needle in ("현재 태스크의 `test-file` 경로 배열만", "gx-test-plan.py\" focused",
+                       "--project", "--tests-file", "exit2", "헤드리스", "BLOCKED"):
+            self.assertIn(needle, assembly)
         self.assertNotIn("이전 태스크들이 만든 신규 테스트 파일 전부", text)
-        self.assertGreaterEqual(text.count("와일드카드"), 3)
+        self.assertIn("이전 태스크·이웃 클래스·와일드카드로 범위를 넓히지 않는다", assembly)
+        isolated = section(text, "**격리 경로 (`--isolated`)**", "\n**focused 테스트 명령 조립**:")
+        self.assertIn("{PROJECT_ROOT}/{FOCUSED_CWD}", isolated)
+        self.assertIn("${PROJECT_ROOT}/${focused.cwd}", assembly)
         for needle in ("와일드카드", "모듈 묶음", "verify 회귀 수리", "완료 verify"):
             self.assertIn(needle, implementer)
         self.assertNotIn("전체는 경계에서", implementer)
@@ -731,94 +704,73 @@ class TestRunBudgetContractTests(unittest.TestCase):
         text = self.read("phase-implement.md")
         step = section(text, "## Step 3.5:", "## Step 4:")
         self.assertIn("## Step 3.5: 경계 회귀 (--phase implement 단독 전용)", step)
-        self.assertIn("complete(verify)가 실행되지 않는 경로", step)
+        self.assertIn("같은 실행에서 complete가 이어지면 중복 실행하지 않는다", step)
+        self.assertIn("공통 영향 계획", step)
+        self.assertIn("코드가 바뀌면 이전 증거를 쓰지 않는다", step)
         core = section(text, "## 핵심 모드 분기 (core)", "## Step 0: 문서 로드")
         self.assertIn("Step 3.5(경계 회귀)는 건너뛴다", core)
         self.assertNotIn("핵심 모드·`--phase implement` 단독: Step 3.5", text)
 
-    def test_baseline_prelaunch_contract(self):
+    def test_baseline_is_deferred_until_impact_scope_is_known(self):
         req = self.read("phase-requirements.md")
-        trigger = section(req, "## 기준선 사전 실행 (진입 직후)", "## 핵심 모드 분기 (core)")
-        self.assertIn("phase-implement.md", trigger)
-        self.assertIn("Codex와 svn은 시작하지 않고", trigger)
-        self.assertIn("phase 목록에 implement가 있을 때만", trigger)
+        trigger = section(req, "## 기준선 준비", "## 핵심 모드 분기 (core)")
+        self.assertIn("전체 테스트·빌드를 시작하지 않는다", trigger)
+        self.assertIn("phase-implement Step 0.5", trigger)
         impl = self.read("phase-implement.md")
-        pre = section(impl, "### 기준선 사전 실행 (Claude Code·git 전용)", "## Step 0.7")
-        for needle in (
-            "phase 목록에 implement가 있을 때만",
-            "`--phase requirements`",
-            "run_in_background: true",
-            "`baseline-fingerprint`",
-            "${DEV_DIR}/baseline.done",
-            "${DEV_DIR}/baseline-{타입}-{test|build}.log",
-            "`{타입} {test|build} rc={N}`",
-            "`fingerprint-end={값}`",
-            "`start={baseline-fingerprint}`",
-            "실행 완료 표식이지 성공이 아니다",
-            "동기 실행",
-            "판정 1(기준 GREEN 실패)",
-            "`&&`·`set -e`로 잇지 않는다",
-            "작업을 중지하고 동기 실행",
-            "포그라운드 sleep으로 기다리지 않는다",
-        ):
-            self.assertIn(needle, pre)
-        self.assertIn("```bash", pre)
-        accept = section(pre, "**결과 수용**", "| 상태 | 처리 |")
-        for needle in (
-            "첫 줄이 `start={값}`",
-            "마지막 줄이 `DONE`",
-            "각 1개",
-            "트리 성분",
-            "HEAD 성분은 비교하지 않는다",
-            "로그 파일 존재",
-        ):
-            self.assertIn(needle, accept)
-        self.assertIn("기준선 사전 실행", section(impl, "## Step 0.5", "### 레이어별 하네스 게이트"))
-        refs = TDD_PHASES.parent / "references"
-        self.assertIn("run_in_background", (refs / "harness-adaptation.md").read_text(encoding="utf-8"))
-        self.assertIn("baseline-fingerprint:", (refs / "pipeline-state.md").read_text(encoding="utf-8"))
+        gate = section(impl, "## Step 0.5:", "### 레이어별 하네스 게이트")
+        for needle in ("gx-test-plan.py", "영향 범위", "`reuse`", "`record`", "0건", "buildOnly"):
+            self.assertIn(needle, gate)
+        pre = section(impl, "### 기준선 사전 실행", "## Step 0.7")
+        self.assertIn("백그라운드에서 시작하지 않는다", pre)
+        self.assertIn("run-id·지문·설정·명령·범위가 일치하지 않으면 재사용하지 않는다", pre)
+        self.assertNotIn("run_in_background: true", pre)
 
-    def test_baseline_acceptance_probe(self):
-        bash = shutil.which("bash") or "bash"
-        start = "1111111:aaaaaaaaaaaa"
-        good = [f"start={start}", "java-spring test rc=0", "java-spring build rc=0",
-                "node test rc=0", "node build rc=0",
-                f"fingerprint-end={start}", "DONE"]
-        cases = (
-            ("complete", good, start, True, "accept"),
-            ("stale file from another run", [f"start=1111111:dddddddddddd"] + good[1:], start, True, "sync"),
-            ("no start line", good[1:], start, True, "sync"),
-            ("duplicate type line", good[:2] + good[1:], start, True, "sync"),
-            ("empty end fingerprint",
-             [l if not l.startswith("fingerprint-end=") else "fingerprint-end=" for l in good], start, True, "sync"),
-            ("failed baseline still accepted",
-             [l.replace("node test rc=0", "node test rc=1") for l in good], start, True, "accept"),
-            ("head moved, tree same", good, "2222222:aaaaaaaaaaaa", True, "accept"),
-            ("no DONE", good[:-1], start, True, "sync"),
-            ("missing type line", [l for l in good if l != "node build rc=0"], start, True, "sync"),
-            ("end fingerprint differs",
-             [l.replace(f"fingerprint-end={start}", "fingerprint-end=1111111:bbbbbbbbbbbb") for l in good],
-             start, True, "sync"),
-            ("current tree differs", good, "1111111:cccccccccccc", True, "sync"),
-            ("log missing", good, start, False, "sync"),
-        )
-        for name, lines, current, logs, expected in cases:
-            with self.subTest(name), tempfile.TemporaryDirectory(prefix="baseline probe ") as root:
-                done = Path(root) / "baseline.done"
-                done.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))  # LF 고정 — Windows 텍스트 모드 CRLF 방지
-                if logs:
-                    for t in ("java-spring", "node"):
-                        for k in ("test", "build"):
-                            (Path(root) / f"baseline-{t}-{k}.log").write_text("", encoding="utf-8")
-                env = dict(os.environ, DONE_FILE=str(done), START=start, CURRENT=current,
-                           DIR=root, TYPES="java-spring node")
-                result = subprocess.run([bash, "-c", BASELINE_ACCEPT_PROBE], env=env,
-                                        capture_output=True, text=True, check=False)
-                self.assertEqual(result.stdout.strip(), expected, result.stderr)
+    def test_same_run_evidence_replaces_legacy_baseline_marker_approximation(self):
+        spec = importlib.util.spec_from_file_location("gx_test_evidence", ROOT / "scripts/gx-test-plan.py")
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(root), "-c", "user.email=test@example.invalid",
+                            "-c", "user.name=Test", "commit", "--allow-empty", "-qm", "fixture"],
+                           check=True, capture_output=True)
+            config = root / "config.json"
+            config.write_text("{}", encoding="utf-8")
+            dev = root / ".dev"
+            dev.mkdir()
+            log = dev / "test.log"
+            log.write_text("1 test passed", encoding="utf-8")
+            entry = {"id": "test", "project": ".", "type": "node", "cwd": ".",
+                     "kind": "test", "command": "node --test", "scope": ["a.test.js"]}
+            plan = {"root": str(root), "fingerprint": helper.fingerprint(root),
+                    "configPath": str(config), "configHash": helper.digest({}),
+                    "runId": "current", "entries": [entry]}
+            plan_path = dev / "plan.json"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            args = SimpleNamespace(cwd=root, plan=plan_path, proof=dev / "proof.json", action="record",
+                                   exit_code=0, failures=0, tests=1, log=log, entry="test")
+            self.assertTrue(helper.proof_action(args)["recorded"])
+            args.action = "reuse"
+            self.assertTrue(helper.proof_action(args)["reusable"])
+            plan["runId"] = "other"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "matching successful evidence"):
+                helper.proof_action(args)
+            plan["runId"] = "current"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            log.write_text("changed log", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "log changed"):
+                helper.proof_action(args)
+            args.action = "record"
+            args.tests = 0
+            with self.assertRaisesRegex(ValueError, "zero/unconfirmed"):
+                helper.proof_action(args)
+            self.assertFalse(json.loads(args.proof.read_text(encoding="utf-8"))["passed"])
 
     def test_verify_block_repair_contract(self):
         text = self.read("phase-complete.md")
-        step = section(text, "## Step -1: verify 게이트", "## Step 0: 인수 검증")
+        step = section(text, "## Step -1: verify 게이트", "## Step 3.5: 작업 계획")
         self.assertIn('"수정"', step)
         self.assertIn("다른 테스트·빌드 명령을 시작하지 않고", step)
         self.assertNotIn('"RGR 사이클로 수정"', step)
@@ -836,11 +788,152 @@ class TestRunBudgetContractTests(unittest.TestCase):
         ):
             self.assertIn(needle, repair)
         self.assertNotIn("red-writer 재호출", repair)
-        self.assertIn("이 verify가 유일하다", text[: text.index("## Step -2")])
+        self.assertIn("동일 실행의 유효한 증거", text[: text.index("## Step -2")])
         verify = (ROOT / ".claude/skills/gx-verify/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("다른 테스트·빌드 명령을 병행하지 않는다", section(verify, "### Step 2", "### Step 3"))
         state = (TDD_PHASES.parent / "references/pipeline-state.md").read_text(encoding="utf-8")
         self.assertIn("verify 회귀 수리", state)
+
+
+class DocumentLifecycleContractTests(unittest.TestCase):
+    def read(self, relative: str) -> str:
+        path = TDD.parent / relative
+        self.assertTrue(path.is_file(), f"배포 가능한 문서 흐름 계약이 없습니다: {relative}")
+        return path.read_text(encoding="utf-8")
+
+    def test_related_preflight_covers_full_partial_resume_and_ralph_return(self):
+        setup = self.read("phases/phase-setup.md")
+        self.assertIn("관련 문서 사전 대조", setup)
+        self.assertLess(setup.index("관련 문서 사전 대조"), setup.index("### 3.0.5 작업 계획 참조"))
+        skill = TDD.read_text(encoding="utf-8")
+        loop = section(skill, "### Phase 실행 루프", "### Phase 파일 경로")
+        self.assertLess(loop.index("문서 사전 대조"), loop.index("# 2a. 산출물 게이트"))
+        self.assertIn("document-lifecycle.md", loop)
+        environment = section(skill, "**환경 감지**", "---")
+        self.assertIn("기존 work-id를 먼저 대조", environment)
+        self.assertLess(environment.index("기존 work-id를 먼저 대조"), environment.index("work-id: {ID}"))
+        for phase in ("requirements", "implement", "complete"):
+            self.assertIn("document-lifecycle.md", self.read(f"phases/phase-{phase}.md"))
+        self.assertIn("문서 사전 대조", self.read("phases/setup-resume.md"))
+        lifecycle = self.read("references/document-lifecycle.md")
+        for origin in ("--core", "--phase", "--resume", "origin: gx-tdd"):
+            self.assertIn(origin, lifecycle)
+
+    def test_related_documents_precede_final_verify_and_delivery(self):
+        complete = self.read("phases/phase-complete.md")
+        headings = (
+            "## Step -2: TDD 이행 게이트", "## Step 0: 인수 검증",
+            "## Step 3: 도메인 status.md", "## Step 4: 관련 문서",
+            "## Step -1: verify 게이트", "## Step 3.5: 작업 계획",
+            "## Step 1: Commit", "## Step 2: PR 생성", "## Step 5: 진행 상태 완료",
+        )
+        for heading in headings:
+            self.assertIn(heading, complete)
+        positions = [complete.index(heading) for heading in headings]
+        self.assertEqual(positions, sorted(positions))
+        final = complete[complete.index("## Step -1: verify 게이트"):]
+        self.assertNotIn("생성된 PR 링크를 기입", final)
+        self.assertIn("최종 verify 뒤에는 context/", final)
+        self.assertIn("새 PR URL은 `${DEV_DIR}/", final)
+
+    def test_status_projection_requires_current_ac_evidence_and_conditional_rollback(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for gate in ("현재 구현 트리", "실제 실행", "위험 수용", "기존 ✅", "journal",
+                     "before-sha256", "after-sha256", "동시 변경", "이번 실행이 만든 ✅"):
+            self.assertIn(gate, lifecycle)
+        complete = self.read("phases/phase-complete.md")
+        rejected = section(complete, "- **❌ verify 차단**:", "**verify 회귀 수리**")
+        self.assertIn("조건부 원복", rejected)
+        self.assertIn("Step 0", complete[complete.index("**verify 회귀 수리**"):])
+
+    def test_document_checks_preserve_source_intent_and_red_isolation(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for scope in ("read-only", "--no-document-write", "understand", "plan", "status"):
+            self.assertIn(scope, lifecycle)
+        for invariant in ("전체 인터뷰", "전체 스캔", "관측 사실", "미래 요구사항", "red-writer", "구현 본문"):
+            self.assertIn(invariant, lifecycle)
+        self.assertIn("development-sync.md", lifecycle)
+        self.assertIn("development.py", lifecycle)
+        self.assertIn("--previous", lifecycle)
+        self.assertIn("--phase post", lifecycle)
+
+    def test_readonly_inspection_is_bounded_without_project_files(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for contract in ("--plan -", "summary --report -", "종료 코드", "stdin", "메모리"):
+            self.assertIn(contract, lifecycle)
+        for path in ("phases/setup-work.md", "phases/setup-resume.md"):
+            text = self.read(path)
+            self.assertIn("--no-document-write", text)
+            self.assertRegex(text, r"계획(?:을)? (?:commit/push|커밋)")
+        work = self.read("phases/setup-work.md")
+        self.assertNotIn('"아니오"면 계획과 무관하게 기존 경로로 진행', work)
+        self.assertIn("실제 goal·요청 AC·원문 source를 보존", work)
+
+    def test_private_projection_journal_tracks_subsequent_same_file_edits(self):
+        lifecycle = self.read("references/document-lifecycle.md")
+        for contract in ("evidence/document-sync/journal.json", "info/exclude", "커밋 수집",
+                         "파일별 journal", "각 후속 Edit 전", "after 해시를 갱신",
+                         "미검증 투영을 먼저 조건부 원복"):
+            self.assertIn(contract, lifecycle)
+        self.assertNotIn("`${DEV_DIR}/document-journal.json`", lifecycle)
+
+    def test_completion_distinguishes_verified_scope_from_merge_and_partial_acceptance(self):
+        complete = self.read("phases/phase-complete.md")
+        self.assertLess(complete.index("## Step 3.5: 작업 계획"), complete.index("## Step 1: Commit"))
+        plan = section(complete, "## Step 3.5: 작업 계획", "## Step 1: Commit")
+        for gate in ("verify-status", "모든 AC", "위험 수용", "미충족", "폐기"):
+            self.assertIn(gate, plan)
+        lifecycle = self.read("references/document-lifecycle.md")
+        self.assertIn("구현 완료", lifecycle)
+        self.assertIn("검증 완료", lifecycle)
+        self.assertIn("merged", lifecycle)
+        self.assertIn("병합", lifecycle)
+        state = self.read("references/pipeline-state.md")
+        self.assertIn("document-lifecycle.md", state)
+        self.assertIn("context/", state)
+
+
+class AdaptiveWorkOrchestrationTests(unittest.TestCase):
+    def test_tdd_entry_is_checked_before_setup_mutations(self):
+        setup = (TDD_PHASES / "phase-setup.md").read_text(encoding="utf-8")
+        self.assertLess(setup.index("validate-handoff"), setup.index("git stash"))
+        entry = TDD.read_text(encoding="utf-8")
+        self.assertIn("ready-for-tdd", entry)
+        consumer = (TDD_PHASES.parent / "references/plan-handoff.md").read_text(encoding="utf-8")
+        self.assertIn("entry-approval", consumer)
+        self.assertIn("execution-authorized: false", entry)
+        self.assertIn("pipeline/state 초기화", consumer)
+        loop = section(entry, "### Phase 실행 루프", "### Phase 파일 경로")
+        self.assertLess(loop.index("if HANDOFF_READ_ONLY"), loop.index("if core"))
+        self.assertLess(loop.index("return  # READ_ONLY_COMPLETE"), loop.index("# 2. Phase별"))
+
+    def test_pending_and_entry_recheck_precede_resume_branch_changes(self):
+        resume = (TDD_PHASES / "setup-resume.md").read_text(encoding="utf-8")
+        self.assertLess(resume.index("validate-handoff"), resume.index("### 0.1"))
+        self.assertIn("pending", resume[:resume.index("### 0.1")])
+
+    def test_method_selection_precedes_first_rgr_and_keeps_red_isolated(self):
+        implementation = (TDD_PHASES / "phase-implement.md").read_text(encoding="utf-8")
+        self.assertLess(implementation.index("### 1.2"), implementation.index("### 1.3"))
+        self.assertLess(implementation.index("### 1.3"), implementation.index("## Step 2:"))
+        method = section(implementation, "### 1.3", "## Step 2:")
+        for marker in ("session", "subagents", "--isolated", "execution-method-plan-sha256", "문서", "RED"):
+            self.assertIn(marker, method)
+        self.assertNotIn('label: "무인', method)
+        split = section(implementation, "### 1.15", "### 1.2")
+        self.assertIn("문서 수정 금지", split)
+        self.assertIn("최종 검증 후", split)
+        self.assertNotIn("스테이징해", split)
+
+    def test_work_and_tdd_keep_distinct_plan_ownership(self):
+        entry = (ROOT / ".claude/skills/gx-work/references/tdd-entry.md").read_text(encoding="utf-8")
+        for marker in ("gx-context", "gx-lens", "gx-research", "다음 단계", "실제 답변", "PRD", "T태스크"):
+            self.assertIn(marker, entry)
+        handoff = (TDD_PHASES.parent / "references/plan-handoff.md").read_text(encoding="utf-8")
+        self.assertIn("handoff-kind: request", handoff)
+        state = (TDD_PHASES.parent / "references/pipeline-state.md").read_text(encoding="utf-8")
+        for field in ("request-file", "entry-approved-run", "implementation-plan-file", "execution-method-run"):
+            self.assertIn(field, state)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,221 @@
+[
+  {
+    "route": "gx-tdd 직접 진입·문서 연결 필수 계약",
+    "before-files": [
+      ".claude/skills/gx-tdd/SKILL.md",
+      ".claude/skills/gx-tdd/references/intent-routing.md",
+      ".claude/skills/gx-tdd/references/pipeline-state.md",
+      ".claude/skills/gx-tdd/references/interaction-contract.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-tdd/SKILL.md",
+      ".claude/skills/gx-tdd/references/intent-routing.md",
+      ".claude/skills/gx-tdd/references/pipeline-state.md",
+      ".claude/skills/gx-tdd/references/interaction-contract.md",
+      ".claude/skills/gx-tdd/references/roles-and-phases.md",
+      ".claude/skills/gx-tdd/references/document-lifecycle.md",
+      ".claude/skills/gx-context/references/development-sync.md"
+    ],
+    "before": [
+      65906,
+      41291
+    ],
+    "after": [
+      96511,
+      57820
+    ]
+  },
+  {
+    "route": "lens 조회 기본 지시문",
+    "before-files": [
+      ".claude/skills/gx-lens/SKILL.md",
+      ".claude/skills/gx-lens/phases/phase-prepare.md",
+      ".claude/skills/gx-lens/phases/phase-explore.md",
+      ".claude/skills/gx-lens/phases/phase-report.md",
+      ".claude/skills/gx-lens/references/report-guide.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-lens/SKILL.md",
+      ".claude/skills/gx-lens/phases/phase-prepare.md",
+      ".claude/skills/gx-lens/phases/phase-explore.md",
+      ".claude/skills/gx-lens/phases/phase-report.md",
+      ".claude/skills/gx-lens/references/report-guide.md",
+      ".claude/skills/gx-lens/references/evidence-contract.md"
+    ],
+    "before": [
+      26856,
+      15597
+    ],
+    "after": [
+      25743,
+      13011
+    ]
+  },
+  {
+    "route": "cross-review codex, 산출물 있음·수정 처리 없음",
+    "before-files": [
+      ".claude/skills/gx-cross-review/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-cross-review/SKILL.md",
+      ".claude/skills/gx-cross-review/references/codex-preflight.md",
+      ".claude/skills/gx-cross-review/references/advisor-codex.md",
+      ".claude/skills/gx-cross-review/references/result-format.md"
+    ],
+    "before": [
+      35425,
+      22945
+    ],
+    "after": [
+      28298,
+      18153
+    ]
+  },
+  {
+    "route": "cross-review native, 산출물 있음·수정 처리 없음",
+    "before-files": [
+      ".claude/skills/gx-cross-review/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-cross-review/SKILL.md",
+      ".claude/skills/gx-cross-review/references/advisor-native.md",
+      ".claude/skills/gx-cross-review/references/result-format.md"
+    ],
+    "before": [
+      35425,
+      22945
+    ],
+    "after": [
+      24793,
+      16152
+    ]
+  },
+  {
+    "route": "humanizer 한국어 audit/rewrite·기술문서",
+    "before-files": [
+      ".claude/skills/gx-humanizer/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-humanizer/SKILL.md",
+      ".claude/skills/gx-humanizer/references/quick-ko.md"
+    ],
+    "before": [
+      23984,
+      14142
+    ],
+    "after": [
+      14608,
+      8465
+    ]
+  },
+  {
+    "route": "humanizer 한국어 strict·기술문서",
+    "before-files": [
+      ".claude/skills/gx-humanizer/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-humanizer/SKILL.md",
+      ".claude/skills/gx-humanizer/references/quick-ko.md",
+      ".claude/skills/gx-humanizer/references/strict.md"
+    ],
+    "before": [
+      23984,
+      14142
+    ],
+    "after": [
+      21571,
+      12520
+    ]
+  },
+  {
+    "route": "setup git·기존 Chat 설정 있음",
+    "before-files": [
+      ".claude/skills/gx-setup/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-setup/SKILL.md",
+      ".claude/skills/gx-setup/references/project-type-registration.md",
+      ".claude/skills/gx-setup/references/authentication-git.md"
+    ],
+    "before": [
+      30221,
+      18850
+    ],
+    "after": [
+      28317,
+      17520
+    ]
+  },
+  {
+    "route": "setup SVN",
+    "before-files": [
+      ".claude/skills/gx-setup/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-setup/SKILL.md",
+      ".claude/skills/gx-setup/references/project-type-registration.md",
+      ".claude/skills/gx-setup/references/authentication-svn.md"
+    ],
+    "before": [
+      30221,
+      18850
+    ],
+    "after": [
+      27726,
+      17052
+    ]
+  },
+  {
+    "route": "visualize trace/progress/impact/sequence 진입문",
+    "before-files": [
+      ".claude/skills/gx-visualize/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-visualize/SKILL.md"
+    ],
+    "before": [
+      25271,
+      14402
+    ],
+    "after": [
+      12952,
+      7541
+    ]
+  },
+  {
+    "route": "visualize service 진입문+service 설명",
+    "before-files": [
+      ".claude/skills/gx-visualize/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-visualize/SKILL.md",
+      ".claude/skills/gx-visualize/references/service-map.md"
+    ],
+    "before": [
+      25271,
+      14402
+    ],
+    "after": [
+      26168,
+      14855
+    ]
+  },
+  {
+    "route": "verify git 통과 main+필수 지문 계산",
+    "before-files": [
+      ".claude/skills/gx-verify/SKILL.md"
+    ],
+    "after-files": [
+      ".claude/skills/gx-verify/SKILL.md",
+      ".claude/skills/gx-verify/references/fingerprint.md"
+    ],
+    "before": [
+      17759,
+      10750
+    ],
+    "after": [
+      20967,
+      12341
+    ]
+  }
+]

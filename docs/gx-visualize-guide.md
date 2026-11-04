@@ -36,7 +36,7 @@ gx-visualize <trace|progress|impact|service|sequence> [--input <path>] [--output
 일반적인 “시각화 포함”은 현재 phase가 design이면 `service`, review이면
 `impact`, 그 외에는 `progress`를 기본값으로 사용합니다.
 
-gx-dev·gx-tdd는 complete Step 5.5의 “아키텍처 맵 갱신” 선택으로 service를 호출합니다.
+gx-work·gx-tdd는 complete Step 5.5의 “아키텍처 맵 갱신” 선택으로 service를 호출합니다.
 design/review 자동 호출이나 `--visualize` 플래그는 현재 계약이 아닙니다.
 헤드리스에서는 완료 단계의 제안을 건너뜁니다.
 
@@ -127,7 +127,7 @@ gx-visualize progress --backend static
 python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [--changed-since <기준 ref>] [--domain <도메인>] [--labels <라벨 JSON>]
 ```
 
-스캔부터 인덱스까지 이 명령이 모두 수행하고 JSON 보고를 출력합니다. gx-dev·gx-tdd 완료 단계에서 "아키텍처 맵 갱신"을 고르면 파이프라인이 기준 브랜치를 `--changed-since`로 넘겨 이 명령을 실행합니다. 전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있어 실행 전에 먼저 알립니다. 실측(kreb admin, 도메인 8개): 변경 표시를 포함해 약 2분 30초가 걸렸고, 대부분은 Archify가 그림 속 근거 링크를 저장소와 대조하는 시간입니다.
+스캔부터 인덱스까지 이 명령이 모두 수행하고 JSON 보고를 출력합니다. gx-work·gx-tdd 완료 단계에서 "아키텍처 맵 갱신"을 고르면 파이프라인이 기준 브랜치를 `--changed-since`로 넘겨 이 명령을 실행합니다. 전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있어 실행 전에 먼저 알립니다. 실측(kreb admin, 도메인 8개): 변경 표시를 포함해 약 2분 30초가 걸렸고, 대부분은 Archify가 그림 속 근거 링크를 저장소와 대조하는 시간입니다.
 
 ### 산출물은 폴더로 정리되고 인덱스 하나로 모입니다
 

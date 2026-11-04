@@ -25,7 +25,7 @@ class ResourceTests(unittest.TestCase):
             root, config = self.fixture(directory)
             sync = load("gx_sync", "scripts/sync-codex-resources.py")
             files = sync.expected_files(root)
-            base = root / ".claude/skills/gx-dev/references/codex-roles"
+            base = root / ".claude/skills/gx-work/references/codex-roles"
             self.assertEqual(files[base / "reviewer.md"],
                              "# 역할\n코드를 수정하지 않는다.\n".encode())
             self.assertEqual(json.loads(files[base / "index.json"]), {
@@ -37,9 +37,40 @@ class ResourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root, _ = self.fixture(directory, model="sonnet", newline="\r\n")
             files = load("gx_sync", "scripts/sync-codex-resources.py").expected_files(root)
-            base = root / ".claude/skills/gx-dev/references/codex-roles"
+            base = root / ".claude/skills/gx-work/references/codex-roles"
             self.assertEqual(files[base / "reviewer.md"], "# 역할\n코드를 수정하지 않는다.\n".encode())
             self.assertEqual(json.loads(files[base / "index.json"])["reviewer"]["tier"], "mid")
+
+    def test_checkout_newline_variants_do_not_create_resource_drift(self):
+        sync = load("gx_sync", "scripts/sync-codex-resources.py")
+        for newline in ("\n", "\r\n"):
+            with self.subTest(source_newline=repr(newline)), tempfile.TemporaryDirectory() as directory:
+                root, _ = self.fixture(directory, newline=newline)
+                config = root / ".claude/config.json"
+                config.write_bytes(config.read_bytes().replace(b"\n", newline.encode()))
+                sync.write_files(root)
+                for path in sync.expected_files(root):
+                    self.assertNotIn(b"\r\n", path.read_bytes(), str(path))
+                    path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+                self.assertEqual(sync.check_files(root), [])
+                # The source template may have CRLF while its generated copy has LF.
+                config.write_bytes(config.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+                template = root / sync.TEMPLATE
+                template.write_bytes(template.read_bytes().replace(b"\r\n", b"\n"))
+                self.assertEqual(sync.check_files(root), [])
+
+    def test_newline_normalization_keeps_real_content_and_other_format_drift(self):
+        sync = load("gx_sync", "scripts/sync-codex-resources.py")
+        with tempfile.TemporaryDirectory() as directory:
+            root, _ = self.fixture(directory)
+            sync.write_files(root)
+            role = root / sync.ROLE_DIR / "reviewer.md"
+            expected = role.read_bytes()
+            for actual in (expected.replace(b"\n", b"\r"), b"\xef\xbb\xbf" + expected,
+                           expected + b"\n", expected.replace(b"# ", b"## ").replace(b"\n", b"\r\n")):
+                with self.subTest(actual=actual):
+                    role.write_bytes(actual)
+                    self.assertIn(str(role), sync.check_files(root))
 
     def test_unsupported_model_fails_input_validation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -60,14 +91,14 @@ class ResourceTests(unittest.TestCase):
             (root / ".claude/config.json").write_bytes(b'{"vcs":"svn"}\n')
             self.assertTrue(sync.check_files(root))
             sync.write_files(root)
-            (root / ".claude/skills/gx-dev/references/codex-roles/stale.md").write_text("stale")
+            (root / ".claude/skills/gx-work/references/codex-roles/stale.md").write_text("stale")
             self.assertTrue(sync.check_files(root))
 
     def test_real_export_is_self_contained_for_skills_only_install(self):
         sync = load("gx_sync", "scripts/sync-codex-resources.py")
         expected = sync.expected_files(ROOT)
         self.assertEqual(len(list((ROOT / "agents").glob("*.md"))), 17)
-        role_base = ROOT / ".claude/skills/gx-dev/references/codex-roles"
+        role_base = ROOT / ".claude/skills/gx-work/references/codex-roles"
         self.assertEqual(len(json.loads(expected[role_base / "index.json"])), 17)
         with tempfile.TemporaryDirectory() as directory:
             copy = Path(directory)

@@ -1,6 +1,6 @@
 # 프로젝트 타입 힌트 카탈로그
 
-gx-setup "프로젝트 타입 등록" 단계와 gx-dev/gx-tdd phase-setup의 인라인 등록이 참조하는 **제안용** 표다.
+gx-setup "프로젝트 타입 등록" 단계와 gx-work/gx-tdd phase-setup의 인라인 등록이 참조하는 **제안용** 표다.
 
 **이 카탈로그는 SSOT가 아니다.** SSOT는 소비 프로젝트 `.claude/config.json`의 `projectTypes`에 등록된 값이며, 등록 값이 항상 이 표보다 우선한다. 이 표는 감지 시 제안 품질을 높이는 힌트일 뿐이다.
 

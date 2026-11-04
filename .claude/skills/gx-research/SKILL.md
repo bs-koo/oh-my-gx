@@ -1,6 +1,6 @@
 ---
 name: gx-research
-description: 웹 검색과 문서 분석을 병행하여 도메인 리서치를 수행한다. "조사해줘", "리서치", "검색", "비교해줘" 시 사용.
+description: 주제별 조사·리서치·검색·비교 요청에 사용한다. 웹과 문서를 분석해 출처·판단 근거를 갖춘 보고서·비교표·요약을 작성한다.
 argument-hint: "<주제> [--output <경로>] [--format report|comparison|summary]"
 allowed-tools:
   - Read
@@ -15,13 +15,13 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# research
+# 도메인·기술 조사
 
 도메인 리서치를 수행한다. 웹 검색과 문서 분석을 병행하여 출처가 명확한 조사 결과를 산출한다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.

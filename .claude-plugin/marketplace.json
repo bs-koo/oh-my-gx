@@ -4,14 +4,14 @@
     "name": "bs-koo"
   },
   "metadata": {
-    "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인"
+    "description": "요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로."
   },
   "plugins": [
     {
       "name": "oh-my-gx",
       "source": "./",
-      "description": "GX 사업본부 개발자를 위한 개발 자동화 플러그인. PRD, 설계, 구현, 리뷰, PR까지 에이전트 팀이 처리합니다.",
-      "version": "1.37.0"
+      "description": "요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로.",
+      "version": "2.0.0"
     }
   ]
 }

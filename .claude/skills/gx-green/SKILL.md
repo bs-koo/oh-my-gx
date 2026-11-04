@@ -1,7 +1,7 @@
 ---
 name: gx-green
 version: 1.0.0
-description: "GREEN 단계 - 실패 테스트를 통과시키는 최소 코드 작성. red 단계 완료 후 호출. 과잉 구현 시 즉시 차단."
+description: 실패가 확인된 테스트를 통과시키는 명시적인 GREEN 단계 요청에 사용한다. RED 상태를 확인하고 테스트 통과에 필요한 최소 코드를 작성한다.
 argument-hint: ""
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# gx-green
+# 최소 구현
 
 > **이 스킬**: green — GREEN 단계 (통과를 위한 최소 코드)
 > **호출 시 주의**: 이 스킬 내에서 다른 스킬을 호출할 때 반드시 `oh-my-gx:` 접두사를 사용한다.
@@ -26,7 +26,7 @@ RED 단계에서 작성된 실패 테스트를 통과시키는 **최소 코드**
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
 
-Codex에서는 먼저 `Read("../gx-dev/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
+Codex에서는 먼저 `Read("../gx-work/references/codex-runtime.md")`로 공통 실행 규약을 읽고, 이 스킬의 절차·게이트를 유지한다. 상대경로는 이 SKILL.md 위치 기준이다.
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
@@ -191,3 +191,5 @@ refactor 에이전트가 중복 제거 및 정리를 수행합니다.
 - `Skill("oh-my-gx:gx-commit")` — GREEN 단계에서 사이클 외부 스킬 호출 금지
 
 **위반 시**: 즉시 중단하고 fully-qualified 이름으로 재호출.
+
+현재 태스크의 테스트 실행은 [공통 실행 계약](../gx-tdd/references/test-execution.md)의 focused CLI를 따른다. 테스트 파일을 저장한 뒤 명시 설정 또는 확인된 runner로 해당 파일만 실행하며, 미지원 명령을 전체 테스트로 조용히 바꾸지 않는다.

@@ -1,11 +1,11 @@
 # 스킬 유지보수 규칙
 
-oh-my-gx의 `.claude/skills/gx-*/` 스킬, phase, 참조 파일과 `agents/*.md` 역할 정의를 만들거나 수정할 때 적용한다. Claude Code 동작과 Codex 배포·실행 경로를 한 변경으로 취급한다. 실행 중 도구 대응의 정본은 [Codex 실행 규약](../skills/gx-dev/references/codex-runtime.md)이고, 개발 저장소의 하네스 설명은 [Codex 하네스 어댑터](harness-codex.md)다. 실제 세션의 도구 스키마가 문서와 다르면 실제 스키마를 따른다.
+oh-my-gx의 `.claude/skills/gx-*/` 스킬, phase, 참조 파일과 `agents/*.md` 역할 정의를 만들거나 수정할 때 적용한다. Claude Code 동작과 Codex 배포·실행 경로를 한 변경으로 취급한다. 실행 중 도구 대응의 정본은 [Codex 실행 규약](../skills/gx-work/references/codex-runtime.md)이고, 개발 저장소의 하네스 설명은 [Codex 하네스 어댑터](harness-codex.md)다. 실제 세션의 도구 스키마가 문서와 다르면 실제 스키마를 따른다.
 
 ## 수정 전 확인
 
 1. 대상 `SKILL.md`와 함께 호출되는 phase·references·역할 정의를 읽는다. gx-tdd와 공유 파이프라인을 바꿀 때는 [유지보수 노트](../skills/gx-tdd/references/maintenance-notes.md)의 의도적 중복 위치도 확인한다.
-2. 사용자 질문, 역할 위임, 다른 스킬 호출, 셸 명령, 보호 게이트 중 무엇이 바뀌는지 표시한다. 같은 계약을 쓰는 gx-dev·gx-tdd·단독 스킬·훅·라우팅 규칙이 있으면 영향을 대조한다.
+2. 사용자 질문, 역할 위임, 다른 스킬 호출, 셸 명령, 보호 게이트 중 무엇이 바뀌는지 표시한다. 같은 계약을 쓰는 gx-work·gx-tdd·단독 스킬·훅·라우팅 규칙이 있으면 영향을 대조한다.
 3. 새 스킬이라면 Claude 매니페스트와 [Codex 매니페스트](../../.codex-plugin/plugin.json)의 스킬 경로가 모두 `.claude/skills/`를 가리키는지 확인한다. 개발용 `.agents/skills/skill-creator`는 배포 스킬에 포함하지 않는다.
 
 ## 작성 기준
