@@ -720,7 +720,7 @@ class TestRunBudgetContractTests(unittest.TestCase):
         gate = section(impl, "## Step 0.5:", "### 레이어별 하네스 게이트")
         for needle in ("gx-test-plan.py", "영향 범위", "`reuse`", "`record`", "0건", "buildOnly"):
             self.assertIn(needle, gate)
-        pre = section(impl, "### 기준선 사전 실행", "## Step 0.7")
+        pre = section(impl, "### 기준선 사전 실행", "## Step 1:")
         self.assertIn("백그라운드에서 시작하지 않는다", pre)
         self.assertIn("run-id·지문·설정·명령·범위가 일치하지 않으면 재사용하지 않는다", pre)
         self.assertNotIn("run_in_background: true", pre)
@@ -801,7 +801,7 @@ class DocumentLifecycleContractTests(unittest.TestCase):
         self.assertTrue(path.is_file(), f"배포 가능한 문서 흐름 계약이 없습니다: {relative}")
         return path.read_text(encoding="utf-8")
 
-    def test_related_preflight_covers_full_partial_resume_and_ralph_return(self):
+    def test_related_preflight_covers_full_partial_and_resume(self):
         setup = self.read("phases/phase-setup.md")
         self.assertIn("관련 문서 사전 대조", setup)
         self.assertLess(setup.index("관련 문서 사전 대조"), setup.index("### 3.0.5 작업 계획 참조"))
@@ -816,7 +816,7 @@ class DocumentLifecycleContractTests(unittest.TestCase):
             self.assertIn("document-lifecycle.md", self.read(f"phases/phase-{phase}.md"))
         self.assertIn("문서 사전 대조", self.read("phases/setup-resume.md"))
         lifecycle = self.read("references/document-lifecycle.md")
-        for origin in ("--core", "--phase", "--resume", "origin: gx-tdd"):
+        for origin in ("--core", "--phase", "--resume"):
             self.assertIn(origin, lifecycle)
 
     def test_related_documents_precede_final_verify_and_delivery(self):

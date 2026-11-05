@@ -13,7 +13,7 @@
 #  8. RGR 보조 스킬 allowed-tools Skill 선언 (본문이 Skill 체이닝 지시)
 #  9. gx-humanizer 에이전트 접두사 (bare humanizer-* 금지)
 # 10. force-push deny 패턴 bare 형태 커버 (settings.json)
-# 11. gx-ralph 상태 계약 정합 (판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿·러너 allowedTools 동기)
+# 11. 제거된 Ralph 배포 자산과 레거시 실행 차단 계약
 # 12. gx-work 단일 진입·배포·종료점 계약
 # 13. gx-tdd CORE 모드 계약 (RGR·G-W-T 게이트 유지·긴급 감사·구 버전 방어·폐지 모드 잔존 금지)
 # 14. 모델 프로파일(standard/eco) 계약 (config 키·기록 규칙·eco 오버라이드·결정 로직·setup 단계)
@@ -28,10 +28,10 @@
 # 23. 프론트엔드 테스트 규약 계약 (셀렉터 3중 동기·레이어 하네스 게이트·표현 속성 배제·UI 안티패턴)
 # 24. 하네스·복수 타입 검증 계약 (등록 검증·복합 타입·프론트 힌트·복수 명령 실행·헤드리스 처리·구축 가이드)
 # 25. 작업 계획(.dev/plan.md) 계약 — --work 인자·읽기·갱신·커밋 규칙의 3지점 문구 대조
-# 26. implement report 계약 (report 경로·4-status·ralph 2석 디스패치)
+# 26. implement report 계약 (report 경로·4-status)
 # 27. security_verdict fail-closed 계약 (집계 부재 판별·재호출·헤드리스 BLOCKED·원장 기록)
 # 28. 리뷰 발견 단계 커버리지 계약 (커버리지 지시 존재·보고 개수 상한 금지·보안 보고 표현)
-# 29. 헤드리스 조기 종료 방지 철칙 (마지막 문단 점검·컨텍스트 사유 중단 금지)
+# 29. 외부 반복 실행기와 전용 CI 제거
 # 30. Codex 훅 배치·실측 계약 (수동 배치 절차·미검증 항목 체크리스트)
 # 31. 린트 번호 크로스레퍼런스 정합 (문서가 인용하는 [N/M]의 M이 실제 분모와 일치)
 # 32. gx-tdd 지시문 바이트 예산 (SKILL.md ≤ 63000B · phase-setup.md ≤ 22000B)
@@ -187,13 +187,12 @@ fi
 
 echo "[8/36] Skill 체이닝 스킬의 Skill 선언"
 for f in .claude/skills/gx-red/SKILL.md .claude/skills/gx-green/SKILL.md \
-         .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md \
-         .claude/skills/gx-ralph-iterate/SKILL.md; do
+         .claude/skills/gx-refactor/SKILL.md .claude/skills/gx-verify/SKILL.md; do
   # pipefail에서 grep -q가 조기 종료하면 awk의 SIGPIPE(141)를 누락으로 오판한다.
   awk '/^allowed-tools:/,/^---$/' "$f" | grep -E '^[[:space:]]*-[[:space:]]*Skill[[:space:]]*$' >/dev/null \
     || fail "allowed-tools에 Skill 미선언 (본문이 Skill 체이닝 지시): $f"
 done
-[ "$FAIL" -eq 0 ] && ok "Skill 체이닝 5스킬 선언 확인"
+[ "$FAIL" -eq 0 ] && ok "Skill 체이닝 4스킬 선언 확인"
 
 echo "[9/36] gx-humanizer 에이전트 접두사"
 if grep -qF '`humanizer-' .claude/skills/gx-humanizer/SKILL.md 2>/dev/null; then
@@ -211,66 +210,15 @@ grep -qF 'Bash(*git push* -f *)' .claude/settings.json \
   || fail "settings.json deny에 'Bash(*git push* -f *)' (중간 -f) 패턴 누락"
 [ "$FAIL" -eq 0 ] && ok "deny 패턴 bare 형태 커버 확인"
 
-echo "[11/36] gx-ralph 상태 계약 정합"
-RALPH_ENTRY=.claude/skills/gx-ralph/SKILL.md
-RALPH_ITER=.claude/skills/gx-ralph-iterate/SKILL.md
-RALPH_RUNNER=scripts/gx-ralph.sh
-for f in "$RALPH_ENTRY" "$RALPH_ITER"; do
-  grep -q "pipeline: gx-ralph" "$f" || fail "판별식 키(pipeline: gx-ralph) 누락: $f"
-  grep -q "verify-status" "$f"      || fail "판별식 키(verify-status) 누락: $f"
+echo "[11/36] 제거된 Ralph 배포 자산·레거시 차단 계약"
+for removed in .claude/skills/gx-ralph .claude/skills/gx-ralph-iterate scripts/gx-ralph.sh scripts/test-gx-ralph.sh; do
+  [ ! -e "$removed" ] || fail "제거된 Ralph 실행 자산 잔존: $removed"
 done
-for token in '<ralph>COMPLETE</ralph>' '<ralph>CONTINUE</ralph>' '<ralph>BLOCKED:'; do
-  for f in "$RALPH_ENTRY" "$RALPH_ITER" "$RALPH_RUNNER"; do
-    grep -qF "$token" "$f" || fail "종료 계약 '$token' 누락: $f"
-  done
+for contract in unsupported-request migration-required loop-active; do
+  grep -qF "$contract" scripts/gx-work.py || fail "제거된 실행 경계($contract) 누락: gx-work.py"
 done
-for key in passes attempts last_error; do
-  for f in "$RALPH_ENTRY" "$RALPH_ITER"; do
-    grep -q "$key" "$f" || fail "ac-status 스키마 키($key) 누락: $f"
-  done
-done
-# 스킬 층 verify 게이트·라우팅이 gx-ralph를 인식하는지 (훅 G3와 층간 대칭)
-for f in .claude/skills/gx-commit/SKILL.md .claude/skills/gx-pull-request/SKILL.md .claude/rules/skill-routing.md; do
-  grep -q "pipeline: gx-ralph" "$f" || fail "verify 게이트/라우팅이 gx-ralph 미인식: $f"
-done
-# 원장 id는 "AC-1" 형식 — 템플릿의 이중 접두사(AC-{id} → AC-AC-1) 금지
-if grep -rn 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" >/dev/null 2>&1; then
-  fail "이중 접두사 템플릿(AC-{id}) 잔존: $(grep -l 'AC-{id}' "$RALPH_ENTRY" "$RALPH_ITER" | tr '\n' ' ')"
-fi
-# dev/tdd phase-implement에 gx-ralph 전환 절(--ralph opt-in)이 두 파이프라인 모두에 존재 (드리프트 방지)
-# + 폐지된 진입 질문이 되살아나지 않도록 "구현 방식 확인" 문구 잔존 금지 (v1.23.0 격하)
-grep -q '^## Step 0.7: gx-ralph 전환 (--ralph 전용)' .claude/skills/gx-tdd/phases/phase-implement.md \
-  || fail "gx-tdd phase-implement Step 0.7 전환 절 헤더 누락"
-for f in .claude/skills/gx-tdd/phases/phase-implement.md; do
-  grep -q '`--resume` 재진입은 방어 조건이 \*\*아니다\*\*' "$f" || fail "전환 절 --resume 비방어 규칙 누락: $f"
-done
-# dev/tdd 쌍둥이 opt-in 규칙 문구 대조 (의도 파싱) + phase-setup flags 기록 기준
-for key in 'RALPH 추출:' 'RALPH 우선순위 규칙' 'svn 우선 배제' '모드 질문 생략 규칙' '`--ralph`와 `--core`'; do
-  for f in .claude/skills/gx-tdd/SKILL.md; do
-    grep -qF "$key" <(skill_contract_text "$f") || fail "RALPH 쌍둥이 규칙($key) 누락: $f"
-  done
-done
-for f in .claude/skills/gx-tdd/phases/phase-setup.md; do
-  grep -q '무시된 RALPH는 기록하지 않는다' "$f" || fail "phase-setup Step 7 --ralph 기록 기준(무시된 RALPH 미기록) 누락: $f"
-done
-# 폐지된 진입 질문 문구 잔존 금지 — 스킬 디렉토리 전체 ([12]/[13]과 같은 관례)
-if grep -rl "구현 방식 확인" .claude/skills >/dev/null 2>&1; then
-  fail "폐지된 ralph 진입 질문(구현 방식 확인) 잔존: $(grep -rl '구현 방식 확인' .claude/skills | tr '\n' ' ')"
-fi
-# skill-routing이 '랄프로 …' 발화를 --ralph 전환으로 라우팅 (gx-ralph 직접 호출로 새지 않도록)
-grep -q -- '--ralph' .claude/rules/skill-routing.md || fail "skill-routing에 --ralph 전환 라우팅 행 누락"
-# 러너 --allowedTools ↔ gx-ralph-iterate allowed-tools 집합 동기 — 러너만 누락되면 헤드리스 세션이
-# 해당 test 명령을 실행하지 못해 매 반복 verify 차단 → attempts 소진 → BLOCKED로 낭비된다 (v1.21.0 회귀)
-TOOLS_DIFF=$(diff <(sed -n '/^allowed-tools:/,/^---/p' "$RALPH_ITER" | tr -d '\r' | grep '^  - ' | sed 's/^  - //' | sort) \
-                  <(grep '^ALLOWED_TOOLS=' "$RALPH_RUNNER" | sed 's/^ALLOWED_TOOLS="//; s/"$//' | tr ',' '\n' | sort) \
-             | grep '^[<>]' | tr '\n' ' ')
-[ -z "$TOOLS_DIFF" ] || fail "러너 ALLOWED_TOOLS가 gx-ralph-iterate allowed-tools와 불일치 (<: iterate에만, >: 러너에만): $TOOLS_DIFF"
-# 복귀 안내 origin 분기 — gx-tdd 출발 루프가 gx-dev 리뷰(qa-manager)로 유도되지 않도록
-grep -q '/gx-tdd --phase review' "$RALPH_ENTRY" \
-  || fail "복귀 안내 origin 분기(/gx-tdd --phase review) 누락: $RALPH_ENTRY"
-grep -q 'origin:' "$RALPH_RUNNER" \
-  || fail "러너 COMPLETE 안내의 origin 분기 누락: $RALPH_RUNNER"
-[ "$FAIL" -eq 0 ] && ok "판별 키·종료 계약 3파일·스키마 키·게이트 층간 대칭·템플릿·러너 allowedTools 동기 확인"
+grep -qF 'RETIRED_PIPELINE' .claude/hooks/pre-tool-guard.sh || fail "레거시 Ralph 커밋 차단 누락"
+[ "$FAIL" -eq 0 ] && ok "실행 자산 제거·새 요청/레거시/잠금 차단 확인"
 
 echo "[12/36] gx-work 단일 진입·배포·종료점 계약"
 GXWORK=.claude/skills/gx-work/SKILL.md
@@ -428,7 +376,7 @@ for f in .claude/skills/gx-tdd/phases/phase-review.md; do
 done
 grep -q '테스트 하네스 부재' .claude/skills/gx-tdd/phases/phase-implement.md \
   || fail "phase-implement 하네스 부재 감지 누락"
-for f in .claude/skills/gx-tdd/SKILL.md .claude/skills/gx-ralph-iterate/SKILL.md; do
+for f in .claude/skills/gx-tdd/SKILL.md; do
   grep -qF 'Bash(make *)' "$f" || fail "allowed-tools 대표 도구(make) 누락: $f"
   grep -qF 'Bash(ceedling *)' "$f" || fail "allowed-tools 대표 도구(ceedling) 누락: $f"
 done
@@ -517,8 +465,6 @@ for f in .claude/skills/gx-tdd/phases/phase-setup.md; do
 done
 # G6: core 모드 하네스 판별 기준 구체화 (설계서 러너 필드가 없는 경로)
 grep -q '프론트엔드 경로' .claude/skills/gx-tdd/phases/phase-implement.md   || fail "core 모드 하네스 판별 기준(프론트엔드 경로) 누락: gx-tdd phase-implement.md"
-# G7: 헤드리스(ralph)는 AskUserQuestion이 없으므로 fail-closed 처리가 필요
-grep -q '하네스' .claude/skills/gx-ralph-iterate/SKILL.md   || fail "gx-ralph-iterate 하네스 부재 처리 누락 (헤드리스 fail-closed)"
 # G8: 구축 가이드에 JS/TS 항목 (가장 흔한 하네스 부재 스택)
 grep -q 'vitest' docs/test-harness-guide.md || fail "test-harness-guide.md JS/TS(vitest) 섹션 누락"
 # G9: 사용자 문서에 프론트 지원 서술
@@ -548,11 +494,7 @@ $(cat .claude/skills/gx-work/references/codex-runtime.md)"
   fi
   # pipefail에서 grep -q의 조기 종료가 큰 NOTE_TEXT의 printf를 SIGPIPE로 실패시킨다.
   # 파이프 입력은 끝까지 소비하고 출력만 버려 실제 매칭 결과를 판정한다.
-  if [ "$sname" = "gx-ralph-iterate" ]; then
-    # 헤드리스 전용 — 질문 도구 대응을 적으면 응답할 사용자가 없는 세션에서 멈춘다
-    printf '%s' "$NOTE_TEXT" | grep 'BLOCKED' >/dev/null || fail "헤드리스 스킬 노트에 BLOCKED 종료 규칙 누락: $sname"
-    printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null && fail "헤드리스 스킬 노트에 질문 도구 대응이 있음: $sname"
-  elif grep -rq 'AskUserQuestion' "$d"; then
+  if grep -rq 'AskUserQuestion' "$d"; then
     printf '%s' "$NOTE_TEXT" | grep 'request_user_input' >/dev/null || fail "노트에 질문 도구 대응 누락: $sname"
   fi
   if grep -rq 'subagent_type[=:] *"oh-my-gx' "$d" || grep -rq 'Task 도구' "$d"; then
@@ -597,7 +539,6 @@ for f in .claude/skills/gx-tdd/phases/phase-complete.md; do
   grep -q 'docs: \[plan\]' "$f" || fail "plan.md 전용 커밋 규칙 누락: $f"
 done
 grep -q 'docs: \[plan\]' .claude/rules/skill-routing.md || fail "skill-routing 예외 목록에 plan 커밋 미등록"
-grep -q 'plan.md' .claude/skills/gx-ralph-iterate/SKILL.md || fail "ralph 반복에 작업 계획 갱신 누락"
 grep -q -- '--work' README.md || fail "README에 --work 사용법 누락"
 CONTEXT_SKILL_TEXT=$(cat .claude/skills/gx-context/SKILL.md .claude/skills/gx-context/modes/{create,from-document,update,sync,plan}.md)
 grep -q '\.dev/plan\.md' <<< "$CONTEXT_SKILL_TEXT" || fail "gx-context에 plan.md 생성 절 누락"
@@ -647,14 +588,6 @@ for f in .claude/skills/gx-tdd/phases/phase-setup.md; do
     fail "3.0.5 절 뒤에 후속 ### 헤딩 없음 (이후 절차가 --work 조건에 삼켜짐): $f"
   fi
 done
-
-# S2: ralph의 plan 갱신이 종료 판정보다 앞이면 AC 1건마다 작업 전체를 완료로 표시한다
-RF=.claude/skills/gx-ralph-iterate/SKILL.md
-R55=$(grep -n '^### Step 5\.5' "$RF" | head -1 | cut -d: -f1)
-R6=$(grep -n '^### Step 6' "$RF" | head -1 | cut -d: -f1)
-if [ -n "$R55" ] && [ -n "$R6" ] && [ "$R55" -lt "$R6" ]; then
-  grep -q 'passes: true' "$RF" || fail "ralph plan 갱신이 종료 판정보다 앞인데 전체 AC 완료 조건이 없음"
-fi
 
 # S3: plan 갱신 Step이 DOMAIN_CONTEXT에 종속되면 --phase complete 경로에서 실행되지 않는다
 for f in .claude/skills/gx-tdd/phases/phase-complete.md; do
@@ -763,11 +696,6 @@ for f in .claude/skills/gx-tdd/SKILL.md; do
   awk '/\*\*환경 감지\*\*/,/^---/' <(skill_contract_text "$f") | grep 'work-id' >/dev/null \
     || fail "--phase 환경 감지에 work-id 기록 누락 (--work가 조용히 무시된다): $f"
 done
-# Ralph 루프 종료는 구현 완료다. W 완료/push는 누적 리뷰·문서 대조·최종 verify 뒤에만 한다.
-RALPH_HANDOFF=$(awk '/^### Step 5\.5/,/^### Step 6/' .claude/skills/gx-ralph-iterate/SKILL.md)
-for contract in 'document-sync-pending: true' '/gx-tdd --phase review' '/gx-tdd --phase complete' '계획 커밋·push하지 않는다'; do
-  printf '%s' "$RALPH_HANDOFF" | grep -qF "$contract" || fail "ralph 최종 문서/검증 인계 계약 누락: $contract"
-done
 # 브랜치 예시는 영어로 통일한다 (--work 경로만 한글이면 명명이 갈린다)
 grep -rn 'feat/[가-힣]' .claude/skills README.md >/dev/null 2>&1 \
   && fail "한글 브랜치 예시 잔존: $(grep -rl 'feat/[가-힣]' .claude/skills README.md | tr '\n' ' ')"
@@ -782,9 +710,7 @@ for s in DONE_WITH_CONCERNS NEEDS_CONTEXT BLOCKED; do
   grep -q "$s" .claude/skills/gx-tdd/phases/phase-implement.md || fail "4-status($s) 누락: phase-implement.md"
   grep -q "$s" agents/implementer.md || fail "4-status($s) 누락: agents/implementer.md"
 done
-grep -q "oh-my-gx:implementer" .claude/skills/gx-ralph-iterate/SKILL.md \
-  || fail "ralph 2석 디스패치(implementer) 누락: gx-ralph-iterate/SKILL.md"
-[ "$FAIL" -eq 0 ] && ok "report 경로·4-status·ralph 2석 디스패치 확인"
+[ "$FAIL" -eq 0 ] && ok "report 경로·4-status 확인"
 
 echo "[27/36] security_verdict fail-closed 계약"
 # security_verdict에는 verdict 필드가 없어 "판정 실패"가 겉으로 드러나지 않는다.
@@ -829,15 +755,12 @@ for f in .claude/skills/gx-tdd/phases/phase-review.md; do
 done
 [ "$FAIL" -eq 0 ] && ok "커버리지 지시 2석 + 억제 문구 부재 + 보안 보고 의무 + 디스패치 전달 확인"
 
-echo "[29/36] 헤드리스 조기 종료 방지 철칙"
-# 헤드리스 반복에서 도구 호출 없이 의도만 말하고 턴을 끝내면 종료 계약 미출력(종료 코드 3)이거나
-# attempts만 소모된다. 사람이 "계속하세요"라고 답할 수 없는 세션이므로 철칙으로 고정한다.
-ITERATE_MD=.claude/skills/gx-ralph-iterate/SKILL.md
-grep -qF '턴을 끝내기 전에 마지막 문단을 확인한다' "$ITERATE_MD" \
-  || fail "마지막 문단 점검 철칙 누락: $ITERATE_MD"
-grep -qF '컨텍스트가 길어졌다는 이유로 멈추지 않는다' "$ITERATE_MD" \
-  || fail "컨텍스트 사유 중단 금지 문구 누락: $ITERATE_MD"
-[ "$FAIL" -eq 0 ] && ok "헤드리스 조기 종료 방지 철칙 확인"
+echo "[29/36] 외부 반복 실행기와 전용 CI 제거"
+[ ! -f tests/test_codex_ralph.py ] || fail "제거된 Ralph 전용 검사 잔존"
+if grep -qE 'test-gx-ralph|gx-ralph[.]sh' .github/workflows/lint.yml; then
+  fail "CI가 제거된 Ralph 러너를 호출함"
+fi
+[ "$FAIL" -eq 0 ] && ok "폐지된 러너와 CI 호출 없음"
 
 echo "[30/36] Codex 훅 배치·실측 계약"
 CODEX_MD=.claude/rules/harness-codex.md

@@ -13,7 +13,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 ## 진입과 범위
 
 1. **대화의 명시적 요청이 최우선**이다. 원문 목표, 제공 문서, 결정 근거와 종료점을 보존한다. 이미 답한 같은 run·범위의 진입 승인·진행 방식·모델 질문을 반복하지 않는다. 일반 구현·PR 요청은 문서 준비와 요청 범위의 근거이며 이후 제시하는 TDD 진입 질문의 실제 답변을 대신하지 않는다. 내부 판단 위임은 유지하되 결과에 영향을 주는 미정·충돌은 질문한다.
-2. 현재 프로젝트 지침, 기존 pending 질문, 현재 브랜치의 `.dev/{branch-slug}/state.md` 순서로 확인한다. **state가 없어도 route 전에 `.dev/<slug>/pending-question.json`을 복원**하며 가짜 gx-tdd state를 만들지 않는다. SVN은 `.dev/.active`를 쓴다. **진행 중 gx-tdd 실행이 있고 구현을 요청했다면 새 파이프라인보다 기존 중단 지점을 먼저 복원**한다. gx-dev 등 다른 pipeline은 `migration-required`로 실행을 멈추고 명시 전환 결정을 받는다. gx-ralph는 `ralph.lock`이 있으면 `loop-active`로 상태만 보고하고, 없어도 `loop-resume-required`로 기존 루프 복귀를 안내하며 두 번째 실행기를 시작하지 않는다. 사용자 목표가 다른 작업이면 혼합하지 말고 별도 작업 여부만 해소한다. `understand`·`plan`·상태 조회는 진행 중 실행이 있어도 읽기 전용으로 종료한다.
+2. 프로젝트 지침과 현재 작업 경로의 상태·잠금을 읽기 전용으로 확인해 지원 중단 검사를 먼저 적용한다. 진행 중 gx-ralph/구버전 flags는 `migration-required`, `ralph.lock`은 `loop-active`로 중단하며 구버전 질문을 재개하지 않는다. 잠금·프로세스·기록을 변경하지 않는다. 통과한 정상 작업은 기존 pending 질문을 먼저 복원한다. **state가 없어도 route 전에 `.dev/<slug>/pending-question.json`을 복원**하며 가짜 gx-tdd state를 만들지 않는다. Git은 현재 branch-slug의 `.dev/<slug>/state.md`, SVN은 `.dev/.active`를 쓴다. **진행 중 gx-tdd 실행이 있고 구현을 요청했다면 새 파이프라인보다 기존 중단 지점을 먼저 복원**한다. gx-dev 등 다른 pipeline은 `migration-required`로 실행을 멈추고 명시 전환 결정을 받는다. completed인 구버전은 기록만 보존하고 재개하지 않으며, 새 목표는 새 진입 결정으로 시작할 수 있다. 사용자 목표가 다른 작업이면 혼합하지 말고 별도 작업 여부만 해소한다. `understand`·`plan`·상태 조회는 진행 중 실행이 있어도 읽기 전용으로 종료한다.
 3. 새 요청은 아래 결과로 정규화한다. 자연어 의미와 대화의 부정·제한을 함께 읽으며 단어 하나로 라우팅하지 않는다.
 
 | 사용자 목표 | 수행·종료 |
@@ -29,6 +29,10 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 이해·계획·상태만 요청한 경우 **stash, checkout, pull, 브랜치/worktree 생성, gx-setup, 빌드·테스트를 실행하지 않는다**. 보고서 저장을 요청하지 않았다면 소비 프로젝트에 계획·state 파일도 만들지 않는다. 계획 작성은 대화 안에서 가능하다. `gx-setup`은 자동 호출하지 않으며 설정의 실제 누락이 필요한 실행을 막을 때만 알려준다.
 
 ## 필요한 작업과 다음 단계
+
+계획·인계·결과를 제시할 때는 [판단과 검증 전달](references/reviewability.md)을 적용한다. 중요한 선택의 이유·원문 근거·미확인 범위를 기존 기록으로 설명하며 새 질문 단계나 일괄 퀴즈를 만들지 않는다.
+
+명시적 무인 반복 실행 요청은 [지원 중단 규약](../gx-tdd/references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)에 따라 먼저 중단한다. `--ralph`·`랄프로` 등의 실행 요청을 일반 개발이나 커밋으로 자동 대체하지 않으며, 설명·제거 요청·파일명·인용은 실행 명령으로 오인하지 않는다.
 
 [작업 총괄 계약](references/tdd-entry.md)을 읽고 현재 부족한 근거에 맞춰 gx-context·gx-lens·gx-research·기존 계획 조회 등 필요한 절차만 사용한다. 각 스킬의 opt-in·읽기 전용·쓰기 권한을 유지하며 모든 스킬을 강제하지 않는다. 허가된 관련 context·요구사항·W계획 준비 자체에는 일괄 확인을 추가하지 않는다. context는 도메인·요구사항·W목록을 관리하고 gx-tdd가 PRD·설계·T태스크 구현계획을 만든다.
 

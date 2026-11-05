@@ -170,9 +170,14 @@ class CodexQuestionContractTests(unittest.TestCase):
         self.assertIn("질문 1~3개", runtime)
         self.assertIn("선택지 2~3개", runtime)
         implement = (ROOT / ".claude/skills/gx-tdd/phases/phase-implement.md").read_text(encoding="utf-8")
-        for route in ("AC 묶어서 재분해", "작업 계획으로 분할", "무인 루프로 전환", "그대로 진행"):
-            self.assertIn(route, implement)
-        self.assertIn("두 단계", implement)
+        guard = implement.split("### 1.15 태스크 수 가드", 1)[1].split("### 1.2 계획 검토", 1)[0]
+        for route in ("AC 묶어서 재분해", "작업 계획으로 분할", "그대로 진행"):
+            self.assertIn(route, guard)
+        self.assertEqual(guard.count("AskUserQuestion("), 1)
+        self.assertNotIn("무인 루프로 전환", guard)
+        self.assertIn("문서 수정 금지", guard)
+        self.assertIn("이 선택지를 **제외**", guard)
+        self.assertIn("stage/commit/push하지 않는다", guard)
 
     def test_smoke_contract_checks_question_shape(self):
         text = (ROOT / "tests/codex-smoke.md").read_text(encoding="utf-8")

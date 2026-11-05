@@ -11,17 +11,18 @@
 | `교차 리뷰`, `교차 검증`, `cross review`, `크로스 리뷰` | `/gx-cross-review` |
 | `요구사항 추가`, `요구사항 정리해줘`, `작업 나눠줘`, `작업 계획 만들어줘`, `작업 계획 갱신` | `/gx-context` (요구사항을 원장에 넣고 `.dev/plan.md`까지 갱신. 구현 요청인 `기능 추가`는 `/gx-work`) |
 
-**gx-tdd·gx-ralph 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
+**gx-tdd 파이프라인 진행 중 커밋/PR 의도 (verify 우회 방지):**
 - 이 분기는 **사용자의 자연어 발화에만** 적용한다. 파이프라인 내부(phase-complete Step 1/2)의 Skill 호출에는 적용하지 않는다.
-- 판별: 저장소 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환. **svn은 `.dev/.active`가 가리키는 `.dev/{slug}/state.md` — 포인터 부재·공백 시 `.dev/trunk/state.md` 폴백**)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 커밋/PR로 직행시키지 않는다. 지문 규약은 gx-commit의 verify 경고 게이트 항목을 따르며, 지문 필드가 없는 구 세션은 (a)만 판정한다.
+- 판별: 저장소 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 브랜치명의 `/`를 `-`로 치환. **svn은 `.dev/.active`가 가리키는 `.dev/{slug}/state.md` — 포인터 부재·공백 시 `.dev/trunk/state.md` 폴백**)가 존재하고 `pipeline: gx-tdd`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — 단일 스킬이든 체이닝(`커밋하고 PR`)이든 커밋/PR로 직행시키지 않는다. 지문 규약은 gx-commit의 verify 경고 게이트 항목을 따르며, 지문 필드가 없는 구 세션은 (a)만 판정한다.
 - **svn 프로젝트**는 gx-commit이 미지원(VCS 가드 종료)이라 스킬 층의 재확인 게이트가 없다 — PreToolUse 훅이 Claude의 `svn commit` 시도를 차단(verify 미통과 시 경고 포함)하지만 사용자의 터미널 커밋에는 개입하지 못하므로, 이 라우팅 분기가 사용자 안내의 핵심 방어다. `svn commit` 직접 실행 안내 전에 반드시 이 판별을 수행한다.
 - **git 프로젝트**는 gx-commit 스킬이 보호 브랜치·verify 미통과를 선행 판별한다. 신뢰된 PreToolUse 훅(`pre-tool-guard.sh` G3)은 직접 `git commit` 시도도 검사한다. Claude Code는 기존 `ask` 분기를 유지하고, Codex 어댑터는 미지원 `ask`를 `deny`로 정규화한다. 훅 미신뢰·미로드 상태를 보호 성공으로 보고하지 않는다.
-- 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." 판별된 파이프라인이 `gx-ralph`(lock 없음 = 루프 중단 잔여 상태)이면 대신 안내한다: "gx-ralph 루프의 잔여 상태입니다. 러너 재실행으로 루프를 재개하거나, `oh-my-gx:gx-verify` 통과 후 커밋/PR을 진행하세요." Codex에서는 verify 미통과 상태를 사용자 위험 수용만으로 우회하지 않는다. Claude Code의 기존 위험 수용 분기는 해당 하네스의 스킬·훅 절차에 따른다.
-- `pipeline` 필드가 gx-tdd/gx-ralph가 아닌 state.md(gx-dev 등)에는 적용하지 않는다.
+- 대신 안내한다: "verify 게이트 미통과 상태입니다. `oh-my-gx:gx-verify`로 검증을 통과시킨 뒤 커밋/PR을 진행하거나, 전체 완료 절차(인수 검증 포함)는 `/gx-tdd --phase complete`를 사용하세요." Codex에서는 verify 미통과 상태를 사용자 위험 수용만으로 우회하지 않는다. Claude Code의 기존 위험 수용 분기는 해당 하네스의 스킬·훅 절차에 따른다.
+- `pipeline` 필드가 gx-tdd가 아닌 state.md에는 아래 제거된 실행 기록의 중단 규칙을 먼저 적용한다.
 
-**gx-ralph 루프 예외:**
-- `oh-my-gx:gx-ralph-iterate`(헤드리스 반복 세션)의 직접 `git commit`은 gx-commit 라우팅 강제의 **명시적 예외**다 — 헤드리스에는 gx-commit의 확인 게이트(AskUserQuestion)에 응답할 사용자가 없다. 커밋 메시지 컨벤션(`{type}: 메시지`, 트레일러 금지)은 동일하게 준수하며, verify 게이트는 훅 G3(`pipeline: gx-ralph` 인식)가 유지한다.
-- 사용자가 루프 실행 중(`.dev/{branch-slug}/ralph.lock` 존재) 커밋/PR을 요청하면: 러너가 실행 중임을 안내하고, 루프 종료(또는 lock 해제 확인) 후 진행하도록 권한다.
+**제거된 실행 기록:**
+- `pipeline: gx-ralph`와 `status: in_progress`인 실행, 활성 flags의 Ralph 전환 또는 `ralph.lock`이 남아 있으면 읽기 전용으로 중단한다. 기존 기록·잠금은 삭제하거나 TDD 상태로 자동 변환하지 않는다.
+- 지원 중단과 실행 종료 확인 필요를 안내하고, 명시적으로 새 TDD 범위를 정한 뒤 진행한다. 과거 `passed`나 질문 응답은 전환 권한이 아니다. 직접 커밋 예외와 러너 재실행은 제공하지 않는다.
+- 완료된 과거 기록은 조회할 수 있다. 새 구현은 기존 실행을 재개하지 않는 새 요청으로 처리한다.
 
 ## 공통 작업 진입 (gx-work → gx-tdd)
 
@@ -33,11 +34,11 @@
 | `W01 시작해줘` | 실제 `.dev/plan.md`의 W01을 찾아 범위·선행·중복 착수를 확인하고 TDD로 실행 |
 | `지금 뭐 할 수 있어?`, `병렬 가능한 작업` | 작업 계획과 요구사항 원장을 읽어 준비된 작업만 제시 |
 | `이어서`, `아까 하던 작업` | 기존 TDD 상태의 run-id·단계·목적·종료점을 복원 |
-| `랄프로 … 개발해줘` | `/gx-work` → `/gx-tdd --ralph …`; 승인된 PRD·설계 후 명시적 무인 전환 |
+| `--ralph`, `랄프로 … 개발해줘` | 지원 중단을 알리고 종료. 일반 개발·커밋으로 자동 대체하지 않음 |
 
 명시한 스킬·읽기 전용 범위·사용자 종료점을 우선한다. 계획 ID는 해당 행이 실제로 있을 때만 작업 참조로 해석한다. 개발 실행은 TDD로 통일하고, 제거된 gx-dev 상태는 자동 재개·변환하지 않는다. 기존 산출물을 보존한 뒤 TDD 전환 범위만 확인한다.
 
-일반 요청의 모드는 all, 모델은 프로젝트 설정(미설정이면 standard)을 쓴다. 이미 정한 모드·모델·배경·범위를 다시 질문하지 않는다. core·Ralph는 명시적으로 선택한 경우에만 적용한다. 이해/계획/verify가 종료점이면 자동 커밋·push·PR을 하지 않는다.
+일반 요청의 모드는 all, 모델은 프로젝트 설정(미설정이면 standard)을 쓴다. 이미 정한 모드·모델·배경·범위를 다시 질문하지 않는다. core는 명시적으로 선택한 경우에만 적용한다. 이해/계획/verify가 종료점이면 자동 커밋·push·PR을 하지 않는다.
 
 진입점은 다음 스킬에 파일 경로·이번 범위·확정 결정·차단 미정만 전달한다. 실행 주체는 gx-tdd 하나이며, 다른 플러그인의 계획을 읽더라도 두 실행 루프를 중복 기동하지 않는다. 배포 정본은 설치되는 `gx-work/SKILL.md`와 references다. 이 개발 저장소의 규칙이 소비 프로젝트에 자동 설치된다고 가정하지 않는다.
 
@@ -71,4 +72,4 @@
 - **금지**: `git commit`, `gh pr create`, `git push` 직접 실행
 - **필수**: `Skill(skill: "oh-my-gx:gx-commit")`, `Skill(skill: "oh-my-gx:gx-pull-request")` 호출
 - **실패 시**: 직접 명령어로 우회하지 않고 사용자에게 보고한다.
-- **예외**: gx-tdd phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. gx-ralph-iterate의 헤드리스 직접 커밋과 함께 이 규칙의 명시적 예외다. phase-setup 3.0.5의 착수 기록 커밋과 phase-complete Step 3.5의 완료 갱신 커밋(둘 다 `docs: [plan] …`)도 같은 예외다 — `.dev/plan.md` 한 파일만 스테이징하며 기능 코드를 포함하지 않는다.
+- **예외**: gx-tdd phase-complete의 "context 변경사항 자동 커밋"(Step 3~4)은 status.md 동기화를 전용 메시지 형식(`docs: [context] …`)으로 직접 `git add/commit/push`한다 — 기능 코드가 아닌 context 문서 동기화 전용이며 별도 push 정책을 따른다. phase-setup 3.0.5의 착수 기록 커밋과 phase-complete Step 3.5의 완료 갱신 커밋(둘 다 `docs: [plan] …`)도 같은 예외다 — `.dev/plan.md` 한 파일만 스테이징하며 기능 코드를 포함하지 않는다.

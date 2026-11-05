@@ -51,6 +51,15 @@ class OrchestrationTests(unittest.TestCase):
         self.assertFalse(result["ready-for-tdd"])
         self.assertEqual(self.snapshot(), before)
 
+    def test_retired_ralph_request_cannot_be_approved_by_handoff(self):
+        for goal in ("랄프로 기능 개발해줘", "/gx-ralph", "/gx-ralph-iterate", "루프 돌려"):
+            with self.subTest(goal=goal):
+                self.request.write_text(json.dumps({"goal": goal}), encoding="utf-8")
+                before = self.snapshot()
+                with self.assertRaisesRegex(ValueError, "지원.*중단"):
+                    self.prepare(entry_approval_source="실제 사용자 진행 답변")
+                self.assertEqual(self.snapshot(), before)
+
     def test_generic_implementation_request_is_not_the_tdd_entry_answer(self):
         result = self.prepare()
         self.assertEqual(result["approval"]["status"], "approved")

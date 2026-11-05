@@ -35,7 +35,7 @@ cd C:\path\to\your-project
 codex.cmd
 ```
 
-Codex 입력창의 `/skills`에서 GX 스킬 18개를 확인하고, `/hooks`에서 GX 훅 정의와 신뢰 상태를 확인합니다. 훅이 표시되지 않거나 신뢰되지 않으면 보호 훅이 실행된다고 볼 수 없습니다.
+Codex 입력창의 `/skills`에서 GX 스킬 16개를 확인하고, `/hooks`에서 GX 훅 정의와 신뢰 상태를 확인합니다. 훅이 표시되지 않거나 신뢰되지 않으면 보호 훅이 실행된다고 볼 수 없습니다.
 
 ## 2. 채팅으로 사용
 
@@ -129,6 +129,5 @@ codex.cmd plugin list --json
 | GX 스킬이 안 보임 | 설치 목록·활성 상태를 확인하고 새 Codex 세션에서 `/skills` 확인 |
 | 보호 훅이 안 보임 | `/hooks`에서 GX 정의·신뢰 확인 |
 | 외부 Codex 리뷰가 권한 오류로 중단됨 | `--advisor native`로 요청 |
-| Ralph가 BLOCKED로 종료됨 | 차단 사유 확인; 무인 커밋에 필요한 권한을 자동 우회하지 않음 |
 
 이전 버전은 [PR #89](https://github.com/bs-koo/oh-my-gx/pull/89)의 수정 브랜치에서 설치된 GX 스킬 17개와 핵심 작업 흐름을 실측했습니다. 이 기록은 현재 버전의 새 설치 발견과 실제 UI 동작을 입증하지 않습니다. RED 역할의 구현 소스 미열람은 독립 trace가 없어 미확인이며, 역할 도구 목록은 권한을 강제하는 경계가 아닙니다. 전체 결과는 [실측 보고서](https://github.com/bs-koo/oh-my-gx/blob/main/docs/reports/2026-09-14-codex-validation.md)를 참고하세요.

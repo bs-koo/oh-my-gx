@@ -223,7 +223,7 @@ reviewer의 한 출력에서 `spec_verdict`·`quality_verdict` 두 YAML 블록�
 
 **verdict 블록 부재 시 우선순위**: (1) 산문 Part 1 판정(SPEC PASS/FAIL 문구)이 있으면 산문 폴백으로 진행한다. (2) 산문 Part 1 판정 자체가 없으면 reviewer를 1회 재호출한다. (3) 재호출 출력에도 Part 1 판정이 없으면 사용자에게 보고하고 중단한다. quality_verdict 부재도 같은 우선순위를 적용하며, 두 블록 모두 상충·부재인 경우에도 재호출은 합산 1회다.
 
-**security 집계 미확보 시 처리**: (1) 블록과 산문 집계가 모두 부재하면 "집계 0건"이 아니라 "집계 미확보"로 판별한다. (2) security-auditor를 1회 재호출한다 (spec/quality의 재호출 합산 1회와 별도 카운트). (3) 재호출 출력에도 집계가 없으면: 대화형은 AskUserQuestion으로 "위험 수용(원장 기록 후 진행)" / "중단"을 확인하고, 헤드리스(gx-ralph-iterate)는 `<ralph>BLOCKED: security 감사 집계 확보 실패</ralph>`로 종료한다 (현재 gx-ralph 루프는 phase-review를 실행하지 않는다 — 루프는 red-writer/implementer만 디스패치하고 리뷰는 루프 종료 후 대화형 재진입이다. 이 분기는 향후 비대화 리뷰 경로를 위한 예약이다). (4) 위험 수용을 선택하면 Step 4.1에서 trust-ledger에 `security 감사 미확보 — 위험 수용` 항목을 기록한다 (SPEC FAIL의 "이대로 진행"과 같은 취급 — 감사 흔적 없이 통과하는 경로를 남기지 않는다).
+**security 집계 미확보 시 처리**: (1) 블록과 산문 집계가 모두 부재하면 "집계 0건"이 아니라 "집계 미확보"로 판별한다. (2) security-auditor를 1회 재호출한다 (spec/quality의 재호출 합산 1회와 별도 카운트). (3) 재호출 출력에도 집계가 없으면: 대화형은 AskUserQuestion으로 "위험 수용(원장 기록 후 진행)" / "중단"을 확인하고, 헤드리스는 `BLOCKED: security 감사 집계 확보 실패`로 기록하고 중단한다. (4) 위험 수용을 선택하면 Step 4.1에서 trust-ledger에 `security 감사 미확보 — 위험 수용` 항목을 기록한다 (SPEC FAIL의 "이대로 진행"과 같은 취급 — 감사 흔적 없이 통과하는 경로를 남기지 않는다).
 
 reviewer가 `[검증 필요]`를 남기면 오케스트레이터가 해당 focused 테스트를 1회 실행해 결과를 findings에 반영한다.
 
@@ -343,8 +343,6 @@ else:
 ---
 
 ## state.md 추적
-
-Ralph 복귀의 누적 리뷰가 현재 코드에서 정상 종료하면 같은 run-id와 실제 최종 diff/report 경로를 보존하고 `review-run-id`·`review-fingerprint`를 기록한다. 정리/수리가 있었다면 마지막 변경과 직접 검증·확인 리뷰를 마친 뒤 지문을 계산한다. 계산은 [기존 지문 계약](../../gx-verify/references/fingerprint.md)의 현재 하네스 절차를 사용하며, 이 기록으로 verify를 통과 처리하지 않는다. 미확보/실패 리뷰를 성공 증거로 기록하지 않는다. `document-sync-pending`은 complete의 문서/최종 verify 전까지 유지한다.
 
 ```yaml
 steps:

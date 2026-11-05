@@ -14,13 +14,13 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.
 
-> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor) 전용. gx-ralph 루프는 항상 red-writer→implementer 2석(격리 경로)을 쓴다.
+> green-coder·refactor-coder는 이 파이프라인에서 호출하지 않는다 — 단독 스킬(gx-green·gx-refactor) 전용.
 
 ---
 
 ## 핵심 모드 분기 (core)
 
-모드 분기와 Ralph 전환보다 먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 확정된 G-W-T AC·FR/W 연결과 현재 관련 문서 해시를 검사한다. `--phase implement`·`--resume`에서도 생략하지 않는다. 기존 입력을 재사용하고 차이만 보완하며, RED에는 이 보고서나 구현 본문을 추가하지 않는다.
+모드 분기와 RED 실행보다 먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 확정된 G-W-T AC·FR/W 연결과 현재 관련 문서 해시를 검사한다. `--phase implement`·`--resume`에서도 생략하지 않는다. 기존 입력을 재사용하고 차이만 보완하며, RED에는 이 보고서나 구현 본문을 추가하지 않는다.
 
 오케스트레이터가 핵심 모드이면:
 - Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장).
@@ -94,19 +94,6 @@ AskUserQuestion(
 
 경고 baseline은 실제 명령과 scope를 함께 기록한다. 최종 선택 범위가 달라졌으면 경고 합계를 직접 비교하지 않고 `경고 비교 미수행: 선택 범위 변경`으로 보고한다. 범위를 바꾼 측정을 0건으로 가장하지 않는다.
 
-## Step 0.7: gx-ralph 전환 (--ralph 전용)
-
-state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 직행한다** — 기본 경로에서는 묻지 않는다 (v1.23.0에서 진입 질문을 제거했다. 무인 루프는 명시적 opt-in — `--ralph` 플래그 또는 "랄프로 …" 발화 — 으로만 진입하며, 의도 파싱이 phase-setup Step 7을 통해 `flags`에 정규화 기록한다). 있으면 기준선 게이트 통과 직후, RGR 사이클 진입 전에 아래 전환 절차를 실행한다. 기준선 게이트를 먼저 통과시키는 이유: 깨진 기준 위에서 무인 루프를 돌리면 verify가 매 반복 차단되어 루프가 즉시 BLOCKED로 낭비된다 (warnings-baseline도 이 시점에 기록되어 루프의 verify가 신규 경고를 비교할 수 있다).
-
-**방어 조건** (`--ralph`가 있어도 하나라도 해당하면 무시하고 "gx-ralph 전환을 건너뜁니다 — {사유}" 1줄 안내 후 Step 1로 직행. 의도 파싱의 RALPH 우선순위 규칙이 정상 경로에서 이 조합을 막지만, state.md를 손으로 고친 경우 등을 방어한다):
-- 핵심 모드 (경량 경로 — PRD가 없어 gx-ralph 진입 조건을 충족하지 않음)
-- `--phase implement` 단독 실행 (구현 단독 실행 의도가 명시됨)
-- `VCS_TYPE`이 `svn` (gx-ralph 미지원)
-
-`--resume` 재진입은 방어 조건이 **아니다** — 재개된 state.md의 `flags`에 `--ralph`가 있으면 그대로 전환한다. PRD·설계 승인 도중 세션이 유실된 정당한 opt-in을 재개 시 조용히 대화형으로 바꾸지 않는다 (구 버전 state.md에는 `--ralph`가 존재하지 않으므로 별도 방어가 필요 없다).
-
-**전환 절차**: 기존 PRD·설계의 실제 승인 근거를 확인한다. gx-work 진입 응답이나 원래 구현 요청만으로 산출물 승인을 대신하지 않는다. 같은 승인 근거가 있으면 재질문하지 않으며, 없으면 해당 기존 승인 게이트에서 실제 응답을 기다린다. 확인 후 `Skill(skill: "oh-my-gx:gx-ralph")`를 호출한다. 이 시점의 state.md에 `pipeline: gx-tdd` 이력이 있으므로 gx-ralph가 `origin: gx-tdd`로 기록하고, 반복 세션이 red-writer→implementer 2석으로 구현한다. **이 파이프라인은 여기서 종료한다** — Step 1 이후를 실행하지 않고, state.md execution-log에 `implement: ralph 전환` 1줄을 기록한다. 루프 종료 후 복귀 경로는 gx-ralph가 안내한다. `MODEL_PROFILE`이 `eco`이면 전환 시 1줄 안내한다: "ralph 루프는 모델 프로파일(eco)을 아직 지원하지 않습니다 — 반복은 GX_RALPH_MODEL 미지정 시 에이전트 기본 모델(표준)로 실행됩니다." Skill 호출이 실패하면 직접 우회하지 않고 사용자에게 보고한 뒤 대화형 RGR로 진행할지 확인한다.
-
 ## Step 1: 태스크 분해 (오케스트레이터 직접 수행)
 
 `--from-plan`·`--handoff`에서 검증한 `units[]`가 있으면 [계획 인계 계약](../references/plan-handoff.md)에 따라 기존 태스크를 그대로 T태스크에 매핑한다. request 인계에는 units가 없을 수 있으므로 기존 PRD·설계에서 이 단계의 구체 계획을 만든다. AC·파일·의존 조건이 부족한 태스크만 보완하며 유효한 목록 전체를 다시 분해하지 않는다. 외부 계획·core·재개도 Step 1.2~1.3의 검토·방법 게이트를 통과한다. 같은 run·계획의 실제 승인 기록은 재사용한다.
@@ -139,47 +126,28 @@ state.md `flags`에 `--ralph`가 **없으면 이 Step을 건너뛰고 Step 1로 
 
 ### 1.15 태스크 수 가드
 
-태스크가 **8개를 넘으면** 승인 게이트 전에 두 단계로 묻는다. 태스크마다 red-writer 콜드 스타트와 verify 6단계가 붙으므로 30개짜리 분해는 한 세션에서 끝나지 않는다 — 분해가 잘못됐거나 실행 단위가 잘못된 것이다. 첫 질문은 재분해·분할·다른 실행 경로 중 하나를 고른다. "다른 실행 경로"를 고르면 두 번째 질문에서 무인 루프와 그대로 진행을 고른다. 각 질문은 선택지 2~3개이며 추천 항목을 첫 번째에 둔다.
+태스크가 **8개를 넘으면** 승인 게이트 전에 한 질문으로 재분해·작업 분할·그대로 진행을 선택받는다. 태스크마다 RED 작성과 검증 비용이 있으므로 같은 컴포넌트/패턴의 AC를 합칠 수 있는지 먼저 확인한다. 실행 가능한 선택지만 2~3개로 제시한다.
 
 ```
 AskUserQuestion(
   questions: [{
-    question: "태스크가 {N}개로 분해됐습니다. 8개를 넘으면 한 세션에서 완주하기 어렵습니다. 어떻게 할까요?",
+    question: "태스크가 {N}개로 분해됐습니다. 어떻게 진행할까요?",
     header: "태스크 수",
     options: [
-      { label: "AC 묶어서 재분해 (Recommended)", description: "같은 컴포넌트·같은 패턴의 AC를 한 태스크로 묶어 8개 이하로 줄입니다. 태스크당 테스트 케이스가 늘어날 뿐 RGR 강도는 같습니다" },
-      { label: "작업 계획으로 분할", description: "이번 실행은 앞 8개까지만 진행하고 나머지 AC는 `.dev/plan.md`의 후속 작업(W행)으로 등록합니다. 다음 실행에서 `W0N 시작해줘`로 이어집니다" },
-      { label: "다른 실행 경로", description: "무인 루프 또는 현재 세션에서 모든 태스크를 진행할지 이어서 선택합니다" }
+      { label: "AC 묶어서 재분해 (Recommended)", description: "같은 컴포넌트·같은 패턴의 AC를 묶어 태스크를 줄입니다. RGR 강도는 유지합니다" },
+      { label: "작업 계획으로 분할", description: "이번 실행 범위를 줄이고 나머지 AC를 후속 W작업으로 등록합니다" },
+      { label: "그대로 진행", description: "{N}개를 이 세션에서 진행하고, 중단하면 --resume으로 이어갑니다" }
     ],
     multiSelect: false
   }]
 )
 ```
 
-"다른 실행 경로"를 선택하면 다음 질문의 실제 답변을 기다린다. 이 질문은 `svn`이면 무인 루프 선택지를 빼고, 대신 첫 질문에서 "그대로 진행"을 직접 제시하므로 두 번째 질문이 필요 없다. `.dev/plan.md`가 없으면 첫 질문에서 "작업 계획으로 분할"을 제외하되 "다른 실행 경로"는 유지한다.
-
-```
-AskUserQuestion(
-  questions: [{
-    question: "다른 실행 경로를 선택하셨습니다. 어떻게 실행할까요?",
-    header: "실행 경로",
-    options: [
-      { label: "그대로 진행 (Recommended)", description: "{N}개 전부 이 세션에서 진행합니다. 압축 후 `--resume`으로 이어갈 수 있습니다" },
-      { label: "무인 루프로 전환", description: "이 파이프라인을 중단하고 `--ralph`로 재실행해 AC를 반복합니다" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-- **AC 묶어서 재분해** → 조건 1의 묶기 규칙을 적용해 재분해하고 1.1 표를 다시 제시한다. 여전히 8개를 넘으면 이 가드를 한 번 더 거친다 (최대 2회).
+- **AC 묶어서 재분해** → 조건 1의 묶기 규칙을 적용해 1.1 표를 다시 제시한다. 여전히 8개를 넘으면 이 가드를 한 번 더 거친다 (최대 2회).
 - **작업 계획으로 분할** → `.dev/plan.md`가 없거나 문서 수정 금지이면 이 선택지를 **제외**한다. 허용된 경우 앞 8개 태스크로 범위를 줄이고 나머지 AC를 `.dev/plan.md`에 `대기` W행으로 로컬 추가한다 (같은 도메인·브랜치 규칙, 선행은 현재 `work-id`). 여기서 stage/commit/push하지 않는다. [실행 종료점](../references/execution-boundaries.md)에 따라 최종 검증 후 요청된 commit/pr 완료 단계에 함께 반영한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
-- **무인 루프로 전환** → `status: cancelled`로 종료하고 `/gx-tdd --ralph {원 요청}` 재실행을 안내한다. svn이면 이 선택지를 제외한다.
 - **그대로 진행** → 1.2로 진행한다. execution-log에 `"태스크 수 가드 통과(사용자 선택): {N}개"`를 남긴다.
 
-첫 질문의 동적 선택지에는 유효한 경로만 넣는다. `svn`이면 "작업 계획으로 분할" 유무에 맞춰 첫 질문을 2~3개로 구성하고 "그대로 진행"을 포함한다. `svn`이며 `.dev/plan.md`가 없으면 "AC 묶어서 재분해"와 "그대로 진행"의 2개를 제시한다.
-
-핵심 모드는 전체 분해를 생략하므로 이 수 가드는 타지 않는다 (AC 3~5개 = 태스크 3~5개). 최소 실행표를 파일에 보존한 뒤 1.2로 간다.
+문서 분할이 불가능하면 재분해/그대로 진행의 두 선택지를 제시한다. 핵심 모드는 전체 분해를 생략하므로 이 수 가드는 타지 않는다 (AC 3~5개 = 태스크 3~5개). 최소 실행표를 파일에 보존한 뒤 1.2로 간다.
 
 ### 1.2 계획 검토·실행방법 확인
 
@@ -210,7 +178,7 @@ AskUserQuestion(
 
 ### 1.3 실행방법 검증·반영
 
-Step 1.2 이후 첫 RED 전에 수행한다. 설계서에 구현 순서가 없으면 AC 단위 계획을 만들고, core·외부 계획·재개도 같은 게이트를 사용한다. 명시 `--ralph`로 Step 0.7에서 정상 전환한 실행은 별도 계약이며 메뉴에 무인 루프를 추가하지 않는다.
+Step 1.2 이후 첫 RED 전에 수행한다. 설계서에 구현 순서가 없으면 AC 단위 계획을 만들고, core·외부 계획·재개도 같은 게이트를 사용한다.
 
 Step 1.2의 응답 또는 기존 기록에서 현재 `run-id`·내부 계획 해시와 `execution-method-run`·`execution-method-plan-sha256`이 같고 `execution-method-source`에 실제 선택 근거가 있으면 추가 질문 없이 flags를 반영한다. 초기 명시 방법도 실제 계획 검토 응답과 연결됐으면 같은 규칙으로 처리한다. **계획 승인만 받았고 방법이 미정일 때에만** Step 1.2의 세 방법 선택지를 사용해 "계획 검토는 완료됐습니다. 어떤 방식으로 진행할까요?"라고 질문한다. 계획 승인 질문을 반복하지 않는다.
 
@@ -338,7 +306,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 
 ### Step 2-I: IMPLEMENT (세션 직접 수행 — GREEN+REFACTOR 통합. `--isolated`면 implementer 디스패치)
 
-기본 경로에서는 **오케스트레이터가 이 단계를 직접 수행**한다 — 태스크당 콜드 스타트를 red-writer 1회로 줄이기 위해서다. verify_implement의 검증은 파일 상태 대조(해시·porcelain·focused 직접 실행)라 수행 주체와 무관하게 같은 강도로 동작한다. state.md `flags`에 `--isolated`가 있으면 아래 "격리 경로"의 implementer 디스패치를 대신 쓴다. gx-ralph 루프는 항상 격리 경로다.
+기본 경로에서는 **오케스트레이터가 이 단계를 직접 수행**한다 — 태스크당 콜드 스타트를 red-writer 1회로 줄이기 위해서다. verify_implement의 검증은 파일 상태 대조(해시·porcelain·focused 직접 실행)라 수행 주체와 무관하게 같은 강도로 동작한다. state.md `flags`에 `--isolated`가 있으면 아래 "격리 경로"의 implementer 디스패치를 대신 쓴다.
 
 **세션 IMPLEMENT 절차** (`agents/implementer.md`의 절대 규칙·REFACTOR 범위·report 형식과 같은 계약이다 — 한쪽을 고치면 함께 갱신. `references/maintenance-notes.md` 참조):
 
@@ -418,7 +386,7 @@ python3 "$GX_PLUGIN_ROOT/scripts/gx-test-plan.py" focused --cwd "$PROJECT_ROOT" 
   --project "{TYPE}:{RELROOT}" --tests-file "{현재 태스크 테스트 경로 JSON}"
 ```
 
-exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focused.cwd}`에서 Git Bash로 command를 실행한다. 격리 프롬프트의 FOCUSED_CWD에 반환된 cwd를 전달하고 RED/IMPL report·직접 재실행·Ralph 인라인 인계에서도 이 쌍을 보존한다. exit2는 focusedTest 설정이 필요한 상태다. 먼저 프로젝트의 실제 runner/스크립트에서 지원하는 옵션을 확인해 그 설정만 보완한다. 확인할 수 없으면 사용자에게 필요한 명령 또는 명시적인 전체 실행 여부를 한 번 확인하고 이번 실행에 보존한다. 같은 질문과 전체 폴백을 태스크마다 반복하지 않는다. 헤드리스는 설정 부족을 BLOCKED로 보고한다. exit1이나 테스트 자체 실패를 runner 미지원으로 숨기지 않는다.
+exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focused.cwd}`에서 Git Bash로 command를 실행한다. 격리 프롬프트의 FOCUSED_CWD에 반환된 cwd를 전달하고 RED/IMPL report·직접 재실행에서도 이 쌍을 보존한다. exit2는 focusedTest 설정이 필요한 상태다. 먼저 프로젝트의 실제 runner/스크립트에서 지원하는 옵션을 확인해 그 설정만 보완한다. 확인할 수 없으면 사용자에게 필요한 명령 또는 명시적인 전체 실행 여부를 한 번 확인하고 이번 실행에 보존한다. 같은 질문과 전체 폴백을 태스크마다 반복하지 않는다. 헤드리스는 설정 부족을 BLOCKED로 보고한다. exit1이나 테스트 자체 실패를 runner 미지원으로 숨기지 않는다.
 
 **명령 오류 가드**: 테스트 결과 요약 없이 끝난 옵션·러너 오류는 fix loop에서 제품 결함으로 다루지 않는다. 실제 설정을 보완한 뒤 현재 태스크만 재실행한다. 전체 검사는 공통 영향 계획과 명시적인 전체 실행 선택으로만 결정한다.
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
@@ -739,7 +707,7 @@ AskUserQuestion으로 오간 질문과 선택을 자동 기록한다. 고른 것
 - ❌ RGR 사이클 병렬 실행 — 격리 깨짐
 - ❌ "이번 한 번만" 코드 우선 작성 — 첫 예외가 규칙이 됨
 - ❌ 검증 명령 생략 (verify_red/verify_implement) — Iron Law 3 위반
-- ❌ 발동 조건(프로덕션 파일 2개 이상 또는 fix 라운드)을 충족한 태스크의 리뷰 생략 — "diff가 작아 보여서"는 사유가 아니다. 조건은 기계 판정이다 (gx-ralph 반복 세션은 Step 2-R/2-I 프롬프트만 빌려 쓰므로 이 불릿의 대상이 아니다)
+- ❌ 발동 조건(프로덕션 파일 2개 이상 또는 fix 라운드)을 충족한 태스크의 리뷰 생략 — "diff가 작아 보여서"는 사유가 아니다. 조건은 기계 판정이다
 - ❌ 태스크 리뷰의 동작 결함·spec FAIL을 재현 테스트 없이 fix loop로 수정 — Iron Law 1 위반. RED 재호출이 먼저다
 
 위반 감지 시 즉시 중단하고 RED 단계부터 재시작한다.

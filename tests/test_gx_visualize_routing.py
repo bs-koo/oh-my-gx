@@ -28,12 +28,11 @@ class GxVisualizeRoutingTests(unittest.TestCase):
                                         "--changed-since", "${BASE_BRANCH}"])
                 self.assertRegex(section, r"아니요[^\n]*건너뛴다")
 
-    def test_headless_and_ralph_skip_before_the_question(self):
+    def test_headless_skip_before_the_question(self):
         for name, section in self.complete_sections():
             with self.subTest(pipeline=name):
                 guard, _ = section.split("AskUserQuestion(", 1)
                 self.assertIn("--non-interactive", guard)
-                self.assertIn("ralph.lock", guard)
                 self.assertIn("strict no-op", guard)
                 self.assertIn("질문하지 않고", guard)
 

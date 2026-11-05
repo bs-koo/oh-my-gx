@@ -1,5 +1,11 @@
 # Codex 소비 프로젝트 실제 세션 smoke 계약
 
+## 3.0.0 변경의 확인 범위
+
+현재 배포 대상은 총괄1+전문15의 16개 스킬이다. Ralph 스킬·외부 러너는 제거됐으며 새 무인 요청 거부, 기존 active state/flags/lock 보존·차단과 정상 TDD 질문/재개/검증을 확인한다. 아래 구버전의 Ralph/17·18개 실측 이력은 과거 근거로 보존하며 현재 지원 기능으로 해석하지 않는다.
+
+3.0.0의 실제 설치 발견·모델 배정·질문 UI/capture·훅 신뢰·실제 사용자 이해도는 미실행이다. 로컬 helper·배포·기존 계약 검사와 PR CI의 통과를 이 실측의 PASS로 승계하지 않는다.
+
 기준: Codex CLI 0.154.0, Windows PowerShell + Git Bash 및 Linux Bash. 이 문서는 **실행 절차와 증거 양식**이다. 2026-09-14 Windows 실제 결과는 아래 상태와 [실측 보고서](../docs/reports/2026-09-14-codex-validation.md)에 기록했다. Linux는 오프라인 회귀만 실행했다. 후속 검증에서는 인증된 실제 소비 프로젝트 세션을 돌리기 전까지 `미실행`으로 둔다. 단위 테스트·mock·문구 확인을 PASS로 대체하지 않는다. 각 실행에서 CLI 버전, OS, 설치 cache 절대경로, 사용자 홈과 subprocess 홈, 실제 세션의 모델/effort(도구 trace에 표시된 경우만), 훅 신뢰 상태, 작업 전후 HEAD/index/source 해시를 기록한다. 임시 소비 프로젝트에는 이 저장소의 `AGENTS.md`를 복사하지 않는다. 개발 폴더의 `skill-creator` junction이 설치 스킬 17개에 포함되지 않았는지 확인한다.
 
 ## 설치·setup

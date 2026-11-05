@@ -168,13 +168,6 @@ class SkillInstructionLayoutTests(unittest.TestCase):
     def test_tdd_references_are_loaded_before_phase_loop(self):
         self.assert_contract_load("gx-tdd")
 
-    def test_ralph_verify_fingerprint_owner_is_tdd_pipeline_reference(self):
-        ralph = self.text(SKILLS / "gx-ralph/SKILL.md")
-        target = SKILLS / "gx-ralph" / "../gx-tdd/references/pipeline-state.md"
-        self.assertTrue(target.is_file())
-        self.assertIn("### verify 지문 (verify-fingerprint)", self.text(target))
-        self.assertEqual(ralph.count("../gx-tdd/references/pipeline-state.md"), 2)
-        self.assertNotIn('gx-tdd SKILL.md의 "verify 지문"', ralph)
 
     def test_moved_reference_headers_and_tdd_pointers_are_file_relative(self):
         for name in ("gx-tdd",):

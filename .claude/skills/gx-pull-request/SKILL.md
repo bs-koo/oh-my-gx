@@ -82,6 +82,8 @@ Arguments:
 
 ## 사전 확인 (반드시 순차 실행)
 
+레거시 선행 검사: 현재 작업의 `status: in_progress`인 state에 `pipeline: gx-ralph` 또는 `flags`의 `--ralph`/`RALPH`가 있거나, state 유무·완료 표식과 무관하게 `ralph.lock`이 남아 있으면 빌드·스테이징·커밋·push·PR 전에 중단하고 전환을 안내한다. 훅이 로드되지 않았어도 적용한다.
+
 **Step 1** (게이트 — 반드시 순차 실행):
 
 1. `which gh`로 gh CLI 존재 확인.
@@ -100,7 +102,7 @@ Arguments:
 - 현재 브랜치가 베이스 브랜치가 아닌지 확인 — 같으면: "베이스 브랜치에서는 PR을 생성할 수 없습니다."
 - 베이스 브랜치 대비 커밋이 있는지 확인 — 없으면: "PR을 생성할 커밋이 없습니다."
 - 미커밋 변경사항이 있으면 경고하고, 커밋 먼저 할지 진행할지 확인
-- **verify 경고 게이트 (gx-tdd·gx-ralph)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`이면 루프 중단 잔여 상태다 — 러너 재실행(루프 재개) 또는 `oh-my-gx:gx-verify` 통과 후 PR을 우선 안내한다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
+- **verify 경고 게이트 (gx-tdd·레거시 gx-ralph 기록)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`는 제거된 레거시 실행이다. status가 in_progress이거나 ralph.lock이 남아 있으면 검증 표식과 무관하게 PR 전에 중단한다. 기록과 변경을 보존하고 외부 프로세스 종료·명시적 gx-tdd 전환을 안내하며 자동 재개·상태 변환을 하지 않는다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
 - **Codex 지문 계산·중단**: 위 게이트에서 현재 코드 지문이 필요하면 설치된 GX 플러그인 루트의 `scripts/codex-fingerprint.py`를 확인하고, `git rev-parse --show-toplevel`로 확인한 소비 프로젝트 절대경로로 `--cwd`를 지정한다. Windows는 확인된 Python 3.10+로 `python "<GX_PLUGIN_ROOT>/scripts/codex-fingerprint.py" --cwd "<PROJECT_ROOT>"`, Linux는 `python3 "$GX_PLUGIN_ROOT/scripts/codex-fingerprint.py" --cwd "$PROJECT_ROOT"`를 실행한다. **exit 0과 stdout의 정확한 한 줄 `^[0-9a-f]+:[0-9a-f]{12}$`**을 확인한 뒤 **트리 성분만** state.md와 대조한다. helper 부재·실패·빈/잘못된 출력이면 Codex에서 PR 실행을 중단한다. Codex에서는 `verify-status` 미통과나 트리 성분 불일치도 gx-verify를 안내하고 PR 실행 전에 중단하며, 사용자 위험 수용만으로 넘기지 않는다. 임시 인덱스 직접 Git 명령은 `.git/objects` 쓰기를 일으키므로 Codex에서 사용하지 않는다. Claude Code는 위 기존 계산·위험 수용 분기를 유지한다.
 
 ## GH_HOST 감지
