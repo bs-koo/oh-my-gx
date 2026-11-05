@@ -1,5 +1,5 @@
 title: oh-my-gx
-description: 요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. 프로젝트별 설정으로 언어 중립적인 개발을 지원합니다.
+description: 프로젝트 지식 관리, 요구사항 정의, 설계·구현·리뷰·검증과 PR 생성을 지원하는 개발 워크플로. 프로젝트별 설정으로 언어 중립적인 개발을 지원합니다.
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
   - jekyll-remote-theme
