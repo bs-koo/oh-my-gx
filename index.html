@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>oh-my-gx — 요청을 개발 흐름으로 연결</title>
-  <meta name="description" content="gx-work에 목표를 요청하면 AI가 의도와 진행 상태를 파악해 필요한 GX 스킬을 선택하고 연결합니다. 문서·정책 분석부터 TDD 개발·검증·PR까지, 다음 단계를 확인하며 진행합니다.">
+  <title>oh-my-gx — 프로젝트 이해부터 개발·검증·PR까지</title>
+  <meta name="description" content="프로젝트 지식 관리, 요구사항 정의, 설계·구현·리뷰·검증과 PR 생성을 지원하는 개발 워크플로.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -755,26 +755,29 @@
   <div class="container hero-grid">
     <div>
       <p class="platform-label">Claude Code · Codex를 위한 개발 워크플로</p>
-      <h1 class="display-xl">목표를 말하면,<br>AI가 필요한 스킬을<br>연결합니다.</h1>
-      <p class="lead"><strong>시작은 <code>gx-work</code> 하나로.</strong> 요청과 프로젝트 상태를 이해하고 문서 정리, 정책 분석, TDD 개발 중 필요한 작업을 선택합니다. 결과와 다음 단계를 제안하고, 개발 전에는 진행 여부를 확인합니다.</p>
+      <h1 class="display-xl">프로젝트 이해부터<br>개발·검증·PR까지.</h1>
+      <p class="lead"><strong>프로젝트 지식 관리부터 PR 생성까지.</strong> 요구사항을 정리하고 설계·구현·리뷰·검증을 수행합니다. 정책과 변경 영향도 분석, 기술 부채 점검, 리서치와 문서 정리도 지원합니다.</p>
       <div class="hero-actions">
         <a href="#codex-start" class="btn btn-primary">설치하고 시작하기</a>
         <a href="#workflow" class="btn btn-secondary">동작 방식 보기</a>
       </div>
       <p class="hero-footnote">총괄 진입점 1개 + 전문 스킬 15개 · 개별 호출도 지원</p>
     </div>
-    <div class="orchestrator" aria-label="사용자 요청을 gx-work가 해석하고 필요한 전문 스킬로 연결하는 관계도">
-      <p class="diagram-caption">요청에 따라 달라지는 작업 흐름</p>
-      <div class="request-quote">“다운로드 기능을 추가하고<br>PR까지 올려줘.”</div>
+    <div class="orchestrator" aria-label="oh-my-gx의 프로젝트 이해, 개발, 품질 확인과 결과 공유를 지원하는 전문 스킬">
+      <p class="diagram-caption">oh-my-gx가 지원하는 개발 업무</p>
+      <div class="request-quote">프로젝트의 지식과 규칙을 바탕으로</div>
       <div class="connector" aria-hidden="true">↓</div>
-      <div class="work-hub"><span class="hub-label">작업 총괄</span><strong>gx-work</strong><p>의도·상태 파악 → 필요한 스킬 선택 → 다음 단계 제안</p></div>
-      <div class="connector" aria-hidden="true">↓ 필요한 작업만 연결</div>
+      <div class="work-hub"><span class="hub-label">개발 워크플로</span><strong>oh-my-gx</strong><p>프로젝트 이해 → 설계·구현 → 품질 확인 → 결과 공유</p></div>
+      <div class="connector" aria-hidden="true">↓ 업무별 전문 스킬</div>
       <div class="skill-branches">
-        <div><code>gx-context</code><span>도메인·작업계획</span></div>
+        <div><code>gx-context</code><span>도메인·요구사항</span></div>
         <div><code>gx-lens</code><span>정책·변경 영향</span></div>
-        <div><code>gx-tdd</code><span>구현계획·개발</span></div>
+        <div><code>gx-tdd</code><span>설계·구현·리뷰</span></div>
+        <div><code>gx-verify</code><span>테스트·빌드 검증</span></div>
+        <div><code>gx-tech-debt</code><span>기술 부채 점검</span></div>
+        <div><code>gx-pull-<wbr>request</code><span>변경 정리·PR 생성</span></div>
       </div>
-      <p class="diagram-note">연결 예시입니다. 모든 스킬을 매번 실행하지 않습니다.<br>개발은 범위와 종료점을 확인한 뒤 시작합니다.</p>
+      <p class="diagram-note">필요한 스킬은 <code>gx-work</code>가 연결합니다.<br>각 스킬을 직접 호출할 수도 있습니다.</p>
     </div>
   </div>
 </section>
@@ -784,8 +787,8 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">요청하는 방법</p>
-      <h2 class="display-lg">스킬 선택은 AI에게,<br>목표와 완료점은 요청에.</h2>
-      <p>어떤 스킬부터 쓸지 정하지 않아도 됩니다. <code>gx-work</code>에 원하는 결과를 알려주세요. 기존 자료와 결정을 재사용하며, 부족한 근거에 맞춰 필요한 스킬을 연결합니다.</p>
+      <h2 class="display-lg">목표를 말하면,<br>AI가 필요한 스킬을 연결합니다.</h2>
+      <p><code>gx-work</code>로 시작하세요. 원하는 결과를 알려주면 요청과 프로젝트 상태를 파악하고 필요한 스킬을 연결합니다. 기존 자료와 결정을 재사용하며, 개발 전에는 범위와 완료점을 확인합니다.</p>
     </div>
     <div class="request-examples">
       <div class="request-example"><div><span class="request-kind">문서 정리</span><p>“이 요구사항을 등록하고 작업을 나눠줘.<br>개발은 나중에 할게.”</p></div><div><code>gx-work → gx-context</code><p>도메인 문서·요구사항·작업 목록을 정리하고 종료합니다.</p></div></div>
@@ -848,8 +851,8 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
-      <h2 class="display-lg">gx-work가 연결하는 전문 스킬</h2>
-      <p>총괄 스킬 gx-work 아래에 각자의 책임을 가진 15개 전문 스킬이 있습니다. 요청에 필요한 스킬만 연결하며, 전문 스킬을 개별적으로 호출하는 방식도 지원합니다.</p>
+      <h2 class="display-lg">개발 업무별 전문 스킬</h2>
+      <p>문서·분석, 개발·검증, 결과 정리와 공유를 담당하는 15개 전문 스킬을 제공합니다. <code>gx-work</code>로 필요한 스킬을 연결하거나 개별 스킬을 직접 호출할 수 있습니다.</p>
     </div>
 
     <!-- context -->
@@ -1291,7 +1294,7 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
     <div class="footer-top">
       <div class="footer-brand">
         <span class="brand"><svg class="spike" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l1.6 7.3 5.3-5.2-3.4 6.6 7.1-1.7-6.4 3.5 6.4 3.5-7.1-1.7 3.4 6.6-5.3-5.2L12 22.5l-1.6-7.3-5.3 5.2 3.4-6.6L1.4 15.5l6.4-3.5L1.4 8.5l7.1 1.7-3.4-6.6 5.3 5.2z"/></svg> oh-my-gx</span>
-        <p>요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. 설치 패키지는 <code>oh-my-gx</code>입니다.</p>
+        <p>프로젝트 지식 관리, 요구사항 정의, 설계·구현·리뷰·검증과 PR 생성을 지원하는 개발 워크플로. 설치 패키지는 <code>oh-my-gx</code>입니다.</p>
       </div>
       <div class="footer-cols">
         <div class="footer-col">
