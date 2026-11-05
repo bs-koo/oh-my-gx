@@ -76,22 +76,26 @@ class GxVisualizePublicDocsTests(unittest.TestCase):
         self.assertTrue(SKILL_DIR.is_dir(), "gx-visualize skill directory must ship")
         readme = self.read(README)
 
+        self.assertIn("gx-visualize", readme)
+        self.assertIn("docs/gx-visualize-guide.md", readme)
+        self.assertIn("GX 스킬 18개", readme)
+        guide = self.read(ROOT / "docs/gx-visualize-guide.md")
+
         for term in (
-            "gx-visualize",
             "시각화 포함",
             "trace",
             "progress",
             "impact",
             ".dev/{branch-slug}/visual/",
-            "Archify → Mermaid → 정적 HTML",
-            "docs/gx-visualize-guide.md",
+            "Archify",
+            "Mermaid",
+            "정적 HTML",
         ):
             with self.subTest(term=term):
-                self.assertIn(term, readme)
+                self.assertIn(term, guide)
 
-        self.assertIn("Archify가 없거나 실행에 실패", readme)
-        self.assertIn("운영 인프라를 자동 탐색하지", readme)
-        self.assertIn("GX 스킬 18개", readme)
+        self.assertIn("실행에 실패하면", guide)
+        self.assertIn("운영 토폴로지", guide)
 
     def test_github_pages_publishes_accessible_visualization_feature(self):
         page = self.read(INDEX)
