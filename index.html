@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>oh-my-gx — 개발 워크플로</title>
-  <meta name="description" content="요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. Claude Code와 Codex에서 도메인 문서, 작업 계획, 테스트 주도 개발과 최종 검증을 연결합니다.">
+  <title>oh-my-gx — 요청을 개발 흐름으로 연결</title>
+  <meta name="description" content="gx-work에 목표를 요청하면 AI가 의도와 진행 상태를 파악해 필요한 GX 스킬을 선택하고 연결합니다. 문서·정책 분석부터 TDD 개발·검증·PR까지, 다음 단계를 확인하며 진행합니다.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
@@ -674,6 +674,53 @@
       z-index: 200;
     }
     .skip:focus { left: 16px; top: 12px; }
+
+    /* Request-led hierarchy: one orchestrator, specialist skills below. */
+    .display-xl,.display-lg,.display-md,.display-sm { font-family:var(--sans); font-weight:600; letter-spacing:-.045em; line-height:1.3; word-break:keep-all; }
+    .display-xl { font-size:clamp(2.1rem,3.8vw,3.5rem); }
+    .display-lg { font-size:clamp(1.75rem,3vw,2.65rem); }
+    .hero { padding:72px 0 80px; }
+    .hero-grid { grid-template-columns:1fr 1fr; gap:64px; }
+    .hero .lead { font-size:17px; line-height:1.85; max-width:520px; }
+    .hero .lead strong { display:block; margin-bottom:10px; }
+    .hero-footnote,.platform-label { font-size:13px; color:var(--muted); }
+    .platform-label { margin-bottom:20px; }
+    .hero h1 { margin:0 0 26px; }
+    .orchestrator { padding:30px; background:white; border:1px solid var(--hairline); border-radius:var(--r-lg); }
+    .diagram-caption { font-size:12px; color:var(--muted); margin-bottom:20px; }
+    .request-quote { font-size:20px; font-weight:500; line-height:1.65; color:var(--ink); }
+    .connector { text-align:center; padding:14px 0; font-size:12px; color:var(--muted); }
+    .work-hub { background:var(--surface-dark); color:var(--on-dark); padding:22px; border-radius:var(--r-md); }
+    .hub-label { color:var(--on-dark-soft); font-size:12px; }
+    .work-hub strong { display:block; font:500 30px var(--mono); margin:4px 0 10px; }
+    .work-hub p { font-size:13px; line-height:1.7; }
+    .skill-branches { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; border-top:1px solid var(--hairline); padding-top:18px; }
+    .skill-branches code { display:block; font-size:12px; font-weight:500; color:var(--primary-active); }
+    .skill-branches span { display:block; font-size:12px; margin-top:6px; color:var(--body); }
+    .diagram-note { margin-top:24px; font-size:12px; line-height:1.8; color:var(--muted); }
+    .request-example { display:grid; grid-template-columns:1fr 1fr; gap:48px; padding:30px 0; border-top:1px solid var(--hairline); }
+    .request-kind { font-size:12px; color:var(--muted); }
+    .request-example p { margin-top:10px; line-height:1.8; }
+    .request-example>div:first-child p { font-size:19px; color:var(--ink); font-weight:500; }
+    .request-example code { font-size:13px; color:var(--primary-active); overflow-wrap:anywhere; }
+    .direct-skills { margin-top:32px; border-top:1px solid var(--hairline); padding-top:24px; }
+    .direct-skills summary { cursor:pointer; font-weight:500; padding:10px 0; }
+    .direct-skills .usage-list { margin-top:24px; }
+    .feature > * { min-width:0; }
+    .feature-text { overflow-wrap:anywhere; }
+    .direct-skills .usage-row { min-width:0; flex-wrap:wrap; }
+    .work-journey { list-style:none; display:grid; grid-template-columns:repeat(4,1fr); gap:28px; margin:48px 0 32px; }
+    .work-journey li { border-top:1px solid var(--hairline-dark); padding-top:22px; }
+    .journey-number { color:var(--accent-amber); font:500 13px var(--mono); }
+    .work-journey h3 { margin:16px 0 14px; font-size:19px; color:var(--on-dark); }
+    .work-journey p { font-size:14px; line-height:1.9; }
+    .journey-owner { display:block; font-size:12px; margin-top:20px; color:var(--on-dark-soft); }
+    .scope-note { border-top:1px solid var(--hairline-dark); padding-top:28px; margin-top:40px; }
+    .scope-note strong { color:var(--on-dark); }
+    .scope-note p { margin-top:10px; max-width:750px; font-size:14px; line-height:1.9; }
+    a:focus-visible,summary:focus-visible { outline:3px solid var(--primary-active); outline-offset:5px; border-radius:3px; }
+    @media(max-width:900px) { .hero-grid { grid-template-columns:1fr; gap:36px; } .work-journey { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:600px) { :root { --section:64px; } .hero { padding:44px 0 56px; } .container { padding:0 20px; } .orchestrator { padding:22px 18px; } .request-example { grid-template-columns:1fr; gap:18px; } .work-journey { grid-template-columns:1fr; gap:24px; } .skill-branches { gap:8px; } .skill-branches code { font-size:11px; } .skill-branches span { font-size:11px; } }
   </style>
 </head>
 <body>
@@ -691,7 +738,7 @@
       <a href="#usage">사용법</a>
       <a href="#codex-start">Codex 시작</a>
       <a href="#workflow">작업 흐름</a>
-      <a href="#skills">스킬</a>
+      <a href="#skills">전문 스킬</a>
       <a href="#agents">에이전트</a>
       <a href="#safeguards">안전장치</a>
       <a href="#harness">하네스</a>
@@ -707,40 +754,27 @@
 <section class="band-cream hero" id="top">
   <div class="container hero-grid">
     <div>
-      <span class="badge badge-dot">Claude Code · Codex 플러그인</span>
-      <h1 class="display-xl">요구사항부터<br>구현과 검증까지.</h1>
-      <p class="lead">요구사항 분석, 구현, 코드 리뷰와 검증을 지원하는 개발 워크플로. Claude Code와 Codex에서 도메인 문서와 작업 계획을 정리하고, 필요한 개발과 검증을 연결합니다.</p>
+      <p class="platform-label">Claude Code · Codex를 위한 개발 워크플로</p>
+      <h1 class="display-xl">목표를 말하면,<br>AI가 필요한 스킬을<br>연결합니다.</h1>
+      <p class="lead"><strong>시작은 <code>gx-work</code> 하나로.</strong> 요청과 프로젝트 상태를 이해하고 문서 정리, 정책 분석, TDD 개발 중 필요한 작업을 선택합니다. 결과와 다음 단계를 제안하고, 개발 전에는 진행 여부를 확인합니다.</p>
       <div class="hero-actions">
-        <a href="#usage" class="btn btn-primary">시작하기</a>
-        <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-secondary">GitHub에서 보기</a>
+        <a href="#codex-start" class="btn btn-primary">설치하고 시작하기</a>
+        <a href="#workflow" class="btn btn-secondary">동작 방식 보기</a>
       </div>
-      <div class="hero-meta">
-        <span><strong>18</strong> 스킬</span>
-        <span><strong>TDD</strong> 기반 개발</span>
-        <span><strong>Git · SVN</strong> 지원</span>
-        <span><strong>Claude Code · Codex</strong></span>
-      </div>
+      <p class="hero-footnote">총괄 진입점 1개 + 전문 스킬 17개 · 개별 호출도 지원</p>
     </div>
-    <div class="feature-art">
-      <div class="code-window" role="img" aria-label="gx-work에서 계획을 정리하고 TDD 구현과 검증으로 연결하는 흐름 예시">
-        <div class="code-chrome">
-          <span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span>
-          <span class="code-title">oh-my-gx — 작업 흐름 예시</span>
-        </div>
-        <div class="code-body">
-<span class="ln"><span class="c-cmd">&gt;</span> /gx-work 조회 기능 구현해줘</span>
-<span class="ln"></span>
-<span class="ln"><span class="c-dim">▸ understand</span>  관련 코드 · 도메인 정책</span>
-<span class="ln"><span class="c-dim">▸ next</span>        필요한 작업 결과 · 다음 단계</span>
-<span class="ln"><span class="c-dim">? gx-tdd 진입</span>  범위 · 문서 · 종료점 확인 → 답변</span>
-<span class="ln"><span class="c-dim">▸ gx-tdd</span>      PRD · 설계 · 구현계획 → 방식 선택</span>
-<span class="ln"><span class="c-dim">▸ implement</span>   RED → GREEN → REFACTOR</span>
-<span class="ln"><span class="c-dim">▸ review</span>      요구사항 충족 · 코드 품질</span>
-<span class="ln"><span class="c-dim">▸ verify</span>      현재 변경의 실행 근거 확인</span>
-<span class="ln"></span>
-<span class="ln"><span class="c-com"># 기본: verify · PR은 요청 시</span></span>
-        </div>
+    <div class="orchestrator" aria-label="사용자 요청을 gx-work가 해석하고 필요한 전문 스킬로 연결하는 관계도">
+      <p class="diagram-caption">요청에 따라 달라지는 작업 흐름</p>
+      <div class="request-quote">“다운로드 기능을 추가하고<br>PR까지 올려줘.”</div>
+      <div class="connector" aria-hidden="true">↓</div>
+      <div class="work-hub"><span class="hub-label">작업 총괄</span><strong>gx-work</strong><p>의도·상태 파악 → 필요한 스킬 선택 → 다음 단계 제안</p></div>
+      <div class="connector" aria-hidden="true">↓ 필요한 작업만 연결</div>
+      <div class="skill-branches">
+        <div><code>gx-context</code><span>도메인·작업계획</span></div>
+        <div><code>gx-lens</code><span>정책·변경 영향</span></div>
+        <div><code>gx-tdd</code><span>구현계획·개발</span></div>
       </div>
+      <p class="diagram-note">연결 예시입니다. 모든 스킬을 매번 실행하지 않습니다.<br>개발은 범위와 종료점을 확인한 뒤 시작합니다.</p>
     </div>
   </div>
 </section>
@@ -749,16 +783,17 @@
 <section class="band-soft" id="usage">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow">사용법</p>
-      <h2 class="display-lg">목표와 완료점을 요청하세요</h2>
-      <p><code>gx-work</code>가 현재 상태에 필요한 작업을 연결하고 결과와 다음 단계를 제안합니다. 개발로 넘어가기 전에는 범위·관련 문서·종료점을 보여주고 실제 답변을 기다립니다. 계획만 요청하면 계획에서, 개발을 진행하면 기본적으로 검증에서 종료합니다.</p>
+      <p class="eyebrow">요청하는 방법</p>
+      <h2 class="display-lg">스킬 선택은 AI에게,<br>목표와 완료점은 요청에.</h2>
+      <p>어떤 스킬부터 쓸지 정하지 않아도 됩니다. <code>gx-work</code>에 원하는 결과를 알려주세요. 기존 자료와 결정을 재사용하며, 부족한 근거에 맞춰 필요한 스킬을 연결합니다.</p>
     </div>
-
+    <div class="request-examples">
+      <div class="request-example"><div><span class="request-kind">문서 정리</span><p>“이 요구사항을 등록하고 작업을 나눠줘.<br>개발은 나중에 할게.”</p></div><div><code>gx-work → gx-context</code><p>도메인 문서·요구사항·작업 목록을 정리하고 종료합니다.</p></div></div>
+      <div class="request-example"><div><span class="request-kind">정책 확인</span><p>“다운로드 권한 정책을 확인해줘.<br>코드는 바꾸지 마.”</p></div><div><code>gx-work → gx-lens</code><p>구현 근거와 불확실성을 보고합니다. 개발로 자동 확장하지 않습니다.</p></div></div>
+      <div class="request-example"><div><span class="request-kind">기능 개발</span><p>“조회 결과에 엑셀 다운로드를 추가해줘.<br>기존 권한은 유지하고 PR까지.”</p></div><div><code>gx-work → 필요한 문서·분석 → gx-tdd</code><p>관련 자료를 확인하고 개발 진입에 답하면, 구체 계획과 구현으로 이어갑니다.</p></div></div>
+    </div>
+    <details class="direct-skills"><summary>필요한 스킬을 알고 있다면 직접 호출할 수 있습니다</summary>
     <div class="usage-list">
-      <div class="usage-row"><span class="usage-say">"이 프로젝트 구조를 파악해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
-      <div class="usage-row"><span class="usage-say">"이 요구사항의 구현 계획만 세워줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
-      <div class="usage-row"><span class="usage-say">"이 계획대로 구현하고 검증해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
-      <div class="usage-row"><span class="usage-say">"중단한 개발을 이어서 해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
       <div class="usage-row"><span class="usage-say">"요구사항을 등록하고 작업을 나눠줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-context</span></div>
       <div class="usage-row"><span class="usage-say">"현재 로깅 정책을 정리해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-lens</span></div>
       <div class="usage-row"><span class="usage-say">"TDD 실행 단계를 진행해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-tdd</span></div>
@@ -770,8 +805,8 @@
       <div class="usage-row"><span class="usage-say">"문장을 자연스럽게 교정해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-humanizer</span></div>
       <div class="usage-row"><span class="usage-say">"기술 부채의 우선순위를 분석해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-tech-debt</span></div>
       <div class="usage-row"><span class="usage-say">"요구사항과 변경 영향을 시각화해줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-visualize</span></div>
-      <div class="usage-row"><span class="usage-say">"구현하고 PR까지 만들어줘"</span><span class="usage-arrow">→</span><span class="usage-skill">gx-work</span></div>
     </div>
+    </details>
   </div>
 </section>
 
@@ -780,51 +815,17 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">공통 진입과 개발 실행</p>
-      <h2 class="display-lg">이해와 계획을 TDD 실행으로 연결</h2>
+      <h2 class="display-lg">AI가 연결하고,<br>큰 전환은 함께 결정합니다</h2>
       <p><code>gx-work</code>가 필요한 조사·문서 작업만 선택하고 결과와 다음 단계를 보여줍니다. TDD 진입에 답하면 <code>gx-tdd</code>가 PRD·설계·구체 구현계획을 확정하고 실행 방식을 선택받아 개발합니다. 실제 결과를 문서에 반영한 뒤 최종 검증합니다.</p>
     </div>
 
-    <div class="compare">
-      <div class="ch">구분</div>
-      <div class="ch">gx-work · 공통 진입</div>
-      <div class="ch ch-tdd">gx-tdd · 개발 실행</div>
-
-      <div class="rk">역할</div>
-      <div>상태 파악 · 필요한 스킬 · 다음 단계 제안</div>
-      <div class="hl">요구사항 · 설계 · 구현 · 리뷰 · 검증</div>
-
-      <div class="rk">입력</div>
-      <div>자연어 목표 · 도메인 문서 · 외부 계획</div>
-      <div class="hl">목표 · 관련 문서/W · 기존 계획이 있으면 재사용</div>
-
-      <div class="rk">계획</div>
-      <div>필요한 도메인 · 요구사항 · W작업 연결</div>
-      <div class="hl">PRD · 설계 · T태스크 구현계획 확정</div>
-
-      <div class="rk">구현</div>
-      <div>TDD 진입 질문에 실제 답변 후 인계</div>
-      <div class="hl">계획 뒤 실행 방식 선택 → RED → GREEN → REFACTOR</div>
-
-      <div class="rk">검증</div>
-      <div>관련 근거 · 미정 · 요청한 종료점 전달</div>
-      <div class="hl">영향 범위에 맞는 테스트와 실행 근거 확인</div>
-
-      <div class="rk">종료점</div>
-      <div>이해 · 계획만 요청하면 해당 결과에서 종료</div>
-      <div class="hl">기본 verify · 요청 시 commit 또는 PR</div>
-
-      <div class="rk">재개</div>
-      <div>기존 목표 · 완료점 · 중단 단계 복원</div>
-      <div class="hl">같은 실행의 상태와 근거를 이어서 사용</div>
-
-      <div class="rk">직접 사용</div>
-      <div>새 작업을 시작하거나 기존 작업을 이어갈 때</div>
-      <div class="hl">TDD 실행이나 특정 개발 단계를 요청할 때</div>
-    </div>
-
-    <p style="margin:28px auto 0; max-width:780px; text-align:center; font-size:15px; line-height:1.7;">
-      <strong style="color:var(--accent-amber)">시작 예시</strong> — <code>/gx-work 이 문서대로 구현하고 검증해줘</code>. PR까지 필요하면 요청에 완료점을 함께 적으세요.
-    </p>
+    <ol class="work-journey">
+      <li><span class="journey-number">01</span><h3>의도와 상태 파악</h3><p>원하는 결과, 기존 문서와 코드, 중단한 작업을 확인합니다. 필요한 조사·문서 스킬을 선택합니다.</p><span class="journey-owner">gx-work · 필요한 전문 스킬</span></li>
+      <li><span class="journey-number">02</span><h3>다음 단계 확인</h3><p>결과와 추천 작업을 보여줍니다. 개발이 필요하면 범위·관련 문서·종료점을 제시하고 실제 답변을 기다립니다.</p><span class="journey-owner">사용자 결정</span></li>
+      <li><span class="journey-number">03</span><h3>구체 계획과 개발</h3><p>gx-tdd가 PRD·설계·구현계획을 만듭니다. 계획 검토와 실행 방식 선택 후 TDD로 구현합니다.</p><span class="journey-owner">gx-tdd · 현재 세션 또는 구현 서브에이전트</span></li>
+      <li><span class="journey-number">04</span><h3>검증과 요청한 완료점</h3><p>리뷰와 문서 정합성을 확인하고 영향 범위에 맞게 검증합니다. 커밋·PR은 요청한 경우에 진행합니다.</p><span class="journey-owner">리뷰 · gx-verify · 커밋·PR</span></li>
+    </ol>
+    <div class="scope-note"><strong>문서만 요청하면 문서에서 끝납니다.</strong><p>gx-context는 도메인 문서와 작업 목록을 관리합니다. 구체 구현계획은 gx-tdd가 맡습니다. 이미 유효한 문서와 결정은 다시 만들거나 묻지 않습니다.</p></div>
 
     <p style="margin:48px 0 18px; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent-amber); font-weight:600;">gx-tdd 전체 실행 흐름 · 핵심 모드(core)에서도 TDD와 검증 기준은 유지합니다</p>
     <div class="pipeline">
@@ -848,8 +849,8 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">스킬 상세</p>
-      <h2 class="display-lg">18개 스킬, 하나의 작업 흐름</h2>
-      <p>도메인 문서와 계획을 정리하고, 테스트 주도 개발과 변경 검증을 진행합니다. 정책 분석, 기술 조사, 커밋·PR 작성도 작업에 맞게 요청할 수 있습니다.</p>
+      <h2 class="display-lg">gx-work가 연결하는 전문 스킬</h2>
+      <p>총괄 스킬 gx-work 아래에 각자의 책임을 가진 17개 전문 스킬이 있습니다. 요청에 필요한 스킬만 연결하며, 전문 스킬을 개별적으로 호출하는 방식도 지원합니다.</p>
     </div>
 
     <!-- context -->
@@ -881,43 +882,11 @@
       </div>
     </div>
 
-    <!-- work (reverse, dark art) -->
-    <div class="feature reverse">
-      <div class="feature-text">
-        <span class="badge">공통 진입점</span>
-        <h3 class="display-sm">gx-work · 개발 작업 진행</h3>
-        <p>프로젝트 파악과 현재 상태에 맞춰 조사·문서·개발의 다음 단계를 제안합니다. 필요한 스킬만 사용하고 TDD로 넘어가기 전에는 범위와 종료점을 보여주고 실제 답변을 기다립니다.</p>
-        <ul class="feature-list">
-          <li><strong>이해·계획 모드</strong> — 코드를 변경하지 않고 요청한 분석이나 계획에서 종료</li>
-          <li><strong>필요한 작업 선택</strong> — context·정책 분석·조사·기존 계획 조회 중 필요한 절차만 수행</li>
-          <li><strong>결정 재사용</strong> — 이미 답한 선택은 유지하고 결과에 영향을 주는 미정만 질문</li>
-          <li><strong>요청한 완료점</strong> — 기본 verify, 명시 요청 시 commit 또는 PR까지 진행</li>
-          <li><strong>중단 작업 재개</strong> — 기존 목표·완료점·현재 단계를 복원</li>
-        </ul>
-      </div>
-      <div class="feature-art">
-        <div class="code-window" role="img" aria-label="gx-work 요청별 수행 범위 예시">
-          <div class="code-chrome"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span><span class="code-title">요청 → 수행 범위</span></div>
-          <div class="code-body">
-<span class="ln"><span class="c-cmd">&gt;</span> 이 프로젝트를 파악해줘</span>
-<span class="ln">  <span class="c-str">→ 이해</span> <span class="c-dim">관련 코드와 근거 보고</span></span>
-<span class="ln"></span>
-<span class="ln"><span class="c-cmd">&gt;</span> 이 요구사항의 계획만 세워줘</span>
-<span class="ln">  <span class="c-str">→ 계획</span> <span class="c-dim">작업 단위와 테스트 경계 정리</span></span>
-<span class="ln"></span>
-<span class="ln"><span class="c-cmd">&gt;</span> 이 계획대로 구현해줘</span>
-<span class="ln">  <span class="c-str">→ 진입 확인</span> <span class="c-dim">범위 · 문서 · 종료점 → 실제 답변</span></span>
-<span class="ln">  <span class="c-str">→ gx-tdd</span> <span class="c-dim">PRD · 설계 · 구현계획 → 개발</span></span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- tdd -->
     <div class="feature">
       <div class="feature-text">
         <span class="badge badge-coral">개발 실행</span>
-        <h3 class="display-sm">gx-tdd · 테스트 주도 개발</h3>
+        <h3 class="display-sm">gx-tdd · 구현계획과 테스트 주도 개발</h3>
         <p>수용 기준을 테스트로 확인하고 기능을 구현합니다. 실패 테스트 작성, 최소 구현, 코드 정리를 진행한 뒤 문서와 실제 결과를 대조하고 최종 검증합니다.</p>
         <ul class="feature-list">
           <li><strong>수용 기준</strong> — Given-When-Then으로 관찰 가능한 동작 명시</li>
@@ -1328,8 +1297,8 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
 <!-- ===================== CTA BAND (dark) ===================== -->
 <section class="band-dark cta-band">
   <div class="container">
-    <h2 class="display-lg">프로젝트의 다음 작업을 연결하세요</h2>
-    <p>플러그인을 설치한 뒤 gx-work에 목표와 완료점을 요청하세요.</p>
+    <h2 class="display-lg">다음 작업을 gx-work로 시작하세요</h2>
+    <p>원하는 결과를 알려주세요. 필요한 스킬과 다음 단계는 AI가 연결합니다.</p>
     <div class="cta-actions">
       <a href="https://github.com/bs-koo/oh-my-gx" class="btn btn-primary">GitHub 저장소</a>
       <a href="https://github.com/bs-koo/oh-my-gx/releases/latest" class="btn btn-on-dark">릴리스 노트</a>
@@ -1359,7 +1328,7 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
         <div class="footer-col">
           <h4>제품</h4>
           <a href="#usage">사용법</a>
-          <a href="#skills">스킬</a>
+          <a href="#skills">전문 스킬</a>
           <a href="#agents">에이전트</a>
           <a href="#safeguards">안전장치</a>
           <a href="#harness">하네스 지원</a>
