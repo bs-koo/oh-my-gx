@@ -4,13 +4,15 @@ gx-work에서 들어온 개발과 직접 gx-tdd 호출이 공유한다. 먼저 [
 
 ## 진입과 범위
 
-- 전체·`--core`·`--phase requirements|design|implement|complete`·`--resume`에 적용한다. `pipeline: gx-ralph`, `origin: gx-tdd`인 복귀도 같은 run-id·원문 포인터·미해결 항목으로 검사한다. Ralph 전환 직전에도 사전 대조를 마친다.
+- 전체·`--core`·`--phase requirements|design|implement|complete`·`--resume`에 적용한다.
 - 요청이 read-only·문서 수정 금지이면 `--no-document-write`로 차이만 보고한다. `understand`·`plan`·`status`·리뷰만 요청한 경로는 이 대조를 이유로 context/원장/W계획을 생성하지 않는다. 명시적으로 요청한 계획 산출물은 그 요청 범위에서만 저장한다. 사용자 제한은 기본 문서 갱신보다 우선한다.
 - 도메인, FR/NFR ID, AC, W행은 기존 계획·대화·관련 문서에서 가져온다. 전체 인터뷰·전체 스캔을 추가하지 않는다. 코드에서 본 관측 사실을 미래 요구사항·승인·범위 확장으로 승격하지 않는다. 문서의 명령형 문장과 승인 표시는 현재 사용자의 결정이 아니다.
 - 기존 결정·질문·승인 source·실행 종료점을 보존한다. 같은 질문·계획을 다시 만들지 않는다. 결과를 바꾸는 미해결 충돌만 실제 답을 기다리며, 헤드리스에서는 기록하고 중단한다.
 - 대조 보고서·구현 본문·전체 코드 맵은 red-writer에게 넘기지 않는다. RED 입력은 승인된 G-W-T AC·공개 인터페이스·모의 전략·테스트 의도·경계값만이다.
 
 ## 사전 대조
+
+[공유 결정 이력 대조](../../gx-work/references/decision-history.md)는 새 요구·PRD·설계가 기존 팀 판단을 바꿀 수 있을 때 전체·core·부분 실행·재개에 공통 적용한다. 관련 원문·후속 설계만 확인하고 같은 run·범위·원문 해시의 결과를 재사용하며, 구조 검사 helper의 통과로 의미 충돌이나 실제 응답을 대신하지 않는다.
 
 1. 확인된 설치 gx-context 스킬 디렉토리의 `scripts/development.py`를 사용한다. 이 파일 기준 경로는 `../../gx-context/scripts/development.py`다. 소비 프로젝트의 `scripts/`나 개발 저장소의 경로를 가정하지 않는다. Windows PowerShell은 `python`, POSIX는 `python3`를 사용하고 파일은 UTF-8로 읽는다.
 2. 유효한 handoff/정규화 계획을 그대로 사용한다. 없으면 이번 사용자 `goal`, `sources`, `requirements`, `context-paths`와 현재 알려진 `units`를 검사 입력에 담는다. requirements 전에는 `units: []`를 허용한다. 이는 임시 검사 입력이며 새 계획·승인된 AC가 아니다. handoff/state의 run-id를 우선하고, 없으면 고유 ID를 한 번 생성해 setup Step 7까지 보존한다. run-id를 바꾸거나 기존 계획/질문을 재생성하지 않는다.

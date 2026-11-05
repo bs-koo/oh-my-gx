@@ -16,6 +16,8 @@
 
 ## Step -0.5: gx-work 인계 선행 검증
 
+먼저 [중단 규약](../references/intent-routing.md)을 적용한다. 해당하면 쓰기 없이 중단한다.
+
 gx-work 인계: `Read("../references/plan-handoff.md")`대로 `validate-handoff --handoff <H> --project-root <실제 루트>` 실행. exit 0 + `ready-for-tdd: true` 전 state·stash·브랜치·빌드/코드 변경 금지.
 
 ## Step 0: 진행 중 작업 감지
@@ -200,7 +202,7 @@ ARGS[0]에서 도메인 키워드를 추출하여 `PROJECT_ROOT` 내에서 관�
 **git인 경우:**
 프로젝트 타입에 따라 `.gitignore`에 빌드 아티팩트 패턴을 추가한다. **패턴은 config `projectTypes.{타입}.artifacts` 필드에서 읽는다** (SSOT는 config — 예: java-spring `.gradle/`·`build/`, node `node_modules/`·`dist/`). `artifacts` 필드가 없는 타입은 이 보강을 건너뛴다. 이미 존재하는 패턴은 건너뛴다.
 
-`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(ralph.lock, verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
+`.dev/`는 `.gitignore`에 추가하지 않는다 — 파이프라인 산출물(PRD·설계서·Trust Ledger·state.md·작업 계획 등)은 **협업 공유 대상**으로 커밋에 포함된다 (verify 지문은 `.dev`를 인덱스에서 제외하므로 게이트와 무관). 이어서 `Read("../../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. `.gitignore` 줄을 문자열로 찾지 않고 `git check-ignore`로 판정하므로 `.dev`·`/.dev/`·`.*` 같은 다른 형태, 하위 `.gitignore`, `.git/info/exclude`, 전역 설정까지 잡는다. 일시 파일(verify-*.log 등)도 함께 커밋될 수 있음을 사용자에게 안내한다.
 
 ## Step 6.5: DEV_DIR 결정
 
@@ -222,7 +224,7 @@ Write 전에 기존 `${DEV_DIR}/state.md`가 존재하고 `status: in_progress`�
 - run-id·goal·stop-at: handoff 값을 보존. 직접 호출은 새 고유 run-id와 명시 종료점(기본 verify)을 쓴다. 다른 실행의 보고서를 섞지 않는다.
 - 보존: `Read("../references/pipeline-state.md")`.
 - pipeline: gx-tdd, verify-status: pending (커밋/PR 게이트 판별 키 — SKILL.md 갱신 규칙 참조)
-- 실행 환경·args·flags는 상태 계약대로 기록한다. 유효한 `--ralph`만 정규화하며 무시된 RALPH는 기록하지 않는다. `--isolated` 등 나머지 flags는 보존하고 method 충돌은 먼저 해소한다.
+- 실행 환경·args·flags는 상태 계약대로 기록한다. `--isolated` 등 나머지 flags는 보존하고 method 충돌은 먼저 해소한다.
 - mode, intent-source 기록 (의도 파싱 결과)
 - model-profile 기록 (Step 1.5/3.0 결정 값)
 - **auto-stashed** (git 전용): Step 2.1의 `AUTO_STASHED` 값(true/false). Step 2.3에서 stash pop이 완료되면 false로 갱신한다. 파이프라인이 stash 이후 중단되어도 `--resume`이 이 값을 보고 보류된 stash를 복원한다. svn은 미사용.

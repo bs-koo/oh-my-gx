@@ -101,7 +101,27 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > "$SB/
 assert_repo "verify 미통과 커밋" commit1 ask
 assert_repo "체이닝 시 force deny 우선" chain1 deny
 printf 'pipeline: gx-ralph\nstatus: in_progress\nverify-status: pending\n' > "$SB/.dev/feat-x/state.md"
-assert_repo "gx-ralph 파이프라인 인식" commit1 ask
+assert_repo "제거된 Ralph 미검증 실행 차단" commit1 deny
+printf 'pipeline: gx-ralph\nstatus: in_progress\nverify-status: passed\nverify-fingerprint: fake:123456789abc\n' > "$SB/.dev/feat-x/state.md"
+assert_repo "제거된 Ralph passed 표식도 전환 전 차단" commit1 deny
+printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: passed\nflags: [--ralph]\n' > "$SB/.dev/feat-x/state.md"
+assert_repo "제거된 Ralph 활성 flags 차단" commit1 deny
+printf 'pipeline: gx-ralph\nstatus: completed\nverify-status: passed\n' > "$SB/.dev/feat-x/state.md"
+assert_repo "완료된 Ralph 과거 기록은 실행 게이트로 승격하지 않음" commit1 PASS
+printf 'runner pid' > "$SB/.dev/feat-x/ralph.lock"
+assert_repo "완료 상태여도 Ralph 잠금은 커밋 차단" commit1 deny
+rm -f "$SB/.dev/feat-x/state.md"
+assert_repo "상태 없는 Ralph 잠금은 커밋 차단" commit1 deny
+rm -f "$SB/.dev/feat-x/ralph.lock"
+mkdir -p "$SB/.dev/beta"
+printf 'runner pid' > "$SB/.dev/beta/ralph.lock"
+SVN_LOCK_REASON=$(cd "$SB" && bash "$OLDPWD/$HOOK" < "$TMP/svn1.json")
+if printf '%s' "$SVN_LOCK_REASON" | grep 'Ralph' >/dev/null; then
+  echo "  ok: SVN 활성 포인터·상태 없는 잠금 안내"
+else
+  echo "  FAIL: SVN 잠금만 남은 실행을 안내하지 않음"; FAIL=1
+fi
+rm -f "$SB/.dev/beta/ralph.lock"
 printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: passed\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "verify 통과 후 무개입" commit1 PASS
 printf 'pipeline: gx-dev\nstatus: in_progress\n' > "$SB/.dev/feat-x/state.md"
@@ -155,6 +175,10 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > "$SB/
 assert_repo "detached HEAD에서도 게이트 평가" commit1 ask
 printf 'pipeline: gx-tdd\nstatus: completed\nverify-status: passed\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "detached + 완료 상태는 무개입" commit1 PASS
+rm -f "$SB/.dev/feat-x/state.md"
+printf 'runner pid' > "$SB/.dev/feat-x/ralph.lock"
+assert_repo "detached + 상태 없는 잠금도 차단" commit1 deny
+rm -f "$SB/.dev/feat-x/ralph.lock"
 
 echo "[6/6] Codex 배치·프로브 스크립트"
 # hooks.json의 경로 렌더링과 페이로드 캡처는 가드 로직 밖의 층이다. 이 두 스크립트가

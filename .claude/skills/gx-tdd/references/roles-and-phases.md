@@ -23,11 +23,11 @@ gx-tdd/SKILL.md에서 실행 목록을 정하기 전에 읽는다. 이 파일의
 | security-auditor | 정책/보안/허점 감사 | "뭘 놓쳤나" | sonnet |
 | ~~qa-manager~~ | (deprecated — spec-reviewer·quality-reviewer로 분해 후 reviewer로 통합) | — | — |
 
-### EXECUTION (RED 디스패치 → IMPLEMENT 세션 직접; `--isolated`·fix 4~5·ralph는 implementer)
+### EXECUTION (RED 디스패치 → IMPLEMENT 세션 직접; `--isolated`·fix 4~5는 implementer)
 | Agent | 역할 | 관점 | 모델 |
 |-------|------|------|------|
 | **red-writer** | **실패 테스트 작성 전담 (신규)** | **"테스트만 작성" — 프로덕션 코드 안 봄** | **sonnet** |
-| **implementer** | **GREEN+REFACTOR 통합 — `--isolated`·fix 라운드 4~5 격상·gx-ralph 루프에서 디스패치. 기본 경로는 세션이 같은 계약으로 직접 수행** | **"최소 통과 후 안전한 정리" — 테스트 수정 금지, focused만 실행** | **sonnet** |
+| **implementer** | **GREEN+REFACTOR 통합 — `--isolated`·fix 라운드 4~5 격상에서 디스패치. 기본 경로는 세션이 같은 계약으로 직접 수행** | **"최소 통과 후 안전한 정리" — 테스트 수정 금지, focused만 실행** | **sonnet** |
 | green-coder / refactor-coder / ~~coder~~ | (파이프라인 미호출 — 단독 스킬 전용; coder deprecated → red-writer/implementer로 재편) | — | sonnet |
 
 ### VERIFICATION

@@ -41,7 +41,7 @@ exit 0과 JSON의 `model`·`reasoning_effort`·`effective_tier`를 확인한 후
 | tdd implementer 수정 4~5회차 (`--fix-round 4` 또는 `5`) | high | high |
 | setup·complete·핵심 AC·기본 tdd IMPLEMENT 등 session 실행 | 현재 부모 모델 | 현재 부모 모델 |
 
-기본 tdd GREEN·REFACTOR는 메인 세션에서 실행한다. 이를 mid 구현 에이전트가 실행했다고 기록하지 않는다. implementer를 디스패치하는 `--isolated` 경로에만 agent 매핑을 적용한다. 메인 세션 절감을 원하면 사용자가 모델을 선택해야 하며 플러그인이 자동 변경했다고 표시하지 않는다. Ralph의 eco는 아직 미지원이며 러너의 명시적 모델 선택과 이 정책을 혼동하지 않는다.
+기본 tdd GREEN·REFACTOR는 메인 세션에서 실행한다. 이를 mid 구현 에이전트가 실행했다고 기록하지 않는다. implementer를 디스패치하는 `--isolated` 경로에만 agent 매핑을 적용한다. 메인 세션 절감을 원하면 사용자가 모델을 선택해야 하며 플러그인이 자동 변경했다고 표시하지 않는다.
 
 TDD implementer fix 4~5는 fresh agent 격상이므로 `--execution session`과 조합하면 exit 2다. session 결과에는 현재 부모 모델·effort가 필요하며 누락 시 실패한다. 부모가 신규 자식 allowlist 밖이어도 실제 현재 세션 정보는 그대로 표시한다.
 

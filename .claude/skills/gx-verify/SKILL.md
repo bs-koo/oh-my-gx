@@ -48,7 +48,6 @@ NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 ## 사용 시점
 
 - `oh-my-gx:gx-tdd` 파이프라인의 complete Phase 진입 전 자동 호출
-- `oh-my-gx:gx-ralph-iterate` 반복 세션의 backpressure 게이트 (`--non-interactive`로 호출)
 - 단독 호출: 사용자가 "완료 검증", "verify 게이트" 명시
 - 위반 감지 시: 다른 스킬이 "should work", "probably passes" 등 추측 표현 사용 시
 
@@ -56,7 +55,7 @@ NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 
 ## 모드 (--non-interactive)
 
-ARGS에 `--non-interactive`가 포함되면 **비대화 모드**로 동작한다. 헤드리스 세션(gx-ralph 반복 등) 전용이다 — 헤드리스에는 AskUserQuestion 도구가 존재하지 않아 대화 분기가 성립하지 않는다.
+ARGS에 `--non-interactive`가 포함되면 **비대화 모드**로 동작한다. 응답할 사용자가 없는 헤드리스 세션용이다 — 헤드리스에는 AskUserQuestion 도구가 존재하지 않아 대화 분기가 성립하지 않는다.
 
 - **기본(무인자)**: 기존 대화형 동작 그대로다. 아래 절차의 AskUserQuestion 분기가 모두 유효하다.
 - **비대화 모드**: AskUserQuestion 분기 3곳(Step 1 감지 실패, Step 4 판정 2·판정 3)을 질문 없이 **fail-closed 게이트 차단**으로 대체한다. 차단 보고는 Step 5-B 형식을 따르고 차단 사유를 명시한다. "위험 수용"·"건너뛰기" 선택지는 비대화 모드에 존재하지 않는다.
@@ -148,6 +147,8 @@ Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 
 
 ### Step 4: 증거 분석
 
+[판단과 검증 전달](../gx-work/references/reviewability.md)에 따라 검증한 동작·남은 중요한 미검증 조건·실제 명령/cwd/로그 위치를 결과에 포함한다. 이 범위 밖 운영·배포·문서 의미까지 통과했다고 확대하지 않는다. 사용자 요청이 없으면 전체 로그를 대화에 반복 출력하지 않는다.
+
 ```
 검증 결과:
 - 테스트: {N pass, M fail} (exit code: {0|1})
@@ -181,7 +182,7 @@ git 저장소는 통과 보고 전에 반드시 `Read("references/fingerprint.md
 다음 단계 진행 가능 (commit, PR 등).
 ```
 
-오케스트레이터(`oh-my-gx:gx-tdd`·`oh-my-gx:gx-ralph-iterate`)가 호출했으면 다음 Phase 진입 신호.
+오케스트레이터(`oh-my-gx:gx-tdd`)가 호출했으면 다음 Phase 진입 신호.
 
 ### Step 5-B: 게이트 차단
 

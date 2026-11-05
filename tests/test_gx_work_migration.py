@@ -2,6 +2,9 @@
 
 import importlib.util
 import json
+import re
+import shutil
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -26,6 +29,50 @@ class UnifiedDistributionTests(unittest.TestCase):
         for manifest in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
             data = json.loads((ROOT / manifest).read_text(encoding="utf-8"))
             self.assertEqual(data["skills"], "./.claude/skills/")
+
+    def test_removed_unattended_runtime_is_not_distributed(self):
+        skills = ROOT / ".claude/skills"
+        self.assertEqual(len(list(skills.glob("gx-*/SKILL.md"))), 16)
+        for relative in (".claude/skills/gx-ralph", ".claude/skills/gx-ralph-iterate",
+                         "scripts/gx-ralph.sh", "scripts/test-gx-ralph.sh"):
+            self.assertFalse((ROOT / relative).exists(), relative)
+        workflow = (ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8")
+        self.assertNotIn("test-gx-ralph.sh", workflow)
+
+    def test_review_contract_survives_installation_without_source_repository(self):
+        sources = ("gx-work/SKILL.md", "gx-context/SKILL.md", "gx-context/references/intake.md",
+                   "gx-tdd/phases/phase-design.md", "gx-tdd/phases/phase-complete.md", "gx-verify/SKILL.md")
+        with tempfile.TemporaryDirectory() as temporary:
+            installed = Path(temporary) / "plugin/.claude/skills"
+            shutil.copytree(ROOT / ".claude/skills", installed)
+            target = (installed / "gx-work/references/reviewability.md").resolve()
+            self.assertTrue(target.is_file())
+            for relative in sources:
+                consumer = installed / relative
+                links = re.findall(r"\]\(([^)]+reviewability\.md)\)", consumer.read_text(encoding="utf-8"))
+                self.assertEqual(len(links), 1, relative)
+                self.assertEqual((consumer.parent / links[0]).resolve(), target, relative)
+
+    def test_history_contract_and_helper_resolve_from_installed_plugin(self):
+        sources = ("gx-work/references/tdd-entry.md", "gx-context/references/intake.md",
+                   "gx-tdd/references/document-lifecycle.md", "gx-tdd/phases/phase-requirements.md",
+                   "gx-tdd/phases/phase-design.md")
+        with tempfile.TemporaryDirectory() as temporary:
+            plugin = Path(temporary) / "installed plugin"
+            installed = plugin / ".claude/skills"
+            shutil.copytree(ROOT / ".claude/skills", installed)
+            (plugin / "scripts").mkdir()
+            shutil.copy2(ROOT / "scripts/gx-history.py", plugin / "scripts/gx-history.py")
+            target = (installed / "gx-work/references/decision-history.md").resolve()
+            for relative in sources:
+                consumer = installed / relative
+                links = re.findall(r"\]\(([^)]*decision-history\.md)\)", consumer.read_text(encoding="utf-8"))
+                self.assertEqual(len(links), 1, relative)
+                self.assertEqual((consumer.parent / links[0]).resolve(), target, relative)
+            links = re.findall(r"\]\(([^)]+gx-history\.py)\)", target.read_text(encoding="utf-8"))
+            self.assertEqual(len(links), 1)
+            self.assertEqual((target.parent / links[0]).resolve(), (plugin / "scripts/gx-history.py").resolve())
+            self.assertTrue((target.parent / links[0]).is_file())
 
     def test_exported_roles_are_owned_by_the_common_entry(self):
         path = ROOT / "scripts/sync-codex-resources.py"

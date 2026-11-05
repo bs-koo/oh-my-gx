@@ -72,13 +72,13 @@ class GxVisualizePublicDocsTests(unittest.TestCase):
         )
         self.assertEqual(plugin["version"], version)
 
-    def test_readme_publishes_eighteenth_skill_contract(self):
+    def test_readme_publishes_current_skill_contract(self):
         self.assertTrue(SKILL_DIR.is_dir(), "gx-visualize skill directory must ship")
         readme = self.read(README)
 
         self.assertIn("gx-visualize", readme)
         self.assertIn("docs/gx-visualize-guide.md", readme)
-        self.assertIn("GX 스킬 18개", readme)
+        self.assertIn("GX 스킬 16개", readme)
         guide = self.read(ROOT / "docs/gx-visualize-guide.md")
 
         for term in (
@@ -112,7 +112,7 @@ class GxVisualizePublicDocsTests(unittest.TestCase):
                 self.assertTrue(term in page, f"public visualization reference missing: {term}")
 
         self.assertIn('id="skills"', page)
-        self.assertEqual(len(list((ROOT / ".claude/skills").glob("gx-*/SKILL.md"))), 18)
+        self.assertEqual(len(list((ROOT / ".claude/skills").glob("gx-*/SKILL.md"))), 16)
 
         parser = BalancedHtmlParser()
         parser.feed(page)

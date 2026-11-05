@@ -17,10 +17,10 @@ if case == 'child':
         "import time; time.sleep(2); open('child-survived', 'w').write('bad')"])
     time.sleep(10)
 if case != 'empty':
-    final.write_text('<ralph>BLOCKED: fixture</ralph>\n' if case == 'blocked'
+    final.write_text('BLOCKED: fixture\n' if case == 'blocked'
                      else '검증 완료\n', encoding='utf-8')
 if case == 'failure':
     raise SystemExit(9)
 print(json.dumps({'type': 'probe', 'args': args, 'prompt': prompt,
-                  'text': '<ralph>COMPLETE</ralph>'}, ensure_ascii=False))
+                  'text': 'event-only success marker'}, ensure_ascii=False))
 print('mock diagnostic', file=sys.stderr)

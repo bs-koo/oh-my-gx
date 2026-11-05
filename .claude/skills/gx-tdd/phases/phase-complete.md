@@ -26,7 +26,6 @@ NO COMMIT/PR WITHOUT VERIFY GATE PASS
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-0. **ralph 복귀 (선판정)**: state.md가 `pipeline: gx-ralph`이고 `origin: gx-tdd`이면, 구현 상태는 phases 대신 ac-status.json 원장에 있다. phases.implement 부재만으로 TDD 미이행을 판정하지 않는다. 다만 모든 AC의 passes 표식과 별도로, 같은 run-id의 정상 누적 리뷰 report·`review-run-id`·`review-fingerprint`를 현재 트리와 대조한다. 지문은 [기존 계산 규약](../../gx-verify/references/fingerprint.md)으로 확인하고 트리 성분을 비교한다. 누락·불일치·실패이면 `document-sync-pending: true`를 유지하고 `/gx-tdd --phase review`로 복귀하도록 안내 후 중단한다. 현재 리뷰 증거가 유효하면 재실행하지 않고 Step 0으로 진행한다. 현재 AC 실행 증거·관련 문서 대조·최종 verify는 생략하지 않는다.
 1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
@@ -36,7 +35,7 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 
 ## Step 0: 인수 검증 (ProductOwner / 핵심 모드는 AC 자가 검증)
 
-먼저 [문서 수명주기](../references/document-lifecycle.md)의 현재 AC 증거 대조를 수행한다. RGR 테스트의 실제 실행·로그·해시가 현재 구현을 뒷받침해야 한다. 근거가 없거나 변경으로 오래된 AC는 관련 focused 명령을 직접 실행한다. 산문/예전 PASS로 인수하지 않는다. Ralph 복귀는 ac-status.json의 passes 표식만 믿지 않고 각 AC의 실제 실행 근거까지 대조한다. 위험 수용·제외·미검증 AC는 충족 목록에 넣지 않는다. 인수 결과와 남은 AC를 .dev에 기록한다.
+먼저 [문서 수명주기](../references/document-lifecycle.md)의 현재 AC 증거 대조를 수행한다. RGR 테스트의 실제 실행·로그·해시가 현재 구현을 뒷받침해야 한다. 근거가 없거나 변경으로 오래된 AC는 관련 focused 명령을 직접 실행한다. 산문/예전 PASS로 인수하지 않는다. 위험 수용·제외·미검증 AC는 충족 목록에 넣지 않는다. 인수 결과와 남은 AC를 .dev에 기록한다.
 
 **diff 갱신** (모드 무관 공통): phase-review 이후 코드 수정이 있었을 수 있으므로 diff를 갱신한다.
 - **git**: `git add -A`로 스테이징한 후 **Diff 수집 규칙**에 따라 diff를 `DIFF_FILE`에 리다이렉트.
@@ -62,7 +61,7 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
    - "RGR 수정" → phase-implement 복귀 (coder 직접 호출 금지 — Iron Law 1).
    - "건너뛰기" → 위험 수용을 trust-ledger에 기록하고 미충족 목록을 유지한 채 Step 3으로 진행한다. 해당 AC/FR·원래 W행을 완료로 표시하지 않는다.
 
-**전체 모드**는 아래를 따른다. PRD가 없으면 ac.md 또는 Ralph의 승인된 AC 원문으로 대조한다. 원문/실행 증거를 복원할 수 없으면 인수 미확인으로 기록하고 AC/FR·W행·실행 완료 표시는 보류한다.
+**전체 모드**는 아래를 따른다. PRD가 없으면 ac.md의 승인된 AC 원문으로 대조한다. 원문/실행 증거를 복원할 수 없으면 인수 미확인으로 기록하고 AC/FR·W행·실행 완료 표시는 보류한다.
 
 PRD가 있으면 (`${DEV_DIR}/prd.md`), product-owner에게 인수 검증을 요청한다.
 
@@ -83,7 +82,7 @@ PRD 부재만으로 인수 통과를 만들지 않는다. 복원한 AC와 실제
 
 ## Step 3: 도메인 status.md 갱신 후보 투영
 
-`DOMAIN_CONTEXT`가 비어 있어도 사전 대조의 requirements/work 포인터에서 관련 원장을 찾는다. `--phase complete`·core·Ralph 복귀·SVN도 이번 범위만 동일하게 확인한다. 문서 금지이면 차이만 보고한다.
+`DOMAIN_CONTEXT`가 비어 있어도 사전 대조의 requirements/work 포인터에서 관련 원장을 찾는다. `--phase complete`·core·SVN도 이번 범위만 동일하게 확인한다. 문서 금지이면 차이만 보고한다.
 
 1. Step 0에서 실제 테스트와 인수 대조를 통과한 AC만 사용한다. 위험 수용·제외·미충족·미검증 AC는 완료 후보가 아니다.
 2. `FR-N (status.md 미반영)` 인용 및 승인된 domain+FR/AC 연결로 원래 행을 찾는다. 해당 FR의 이번 범위 모든 AC가 충족될 때만 `⬜ → ✅`를 최종 검증 후보로 투영한다. 부분 통과 FR, AC가 `-`이고 명시 연결도 없는 행은 바꾸지 않는다.
@@ -228,7 +227,7 @@ pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background +
 
 ## Step 5.5: 구현 구조 시각화 제안
 
-**헤드리스 판정 먼저**: ARGS에 `--non-interactive`가 있거나 `${DEV_DIR}/ralph.lock`이 존재하면 이 절 전체를 **strict no-op**으로 건너뛴다. 질문하지 않고 기존 완료 출력을 바꾸지 않는다 — 응답할 사용자가 없다. (gx-ralph 루프는 완료 처리를 gx-ralph-iterate Step 5.5에서 직접 수행하고 phase-complete를 거치지 않으므로, 이 판정은 현재 도달하지 않는 향후 진입 경로를 위한 예약이다.)
+**헤드리스 판정 먼저**: ARGS에 `--non-interactive`가 있으면 이 절 전체를 **strict no-op**으로 건너뛴다. 질문하지 않고 기존 완료 출력을 바꾸지 않는다 — 응답할 사용자가 없다.
 
 대화형 세션이면 아래를 질문한다. 구조화된 질문 도구가 없는 세션에서는 같은 선택지를 **자연어로 묻고 실제 답을 기다린다** — 도구가 없다는 이유로 건너뛰지 않는다. "질문 도구가 없음"과 "응답할 사용자가 없음"은 다른 조건이다: 앞의 것은 묻는 방식만 바뀌고, 뒤의 것만 strict no-op이다.
 
@@ -254,6 +253,8 @@ AskUserQuestion(
 이 절의 실패·누락·fallback은 **커밋·PR 단계를 중단하거나 실패로 바꾸지 않는다.** Step 1~2가 이미 실패했다면 시각화 성공으로 그 실패를 덮지 않는다.
 
 ## Step 6: 다음 단계
+
+[판단과 검증 전달](../../gx-work/references/reviewability.md)에 따라 핵심 변경·중요한 선택과 이유·검증한 범위·남은 미확인·원문/로그 위치를 짧게 설명한다. 기존 decisions·설계·검증 기록을 재사용한다. 사용자가 학습을 요청하지 않았다면 퀴즈나 추가 승인 단계를 만들지 않는다.
 
 PR이 생성되었으면 완료이다. **PR 머지는 절대 실행하지 않는다** — 머지는 리뷰어가 직접 수행한다.
 

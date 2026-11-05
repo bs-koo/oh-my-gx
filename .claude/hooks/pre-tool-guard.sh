@@ -72,19 +72,31 @@ compute_fingerprint() {
   printf '%s:%s' "$FP_HEAD" "$(printf '%s' "$FP_TREE" | cut -c1-12)"
 }
 
-# 공통 판별: state.md가 "verify 게이트 파이프라인(gx-tdd/gx-ralph) 진행 중 + verify 미통과" 상태인가 (0 = 미통과 상태)
+# 공통 판별: TDD 검증 대기 또는 제거된 Ralph 실행 상태인가 (0 = 커밋 중단)
 # 판별식은 skill-routing.md·gx-commit·gx-pull-request와 동일: pipeline 키 + status: in_progress
 # + (verify-status ≠ passed 또는 verify-fingerprint 불일치)
 STALE_FP=0
+RETIRED_PIPELINE=0
 verify_gate_open() {
   STATE_FILE="$1"
   GATE_REPO="${2:-.}"
   STALE_FP=0
+  RETIRED_PIPELINE=0
+  # 잠금만 남은 실행도 새 커밋으로 진행시키지 않는다. 상태 파일 부재·완료 여부와 독립이다.
+  if [ -e "${STATE_FILE%/*}/ralph.lock" ]; then
+    RETIRED_PIPELINE=1
+    return 0
+  fi
   [ -f "$STATE_FILE" ] || return 1
   grep -qE "pipeline: (gx-tdd|gx-ralph)" "$STATE_FILE" 2>/dev/null || return 1
   # 부분 문자열 매칭 유지(^앵커 금지): state.md 표기(들여쓰기·리스트)가 기계 보증되지 않아
   # 앵커가 빗나가면 게이트가 조용히 꺼진다.
   grep -q "status: in_progress" "$STATE_FILE" 2>/dev/null || return 1
+  # 제거된 실행기의 passed 표시는 새 커밋 권한이 아니다. 기록을 보존한 뒤 명시적으로 전환한다.
+  if grep -qE 'pipeline: gx-ralph' "$STATE_FILE" 2>/dev/null || grep -qiE '^[[:space:]]*flags:.*ralph' "$STATE_FILE" 2>/dev/null; then
+    RETIRED_PIPELINE=1
+    return 0
+  fi
   # verify-status만은 줄 시작 앵커(들여쓰기 허용)를 쓴다 — execution-log의 자유 텍스트
   # `result: "... verify-status: passed ..."`가 부분 문자열로 매칭되면 게이트가 조용히 꺼진다.
   if grep -qE '^[[:space:]]*verify-status:[[:space:]]*passed' "$STATE_FILE" 2>/dev/null; then
@@ -183,17 +195,30 @@ EOF
         # .dev/*/state.md 중 게이트가 열린 것이 하나라도 있으면 확인을 요구한다.
         GATE_FILE=""
         GATE_LABEL=""
-        for f in "$GIT_ROOT"/.dev/*/state.md; do
-          [ -f "$f" ] || continue
-          if verify_gate_open "$f" "$GIT_ROOT"; then
-            GATE_FILE="$f"
-            GATE_LABEL="${f#"$GIT_ROOT"/} (detached HEAD — 브랜치 미확정)"
+        for lock in "$GIT_ROOT"/.dev/*/ralph.lock; do
+          if [ -e "$lock" ]; then
+            GATE_FILE="${lock%/*}/state.md"
+            GATE_LABEL="${lock#"$GIT_ROOT"/} (detached HEAD — 브랜치 미확정)"
             break
           fi
         done
+        if [ -z "$GATE_FILE" ]; then
+          for f in "$GIT_ROOT"/.dev/*/state.md; do
+            [ -f "$f" ] || continue
+            if verify_gate_open "$f" "$GIT_ROOT"; then
+              GATE_FILE="$f"
+              GATE_LABEL="${f#"$GIT_ROOT"/} (detached HEAD — 브랜치 미확정)"
+              break
+            fi
+          done
+        fi
       fi
       if [ -n "$GATE_FILE" ] && verify_gate_open "$GATE_FILE" "$GIT_ROOT"; then
-        if [ "$STALE_FP" -eq 1 ]; then
+        GATE_DECISION="ask"
+        if [ "$RETIRED_PIPELINE" -eq 1 ]; then
+          GATE_DECISION="deny"
+          GATE_REASON="Ralph 지원이 중단된 실행 기록입니다 (${GATE_LABEL}). 기존 기록과 잠금을 보존하고 실행 종료를 확인한 뒤 명시적으로 TDD 전환 범위를 정하세요."
+        elif [ "$STALE_FP" -eq 1 ]; then
           GATE_REASON="verify 통과 후 코드가 변경되었습니다 (${GATE_LABEL}의 verify-fingerprint와 현재 코드 지문 불일치). 변경분은 아직 검증되지 않았으므로 oh-my-gx:gx-verify를 다시 통과시킨 뒤 커밋하세요."
         else
           GATE_REASON="verify 게이트 미통과 상태입니다 (${GATE_LABEL}: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
@@ -202,7 +227,7 @@ EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "permissionDecision": "ask",
+    "permissionDecision": "$GATE_DECISION",
     "permissionDecisionReason": "$GATE_REASON"
   }
 }
@@ -227,11 +252,21 @@ case "$CMD" in
     # 부재·공백·공백 포함·안전하지 않은 값(/ 또는 ..)이면 .dev/trunk로 폴백(레거시 세션·verify 방어 유지).
     case "$ACTIVE_SLUG" in ""|"."|*" "*|*"	"*|*/*|*\\*|*..*) ACTIVE_SLUG="trunk" ;; esac
     # 스테일 포인터 방어: 값이 있어도 가리키는 state.md가 없으면 trunk로 폴백한다.
-    [ -f "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md" ] || ACTIVE_SLUG="trunk"
+    [ -f "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md" ] || [ -e "$WC_ROOT/.dev/$ACTIVE_SLUG/ralph.lock" ] || ACTIVE_SLUG="trunk"
+    SVN_GATE_FILE="$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"
+    if [ ! -f "$SVN_GATE_FILE" ] && [ ! -e "${SVN_GATE_FILE%/*}/ralph.lock" ]; then
+      for lock in "$WC_ROOT"/.dev/*/ralph.lock; do
+        [ -e "$lock" ] || continue
+        SVN_GATE_FILE="${lock%/*}/state.md"
+        break
+      done
+    fi
     # svn은 git 지문을 계산할 수 없어 대조가 성립하지 않는다 — GATE_REPO를 넘기지 않으면
     # compute_fingerprint가 nohead:notree를 내 불일치(재검증 권고)로 판정되며 보수적이라 안전하다.
-    if verify_gate_open "$WC_ROOT/.dev/$ACTIVE_SLUG/state.md"; then
-      if [ "$STALE_FP" -eq 1 ]; then
+    if verify_gate_open "$SVN_GATE_FILE"; then
+      if [ "$RETIRED_PIPELINE" -eq 1 ]; then
+        SVN_REASON="$SVN_REASON 제거된 Ralph 실행 기록입니다. 기록을 보존하고 명시적으로 TDD 전환 범위를 정하세요."
+      elif [ "$STALE_FP" -eq 1 ]; then
         SVN_REASON="$SVN_REASON 주의: verify 통과 후 코드가 변경되었을 수 있습니다 (.dev/$ACTIVE_SLUG/state.md 지문 불일치). oh-my-gx:gx-verify를 다시 통과시킨 뒤 커밋하세요."
       else
         SVN_REASON="$SVN_REASON 주의: gx-tdd verify 게이트 미통과 상태입니다 (.dev/$ACTIVE_SLUG/state.md). oh-my-gx:gx-verify 통과 후 커밋하세요."

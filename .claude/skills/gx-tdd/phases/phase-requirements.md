@@ -1,5 +1,7 @@
 # phase-requirements: PRD Q&A 사이클 (Given-When-Then 강제)
 
+core 분기·기존 계획 재사용으로 종료하기 전에, 새 요구가 이전 팀 판단을 바꿀 수 있으면 [공유 결정 이력 대조](../../gx-work/references/decision-history.md)로 관련 원문·후속 설계·현재 적용 범위를 확인한다. product-owner에는 관련 절·포인터·확정 선택/미정만 전달하고, 미해결 의미 충돌은 실제 응답 전 PRD/AC 확정·재사용 완료로 넘기지 않는다.
+
 ## Iron Law: AC = Given-When-Then 강제
 
 ```

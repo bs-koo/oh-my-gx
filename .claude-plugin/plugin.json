@@ -1,7 +1,7 @@
 {
   "name": "oh-my-gx",
   "description": "프로젝트 지식 관리, 요구사항 정의, 설계·구현·리뷰·검증과 PR 생성을 지원하는 개발 워크플로.",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "author": {
     "name": "bs-koo"
   },

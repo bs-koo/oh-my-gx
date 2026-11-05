@@ -4,9 +4,9 @@ phase-setup Step 0이 `--resume` 지정 또는 ARGS[0] 부재일 때만 이 파�
 
 ## Step 0: 진행 중 작업 감지
 
-Codex는 DEV_DIR을 확정한 뒤 공통 질문 helper의 status를 먼저 확인한다. pending이 있으면 원래 phase·질문을 복원하고 실제 응답을 기록·해제한 뒤 재개한다. 재개 제안·새 작업 질문으로 기존 미응답 질문을 덮어쓰지 않는다.
+DEV_DIR을 읽기 전용으로 확정하고 [제거된 실행 경로의 중단 규약](../references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)을 먼저 적용한다. 구버전 실행에 속한 pending은 표시·응답으로 재개하지 않고 기록을 보존한 채 이관을 안내한다. 정상 TDD이면 Codex 공통 질문 helper의 status를 먼저 확인한다. pending이 있으면 원래 phase·질문을 복원하고 실제 응답을 기록·해제한 뒤 재개한다. 재개 제안·새 작업 질문으로 기존 미응답 질문을 덮어쓰지 않는다.
 
-이 확인은 state.md 존재·pipeline 판정보다 먼저 실행한다. state.md가 아직 없는 초기 setup 질문도 미응답이면 표시·대기하고, 답변 기록·해제 후 원래 setup을 계속한다. 해당 상태를 "재개할 작업이 없습니다"로 처리하지 않는다.
+정상 TDD의 pending 확인은 일반 state.md 존재·pipeline 재개 판정보다 먼저 실행한다. state.md가 아직 없는 초기 setup 질문도 미응답이면 표시·대기하고, 답변 기록·해제 후 원래 setup을 계속한다. 해당 상태를 "재개할 작업이 없습니다"로 처리하지 않는다.
 
 ### `--resume` 플래그가 있는 경우
 1. state.md 탐색을 위해 경로를 계산한다 (VCS 판별: `.claude/config.json`의 `vcs` 값이 있으면 이를 따르고, 없으면 `git rev-parse --is-inside-work-tree` 성공 시 git·실패하고 `svn info` 성공 시 svn으로 폴백):
@@ -33,12 +33,12 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 
 ### 0.05 진입 승인·실행방법 복원 (재개 정합성 체크 전)
 
-pending 질문 확인은 위 계약대로 state 존재·pipeline 판정보다 먼저 수행한다. 답변 해제 후 state를 읽기 전용으로 확인하고, 브랜치 이관·stash 복원·착수 기록·빌드/코드 변경 전에 다음을 수행한다.
+pending 질문 확인은 위 계약대로 state 존재·pipeline 판정보다 먼저 수행한다. 답변 해제 후 [제거된 실행 경로의 중단 규약](../references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)을 읽고 legacy pipeline/flags/잠금이면 원본을 보존하고 중단한다. 통과한 state를 읽기 전용으로 확인하고, 브랜치 이관·stash 복원·착수 기록·빌드/코드 변경 전에 다음을 수행한다.
 
 1. `run-id`·`goal`·`stop-at`, `handoff-file`·`request-file`·`plan-file`, `entry-approved-run`·`entry-approved-source`·`entry-approved-scope-sha256`를 복원한다. gx-work origin/승인 기록이 있으면 원래 handoff를 찾아 `Read("../references/plan-handoff.md")`의 `validate-handoff --handoff <절대경로> --project-root <현재 실제 루트>`를 재실행한다. exit 0과 `ready-for-tdd: true`, state와 같은 run·원문·범위·종료점이 모두 필요하다. 누락/불일치는 일반 구현 요청 승인으로 대체하지 않고 원래 진입 확인/보완에서 대기한다. 원 handoff를 잃은 gx-work 실행을 standalone으로 바꾸지 않는다. gx-work 인계 이력이 없는 기존 직접 호출에는 진입 승인을 추가하지 않는다.
 2. 내부 T계획의 `implementation-plan-file`·`implementation-plan-sha256`, `plan-approved-run`·`plan-approved-source`·`plan-approved-sha256`와 `execution-method`·`execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`를 복원한다. 계획 파일의 현재 SHA-256을 비교한다. 같은 run·계획·실제 선택 근거면 재질문하지 않는다. TDD 내부 계획 작성은 원래 요청 범위의 진입 승인을 무효화하지 않지만 요구범위/종료점 변경은 별도 확인한다.
 3. `session`인데 복원/이번 명시 flags에 `--isolated`가 있거나, 승인된 `subagents`인데 복원 flags에서 빠졌으면 충돌을 보고하고 실제 결정으로 해소한다. 조용히 플래그를 추가/삭제하거나 방법을 기본값으로 바꾸지 않는다. 기록이 없거나 계획이 바뀌었으면 `phase-implement` Step 1.2~1.3에서 해당 계획 검토·방법을 확정한 뒤 중단 지점으로 복귀한다. 이미 작성한 RED/보고서와 라운드 카운터를 유지하며 새 계획과 충돌하는 증거를 재사용하지 않는다.
-4. `current-step: 계획 문서로 종료`이면 미구현 상태와 계획 경로를 보고한다. 새 실제 실행 응답 없이 RED·complete/commit/PR로 체이닝하지 않는다. 명시 `--ralph`는 기존 전환 계약을 복원하며 두 방법 중 하나로 변환하지 않는다.
+4. `current-step: 계획 문서로 종료`이면 미구현 상태와 계획 경로를 보고한다. 새 실제 실행 응답 없이 RED·complete/commit/PR로 체이닝하지 않는다.
 
 ### 0.1 재개 정합성 체크 (이어서 진행 선택 시)
 

@@ -19,6 +19,25 @@ def text(value):
     return isinstance(value, str) and bool(value.strip())
 
 
+def retired_ralph_request(value):
+    """명시 실행만 보수적으로 막는다. 부정/관리 문맥의 일부를 구분하며 의미 판단을 대신하지 않는다."""
+    if not isinstance(value, str):
+        return False
+    token = re.compile(r"(?<![\w-])(?:--ralph|/?(?:oh-my-gx:)?gx-ralph(?:-iterate)?)(?![A-Za-z0-9_-])|랄프로|ralph로|무인\s+루프로|루프\s+돌려", re.I)
+    for clause in re.split(r"[.;,\n]|그리고|하고\s*", value):
+        for match in token.finditer(clause):
+            tail = clause[match.end():].lstrip(" `\"'")
+            tail = re.sub(r"^(?:으로|로)\s*", "", tail)
+            tail = re.sub(r"^(?:는|은|도)\s*", "", tail)
+            # 제거·설명 대상인 토큰이나 즉시 부정한 방식은 실행 요청으로 승격하지 않는다.
+            if re.match(r"(?:(?:실행|사용|개발|구현|진행)?하지|쓰지)\s*말|말고", tail):
+                continue
+            if re.match(r"(?:(?:옵션|플래그|스킬|문구|설명|문서|지원(?:\s*여부)?)\s*)*(?:을|를|은|는)?\s*(?:제거|삭제|폐지|설명|수정|정리)", tail):
+                continue
+            return True
+    return False
+
+
 def state_fields(path):
     fields = dict(re.findall(r"^([a-z][a-z-]*):[ \t]*([^\r\n]*)", path.read_text(encoding="utf-8"), re.M))
     return {key: value.strip().strip('\"\'') for key, value in fields.items()}
@@ -51,15 +70,22 @@ def active_state(project_root):
                 if not path.resolve().is_relative_to(root):
                     raise ValueError("질문 기록이 프로젝트 밖을 가리킵니다")
                 questions.append(str(path.resolve()))
-            directories = sorted({str(Path(path).parent) for path in candidates + questions})
+            locks = []
+            for path in sorted((root / ".dev").glob("*/ralph.lock")):
+                if not path.resolve().is_relative_to((root / ".dev").resolve()):
+                    raise ValueError("잠금 기록이 .dev 밖을 가리킵니다")
+                locks.append(str(path.parent.resolve() / path.name))
+            directories = sorted({str(Path(path).parent) for path in candidates + questions + locks})
             if len(directories) > 1:
                 return {"resume-candidates": candidates, "pending-candidates": questions,
-                        "work-candidates": directories}, None
+                        "lock-candidates": locks, "work-candidates": directories}, None
             if candidates:
                 path = Path(candidates[0])
                 return state_fields(path), str(path)
             if questions:
                 return {"work-directory": str(Path(questions[0]).parent)}, None
+            if locks:
+                return {"work-directory": str(Path(locks[0]).parent)}, None
         slug = slug or "trunk"
     else:
         result = subprocess.run(["git", "branch", "--show-current"], cwd=root,
@@ -88,8 +114,21 @@ def route(project_root, intent, stop_at=None, goal=""):
         raise ValueError("읽기 전용 intent와 stop-at가 충돌합니다")
     state, state_file = active_state(project_root)
     directory = Path(state_file).parent if state_file else Path(state["work-directory"]) if state.get("work-directory") else None
+    locked = bool(directory and (directory / "ralph.lock").exists())
+    active = state.get("status") == "in_progress"
+    retired_flags = bool(re.search(r"(?<![\w-])(?:--)?ralph(?![\w-])", state.get("flags", ""), re.I))
+    retired = active and (state.get("pipeline") == "gx-ralph" or retired_flags)
+    if retired_ralph_request(goal) or (intent in ("implement", "resume") and (retired or locked)):
+        return {"action": "loop-active" if locked else "migration-required" if retired else "unsupported-request",
+                "skill": None, "read-only": True, "requires-user-decision": False,
+                "reason": "Ralph 지원이 중단되었습니다. 기존 기록을 보존하고 실행 종료를 확인한 뒤 명시적으로 TDD 전환 범위를 정하세요.",
+                "requested-goal": goal, "goal": state.get("goal", state.get("args", goal)) if active else goal,
+                "stop-at": state.get("stop-at", stop_at or default) if active else (stop_at or default),
+                "run-id": state.get("run-id") if active else None, "state-file": state_file,
+                "existing-pipeline": state.get("pipeline"), "phase": state.get("phase")}
     pending = directory / "pending-question.json" if directory else None
-    if intent in ("implement", "resume") and pending and pending.exists():
+    retired_history = state.get("pipeline") == "gx-ralph" and not active
+    if intent in ("implement", "resume") and pending and pending.exists() and not retired_history:
         if not pending.resolve().is_relative_to(Path(project_root).resolve()):
             raise ValueError("질문 기록이 프로젝트 밖을 가리킵니다")
         question = json.loads(pending.read_text(encoding="utf-8"))
@@ -103,23 +142,19 @@ def route(project_root, intent, stop_at=None, goal=""):
                 "phase": question.get("phase"), "requires-user-decision": True}
     if intent in ("implement", "resume") and (state.get("resume-candidates") or state.get("work-candidates")):
         return {
-            "action": "resume-selection-required", "skill": None if state.get("pending-candidates") else "oh-my-gx:gx-tdd", "skill-args": "--resume",
+            "action": "resume-selection-required", "skill": None if state.get("pending-candidates") or state.get("lock-candidates") else "oh-my-gx:gx-tdd", "skill-args": "--resume",
             "read-only": True, "goal": goal, "stop-at": None, "requested-stop-at": stop_at,
             "run-id": None, "state-file": None, "candidate-state-files": state["resume-candidates"],
             "candidate-pending-files": state.get("pending-candidates", []),
+            "candidate-lock-files": state.get("lock-candidates", []),
             "candidate-work-directories": state.get("work-candidates", []), "requires-user-decision": True,
             "existing-pipeline": None, "phase": None,
         }
-    active = state.get("status") == "in_progress"
     action = intent
     if intent in ("implement", "resume"):
         action = "resume" if active else ("no-active-run" if intent == "resume" else "implement")
         if active and state.get("pipeline") != "gx-tdd":
-            if state.get("pipeline") == "gx-ralph":
-                locked = Path(state_file).with_name("ralph.lock").exists()
-                action = "loop-active" if locked else "loop-resume-required"
-            else:
-                action = "migration-required"
+            action = "migration-required"
         if active and stop_at and state.get("stop-at") and stop_at != state["stop-at"]:
             raise ValueError("기존 stop-at 변경은 사용자 명시 결정 후 state에 먼저 반영하세요")
         if (active and state.get("pipeline") == "gx-tdd" and intent == "implement"
@@ -302,6 +337,8 @@ def handoff(plan_path=None, stop_at="verify", run_id=None, approval_source=None,
     issues = validate_plan(value) if kind == "plan" else []
     if not isinstance(value, dict) or not text(value.get("goal")):
         raise ValueError("사용자 목표가 있는 요청 객체가 필요합니다")
+    if retired_ralph_request(value["goal"]):
+        raise ValueError("Ralph 지원이 중단되었습니다. 일반 TDD 전환 범위를 먼저 확인하세요")
     for key in ("sources", "decisions", "unresolved", "requirements", "context-paths", "observed-facts", "questions"):
         if not isinstance(value.get(key, []), list):
             raise ValueError(f"{key}는 목록이어야 합니다")

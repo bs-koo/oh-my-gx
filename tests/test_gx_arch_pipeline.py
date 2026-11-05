@@ -38,7 +38,7 @@ class CompletionGateTests(unittest.TestCase):
     def test_headless_sessions_skip_without_asking(self):
         for path in PHASES:
             text = self._text(path)
-            self.assertIn("ralph.lock", text, path.name)
+            self.assertIn("--non-interactive", text, path.name)
             self.assertIn("strict no-op", text, path.name)
 
     def test_gate_never_fails_commit_or_pr(self):

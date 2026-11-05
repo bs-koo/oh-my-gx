@@ -90,7 +90,7 @@ gx-work 인계의 진입 승인은 TDD로 연결할 **원래 요청 범위**에 
 
 Step 1.2에서 현재 세션/서브에이전트로 진행하는 한 실제 응답은 plan-approved와 execution-method 양쪽 필드를 함께 확정한다. 초기 명시 방법이 있으면 실제 계획 검토 응답과 기존 선택 근거를 각각 연결한다. Step 1.3은 이 기록을 검증·반영하고 계획 승인만 받아 방법이 빠진 경우에만 추가 선택 질문을 한다. 수정·미응답·문서 종료는 실행방법 승인을 만들어 넣지 않는다.
 
-`session`은 GREEN/REFACTOR를 현재 세션에서 수행하며 `--isolated`가 없어야 한다. `subagents`는 implementer 디스패치를 위해 `--isolated`를 기록한다. 최초 실제 방법 선택을 반영할 때만 해당 플래그를 맞추고 다른 플래그는 보존한다. 재개/명시 선택/기존 flags가 충돌하면 근거를 보고하고 해소 전 실행하지 않는다. 명시 `--ralph`는 기존 별도 전환 경로이며 이 두 방법으로 대체하지 않는다.
+`session`은 GREEN/REFACTOR를 현재 세션에서 수행하며 `--isolated`가 없어야 한다. `subagents`는 implementer 디스패치를 위해 `--isolated`를 기록한다. 최초 실제 방법 선택을 반영할 때만 해당 플래그를 맞추고 다른 플래그는 보존한다. 재개/명시 선택/기존 flags가 충돌하면 근거를 보고하고 해소 전 실행하지 않는다.
 
 원 handoff의 `validate-handoff` 재검증은 같은 run·원문·scope·종료점·승인과 현재 프로젝트 루트를 검사한다. 내부 T계획 작성만으로 요청 진입 승인을 다시 묻지 않는다. 계획 변경은 plan/method 승인만 재검토하며, 요구범위·종료점까지 달라졌으면 그 변경의 진입 승인을 확인한다. 누락된 gx-work 승인이나 false·exit 2·pending을 일반 구현 요청 문구로 보완하지 않는다.
 
@@ -219,7 +219,6 @@ execution-log:
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
 - phase-complete 완료 시: 현재 요청 범위의 AC/인수·문서 대조·최종 verify·요청한 종료점이 모두 성공한 경우만 `status: completed`로 갱신한다. 구현 완료, 검증 완료, PR 생성, 실제 merged는 구분한다. 미충족/미검증/위험 수용 AC가 남은 W행은 진행을 유지한다. pending 질문·충돌·요청한 commit/PR 실패도 완료로 덮지 않는다.
 - **문서 대조 기록**: 같은 run-id의 document-pre/post 결과·snapshot·document-journal과 reports/document-lifecycle.md를 복원한다. 완료 투영의 원래 값·before/after 해시·현재 AC 실행 근거를 보존한다. 최종 verify 후 새 PR URL은 .dev 전달 기록에만 쓴다. context/ 원장 갱신은 후속 명시적 sync 또는 문서 대조/최종 verify 재실행에서 처리한다.
-- **Ralph 복귀**: 모든 AC passes는 구현 루프 종료다. `document-sync-pending: true`와 원래 goal/run/source를 유지하고 누적 review 뒤 `review-run-id`·`review-fingerprint`를 기록한다. complete는 같은 실행·현재 트리의 정상 리뷰 증거를 확인하고 문서 대조/최종 verify까지 마친 뒤에만 pending을 해제한다. per-AC 문서 갱신·추가 리뷰/verify를 넣지 않는다.
 - 새 파이프라인 시작 시 기존 state.md를 덮어쓴다. `config-setup-attempts`도 0으로 초기화.
 
 ### verify 지문 (verify-fingerprint)
@@ -230,8 +229,8 @@ verify 통과를 "상태 문자열"이 아니라 **"그 시점의 코드"** 로 
 - **`.dev/` 제외 이유**: state.md·diff.txt 등 파이프라인 산출물은 코드가 아니며, 포함하면 상태를 기록할 때마다 지문이 스스로 무효화된다 (ignore 누락 저장소에서도 안정).
 - **context/는 제외하지 않는다**: README·원장·정책·아키텍처 문서의 실제 변경을 최종 verify 전에 끝낸다. proof/지문을 만든 뒤 문서 완료 표시를 추가하고 기존 지문을 그대로 쓰지 않는다. `.dev` 진행 기록만 검증 후에 갱신할 수 있다.
 - **대조는 트리 성분(콜론 뒤)만 수행한다** — HEAD 성분은 기록·추적용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다 (커밋 → PR 정상 경로의 상시 오경고 방지). 단 트리 성분이 `notree`(계산 실패)면 값이 같아도 일치로 보지 않는다 — 코드 동일성이 입증되지 않으므로 보수적으로 재검증을 권고한다.
-- **기록 주체**: `oh-my-gx:gx-verify`는 Write 권한이 없으므로 **통과 보고에 지문 값을 실어 보내고, 오케스트레이터가 state.md에 기록한다**. gx-ralph 루프에서는 반복 세션(`oh-my-gx:gx-ralph-iterate`)이 기록 주체다.
-- **적용 파이프라인**: `pipeline: gx-tdd`와 `pipeline: gx-ralph` 모두 동일한 규약을 쓴다.
+- **기록 주체**: `oh-my-gx:gx-verify`는 Write 권한이 없으므로 **통과 보고에 지문 값을 실어 보내고, 오케스트레이터가 state.md에 기록한다**.
+- **적용 파이프라인**: `pipeline: gx-tdd`가 이 규약을 쓴다. 제거된 pipeline은 재개 전에 intent-routing의 이관 안내로 중단한다.
 - **하위 호환**: 필드가 없는 구 세션은 기존 판정(`verify-status`만)으로 동작한다.
 - **svn**: git 지문을 계산할 수 없어 대조가 성립하지 않는다. 훅은 이 경우 보수적으로 "재검증 권고"를 안내한다.
 

@@ -134,10 +134,56 @@ class WorkEntryTests(unittest.TestCase):
             with self.subTest(locked=locked):
                 before = self.snapshot()
                 result = work.route(self.root, "resume")
-                self.assertEqual(result["action"], "loop-active" if locked else "loop-resume-required")
+                self.assertEqual(result["action"], "loop-active" if locked else "migration-required")
                 self.assertTrue(result["read-only"])
                 self.assertIsNone(result["skill"])
                 self.assertEqual(self.snapshot(), before)
+
+    def test_retired_ralph_request_cannot_fall_through_to_tdd(self):
+        for goal in ("--ralph 결제 기능 구현", "--ralph로 개발해줘", "랄프로 개발해줘", "ralph로 구현해줘", "무인 루프로 개발해줘", "/gx-ralph", "/gx-ralph-iterate", "루프 돌려"):
+            with self.subTest(goal=goal):
+                before = self.snapshot()
+                result = work.route(self.root, "implement", goal=goal)
+                self.assertEqual(result["action"], "unsupported-request")
+                self.assertTrue(result["read-only"])
+                self.assertIsNone(result["skill"])
+                self.assertEqual(self.snapshot(), before)
+        self.assertEqual(work.route(self.root, "implement", goal="랄프 고객의 조회 기능")["action"], "implement")
+        for goal in ("이 플러그인의 --ralph 옵션을 제거해줘", "랄프로 하지 말고 일반 TDD로 개발해줘", "--ralph로 하지 말고 TDD로 개발해줘", "--ralph 문구 삭제해줘", "--ralph 지원 여부 설명해줘", "랄프로는 하지 말고 일반 TDD로 개발해줘"):
+            with self.subTest(non_execution=goal):
+                self.assertEqual(work.route(self.root, "implement", goal=goal)["action"], "implement")
+        self.assertEqual(work.route(self.root, "implement", goal="랄프 설명 수정하고 랄프로 개발해줘")["action"], "unsupported-request")
+
+    def test_retired_ralph_flags_and_pending_never_resume_removed_execution(self):
+        for extra in ("flags: --ralph\n", "flags: [--ralph, --isolated]\n", "flags: [RALPH]\n"):
+            self.active(extra)
+            self.state.with_name("pending-question.json").write_text('{"phase":"implement"}', encoding="utf-8")
+            before = self.snapshot()
+            result = work.route(self.root, "resume")
+            self.assertEqual(result["action"], "migration-required")
+            self.assertEqual(result["run-id"], "old-run")
+            self.assertTrue(result["read-only"])
+            self.assertIsNone(result["skill"])
+            self.assertEqual(self.snapshot(), before)
+
+    def test_retired_ralph_orphan_lock_prevents_new_implementation(self):
+        self.state.parent.mkdir(parents=True)
+        self.state.with_name("ralph.lock").write_text("runner pid", encoding="utf-8")
+        before = self.snapshot()
+        result = work.route(self.root, "implement")
+        self.assertEqual(result["action"], "loop-active")
+        self.assertTrue(result["read-only"])
+        self.assertIsNone(result["skill"])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_completed_retired_history_does_not_promote_old_pending_answer(self):
+        self.active()
+        self.state.write_text(self.state.read_text(encoding="utf-8").replace("gx-tdd", "gx-ralph").replace("in_progress", "completed"), encoding="utf-8")
+        self.state.with_name("pending-question.json").write_text('{"phase":"implement"}', encoding="utf-8")
+        before = self.snapshot()
+        self.assertEqual(work.route(self.root, "implement", goal="새 기능")["action"], "implement")
+        self.assertEqual(work.route(self.root, "resume")["action"], "no-active-run")
+        self.assertEqual(self.snapshot(), before)
 
 
 class SvnWorkEntryTests(unittest.TestCase):
@@ -159,6 +205,45 @@ class SvnWorkEntryTests(unittest.TestCase):
 
     def snapshot(self):
         return {str(p.relative_to(self.root)): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def test_orphan_ralph_locks_are_candidates_without_active_pointer(self):
+        first = self.root / ".dev" / "beta" / "ralph.lock"
+        first.parent.mkdir(parents=True)
+        first.write_text("runner pid", encoding="utf-8")
+        for intent in ("implement", "resume"):
+            before = self.snapshot()
+            result = work.route(self.root, intent)
+            self.assertEqual(result["action"], "loop-active")
+            self.assertTrue(result["read-only"])
+            self.assertIsNone(result["skill"])
+            self.assertEqual(self.snapshot(), before)
+        second = self.root / ".dev" / "gamma" / "ralph.lock"
+        second.parent.mkdir()
+        second.write_text("other runner", encoding="utf-8")
+        before = self.snapshot()
+        result = work.route(self.root, "implement")
+        self.assertEqual(result["action"], "resume-selection-required")
+        self.assertTrue(result["read-only"])
+        self.assertIsNone(result["skill"])
+        self.assertEqual(len(result["candidate-lock-files"]), 2)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_orphan_ralph_lock_symlink_preserves_marker_directory(self):
+        target = self.root / ".dev" / "archive" / "lock-details.txt"
+        target.parent.mkdir(parents=True)
+        target.write_text("runner pid", encoding="utf-8")
+        lock = self.root / ".dev" / "beta" / "ralph.lock"
+        lock.parent.mkdir()
+        try:
+            lock.symlink_to(target)
+        except OSError:
+            self.skipTest("이 환경은 파일 심볼릭 링크를 만들 수 없음")
+        before = self.snapshot()
+        result = work.route(self.root, "implement")
+        self.assertEqual(result["action"], "loop-active")
+        self.assertTrue(result["read-only"])
+        self.assertIsNone(result["skill"])
+        self.assertEqual(self.snapshot(), before)
 
     def test_missing_or_blank_pointer_requires_selection_before_resuming(self):
         first = self.active("alpha")
@@ -193,7 +278,7 @@ class SvnWorkEntryTests(unittest.TestCase):
 
     def test_only_active_svn_state_restores_identity_without_a_pointer(self):
         for pipeline, locked, action in (("gx-tdd", False, "resume"), ("gx-dev", False, "migration-required"),
-                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "loop-resume-required"),
+                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "migration-required"),
                                          ("gx-ralph", True, "loop-active")):
             state = self.active("beta", pipeline)
             if locked:
@@ -226,7 +311,7 @@ class SvnWorkEntryTests(unittest.TestCase):
         self.active("alpha")
         self.pointer.write_text("beta", encoding="utf-8")
         for pipeline, locked, action in (("gx-tdd", False, "resume"), ("gx-dev", False, "migration-required"),
-                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "loop-resume-required"),
+                                         ("unknown", False, "migration-required"), ("gx-ralph", False, "migration-required"),
                                          ("gx-ralph", True, "loop-active")):
             second = self.active("beta", pipeline)
             if locked:
