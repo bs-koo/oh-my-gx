@@ -52,6 +52,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_gx_context_workflow.py" -v
       - name: 개발 전후 관련 문서 대조
         run: python -m unittest discover -s tests -p "test_gx_development_context.py" -v
+      - name: 공유 결정 이력의 제한 조회·Git 출처
+        run: python -m unittest discover -s tests -p "test_gx_history.py" -v
       - name: 정책 근거·영향 분석 계약
         run: python -m unittest discover -s tests -p "test_gx_lens*.py" -v
       - name: 영향 범위 선택·증거 재사용

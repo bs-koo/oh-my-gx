@@ -7,5 +7,5 @@ stop-at: pr
 branch: codex/remove-ralph-reviewable-work
 base: main
 verify-status: passed
-verify-fingerprint: 63b99c9:4d5c05d1d1da
-current-step: 최신 main 소개 문구 보존·충돌 해소와 관련 재검증 완료·PR CI 대기
+verify-fingerprint: 18cb6c7:c9c2ee4fa7fe
+current-step: 공유 .dev 결정 이력 대조·실제 읽기 전용 조회·경계 보완 검증 완료·PR101 갱신

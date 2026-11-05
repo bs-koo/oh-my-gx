@@ -6,6 +6,8 @@ helper·모드 경로는 gx-context/SKILL.md 위치 기준이며 Markdown 링크
 
 문서 추출·인계·결과 보고에는 [판단과 검증 전달](../../gx-work/references/reviewability.md)을 적용한다. 기존 sources·decisions·observed-facts를 재사용하며 새 질문이나 파일을 의무화하지 않는다. 확인 사실·추정·미결정과 근거 절을 함께 전달하고 중요한 정책·숫자는 원문과 대조한다.
 
+새 도메인 요구·정책이 이전 팀 판단을 바꿀 수 있으면 [공유 결정 이력 대조](../../gx-work/references/decision-history.md)로 관련 `.dev` 원문·후속 설계와 적용 범위를 확인한다. 현재 요구와 이전 선택의 관계·원문 포인터를 기존 sources/decisions에 보존하며 미해결 의미 충돌만 실제 응답을 기다린다.
+
 1. 사용자 메시지, 입력 문서의 관련 절, 기존 context의 관련 절을 한 번 수집한다. 긴 문서는 목차·해당 절부터 읽고 추가 근거가 필요할 때만 범위를 넓힌다. 후속 단계에는 원문 전문 대신 `path + section`, 관련 요구사항 ID, 이번 변경분을 넘긴다.
 2. `goal`, 사용자 요청의 종료 지점 `stop-at`, `sources`, `decisions`, `unresolved`를 정리한다. gx-work가 준 `run-id`, `intent`, `stop-at`과 기존 승인 근거는 그대로 이어받는다. 직접 호출이면 `run-id: context-YYYYMMDD-HHMMSS`로 이번 정리의 파일 위치만 구분하며 새 파이프라인 상태는 만들지 않는다. 종료 지점이 따로 없으면 context와 계획을 정리하는 `intent: plan`, `stop-at: plan`이다. "컨텍스트만/이해만/정리만"이면 `intent: understand`, `stop-at: understand`다. 실행·커밋·PR 의도는 상위 gx-work에 돌려주며 여기서 실행하지 않는다.
 3. 문제·현재 프로세스·사용자/규모·담당·관련 레포는 **질문 목록이 아니라 정보 점검표**다. 사용자·문서가 명확히 말한 값은 출처를 기록하고 다시 확인하지 않는다. 담당자 이름, 업무량 등 누락이 실제 동작이나 인수 기준을 바꾸지 않으면 ❓로 남긴다. 수치가 성능·용량의 인수 기준을 바꿀 때만 수치를 묻는다. 근거 없는 숫자·담당자·미래 정책을 추천 답변처럼 만들어 넣지 않는다.

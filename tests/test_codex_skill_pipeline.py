@@ -819,6 +819,21 @@ class DocumentLifecycleContractTests(unittest.TestCase):
         for origin in ("--core", "--phase", "--resume"):
             self.assertIn(origin, lifecycle)
 
+    def test_shared_history_check_precedes_core_and_reuse_shortcuts(self):
+        requirements = self.read("phases/phase-requirements.md")
+        design = self.read("phases/phase-design.md")
+        history_link = "decision-history.md"
+        self.assertLess(requirements.index(history_link), requirements.index("## 핵심 모드 분기 (core)"))
+        self.assertLess(design.index(history_link), design.index("## 승인된 설계 재사용"))
+        for text in (requirements, design):
+            self.assertIn("실제 응답 전", text[:text.index("\n## ")])
+        lifecycle = self.read("references/document-lifecycle.md")
+        self.assertIn(history_link, lifecycle)
+        history = (ROOT / ".claude/skills/gx-work/references/decision-history.md").read_text(encoding="utf-8")
+        for invariant in ("같은 파일", "후속", "working_tree_differs_from_source", "실제 결정/응답자",
+                          "과거 승인", "현재 TDD", "red-writer", "문서 금지", "Phase 반복 상한"):
+            self.assertIn(invariant, history)
+
     def test_related_documents_precede_final_verify_and_delivery(self):
         complete = self.read("phases/phase-complete.md")
         headings = (

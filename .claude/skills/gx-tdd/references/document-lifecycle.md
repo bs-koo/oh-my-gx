@@ -12,6 +12,8 @@ gx-work에서 들어온 개발과 직접 gx-tdd 호출이 공유한다. 먼저 [
 
 ## 사전 대조
 
+[공유 결정 이력 대조](../../gx-work/references/decision-history.md)는 새 요구·PRD·설계가 기존 팀 판단을 바꿀 수 있을 때 전체·core·부분 실행·재개에 공통 적용한다. 관련 원문·후속 설계만 확인하고 같은 run·범위·원문 해시의 결과를 재사용하며, 구조 검사 helper의 통과로 의미 충돌이나 실제 응답을 대신하지 않는다.
+
 1. 확인된 설치 gx-context 스킬 디렉토리의 `scripts/development.py`를 사용한다. 이 파일 기준 경로는 `../../gx-context/scripts/development.py`다. 소비 프로젝트의 `scripts/`나 개발 저장소의 경로를 가정하지 않는다. Windows PowerShell은 `python`, POSIX는 `python3`를 사용하고 파일은 UTF-8로 읽는다.
 2. 유효한 handoff/정규화 계획을 그대로 사용한다. 없으면 이번 사용자 `goal`, `sources`, `requirements`, `context-paths`와 현재 알려진 `units`를 검사 입력에 담는다. requirements 전에는 `units: []`를 허용한다. 이는 임시 검사 입력이며 새 계획·승인된 AC가 아니다. handoff/state의 run-id를 우선하고, 없으면 고유 ID를 한 번 생성해 setup Step 7까지 보존한다. run-id를 바꾸거나 기존 계획/질문을 재생성하지 않는다.
 3. 하네스가 확인한 현재 Git branch 또는 SVN slug를 `--branch`로 전달한다. 지정된 W행이 없거나 다른 실행의 진행 행과 충돌하면 해당 행을 조용히 만들거나 합치지 않는다. 같은 작업인지 필요한 범위만 확인한다.
