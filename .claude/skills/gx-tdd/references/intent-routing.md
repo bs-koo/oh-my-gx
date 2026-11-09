@@ -45,7 +45,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 | `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 TDD 개발해줘" |
 | `W00`~`W99` 형태의 토큰 | WORK 추출 (작업 계획 참조 — 모드와 독립) | "W01 시작해줘", "phase W01 개발해줘" |
 
-PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 자연어 매핑 없이 `--phase implement` 플래그 전용이다 (자연어 "구현만"은 CORE로 라우팅 — gx-dev와 동일한 정렬).
+PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. implement phase 단독 실행은 `--phase implement` 플래그 전용이다. 자연어 "구현만"은 CORE다.
 
 BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다. BASE 추출은 모드 판정과 독립적이다 — BASE가 추출되어도 모드가 결정되지 않으면 Step 3으로 진행한다.
 
@@ -67,7 +67,7 @@ ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되�
 
 - **프로파일 질문 포함 규칙**: 사용자에게 선택을 요청했거나 설정·명시 지시가 충돌해서 실제 결정이 필요할 때만 묻는다. 설정된 `modelProfile`은 기본값으로 사용하며 재확인하지 않는다.
 - **모드 질문 생략 규칙**: 일반 요청은 `all`. `--core` 또는 명시적 핵심 모드 요청이 있을 때만 `core`다. 자동으로 검증·설계 게이트를 줄이지 않는다.
-- 이미 승인한 계획·handoff의 종료점과 명시 실행방법을 보존한다. 미결정 방법은 기본값으로 채우지 않고 phase-implement Step 1.2에서 구체 계획 검토와 방법 선택을 한 질문으로 확인한다. 계획만 승인받아 방법이 빠졌을 때만 Step 1.3에서 추가 질문한다. 같은 run·계획의 검토/방법 승인은 재사용한다. plan/understand 요청은 gx-work의 읽기 전용 경로로 보내며 구현 setup을 시작하지 않는다.
+- 이미 승인한 계획·handoff의 종료점과 명시 실행방법을 보존한다. 전체 모드는 implement Step 1.2에서 구체 계획 검토와 방법 선택을 한 질문으로 확인한다. core는 [core-planning.md](core-planning.md)에 따라 실제 코드 Read → 경량 plan.md → **AC+계획 실물 함께 승인 1회**에 방법도 연결한다. 유효한 동일 run/계획/선택은 재사용하고 방법만 빠졌으면 Step 1.3에서 방법만 묻는다. 미결정 방법을 기본값으로 채우지 않는다. plan/understand는 읽기 전용 경로로 보내고 실행 setup을 시작하지 않는다.
 - 핵심 모드에서도 RGR·verify·G-W-T·긴급 보안 감사는 유지한다. 비TDD 개발 경로는 제공하지 않는다.
 ### 모드 판정 결과 기록
 
@@ -82,7 +82,7 @@ intent-source: flag | natural-language | user-selection
 ### 플래그 참조
 
 - `--phase requirements|design|implement|review|complete`: 특정 Phase만 실행
-- `--core`: 핵심 모드 (AC(G-W-T) 확인 → RGR → verify → PR)
+- `--core`: 핵심 모드 (G-W-T AC → 코드 Read·경량 plan.md → AC+계획 함께 승인 → 승인된 순차 RGR → 인수·문서 대조·verify). commit/pr는 실제 요청한 경우만 추가한다.
 - `--eco`: 에코 모드 — 에이전트 디스패치를 sonnet 중심으로 하향 (공유 규칙 "모델 프로파일" 참조)
 - `--standard`: 표준 프로파일 강제 — config.json이 eco여도 이번 실행만 표준
 - `--base <branch>`: 베이스 브랜치 지정
@@ -90,7 +90,7 @@ intent-source: flag | natural-language | user-selection
 - `--resume`: 이전 파이프라인 재개
 - `--isolated`: 구현 단계를 red-writer→implementer 2석 디스패치로 실행 (기본은 red-writer 디스패치 + 세션 직접 구현). 모든 모드와 호환한다.
 
-현재 세션/서브에이전트 방법은 `phase-implement` Step 1.2에서 구체 T계획 링크·범위를 제시하고 한 실제 응답으로 계획 검토와 함께 확정한다. 처음 명시한 방법은 보존하되 계획 검토 응답은 필요하다. 미선택이면 두 방법과 "계획 문서로 종료"를 제시한다. Step 1.3은 선택 검증·flags 반영을 수행하며 계획 승인만 받아 방법이 빠진 경우만 추가 질문한다. RED/리뷰 격리와 RGR 순서는 두 방법 모두 동일하다.
+현재 세션/서브에이전트는 전체 모드 implement 1.2 또는 core 결합 승인에서 계획과 함께 실제 선택한다. 미선택이면 두 방법과 계획 문서 종료를 제시한다. 처음 명시한 방법은 보존하고 계획 검토만 확인한다. 1.3은 선택 검증·flags 반영과 빠진 방법만 보완한다. 문서 종료·미응답은 실행 승인이 아니며 RED/complete로 체이닝하지 않는다. 두 방법 모두 RED/리뷰 격리와 RGR을 유지한다.
 
 ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 "구현할 기능이나 수정할 버그를 설명해주세요. 예: `/gx-tdd 로그인 기능 추가해줘`"
@@ -120,9 +120,19 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 
 ## 플래그 충돌 검증
 
+아래 충돌은 **이번 사용자가 명시한 플래그끼리만** 검사한다. 복원한 saved_flags를 현재 인자와 합치지 않는다. 저장 --core와 현재 단독 --phase는 충돌이 아니다.
+
 - `--core`와 `--phase`는 **동시 사용 불가**. 둘 다 있으면: "`--core`와 `--phase`는 동시에 사용할 수 없습니다." 에러 후 중단.
 - `--eco`와 `--standard`는 **동시 사용 불가**. 둘 다 있으면: "`--eco`와 `--standard`는 동시에 사용할 수 없습니다." 에러 후 중단.
 - `--resume`과 `--phase`, `--core`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 - `--work`와 `--resume`은 **동시 사용 불가**. 함께 있으면: "`--work`와 `--resume`은 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `work-id`에서 작업 문맥을 복원하므로 ID를 다시 받을 이유가 없다).
 - `--isolated`는 모드 플래그와 호환하며 `--status`에서는 실행하지 않는다. 다만 명시 `session` 선택이나 기존/복원 method·flags와 모순이면 보고하고 실제 결정으로 해소한다. `--resume`에서 이번 플래그나 state를 조용히 우선해 충돌을 덮지 않는다. 유효한 같은 run·계획·선택이면 그대로 복원하며 재질문하지 않는다.
+
+## 저장 모드와 단독 실행 범위
+
+검증된 HANDOFF_READ_ONLY는 state 복원·초기화 없이 explore와 필요한 requirements/design의 계획 내용만 수행하고 종료한다. 그 밖의 기존 실행은 [core-planning.md](core-planning.md)의 **state 복원 → 요청 범위 결정 → PHASES 생성 → resume 커서 적용** 순서다. 명시 mode all/core가 우선하고 필드 부재만 restore_mode(None, saved_flags)로 독립 --core를 해석한다. 잘못된 명시 mode(null·빈 값 포함)는 거부한다.
+
+현재 명시 requested_phase가 저장 requested-phase·execution-phases·과거 커서보다 우선한다. requirements/design은 [explore, 요청phase]이며 저장 core여도 PRD/설계 문서 경로다. mode를 all로 바꾸거나 구현까지 넓히지 않는다. 현재 명시 phase 없는 재개만 저장 범위(없으면 saved_flags의 --phase)·목록·커서를 복원해 완료한 setup/phase를 반복하지 않는다. 목록·커서 모순은 보고한다.
+
+단독 implement는 [implement]다. core는 ac.md+plan.md의 실제 결합 승인·현재 지문, all은 PRD·설계·testability를 검사한다. core 단독 complete도 legacy mode를 정규화하고 승인 게이트를 먼저 수행한다. 보완은 필요한 계획·승인 Step만 수행하고 기존 RED/테스트/기준선을 보존한다. implement 이후 complete가 실제 후속 목록에 없을 때만 needs_boundary_regression(PHASES)의 전체 회귀를 적용한다. 미적용 core→all 실제 결정/pending은 mode·과거 커서보다 먼저 처리하고 applied 일반 재개는 새 전체 목록·현재 커서를 유지한다. 새 명시 phase는 과거 전이 목록보다 우선한다. 전환으로 원 gx-work 승인·run·stop-at를 넓히지 않는다.

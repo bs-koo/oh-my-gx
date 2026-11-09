@@ -36,9 +36,11 @@ ARGS[0]이 없으면 → 아래 자동 감지 로직 실행.
 pending 질문 확인은 위 계약대로 state 존재·pipeline 판정보다 먼저 수행한다. 답변 해제 후 [제거된 실행 경로의 중단 규약](../references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)을 읽고 legacy pipeline/flags/잠금이면 원본을 보존하고 중단한다. 통과한 state를 읽기 전용으로 확인하고, 브랜치 이관·stash 복원·착수 기록·빌드/코드 변경 전에 다음을 수행한다.
 
 1. `run-id`·`goal`·`stop-at`, `handoff-file`·`request-file`·`plan-file`, `entry-approved-run`·`entry-approved-source`·`entry-approved-scope-sha256`를 복원한다. gx-work origin/승인 기록이 있으면 원래 handoff를 찾아 `Read("../references/plan-handoff.md")`의 `validate-handoff --handoff <절대경로> --project-root <현재 실제 루트>`를 재실행한다. exit 0과 `ready-for-tdd: true`, state와 같은 run·원문·범위·종료점이 모두 필요하다. 누락/불일치는 일반 구현 요청 승인으로 대체하지 않고 원래 진입 확인/보완에서 대기한다. 원 handoff를 잃은 gx-work 실행을 standalone으로 바꾸지 않는다. gx-work 인계 이력이 없는 기존 직접 호출에는 진입 승인을 추가하지 않는다.
-2. 내부 T계획의 `implementation-plan-file`·`implementation-plan-sha256`, `plan-approved-run`·`plan-approved-source`·`plan-approved-sha256`와 `execution-method`·`execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`를 복원한다. 계획 파일의 현재 SHA-256을 비교한다. 같은 run·계획·실제 선택 근거면 재질문하지 않는다. TDD 내부 계획 작성은 원래 요청 범위의 진입 승인을 무효화하지 않지만 요구범위/종료점 변경은 별도 확인한다.
-3. `session`인데 복원/이번 명시 flags에 `--isolated`가 있거나, 승인된 `subagents`인데 복원 flags에서 빠졌으면 충돌을 보고하고 실제 결정으로 해소한다. 조용히 플래그를 추가/삭제하거나 방법을 기본값으로 바꾸지 않는다. 기록이 없거나 계획이 바뀌었으면 `phase-implement` Step 1.2~1.3에서 해당 계획 검토·방법을 확정한 뒤 중단 지점으로 복귀한다. 이미 작성한 RED/보고서와 라운드 카운터를 유지하며 새 계획과 충돌하는 증거를 재사용하지 않는다.
-4. `current-step: 계획 문서로 종료`이면 미구현 상태와 계획 경로를 보고한다. 새 실제 실행 응답 없이 RED·complete/commit/PR로 체이닝하지 않는다.
+2. `current_requested_phase`는 state를 읽기 전에 캡처한 이번 명시 phase다. [core-planning.md](../references/core-planning.md)를 읽고 미적용 실제 core→all 결정 또는 mode-transition-status pending을 **mode 해석·과거 커서 적용 전에** 복구/멱등 적용한다. applied 일반 재개는 저장된 새 전체 목록·현재 커서를 유지하며 requirements부터 다시 초기화하지 않는다. 새 명시 phase는 과거 목록·커서보다 우선한다. 전이 자체로 원 run·gx-work 진입 승인·stop-at를 바꾸지 않는다.
+3. mode 필드가 존재하는데 all/core가 아니면 null·빈 값도 포함해 구 버전 세션 방어로 중단한다. **필드 부재일 때만** `restore_mode(None, saved_flags)`로 독립 --core 토큰을 해석한다. 명시 all/core는 `restore_mode(saved_mode, saved_flags)`로 유지한다. 정규화 mode와 core-plan-status/core-plan-approved-digest를 복원하며 저장 flags는 saved_flags로만 두고 현재 명시 플래그와 합쳐 충돌시키지 않는다. 읽기 전용 계획 인계는 이 쓰기 복원을 수행하지 않는다.
+4. scope-status closed 또는 current-step 범위 종료 확인이면 core-replanning.md의 scope-closed로 실행 재개를 끝낸다. 새 명시 requirements/design은 현재 문서 범위만 수행할 수 있고 닫힌 구현 범위를 자동으로 다시 열지 않는다. 그 밖에는 내부 T계획의 implementation-plan-file/sha256, plan-approved-run/source/sha256와 execution-method 및 run/plan-sha256/source를 복원해 현재 단독 SHA-256과 대조한다. core는 현재 ac.md+plan.md의 결합지문·실제 승인 근거도 검증한다. 유효한 결합 승인에 연결된 plan-approved를 재사용하며 같은 계획을 다시 승인받지 않는다. 방법만 빠졌으면 implement Step 1.3에서 방법만 보완한다. 누락/변경된 core 계획은 필요한 G-W-T·코드 Read·계획·결합 승인 Step만 보완하며 setup·완료 RGR을 반복하지 않는다. T계획 구체화는 원 요청 진입 승인을 무효화하지 않지만 요구범위/종료점 변경은 별도 확인한다.
+5. session인데 복원/현재 명시 flags에 --isolated가 있거나 승인 subagents인데 복원 flags에 없으면 실제 결정으로 충돌을 해소한다. 조용히 flags를 추가/삭제하거나 방법을 기본값으로 바꾸지 않는다. 실제 선택 근거가 없거나 계획이 달라졌으면 Step 1.2~1.3에서 필요한 검토/방법만 확정한 뒤 원 중단 지점으로 돌아온다. RED/보고서·라운드·기준선과 baseline-fingerprint를 유지하며 충돌하는 증거는 재사용하지 않는다.
+6. `current-step: 계획 문서로 종료`이면 미구현 상태와 계획 경로를 보고한다. 새 실제 실행 응답 없이 RED·complete/commit/PR로 체이닝하지 않는다.
 
 ### 0.1 재개 정합성 체크 (이어서 진행 선택 시)
 
@@ -61,15 +63,37 @@ pending 질문 확인은 위 계약대로 state 존재·pipeline 판정보다 �
 2. **HEAD 정합성**: state.md에 `last-known-head` 필드가 있고 현재 `git rev-parse HEAD`와 다르면, `git log {last-known-head}..HEAD --oneline`으로 외부 커밋 개수를 센다. 1개 이상이면 사용자에게 보고: "외부 커밋 {N}건이 감지되었습니다: {sha1}..{sha2}. 계속하시려면 확인해주세요." 후 AskUserQuestion으로 진행/중단 선택.
 
 **이어서 진행 시:**
+- 미적용 core→all 전이는 0.05대로 먼저 완료한다. applied 재개에서 커서를 다시 초기화하지 않는다. state 복원 전에 캡처한 current_requested_phase는 과거 ARGS·flags·mode·execution-phases·커서로 덮지 않는다. 자동 감지의 이어서 진행은 새 명시 requirements/design 요청을 취소하는 선택이 아니다.
 - state.md에서 VCS_TYPE, GIT_PREFIX, 베이스 브랜치(git), 프로젝트 타입, ARGS[0], flags, mode, model-profile과 0.05의 run·승인·원문 포인터·계획·실행방법을 복원하되 PROJECT_ROOT는 Step -1의 절대경로를 유지한다. VCS_TYPE이 없으면 `"git"`으로 fallback. model-profile이 없으면(구 세션) config.json `modelProfile` 값(비어있으면 `standard`)으로 결정한다.
 - **구 버전 세션 방어**: state.md에 `mode` 필드가 **존재하고** 그 값이 `all`/`core`가 아니면(v1.18.0 이전 구 버전에서 생성된 세션) 재개하지 않는다. "이 작업은 구 버전(v1.18.0 미만)에서 생성되어 재개할 수 없습니다. `/gx-tdd {작업 설명}`으로 새로 시작해주세요." 안내 후 종료한다. **`mode` 필드가 없는 세션은 거부하지 않는다** — `--phase` 부트스트랩 골격(SKILL.md 환경감지가 mode 없이 생성) 등 정상 v1.18.0 산출물이므로 그대로 재개한다.
 - `test -d`로 경로 검증. 실패 시 "작업 경로가 유효하지 않습니다." → 새로 시작.
-- `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md가 있으면 Read하여 맥락 복원.
+- mode 필드 부재만 0.05의 restore_mode(None, saved_flags)로 정규화한다. flags의 부분 문자열을 core로 오인하거나 명시 all을 --core로 덮지 않는다. 이번 명시 phase와 복원 mode는 독립이다.
+- `${DEV_DIR}/` 하위의 prd.md, design.md, trust-ledger.md, codemap.md, ac.md, plan.md가 있으면 Read하여 맥락 복원.
 - `references/` 디렉토리가 있으면 외부 규격 참조 탐색(Step 3.1 병렬 수집의 5번 항목)을 재실행하여 `REFERENCES`를 복원한다.
 - Step 3.1의 도메인 컨텍스트 탐색(4번 항목)을 재실행하여 `DOMAIN_CONTEXT`를 복원한다.
 - `Read("../references/document-lifecycle.md")`의 문서 사전 대조를 같은 run-id·snapshot·journal로 복원한다. 현재 관련 문서 해시와 미해결 차이만 확인한다. 중단된 완료 투영은 검증 완료가 아니며, 승인·질문·계획을 새로 만들지 않는다.
-- phases 맵에서 마지막 in_progress Phase를 찾아 재개.
+- core-plan-status·core-plan-approved-digest를 현재 ac.md+plan.md 결합지문과 대조한다. plan.md·승인 필드 없는 구세션과 불일치는 pending으로 두고 필요한 requirements(core) 계획·승인 Step만 보완한다. 새 명시 requirements/design이면 유효성·근거만 복원하고 문서 경로를 따르며 과거 구현 Step으로 점프하지 않는다. 미응답 core_plan_approval은 실제 응답·기록 전 해제하지 않는다.
+- **state 복원 → 요청 범위 복원 → PHASES 생성 → resume 커서 적용** 순서다. 현재 명시 phase가 없을 때만 저장 requested-phase(없으면 saved_flags의 --phase 값)·execution-phases·phase/current-step을 복원해 완료 setup/phase를 건너뛴다. 목록·커서 모순은 전체 초기화하지 않고 보고한다. RGR의 승인 plan.md·AC/파일/테스트 매핑·reports·test-file-hash/test-count·porcelain 스냅샷을 함께 복원하고 [core-replanning.md](../references/core-replanning.md)의 delta RED·기존 GREEN·승인된 은퇴·기준선 세대를 유지한다.
 - phase-setup의 나머지 단계(Step 1~Step 7)를 건너뛴다.
+
+명시 요청은 아래처럼 과거 커서보다 우선한다. `saved_requested_phase`는 위 계약으로 읽은 저장 범위다. 실행 직전 기존 커서·phase 상태를 execution-log에 보존하고 scope_updates를 적용한다. 새 요청은 과거 완료 표식을 적용하지 않고 **새 PHASES의 첫 단계부터** 시작한다. requirements/design은 explore를 먼저 실행한다. 기존 문서·승인 근거·테스트·기준선은 삭제하지 않는다. explore는 읽기만 하며 계획 저장이 허용된 경우 새 계획 메타데이터에 이 범위를 기록한다. 기존 실행 state를 덮지 않는다. HANDOFF_READ_ONLY에는 이 state 갱신을 적용하지 않는다.
+
+```python
+# 명시 요청과 재개 범위 적용
+if current_requested_phase is not None:
+    requested_phase = current_requested_phase
+    PHASES = select_phases(mode, requested_phase)
+    cursor_phase, cursor_step = PHASES[0], None
+else:
+    requested_phase = saved_requested_phase
+    PHASES = list(saved_state.get("execution-phases", select_phases(mode, requested_phase)))
+    cursor_phase = saved_state["phase"]
+    cursor_step = saved_state.get("current-step")
+scope_updates = {
+    "requested-phase": requested_phase, "execution-phases": PHASES,
+    "phase": cursor_phase, "current-step": cursor_step,
+}
+```
 
 ### 착수 기록 보정 (`--work` 세션 재개 시)
 

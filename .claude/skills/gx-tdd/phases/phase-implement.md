@@ -9,7 +9,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
 이 Phase는 **계획 검토·실행방법 확정 → RED 격리 디스패치 → IMPLEMENT**로 동작한다:
-- **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님). 태스크의 AC 시나리오 전부를 테스트 집합으로 한 번에 쓴다
+- **red-writer** → 실패 테스트 작성 (**지시 기반 격리** — 프롬프트로 기존 프로덕션 코드 참조를 금지하고, 참조 파일 자기신고를 verify_red가 검증. 도구 레벨 차단은 아님). 최초 구현은 태스크의 AC 시나리오 전부를 작성하며, 재계획은 아래 공통 계약의 add/replace만 delta RED로 작성하고 keep GREEN을 보존한다
 - **IMPLEMENT** → 통과 최소 코드(GREEN) + 안전한 정리(REFACTOR — 동작 변경 금지). Step 1.3에서 현재 세션을 선택하면 **오케스트레이터가 직접 수행**한다 (Step 2-I "세션 IMPLEMENT 절차"). 서브에이전트를 선택하면 `--isolated`로 implementer를 디스패치한다 — 입력은 RED report+시그니처로 한정하되 기존 코드 Read는 허용, 테스트 실행은 focused 집합만. 어느 경로든 verify_implement의 해시·focused 직접 실행 검증은 같다
 
 위반 시 즉시 중단하고 사이클 처음(RED)부터 재시작한다.
@@ -22,21 +22,32 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 모드 분기와 RED 실행보다 먼저 `Read("../references/document-lifecycle.md")`의 사전 대조를 수행한다. 확정된 G-W-T AC·FR/W 연결과 현재 관련 문서 해시를 검사한다. `--phase implement`·`--resume`에서도 생략하지 않는다. 기존 입력을 재사용하고 차이만 보완하며, RED에는 이 보고서나 구현 본문을 추가하지 않는다.
 
+이 phase 파일 기준 `../references/core-planning.md`를 Read한다. 아래 승인 확인은 requirements에서 받은 **AC+계획 1회 승인**의 유효성 검사다. 현재 문서·run에 유효한 결합승인과 실제 실행방법 선택이 있으면 Step 1.2~1.3에서도 같은 질문을 반복하지 않는다. 외부 gx-work 진입 승인·원문 포인터·인계 지문·run-id·stop-at은 내부 계획 승인과 구분해 보존한다.
+
 오케스트레이터가 핵심 모드이면:
-- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`를 Read하여 **G-W-T 형식 AC**를 추출한다 (phase-requirements core 분기가 저장).
+- Step 0에서 설계서(`design.md`)와 PRD(`prd.md`) 로드를 건너뛰고, `${DEV_DIR}/ac.md`와 `${DEV_DIR}/plan.md`를 Read한다. **G-W-T 형식 AC**와 승인된 계획의 AC·파일·테스트 매핑, 순서·의존관계, 검증 명령·기대 결과를 복원한다.
+- 구현 진입 전 `core-plan-status: approved`와 `core-plan-approved-digest`가 두 파일의 현재 raw bytes에 대한 SHA-256(ac.md + NUL byte + plan.md)과 일치하는지 공통 계약으로 확인한다. 문서 누락·변경·승인 필드 부재·불일치면 `pending`으로 돌리고 phase-requirements의 계획 작성·함께 승인으로 복귀한다. ac.md만 있는 구세션도 예외가 아니다.
 - **Step 0.5(기준선 게이트)는 실행한다** (RGR이 강제되므로 기준 GREEN 확인과 warnings-baseline 기록이 필요하다).
-- Step 1의 전체 분해·태스크 수 가드는 생략하고 ac.md의 각 AC를 기본 태스크로 하는 최소 실행표(파일·테스트 의도·명령·순서)를 준비한다. **Step 1.2 계획 검토와 Step 1.3 실행방법 확정은 수행한다**.
+- Step 1의 설계서 기반 신규 분해·태스크 수 가드 대신 **승인된 plan.md에서 RGR 태스크를 복원**한다. 같은 파일·테스트 파일을 여러 태스크가 고치면 계획을 묶어 갱신·재승인한다. `implementation-plan-file`은 이 plan.md, `implementation-plan-sha256`은 plan.md 단독 SHA-256으로 연결한다. 유효한 결합승인의 실제 응답은 같은 run·계획 해시의 `plan-approved-run/source/sha256`로 이어 Step 1.2의 중복 계획 승인을 생략한다. 실행방법은 결합승인 때 받은 실제 선택을 검증하며, 방법이 빠진 기존 승인에만 Step 1.3에서 방법을 보완한다.
 - **RGR 사이클은 유지**한다 (핵심 모드여도 TDD는 강제. Iron Law 1).
-  - red-writer 입력: ac.md의 AC (G-W-T) + 기존 테스트 스타일 (설계서 testability 섹션 없음).
-  - IMPLEMENT 입력(세션 또는 implementer): RED report 경로 + 기존 코드 인터페이스 (설계서 없음) + focused 테스트 명령.
-- **Step 3.5(경계 회귀)는 건너뛴다** — 핵심 모드는 implement 다음이 곧 complete(verify)라, 실행하면 전체 스위트가 연달아 두 번 돈다.
+  - red-writer 입력: ac.md의 AC (G-W-T) + 계획의 해당 태스크 AC·대상 경로·테스트 파일 매핑·순서·검증 명령·기대 결과 + 기존 테스트 스타일. **계획 전문·코드 Read 결과·프로덕션 본문은 전달하지 않는다**. 필요한 인터페이스 시그니처만 전달하여 RED 격리를 유지한다.
+  - IMPLEMENT 입력(세션 또는 implementer): RED report 경로 + 승인된 plan.md의 해당 태스크 AC·파일·테스트 매핑·의존관계·검증 명령·기대 결과 + 기존 코드 인터페이스 + focused 테스트 명령.
+- **Step 3.5(경계 회귀)는 실제 PHASES로 판단한다** — 공통 `needs_boundary_regression(PHASES)`가 참이면 core 여부와 무관하게 실행한다. 같은 실행에서 implement 뒤 complete가 있으면 그 verify가 공통 영향 계획의 회귀를 맡는다. core의 `--phase implement` 단독도 예외가 아니다.
 - Step H1~H4 (긴급 보안 감사)는 사이클 완료 후 동일하게 실행한다.
 
 핵심 모드가 아닌 경우 아래 전체 모드 플로우를 따른다.
 
+### core 승인 재확인과 변경·수리 규칙
+
+핵심 모드는 각 태스크의 RED·IMPLEMENT·fix loop·태스크 리뷰 수리·보안 수리·재개에 진입하기 직전에도 공통 계약으로 현재 두 문서와 승인 지문을 대조한다. 수리나 정리도 승인된 파일·내용 범위 안에서만 수행한다. 계획 위반이 필요하면 **변경 전에 멈추고** ac.md/G-W-T(필요 시)와 plan.md를 갱신하여 함께 재승인한다. 위험 수용·내부 Ruling·자동 수정 선택은 이 승인을 대신하지 않는다.
+
+이 phase 파일 기준 `../references/core-replanning.md`를 Read한다. 문서가 바뀌어도 기존 RED·테스트·report·`test-file-hash`·`test-count`·porcelain·기대값 스냅샷을 먼저 불변 이력에 보관한다. 변경 전 active 세대 hash를 확인한 뒤 케이스를 keep/add/replace/retire로 분류하고 영향 태스크만 새 `baseline-generation`으로 재개한다. add/replace의 새 케이스만 RED, keep은 본문·기대값 불변 GREEN이며 retire는 승인된 범위만 정리한다. task merge/split은 새 active 세대 소유권으로 매핑하고 과거 태스크 hash는 이력으로만 남긴다. 이 계약은 전체 모드·core→all·보안 수리·AC 제외·재개에도 적용한다. 재승인만으로 진행 중 RED가 GREEN인 것처럼 처리하지 않는다. 기준선 사전 실행의 `baseline-fingerprint`와 plan/proof·로그도 보존하며 Step 0.5의 현재 run·코드·설정·명령·범위 일치 조건으로 재사용을 판단한다.
+
 ---
 
 ## Step 0: 문서 로드
+
+**범위 종료 선행 게이트**: state.md의 `scope-status: closed` 또는 `current-step: 범위 종료 확인`이면 새 요구 범위를 재확정하여 명시적으로 다시 열기 전까지 `return "scope-closed"`로 전체 Phase 루프를 중단한다. 자동 구현·complete·commit/PR를 시작하지 않고 `status: in_progress`와 기존 변경을 보존한다. 아래 공통 재계획 계약의 전체 active 0건 분기에서 같은 신호를 반환한다.
 
 - `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read하여 설계서를 로드한다. **testability 섹션**(phase-design에서 test-architect가 추가)을 확인한다.
 - `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 PRD를 로드한다. **수용 기준(AC) Given-When-Then 시나리오**를 추출한다.
@@ -83,8 +94,10 @@ AskUserQuestion(
 ```
 
 - **"하네스 구축 후 재실행"** → 대상 레이어와 권장 러너를 안내하고 파이프라인을 중단한다 (`status: cancelled`). 프론트엔드면 `references/frontend-testing.md` §8의 안내를 함께 전달한다.
-- **"해당 AC 제외 후 진행"** → **프론트 AC 제외**(또는 러너 없는 해당 레이어의 AC 제외)로 처리한다. 제외 항목을 `${DEV_DIR}/trust-ledger.md`의 `### 위험 수용`에 `- [하네스 부재 AC 제외] {AC-N}: {레이어} 러너 없음 (implement/Step 0.5)` 형식으로 기록하고, 태스크 분해에서 해당 AC를 빼고 진행한다. **제외 후 남은 AC가 0건이면** 구현 대상이 없으므로 중단하고 보고한다.
+- **"해당 AC 제외 후 진행"** → **프론트 AC 제외**(또는 러너 없는 해당 레이어의 AC 제외)로 처리한다. 기존 케이스가 있으면 문서·테스트 변경 전 `../references/core-replanning.md`대로 active hash 확인·불변 이력 보관을 먼저 한다. 핵심 모드는 기존 승인을 무효화한 뒤 ac.md에 제외 표시하고 plan.md의 retire 변경표까지 갱신하여 두 문서를 함께 재승인받는다. 전체 모드도 승인된 제외 범위를 변경표에 명시한다. 이후 red-writer만 승인된 active 집합을 정리하고 태스크를 복원한다. 제외 항목은 `${DEV_DIR}/trust-ledger.md`의 `### 위험 수용`에 `- [하네스 부재 AC 제외] {AC-N}: {레이어} 러너 없음 (implement/Step 0.5)` 형식으로 기록한다. **제외 후 남은 AC가 0건이면** 승인된 은퇴 정리·검증 후 아래 범위 종료 분기를 따른다 (기존 변경 자동 원복·커밋 금지). 삭제-only는 가짜 RED·프로덕션 변경을 허가하지 않으며 남은 active GREEN과 source 불변을 검증한다. 진행 중 `baseline-fingerprint`와 기존 plan/proof도 지우지 않고 현재 실행 증거의 재사용 조건으로 판단한다.
 - **"중단"** → `status: cancelled`.
+
+AC 제외로 범위가 비면 다음 Phase로 넘기지 않는다. 승인된 retire 정리·production 보존 검증을 마친 뒤 **이번 실행 전체 active 케이스가 0건일 때만** `scope-status: closed`, `current-step: 범위 종료 확인`, `status: in_progress`를 기록하고 `return "scope-closed"`로 전체 루프를 중단한다. 해당 레이어/태스크만 0건이고 다른 active 태스크가 있으면 그 태스크들은 계속한다.
 
 이 게이트는 모노레포 복합 명령(`references/frontend-testing.md` §7)이 등록되어 있어도 동작한다 — 명령이 등록되었는지가 아니라 **그 레이어에 실행 가능한 테스트가 있는지**를 본다.
 
@@ -147,9 +160,11 @@ AskUserQuestion(
 - **작업 계획으로 분할** → `.dev/plan.md`가 없거나 문서 수정 금지이면 이 선택지를 **제외**한다. 허용된 경우 앞 8개 태스크로 범위를 줄이고 나머지 AC를 `.dev/plan.md`에 `대기` W행으로 로컬 추가한다 (같은 도메인·브랜치 규칙, 선행은 현재 `work-id`). 여기서 stage/commit/push하지 않는다. [실행 종료점](../references/execution-boundaries.md)에 따라 최종 검증 후 요청된 commit/pr 완료 단계에 함께 반영한다. trust-ledger `### 위험 수용`에 `- [범위 분할] AC-N…: 후속 W행으로 이관 (implement/Step 1.15)`를 기록한다.
 - **그대로 진행** → 1.2로 진행한다. execution-log에 `"태스크 수 가드 통과(사용자 선택): {N}개"`를 남긴다.
 
-문서 분할이 불가능하면 재분해/그대로 진행의 두 선택지를 제시한다. 핵심 모드는 전체 분해를 생략하므로 이 수 가드는 타지 않는다 (AC 3~5개 = 태스크 3~5개). 최소 실행표를 파일에 보존한 뒤 1.2로 간다.
+문서 분할이 불가능하면 재분해/그대로 진행의 두 선택지를 제시한다. 핵심 모드는 승인된 plan.md에서 태스크를 복원하므로 이 가드의 별도 분해·승인 경로를 타지 않는다. 복원 결과가 승인된 AC·파일·테스트 매핑과 다르면 계획 갱신·결합 재승인으로 복귀한다.
 
 ### 1.2 계획 검토·실행방법 확인
+
+핵심 모드는 `../references/core-planning.md`의 유효한 결합승인이 현재 AC·plan raw bytes·run과 실제 응답에 연결돼 있으면 그 응답을 `plan-approved-run/source/sha256`로 검증하여 이 계획 승인 질문을 생략한다. 결합승인 때의 실제 session/subagents 선택도 현재 plan.md 단독 해시·run·출처에 연결됐으면 Step 1.3에서 검증만 한다. 문서로 종료 응답은 구현 승인으로 바꾸지 않는다. 유효한 계획 승인만 있고 방법이 없으면 Step 1.3의 방법만 묻는다. 기본 session을 승인 기록으로 채우지 않는다.
 
 계획 링크와 핵심 태스크·범위·순서·명령을 제시하고 **한 질문에서 계획 검토와 실행방법을 함께 확인**한다. 현재 PRD/AC·설계와 달라진 태스크는 계획 파일에 반영해 해시를 갱신한다. gx-work의 진입 승인과 원래 구현 요청은 이 검토 응답을 대신하지 않는다. `plan-approved-run`·`plan-approved-sha256`이 현재 run·내부 계획 파일 해시와 일치하고 `plan-approved-source`에 실제 응답 근거가 있으면 계획은 재질문하지 않고 1.3에서 방법 기록을 검증한다. 외부 계획의 실제 검토 근거도 현재 파일/범위에 대응할 때만 이 필드로 보존해 재사용한다.
 
@@ -196,17 +211,33 @@ Step 1.2의 응답 또는 기존 기록에서 현재 `run-id`·내부 계획 해
 
 Step 1.2~1.3의 현재 run·계획 검토·방법 기록과 실제 flags의 일치를 확인한 뒤 진입한다. 재개한 RGR 중간 Step도 이 검증을 먼저 수행한다.
 
-각 태스크에 대해 **반드시 RED → IMPLEMENT(GREEN+REFACTOR) 순서로 실행**한다. 병렬 금지 (Iron Law).
+각 최초 구현·add/replace 태스크에 대해 **반드시 RED → IMPLEMENT(GREEN+REFACTOR) 순서로 실행**한다. 병렬 금지 (Iron Law). 삭제-only·keep-only는 공통 재계획 계약의 검증으로 마치고 IMPLEMENT를 수행하지 않는다.
 
-**진입 준비**: `mkdir -p ${DEV_DIR}/reports`를 실행한다 (핵심 모드처럼 Step 1을 건너뛴 경로 포함 — 모든 진입 경로 공통). 이후 에이전트 보고는 `reports/t{N}-red.md`·`reports/t{N}-impl.md`에 파일로 저장되고, 인계는 **파일 경로로만** 이루어진다 (전문 인라인 전달 금지 — 컨텍스트 경량화). `.dev/` 공유 정책에 따라 커밋에 포함된다.
+**진입 준비**: `mkdir -p ${DEV_DIR}/reports`를 실행한다 (핵심 모드처럼 승인된 계획에서 태스크를 복원한 경로 포함 — 모든 진입 경로 공통). 이후 에이전트 보고는 `reports/t{N}-red.md`·`reports/t{N}-impl.md`에 파일로 저장되고, 인계는 **파일 경로로만** 이루어진다 (전문 인라인 전달 금지 — 컨텍스트 경량화). `.dev/` 공유 정책에 따라 커밋에 포함된다.
+
+핵심 모드의 매 태스크에서 승인된 plan.md를 기준으로 아래 AC·인터페이스 입력을 채운다. red-writer에는 태스크의 AC·허용 테스트 경로·대상 경로·의존 순서·검증 명령·기대 결과와 시그니처만 발췌하고 프로덕션 본문·계획 전문은 제거한다. 세션 IMPLEMENT와 `--isolated` implementer에는 같은 매핑 및 승인된 변경 파일·내용을 인계한다. 기존 focused 명령 플레이스홀더에는 그 태스크의 승인된 테스트 파일에 한정한 명령을 넣는다.
+
+재계획 입력은 `../references/core-replanning.md`의 케이스 변경표로 실제 치환한다: 기존 `{태스크가 매핑된 AC 시나리오}`에는 keep/add/replace/retire별 case-id·AC-ID·정확한 selector·이전/새 기대값·허용 파일·본문 스냅샷과 세대 링크를 함께 넣는다. 초기 구현은 previous 집합이 빈 경우로 명시한다. report↔state의 `baseline-generation`·`active-case-ids`·`previous-task-ids`/`supersedes`와 실제 selector가 서로 복원 가능해야 한다. 파일/selector 충돌은 디스패치 전에 차단한다. 완료 태스크에 새 AC가 붙어도 기존 keep을 다시 실패시키지 않는다.
 
 ```
 for task in tasks:
     current_task = task
+    # core: 현재 ac.md+plan.md 승인 일치 확인. 불일치면 변경 없이 계획 갱신·재승인으로 복귀.
 
     # 2-R: RED
     red_result = dispatch_red(task)          # report: reports/t{N}-red.md
     verify_red(red_result)                   # 실패 확인 필수 (오케스트레이터 직접 실행)
+
+    # add/replace가 없으면 keep GREEN·승인된 retire·source 불변을 검증하고
+    # 새 active 세대/범위 종료를 기록한다. IMPLEMENT와 과잉 구현 정리는 실행하지 않는다.
+    if no_add_or_replace(task):
+        record_to_state(task, results)
+        # 개별 태스크 active 0건은 그 태스크만 은퇴/skip한다.
+        # 이번 실행 전체 active 0건이며 승인된 모든 retire 정리·source 불변 검증이 끝났을 때만:
+        if all_active_case_ids_empty_and_retire_verified():
+            # state.md: scope-status: closed, current-step: 범위 종료 확인, status: in_progress
+            return "scope-closed"          # 전체 Phase 루프 중단. complete·자동 commit 금지
+        continue
 
     # 2-I: IMPLEMENT (GREEN + REFACTOR 통합)
     if "--isolated" in state.flags:
@@ -234,7 +265,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
     [절대 규칙]
     1. 프로덕션 코드를 작성하지 않습니다. 테스트 파일만 작성합니다.
     2. 기존 프로덕션 코드를 보지 않습니다. AC와 설계서 인터페이스만 봅니다.
-    3. 테스트가 반드시 실패해야 합니다.
+    3. 최초 구현은 모든 새 케이스가 실패해야 합니다. 재계획은 add/replace 새 케이스만 실패(delta RED), keep은 본문·기대값 불변 GREEN이어야 합니다. 삭제-only는 실패 케이스를 만들지 않습니다.
 
     [테스트 품질 가드 — 상세: {ANTI_PATTERNS_PATH}. 파일 부재 시 아래 요약이 기준의 전부]
     - 모의(mock)의 동작이 아니라 실제 동작을 검증합니다.
@@ -259,6 +290,9 @@ Task(subagent_type="oh-my-gx:red-writer"):
     [AC (Given-When-Then)]
     {태스크가 매핑된 AC 시나리오}
 
+    [승인된 경량 계획 인계 — 핵심 모드]
+    핵심 모드일 때만 적용합니다. 위 AC와 아래 인터페이스 입력에는 승인된 plan.md에서 이 태스크의 AC·대상 경로·허용 테스트 파일·의존 순서·검증 명령·기대 결과만 발췌되어 있습니다. 계획 전문이나 프로덕션 본문을 Read하지 않습니다. 허용 테스트 파일 밖의 변경이 필요하면 NEEDS_CONTEXT로 보고합니다. 전체 모드에서는 기존 AC·설계서 인터페이스·테스트 스타일 계약을 따릅니다.
+
     [설계서 testability 섹션]
     {대상 컴포넌트의 인터페이스 + 모의 전략}
 
@@ -269,18 +303,18 @@ Task(subagent_type="oh-my-gx:red-writer"):
     {PROJECT_ROOT}
 
     [작업]
-    1. 이 태스크에 매핑된 AC의 시나리오마다 테스트 케이스 1건씩 작성 ([작성 범위] 참조). 각 케이스는 테스트 품질 3기준 준수:
+    1. 최초 구현은 이 태스크에 매핑된 AC 시나리오마다, 재계획은 승인된 add/replace 시나리오마다 테스트 케이스 1건씩 작성 ([작성 범위] 참조). 각 케이스는 테스트 품질 3기준 준수:
        - 하나의 동작만 검증 (이름에 '그리고'가 필요하면 분리)
        - 이름이 검증하는 동작을 설명
        - 실제 코드 우선, 모의는 불가피할 때만
-    2. 테스트를 저장한 뒤 focused helper가 반환한 `cwd`에서 `command`를 실행해 실패 확인 (실행 위치와 에러 메시지 캡처)
+    2. 테스트를 저장한 뒤 focused helper가 반환한 `cwd`에서 `command`를 실행해 정확한 selector별 add/replace 실패와 keep GREEN을 확인합니다 (실행 위치와 출력 캡처). retire만 있으면 남은 active GREEN을 확인합니다.
     3. 실패 사유 분류 (NoSuchMethod / assertion / etc)
 
     [작성 범위 — 테스트 집합]
-    이 태스크에 매핑된 AC의 G-W-T 시나리오 **전부**를 각각 테스트 케이스로 작성합니다 (시나리오 1건 = 케이스 1건). 컴포넌트당 테스트 파일 하나에 모읍니다. 케이스마다 실패 확인 명령을 실행해 전부 실패하는지 확인하고, 통과하는 케이스가 있으면 기존 동작을 검증하는 잘못된 케이스이므로 다시 씁니다.
+    최초 구현(previous 집합 없음)은 AC의 G-W-T 시나리오 **전부**를 각각 새 케이스로 작성하여 모두 실패해야 합니다 (시나리오 1건 = 케이스 1건). 컴포넌트당 테스트 파일 하나에 모읍니다. 재계획에서는 입력의 승인된 케이스 변경표를 따릅니다: keep은 본문·기대값·ID·selector 불변 GREEN, add/replace의 새 case-id만 RED, retire는 승인된 케이스만 active 집합에서 제거합니다. 기대값 수정은 새 case-id와 replaces: 이전ID로 표현하며, 새 AC 기대값과 모순되는 이전 케이스만 교체합니다. 이전 케이스 원문·기대값 이력은 보존하고 다른 테스트는 변경하지 않습니다. 삭제-only는 가짜 RED나 프로덕션 정리를 하지 않습니다. add/replace가 이미 통과하면 그 신규 케이스를 보고하고 기존 keep을 실패하도록 바꾸지 않습니다. 불분명한 매핑·selector 충돌은 NEEDS_CONTEXT로 보고합니다.
 
     [report 파일]
-    {reports/t{N}-red.md} — 테스트 코드 전문·케이스 목록(케이스 수 명시)·실패 확인 명령과 실행 위치·케이스별 실패 메시지·참조한 파일 전체 목록을 이 파일에 Write하십시오
+    {reports/t{N}-red.md} — 테스트 코드 전문·케이스 목록(케이스 수 명시)·실패 확인 명령과 실행 위치·케이스별 실패 메시지·참조한 파일 전체 목록을 이 파일에 Write하십시오. 재계획은 각 행의 case-id·AC-ID·test-file·정확한 selector·keep/add/replace/retire·이전case-id·이전/새 기대값과 baseline-generation·previous-task-ids/supersedes·불변 이력 경로·keep GREEN 출력도 포함합니다. 기존 report는 보관된 이력 링크를 유지합니다.
 
     [반환 형식 — 15줄 이내. 전문은 report 파일에]
     - Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
@@ -291,14 +325,14 @@ Task(subagent_type="oh-my-gx:red-writer"):
 ```
 
 **verify_red**: 오케스트레이터가 직접 검증.
-1. report 파일(`reports/t{N}-red.md`)에서 테스트 파일 경로·케이스 목록·실패 확인 명령과 실행 위치를 읽는다. helper의 `cwd`는 프로젝트 루트에 대한 상대경로이며 모든 직접 재실행도 `${PROJECT_ROOT}/${focused.cwd}`에서 같은 `command`를 사용한다.
-2. **실패 확인 (집합 전체)**: report의 실패 확인 명령을 직접 실행해 신규 케이스가 **모두** 실패하는지 본다 (실패 건수 = report의 케이스 수). 통과하는 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출. **재현 RED**(Step 2-V RED 재호출)에서는 통과하는 케이스가 finding의 오탐을 뜻하므로 재호출하지 않는다 — 3번의 재현 RED 예외를 따른다.
-3. 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단. **재현 RED 예외**: Step 2-V RED 재호출에서는 이 통과가 finding이 실제 결함이 아니라는 뜻이다 — 사용자에게 묻지 않고 그 finding을 '재현 불가' 근거(통과한 케이스와 실행 출력)와 함께 재리뷰에 넘기며 라운드를 1 소모한다. 이 재리뷰는 수정 diff 없이 진행한다 — `reports/t{N}-diff-r{r}.txt` 대신 '재현 불가' 근거만 `[재리뷰]` 절에 싣는다.
-4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 해당 테스트 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음).
-5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: AskUserQuestion(자유입력)으로 대상 인터페이스 정보를 받아 red-writer에 보강 전달 후 재호출.
-6. **테스트 파일 해시 기록**: `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용).
+1. report 파일(`reports/t{N}-red.md`)에서 테스트 파일 경로·케이스 목록·실패 확인 명령과 실행 위치를 읽는다. helper의 `cwd`는 프로젝트 루트에 대한 상대경로이며 직접 재실행도 `${PROJECT_ROOT}/${focused.cwd}`에서 같은 `command`를 사용한다. 핵심 모드는 현재 승인 일치를 먼저 확인하고 실제 테스트 파일·AC 매핑·실패 확인 명령이 승인된 plan.md의 해당 태스크와 일치하는지 대조한다. 재계획은 공통 계약대로 변경 전 active hash 확인·불변 이력 보관·변경표 승인을 확인하고 case-id/AC-ID/정확한 selector·이전/새 기대값과 실제 파일을 대조한다. 중복 selector·0건/복수 건 선택·파일 소유권 충돌·승인되지 않은 본문 변경은 실패다. 불일치면 다음 단계로 가지 않고 계획 갱신·재승인 또는 승인 범위 내 RED 보강으로 복귀한다.
+2. **실패 확인 (새 케이스 집합 전체)**: report의 정확한 selector별 명령을 직접 실행해 add/replace의 새 케이스가 **모두** 실패하는지 본다 (실패 건수 = add 수 + replace 수; 최초 구현은 모든 케이스 수). keep은 본문·기대값 불변 GREEN, retire는 승인된 케이스만 active에서 빠졌는지 확인한다. 허용 delta 밖 테스트 변경은 전부 GREEN이어도 차단한다. 삭제-only·keep-only는 실패를 요구하지 않고 남은 active GREEN과 source 불변을 확인하며 IMPLEMENT를 건너뛴다. 통과하는 신규 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출. **재현 RED**(Step 2-V RED 재호출)에서는 통과하는 케이스가 finding의 오탐을 뜻하므로 재호출하지 않는다 — 3번의 재현 RED 예외를 따른다.
+3. add/replace 신규 케이스의 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단한다. keep이 통과하는 것은 정상이며 이 분기를 적용하지 않는다. **재현 RED 예외**: Step 2-V RED 재호출에서는 이 통과가 finding이 실제 결함이 아니라는 뜻이다 — 사용자에게 묻지 않고 그 finding을 '재현 불가' 근거(통과한 케이스와 실행 출력)와 함께 재리뷰에 넘기며 라운드를 1 소모한다. 이 재리뷰는 수정 diff 없이 진행한다 — `reports/t{N}-diff-r{r}.txt` 대신 '재현 불가' 근거만 `[재리뷰]` 절에 싣는다.
+4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 이번 RED가 새로 만든 오염된 부분만 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음). 기존 테스트·이전 RED·기준선은 보존한다.
+5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: 오케스트레이터가 기존 코드/테스트를 Read하여 필요한 시그니처만 발췌하고, 사용자 판단이 필요하면 실제 답변을 기다린다. 계획의 인터페이스·파일·테스트 매핑·검증을 바꿔야 하면 plan.md 갱신·함께 재승인 후 보강 전달하여 재호출한다.
+6. **테스트 파일 해시 기록**: 위 검증이 통과한 뒤 `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용). 재계획은 이전 report·hash·porcelain·test-count·본문/기대값을 불변 이력에 먼저 보관한 후 새 `baseline-generation`·`active-case-ids`·`previous-task-ids`/`supersedes`·`case-change-report`로 연결한다. active 발행 시 `retired-case-ids`에 retire와 replace의 이전 ID를 누적한다. 감소/교체를 새 hash로 숨기지 않는다.
 7. **report 저장 확인**: `reports/t{N}-red.md`가 존재하고 테스트 코드·실패 메시지를 담고 있는지 확인한다. 다음 단계(2-I) 인계는 이 파일 경로로만 한다.
-8. ✅ 실패 정상 → IMPLEMENT(2-I)로 진행.
+8. ✅ add/replace 실패 정상 → IMPLEMENT(2-I)로 진행. add/replace가 없으면 승인된 정리·keep GREEN·source 불변 검증만 기록하고 다음 태스크로 진행한다. 개별 태스크 active 0건은 해당 태스크만 은퇴/skip하여 다른 active 태스크를 계속한다. **이번 실행 전체 active 케이스가 0건**이고 승인된 은퇴 정리·기존 다른 테스트 보존·production 불변 검증이 모두 끝났으면 `scope-status: closed`, `current-step: 범위 종료 확인`, `status: in_progress`로 기록하고 `return "scope-closed"`로 전체 루프를 중단한다. complete·자동 commit으로 이어가지 않는다.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
 
@@ -325,7 +359,7 @@ Task(subagent_type="oh-my-gx:red-writer"):
 - 인터페이스 시그니처 변경
 
 [절차 — 내부 RGR 루프]
-1. `reports/t{N}-red.md`를 Read해 이 태스크의 실패 테스트 집합(파일·케이스·실패 메시지)을 파악한다. 설계서 인터페이스(대상 시그니처)를 확인한다. 구현에 필요한 기존 코드는 Read한다 (세션은 red-writer와 달리 코드 차단 대상이 아니다).
+1. 핵심 모드이면 현재 ac.md+plan.md 승인 지문을 먼저 대조하고, 승인된 plan.md의 해당 태스크 AC·변경 파일·내용·테스트 매핑·의존관계·검증 명령·기대 결과를 Read한다. `reports/t{N}-red.md`를 Read해 이 태스크의 실패 테스트 집합(파일·케이스·실패 메시지)을 파악한다. 설계서 인터페이스(대상 시그니처)를 확인한다. 구현에 필요한 기존 코드는 Read한다 (세션은 red-writer와 달리 코드 차단 대상이 아니다).
 2. focused 명령(조립 규칙은 아래 **focused 테스트 명령 조립** 참조)을 실행해 현재 실패 케이스 목록을 얻는다.
 3. 실패 케이스 **하나**를 고른다 → 그 케이스만 통과시키는 최소 코드를 작성한다 → focused를 재실행해 그 케이스가 통과하고 이미 통과한 케이스가 유지되는지 본다. 실패 케이스가 남아 있으면 3을 반복한다. 한 걸음이 15분을 넘기면 케이스를 더 잘게 볼 수 있는지 먼저 의심한다.
 4. 전부 GREEN이면 REFACTOR: 중복 제거·네이밍·구조 정리. 정리 한 단위마다 focused 재실행. 깨지면 그 단위를 롤백한다. 정리할 것이 없으면 "정리 없음"으로 기록한다.
@@ -360,6 +394,9 @@ Task(subagent_type="oh-my-gx:implementer"):
     [설계서 인터페이스]
     {대상 컴포넌트의 시그니처만}
 
+    [승인된 경량 계획 인계 — 핵심 모드]
+    핵심 모드일 때만 적용합니다. 위 입력에는 승인된 plan.md에서 이 태스크의 AC·변경 파일·내용·테스트 파일 매핑·의존관계·검증 명령·기대 결과도 함께 발췌되어 있습니다. 이 범위 안에서만 구현하고, 계획 변경이 필요하면 코드를 바꾸기 전에 NEEDS_CONTEXT로 보고하십시오. 실제 코드 Read는 허용됩니다. 전체 모드에서는 기존 RED report·설계서 인터페이스 계약을 따릅니다.
+
     [focused 테스트 명령]
     {오케스트레이터가 조립한 명령 — 이 태스크의 test-file 기록 파일만}
 
@@ -390,10 +427,13 @@ exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focuse
 
 **명령 오류 가드**: 테스트 결과 요약 없이 끝난 옵션·러너 오류는 fix loop에서 제품 결함으로 다루지 않는다. 실제 설정을 보완한 뒤 현재 태스크만 재실행한다. 전체 검사는 공통 영향 계획과 명시적인 전체 실행 선택으로만 결정한다.
 **verify_implement**: 오케스트레이터가 직접 검증. **저비용 검사(1~3번)를 테스트 실행보다 먼저 수행한다.**
+
+핵심 모드에서는 1번에 앞서 현재 승인 지문과 실제 변경 파일·내용·테스트 매핑을 plan.md의 해당 태스크와 대조한다. 계획 밖 변경은 통과시키지 않고 중단하여 근거를 보존한다. 다음 변경 전에 계획 갱신·재승인을 받아야 한다. 아래 `NEEDS_CONTEXT`·태스크 분할·RED 보강·fix·과잉 구현 정리도 같은 규칙을 따른다.
 1. **Status 분기** (격리 경로에서만 상태가 반환된다. 세션 경로는 report `## 우려사항`에 "없음" 외의 내용이 있으면 DONE_WITH_CONCERNS로 취급한다): `NEEDS_CONTEXT` → 요청된 정보를 보강해 재디스패치 (라운드 미소모, 태스크당 최대 2회 — 초과 시 BLOCKED로 승격해 처리한다). `BLOCKED` → 컨텍스트 보강 / 모델 격상 / 태스크 분할 / 설계 재확인 중 판정 후 처리. `DONE_WITH_CONCERNS` → report의 우려를 Read하고 정합성 문제면 fix 라운드로, 관찰이면 기록 후 진행.
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (구현 주체가 테스트를 고치지 않는다).
-3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **이전 태스크들의 `test-file-hash`도 재검증**한다. 무단 수정 감지 → 해당 테스트를 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
+3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **현재 active 세대가 소유한 이전 태스크들의 `test-file-hash`도 재검증**한다. merge/split로 superseded된 과거 태스크 hash는 불변 이력이며 현재 파일과 비교하지 않는다. `active-case-ids`·정확한 selector·본문/기대값 스냅샷과 실제 파일을 대조하여 keep/다른 테스트 무단 변경·은퇴 ID 재사용을 차단한다. 무단 수정 감지 → 해당 테스트를 현재 active 세대 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다. **같은 태스크의 직전 `test-count`와 비교**해 감소하면 사유를 확인한다(무단 삭제면 롤백 요청). 첫 기록이거나, 직전 기록 이후 red-writer 재호출로 verify_red가 `test-file-hash`를 다시 기록했으면(정당한 테스트 변경) 비교하지 않고 새 값을 기준으로 삼는다. 태스크마다 대상 집합이 다르므로 태스크 간 비교는 하지 않는다. **전체 스위트는 실행하지 않는다** — 태스크 간 회귀는 phase-review Step 0(누적 실행), 기존 스위트 회귀는 완료 verify(`--phase implement` 단독: Step 3.5)가 담당한다.
+   재계획의 새 값 채택은 승인된 케이스 변경표·이력 보관·새 active 세대 발행이 검증됐을 때만 허용한다. 이전 count와 새 count의 차이는 add/replace/retire 및 태스크 소유권 재매핑으로 정확히 설명되어야 한다. 파일에 기존 비태스크 테스트가 있으면 그 목록도 보존하여 focused 전체 수와 별도로 `active-case-ids`의 정확한 selector별 누락·중복·결과를 대조한다. 해시가 갱신됐다는 이유만으로 케이스 감소를 수용하지 않는다.
 5. **과잉 구현 판정**: 추가된 public 메서드/필드 중 focused 테스트 집합이 참조하지 않는 것을 찾는다. 있으면 **묻지 않고 판정한다** — "판정 기록 (Rulings)" 절의 기본값대로 설계서 인터페이스가 명시한 멤버는 "설계 예약"으로 유지하고, 그 외는 제거한 뒤 focused를 재실행한다 (제거는 기본 경로에서 세션이 직접, `--isolated`면 implementer에 요청한다 — 4b와 같은 경로 구분. 제거로 깨지면 복원하고 `## 우려사항`에 기록하되, 이것은 관찰이므로 1번의 DONE_WITH_CONCERNS 판정에는 넣지 않는다). 제거·유지 목록을 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절로 append하고, decisions.md에 `Ruling: T{N} 과잉 구현 정리` 블록을 append한다. 판정할 것이 없으면 아무것도 기록하지 않는다.
 6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
 7. ✅ 통과 + 무결성 유지 → **Step 2-V 태스크 리뷰 판정**으로 진행한다 (발동 조건 미충족이면 `review: skipped` 기록 후 태스크 완료).
@@ -523,9 +563,9 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 ---
 
-## Step 3.5: 경계 회귀 (--phase implement 단독 전용)
+## Step 3.5: 경계 회귀 (실제 PHASES 기준)
 
-같은 실행에서 complete가 이어지면 중복 실행하지 않는다. `--phase implement` 단독이면 공통 영향 계획으로 누적된 태스크와 변경 범위를 검증한다. 매핑/설정/의존성 불확실성 또는 명시적 전체 검사에서만 전체 테스트를 실행한다. 변경되지 않은 코드의 동일 plan entry는 `reuse` 성공 증거로 확인하며, 코드가 바뀌면 이전 증거를 쓰지 않는다.
+이 phase 파일 기준 `../references/core-planning.md`의 **`needs_boundary_regression(PHASES)`**로 판단한다. 실제 실행 목록에서 implement 뒤에 complete(verify)가 없으면 core 여부와 무관하게 공통 영향 계획으로 현재 active 태스크와 실제 변경 범위의 회귀를 검증한다. core의 `--phase implement` 단독도 실행한다. 매핑/설정/의존성 불확실성 또는 명시적 전체 검사에서만 전체 테스트를 실행한다. 변경되지 않은 코드의 동일 plan entry는 `reuse` 성공 증거로 확인하며, 코드가 바뀌면 이전 증거를 쓰지 않는다. 후속 complete가 같은 실행 목록에 있으면 그 verify가 이 회귀를 맡는다. 모드 이름이나 과거 기본 목록으로 판단하지 않는다.
 
 실패 시 대상 테스트·에러·focused 명령을 implementer **수리 모드**로 전달한다. RED report 없음, 테스트 파일 무변경 확인, 수리 1회 상한은 유지한다. 수리 후 변경된 범위의 plan/proof를 갱신하고 관련 테스트를 실행한다. 재차 실패하면 사용자에게 보고한다. `current-step: 경계 회귀 수리`로 기록한다.
 
@@ -582,11 +622,13 @@ phase-review로 인계하기 위해 diff를 수집한다.
 **Step H2**: 결과를 `${DEV_DIR}/trust-ledger.md`에 Write/Append.
 
 **Step H3**: 결과 분기:
-- CRITICAL/HIGH 0건 → "핵심 모드 긴급 감사 통과" 보고 후 phase-complete로 진행.
+- CRITICAL/HIGH 0건 → "핵심 모드 긴급 감사 통과" 보고 후 실제 PHASES의 다음 단계로 진행한다. complete가 같은 실행 목록에 있을 때 그 phase로 이어가며, 단독 implement는 이 phase의 완료 보고로 끝낸다.
 - CRITICAL/HIGH 1건 이상 → AskUserQuestion:
-  - "자동 수정 시도" → **RGR 사이클 재진입**: 보안 항목을 새 AC로 정의하여 red-writer(새 실패 테스트) → IMPLEMENT(세션 또는 implementer) 순서로 수정한다 (Step 2-R/2-I 재실행). implementer를 RED 없이 직접 호출하지 않는다.
+  - "자동 수정 시도" → `../references/core-replanning.md`로 변경 전 active hash 확인·불변 이력 보관을 먼저 한다. 기존 승인 무효화 후 보안 항목을 ac.md의 새 G-W-T AC로 정의하고 plan.md의 영향 태스크·파일·테스트 및 keep/add/replace/retire 매핑을 갱신한다. 두 문서를 함께 재승인받아 **RGR 사이클 재진입**: red-writer(add/replace 새 케이스만 delta RED, keep 본문·기대값 불변 GREEN) → IMPLEMENT(세션 또는 implementer) 순서로 수정한다 (Step 2-R/2-I 재실행). 기존 report·기대값·해시 이력과 영향 없는 태스크는 보존하고 새 baseline-generation으로 영향 태스크만 재개한다. implementer를 RED 없이 직접 호출하지 않는다.
   - "이대로 진행" → 위험 수용 기록
   - "중단" → state.md에 `status: cancelled`
+
+**보안 수리 후 완료 게이트**: H3의 RGR 재진입으로 코드를 변경했으면 `needs_boundary_regression(PHASES)`를 다시 평가한다. 참이면 보안 수리 이후 코드로 **Step 3.5를 반드시 재실행**한다. 이전 코드의 GREEN/통과 증거 재사용·대체는 금지한다. 수정 태스크 focused GREEN만으로 다른 테스트 회귀를 통과 처리하지 않는다. 새 코드의 공통 영향 계획·지문·명령·범위에 맞는 회귀 통과 증거를 확보했을 때만 단독 implement 완료 보고를 한다. 미매핑·설정·의존성 변경이나 명시적 전체 검사이면 전체 회귀로 확장한다. Step 3.5 실패 시 그 수리·재시도·중단 규칙을 적용하고 완료를 보고하지 않는다. 실제 목록에 후속 complete가 있으면 해당 verify가 수리 이후 회귀를 맡으며 검증을 생략했다고 기록하지 않는다. `scope-closed`이면 이 게이트나 complete로 이어가지 않고 전체 루프를 종료한다.
 
 **Step H4**: `execution-log`에 기록.
 
@@ -610,6 +652,11 @@ steps:
     - 실행방법 선택: completed
     - "RGR T1 (AC-1)":
         red: completed
+        baseline-generation: g2
+        active-case-ids: [C-keep, C-new]
+        previous-task-ids: [T1]
+        supersedes: [g1/T1]
+        case-change-report: reports/g2/t1-case-changes.md
         test-file: src/test/.../PaymentLimitTest.java   # verify_red 기록 — focused 집합 조립에 사용
         test-file-hash: 3ca970cc...   # verify_red 기록 — verify_implement 무결성 비교 기준선
         test-count: 47                # verify_implement 기록 — focused 직접 실행 결과 (테스트 삭제 감지 기준선)
@@ -646,7 +693,13 @@ steps:
 
 ## --resume 호환
 
-모든 항목보다 먼저 setup-resume 0.05의 진입 승인·현재 계획 해시·방법/flags를 검증한다. 유효한 같은 run·계획의 선택은 재사용하고, 부족한 계획 검토/방법만 Step 1.2~1.3에서 확정한 후 아래 중단 지점으로 돌아온다. 완료된 RED·태스크/보고서·fix 카운터는 보존한다.
+`scope-status: closed` 또는 `current-step: 범위 종료 확인`은 아래 일반 재개 분기보다 우선한다. `status: in_progress`를 유지한 채 `return "scope-closed"`로 전체 Phase 루프를 끝내며 자동 구현·complete·commit/PR를 금지한다. 새 요구 범위 재확정·승인과 세대 재개를 명시적으로 거친 뒤에만 다시 연다. 개별 은퇴 태스크의 active 0건을 전체 범위 종료로 오인하지 않는다.
+
+핵심 모드는 `../references/core-planning.md`로 ac.md·plan.md의 현재 승인 일치를 확인한다. 문서나 승인 필드가 없거나 불일치하면 phase-requirements의 계획·함께 승인으로 복귀하고, 유효하면 승인된 태스크 매핑과 기존 RED·무결성 기준선을 복원해 영향 태스크만 재개한다. 결합승인·실제 방법 선택과 기존 Step 1.2~1.3의 동일 run·계획 해시·출처 연결을 검증하고 부족한 방법만 보완한다. `current-step`만으로 승인 검사를 생략하지 않는다.
+
+모든 모드에서 `../references/core-replanning.md`로 active/후보 baseline-generation·케이스 변경표·이전/새 기대값·ID 원장·불변 이력 링크를 복원하고 현재 active 소유권의 hash부터 검증한다. 후보 RED 작성 중 중단되었다면 변경 전 hash 검증 기록·이력 원본 hash와 승인 delta/keep 본문 보존을 먼저 대조하며, 정당한 후보 delta를 과거 전체 파일 hash 불일치로 오인하지 않는다. 재계획 중단은 이전 완료 task를 새 AC 완료로 간주하지 않으며, merge/split 후 superseded 태스크 hash를 현재 파일과 재대조하지 않는다. RED 재개는 add/replace만, keep은 내용 불변 GREEN, retire는 승인 범위만 정리한다. 삭제-only/active 0건은 IMPLEMENT를 시작하지 않는다. core→all 뒤에는 전이된 실제 PHASES와 전체 모드 요구사항·설계에서 확정한 변경표로 이어간다.
+
+일반 중단 지점 재개 전에는 setup-resume 0.05의 진입 승인·현재 계획 해시·방법/flags도 검증한다. 유효한 같은 run·계획의 선택은 재사용하고, 부족한 계획 검토/방법만 Step 1.2~1.3에서 확정한 후 아래 중단 지점으로 돌아온다. 완료된 RED·태스크/보고서·fix 카운터는 보존한다.
 
 - `"기준선 게이트"` → Step 0.5부터 재실행
 - `"태스크 분해 승인"` → 저장된 내부 계획·해시를 읽어 Step 1.2부터 재개. 유효한 계획 전체를 다시 분해하지 않는다.
