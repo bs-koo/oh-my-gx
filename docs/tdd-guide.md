@@ -528,9 +528,11 @@ fix loop 5라운드(1~3 재개, 4~5 opus 격상) 소진 시 사이클을 멈추�
 | 모드 | 경로 | 언제 |
 |------|------|------|
 | 전체 | setup → requirements → design → implement → review → complete | 신규 기능, 설계 판단이 필요한 변경 |
-| 핵심(core) | setup → requirements(AC만) → implement(RGR + 긴급 보안 감사) → complete | 소형 변경, 긴급 버그 수정 |
+| 핵심(core) | setup → requirements(AC·코드 확인·구현계획·결합 승인) → implement(RGR + 긴급 보안 감사) → complete | 소형 변경, 긴급 버그 수정 |
 
 핵심 모드에서도 **RGR 사이클, G-W-T 게이트, verify 게이트는 유지된다.** 생략되는 것은 설계 단계(testability 평가)와 정식 리뷰뿐이다. "급하니까 TDD를 건너뛴다"는 선택지는 이 스킬에 없다. 비TDD 개발 경로는 제공하지 않는다. 핵심 모드도 `--core` 또는 명시적 핵심 모드 요청으로 선택한다.
+
+핵심 모드는 AC 작성 뒤 실제 코드를 읽고 파일·순서·의존관계·AC별 검증을 `plan.md`에 정리해 AC와 함께 한 번 승인받는다. 같은 실행의 유효한 방법 선택은 재사용하고, AC·계획 변경 시에는 다시 승인받는다. 이미 성공한 케이스는 GREEN을 유지하며 추가·교체한 케이스만 RED부터 시작한다. 승인된 삭제·교체 이력과 ID는 보존한다. 중요한 설계 판단이 필요하면 전체 모드로 전환한다.
 
 모델 프로파일은 절차와 직교한다. `--eco`를 주면 design-critic·test-architect·reviewer가 sonnet으로 내려가지만(architect는 유지), 게이트와 Iron Law는 그대로다.
 
@@ -554,6 +556,7 @@ fix loop 5라운드(1~3 재개, 4~5 opus 격상) 소진 시 사이클을 멈추�
 | 파일 | 내용 |
 |------|------|
 | `prd.md` / `ac.md` | 확정된 요구사항 (핵심 모드는 ac.md) |
+| `plan.md` | 구현 파일·순서·의존관계·AC별 검증 계획 (핵심 모드는 AC와 함께 승인) |
 | `design.md` | 설계서 + Testability 평가 섹션 |
 | `codemap.md` | 관련 파일 경로와 역할 (누적, 최대 25개) |
 | `trust-ledger.md` | 감사 결과 + **위험 수용 이력** |

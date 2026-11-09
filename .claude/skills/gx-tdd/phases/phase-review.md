@@ -23,7 +23,7 @@ security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
 ## Step 0: Mechanical Gate (build + test)
 
-리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. [테스트 실행 계약](../references/test-execution.md)을 읽어 변경·영향 테스트와 빌드를 계획한다. 모든 태스크의 필수 테스트와 명시적 소유 관계를 포함해 태스크 간 회귀를 확인한다. review→verify→commit은 같은 실행의 정확한 증거를 공유한다. 전체 스위트는 미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청 때만 폴백한다. 완료 phase라는 이유로 전체를 반복하지 않는다.
+리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. [테스트 실행 계약](../references/test-execution.md)을 읽어 변경·영향 테스트와 빌드를 계획한다. **아래 Step 0-2의 태스크 선택 선행을 Build보다 먼저 수행**하고, 복원한 `REVIEW_ACTIVE_TASKS` 하나를 현재 해시 대조·필수 테스트·명시적 source/test 소유 관계·수리 후 재확인에 동일하게 사용해 태스크 간 회귀를 확인한다. review→verify→commit은 같은 실행의 정확한 증거를 공유한다. 전체 스위트는 미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청 때만 폴백한다. 완료 phase라는 이유로 전체를 반복하지 않는다.
 
 프로젝트 타입은 config.json의 `projectTypes`를, 타임아웃은 `timeouts`를 참조한다.
 
@@ -59,9 +59,13 @@ Git은 공유 helper 계획·정확한 증거 재사용을 사용한다. SVN은 
 
 **Step 0 테스트 집합** (이 Gate의 첫 실행·재시도와 Step 4.4의 4b·4c 재확인이 모두 이 정의를 쓴다):
 
-1. **무결성 선확인**: state.md `steps.implement`의 모든 태스크 `test-file-hash`를 현재 파일의 해시(`git hash-object`)와 대조한다. 불일치나 파일 부재가 있으면 테스트를 실행하지 않고 해당 파일 목록을 보여 AskUserQuestion으로 묻는다 — "RED 산출물로 원복"(phase-implement verify_implement 3의 무단 수정 처리) / "사용자 변경으로 인정"(현재 해시를 `test-file-hash`에 다시 기록하고 execution-log에 남긴 뒤 진행). 수동 수정 뒤 phase-review를 다시 부른 경로에서는 불일치가 사용자의 정당한 수정일 수 있어 묻지 않고 원복하지 않는다. red-writer 재호출로 생긴 변경은 verify_red가 해시를 다시 기록하므로 이 대조에 걸리지 않는다.
-2. **누적 focused**: 모든 태스크의 `test-file`(경로 하나 또는 경로 목록)을 중복 제거해 helper `--tests-file`로 전달한다. 승인 plan의 소유 source/test 관계만 `--ownership-file`로 전달한다. helper가 changed/affected/필수 테스트의 합집합을 프로젝트별로 계획한다. `test-file`만으로 모든 source가 커버된다고 간주하지 않는다. 테스트가 없는 타입도 누락하지 않고 실행/재사용/제외 사유를 기록한다.
-3. **전체 폴백**: 미매핑 변경, 공유/설정/의존성 변경, 삭제·미확정 매핑, `focusedTest` 없음과 related runner 미지원, 사용자 전체 회귀 요청은 test-execution.md의 규칙으로 전체를 계획한다. `test-file` 기록이 0건이어도 지원되는 related runner와 실제 변경 근거가 있으면 관련 테스트를 선택한다. 명령 자체 오류면 전체 명령으로 계획을 다시 만들되 실제 assertion 실패는 폴백으로 숨기지 않는다. 폴백 사유는 execution-log에 남긴다.
+**태스크 선택 선행**: 이 phase 파일 기준 `../references/core-replanning.md`의 **§5 활성 태스크 선택 정본**을 Read하고 공통 test-execution.md와 동일한 집합을 **`REVIEW_ACTIVE_TASKS = ACTIVE_TASKS`**로 사용한다. 아래는 정본의 소비 요약이며 별도 선택 규칙이 아니다. 현재 승인된 AC·계획과 state/report의 `baseline-generation`·`active-case-ids`·`previous-task-ids`/`supersedes`를 대조하여 현재 active 세대 소유 태스크를 복원한다. 영향 없는 이전 세대 태스크도 현재 소유권이 유지되면 포함한다; 세대 번호 최댓값만 골라 제외하지 않는다. retired/superseded 태스크는 불변 이력의 원문·hash·기대값과 승인된 은퇴/승계 연결만 확인한다. 과거 태스크 hash를 현재 파일과 비교·현재 RED로 원복·현재값으로 덮어쓰기는 금지한다. active 목록이 비었다고 태스크를 임의 은퇴시키지 않으며 승인된 전체 범위 종료는 `scope-closed`로 반환하여 complete로 넘기지 않는다.
+
+legacy 세션에 세대 필드가 전혀 없으면 모든 기존 태스크를 대상으로 하는 기존 동작을 보존한다. 일부 세대 필드만 있거나 새 계획과 소유권 매핑이 모호하면 새 hash로 통과시키지 않고 중단하여 승인된 계획·변경표·불변 이력에서 매핑을 복원한다. 전체 폴백으로도 이 무결성/소유권 오류를 우회하지 않는다. 다른 테스트의 무단 변경 감지와 무결성 규칙은 유지한다.
+
+1. **무결성 선확인**: `REVIEW_ACTIVE_TASKS`의 `test-file-hash`만 현재 소유 파일의 해시(`git hash-object`)와 대조한다. active 태스크의 파일 소유권·hash·case-id/selector·count를 현재 승인된 변경표와 실제 테스트에 대조하여 누락·중복·무단 변경을 차단한다. 불일치나 파일 부재가 있으면 테스트를 실행하지 않고 해당 파일 목록을 보여 AskUserQuestion으로 묻는다 — "RED 산출물로 원복"(현재 active 소유 태스크의 산출물로만 복원; phase-implement verify_implement 3) / "사용자 변경으로 인정". 수동 수정 뒤 phase-review를 다시 부른 경로에서는 사용자의 정당한 수정일 수 있어 묻지 않고 원복하지 않는다. 세대 필드 없는 legacy의 사용자 변경 인정은 현재 해시를 `test-file-hash`에 다시 기록하고 execution-log에 남기는 기존 절차를 유지한다. 세대 계약이 있는 경우에는 사용자 응답만으로 과거 hash나 현재 기준선을 덮지 않으며 core-replanning의 승인된 변경표·기대값/본문 이력·red-writer·새 기준선 검증을 거친다. red-writer 재호출로 생긴 정당한 변경은 verify_red가 새 active 기준선을 발행하므로 그 세대로 검증한다. 다른 테스트 파일 무단 수정도 기존 porcelain·스냅샷 검사로 계속 차단한다.
+2. **누적 focused**: `REVIEW_ACTIVE_TASKS`의 `test-file`(경로 하나 또는 경로 목록)만 중복 제거해 helper `--tests-file`로 전달한다. 같은 active 집합에서 승인 plan의 현재 소유 source/test 관계만 `--ownership-file`로 전달한다. retired/superseded 태스크의 과거 파일·소유 관계는 두 입력에 넣지 않는다. helper가 실제 changed/affected/필수 테스트의 합집합을 프로젝트별로 계획한다. `test-file`만으로 모든 source가 커버된다고 간주하지 않는다. 테스트가 없는 타입도 누락하지 않고 실행/재사용/제외 사유를 기록한다.
+3. **전체 폴백**: `REVIEW_ACTIVE_TASKS`를 **통틀어 `test-file` 기록이 0건**인 단독 review·세대 필드 없는 legacy도 실제 변경 근거와 test-execution.md의 선택 규칙을 유지한다. 지원되는 related runner와 실제 변경 근거가 있으면 관련 테스트를 선택한다. 미매핑 변경, 공유/설정/의존성 변경, 삭제·미확정 매핑, `focusedTest` 없음과 related runner 미지원, 사용자 전체 회귀 요청은 전체를 계획한다. 이미 확인한 scope-closed/소유권 모호성은 폴백 대상이 아니며 retired/superseded 태스크의 과거 hash를 현재 파일과 재대조하지 않는다. 명령 자체 오류면 전체 명령으로 계획을 다시 만들되 실제 assertion 실패는 폴백으로 숨기지 않는다. 폴백 사유는 execution-log에 남긴다.
 
 타입에 `test` 필드도 없으면 → AskUserQuestion: "테스트 검증 명령을 감지하지 못했습니다." 선택지: 사용자가 직접 입력 / 건너뛰기. **조용히 건너뛰지 않는다** — 건너뛰기 선택 시 위험 수용으로 간주하고 trust-ledger에 "테스트 미검증 리뷰" 항목을 기록한다.
 

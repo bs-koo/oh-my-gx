@@ -34,10 +34,14 @@ wrapper·watch·복합 script나 추가 runner 플래그의 의미를 추측하�
 
 설치 플러그인 루트의 `scripts/gx-test-plan.py`를 Python 3.10+로 실행한다. 루트는 이 문서 기준 `../../../..`이며 `.codex-plugin/plugin.json`과 helper 존재를 확인한다. helper는 명령을 실행하지 않고 JSON만 출력한다. 소비 프로젝트 루트와 설치 루트를 혼동하지 않는다.
 
+**태스크 선택 선행**: review를 거치지 않은 단독 verify·complete도 state/report에 `baseline-generation`, `active-case-ids`, `previous-task-ids`, `supersedes`, `case-change-report`, `retired-case-ids` 중 하나라도 있으면 이 파일 기준 [core-replanning.md §5 활성 태스크 선택 정본](core-replanning.md)을 조건부로 Read하여 **`ACTIVE_TASKS`**를 복원한다. 승인된 현재 계획·active 케이스·세대/승계·불변 이력으로 복원한 같은 집합을 아래 해시·필수 테스트·소유권 입력 모두에 사용한다. 리뷰의 `REVIEW_ACTIVE_TASKS`도 이 집합의 별칭이며 다른 집합으로 재선택하지 않는다. 세대 메타데이터가 전혀 없는 legacy는 `ACTIVE_TASKS`를 기존 태스크 전체로 두고, state/태스크 없는 단독 verify는 빈 집합으로 두어 같은 정본의 기존 실제 변경 기반 선택·보수적 폴백을 유지한다.
+
+일부 세대 필드만 있거나 active 태스크/파일 매핑이 모호하면 정본대로 복원 전 게이트를 차단한다. 새 hash로 통과시키거나 과거 hash를 현재 파일과 대조·덮어쓰기는 금지한다. 전체 폴백으로 소유권·무결성 오류를 우회하는 것도 금지한다. 승인된 전체 범위 종료인 `scope-closed`는 여기서 중단하고 일반 검증 완료·complete·자동 commit/PR로 넘기지 않는다. 단순 빈 목록과 기록 부재를 범위 종료로 간주하지 않는다.
+
 1. `run-id`는 파이프라인의 실행 ID다. 새 작업은 새 ID를 만들고 state에 보존한다. 재개는 원래 ID를 복원한다. 같은 실행의 review→verify→commit만 ID를 공유한다. 단독 verify도 새 ID를 만든다.
 2. `base`는 작업 시작 시 확정한 기준 ref다. helper가 `base...HEAD`, staged/unstaged 변경, untracked 파일을 합친다. 작업이 커밋되어도 브랜치 변경이 사라지지 않는다. `.dev/` 산출물은 제외한다.
-3. 모든 태스크의 `test-file`을 중복 제거해 `${DEV_DIR}/required-tests.json`(저장소 상대경로 배열)에 저장한다. RED 산출물의 `test-file-hash`는 기존 규약대로 먼저 대조한다.
-4. 승인된 plan의 태스크 소유 source 파일과 실제 기록된 test 파일의 관계만 `${DEV_DIR}/test-ownership.json` 배열로 만든다: `[{"sources":["src/Login.java"],"tests":["src/test/LoginTest.java"]}]`. 근거 없는 파일 묶음을 추가하지 않는다. 관계가 불명확하면 생략해 전체 폴백한다.
+3. `ACTIVE_TASKS`의 현재 소유 파일만 RED 산출물의 `test-file-hash`와 먼저 대조한 뒤, 이 집합의 `test-file`을 중복 제거해 `${DEV_DIR}/required-tests.json`(저장소 상대경로 배열)에 저장한다. retired/superseded 태스크의 과거 hash·삭제된 파일 경로는 재수집하지 않는다. 현재 active 파일의 부재·무단 변경은 검증 실패이며 새 hash 기록이나 전체 폴백으로 숨기지 않는다.
+4. 같은 `ACTIVE_TASKS`에 속하고 현재 승인된 plan으로 확인한 태스크 소유 source 파일과 실제 test 파일 관계만 `${DEV_DIR}/test-ownership.json` 배열로 만든다: `[{"sources":["src/Login.java"],"tests":["src/test/LoginTest.java"]}]`. retired/superseded의 과거 관계나 근거 없는 묶음을 추가하지 않는다. 활성 태스크·파일 소유권을 먼저 확정한 뒤 source→test 영향 관계만 불명확하면 기존처럼 해당 관계를 생략해 전체 폴백한다. 소유권 자체가 모호한 상태는 앞의 복구 차단 분기다.
 
 ```bash
 python3 "$GX_PLUGIN_ROOT/scripts/gx-test-plan.py" plan \

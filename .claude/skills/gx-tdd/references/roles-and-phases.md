@@ -58,7 +58,7 @@ gx-tdd/SKILL.md에서 실행 목록을 정하기 전에 읽는다. 이 파일의
 | Phase | 파일 | 주 Agent | TDD 강제 사항 | Q&A Loop |
 |-------|------|----------|--------------|----------|
 | setup | phase-setup.md | (inline) | — | No |
-| requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 오케스트레이터 직접 ac.md) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
+| requirements | phase-requirements.md | product-owner (핵심 모드는 inline — AC·코드 확인·plan 결합 승인) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | Yes (max 1) |
 | design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
 | implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer) → 조건부 태스크 리뷰(reviewer)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: Part 1(spec) verdict 확정 전 Part 2 판정 금지 | Yes (max 2) |
@@ -72,14 +72,14 @@ gx-tdd/SKILL.md에서 실행 목록을 정하기 전에 읽는다. 이 파일의
 
 ### 핵심 모드 경로 (core)
 
-소형 변경용 경량 경로. 설계/정식 리뷰를 건너뛰고 AC 작성을 오케스트레이터가 직접 수행하지만, **RGR 사이클 + verify 게이트 + G-W-T 게이트 + 긴급 보안 감사 + AC 자가 검증은 실행**한다:
+소형 변경용 경량 경로. 오케스트레이터가 AC와 실제 코드에 근거한 계획을 작성하고 **AC·계획 결합 승인 + RGR 사이클 + verify 게이트 + G-W-T 게이트 + 긴급 보안 감사 + AC 자가 검증을 실행**한다. 절차·승인·전환 정본은 [core-planning.md](core-planning.md)다:
 ```
-core: setup → requirements (core: 오케스트레이터 직접 ac.md + G-W-T 게이트) → implement (RGR + H1~H4 긴급감사) → complete (verify + AC 자가 검증)
+core: setup → requirements (AC + G-W-T → 코드 Read·plan → 결합 승인·방법 선택) → implement (RGR + H1~H4 긴급감사) → complete (verify + AC 자가 검증)
 all:  setup → requirements → design → implement (RGR) → review (spec+quality 통합 1석 + security 병렬) → complete (verify + 인수 + 요청한 종료점)
 ```
-- **requirements (core 분기)**: 오케스트레이터가 `${DEV_DIR}/ac.md`(배경 + 요구사항: G-W-T 형식 AC)를 직접 작성한다 — product-owner 디스패치 없음. **G-W-T 검증 게이트는 동일하게 통과 필수** (RGR의 입력 계약이므로). 기존 승인 범위·계획 인계의 AC는 재사용하고 결과를 바꾸는 미정만 확인한다.
-- **design**: 건너뛴다. RGR 사이클이 ac.md + 코드 맵을 기반으로 진행 (testability 평가 없이).
-- **implement**: 전체 모드와 동일하게 RGR 사이클 수행. 단, design.md 부재로 red-writer에 ac.md의 AC만 전달하고 세션이 그 AC로 구현. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
+- **requirements (core 분기)**: 오케스트레이터가 `${DEV_DIR}/ac.md`(배경 + 요구사항: G-W-T 형식 AC)를 직접 작성한다 — product-owner 디스패치 없음. **G-W-T 검증 게이트는 동일하게 통과 필수** (RGR의 입력 계약이므로). 실제 코드를 확인해 `${DEV_DIR}/plan.md`를 작성하고 AC와 함께 승인받는다. 실행방법도 이 승인에 연결하며 유효한 같은 run·지문의 선택을 반복하지 않는다. 계획만 요청한 경우는 읽기 전용·explore 범위를 유지한다.
+- **design**: 핵심 경로는 정식 설계·testability 평가를 생략하고 승인된 AC·plan·코드 맵을 사용한다. 중요한 구조·인터페이스 판단은 전체 모드 전환의 실제 결정 후 정식 설계로 해소한다.
+- **implement**: design.md 대신 결합 승인된 ac.md·plan.md를 검사하고 전체 모드와 동일한 RGR을 수행한다. red-writer에는 계획의 파일·순서·인터페이스·검증과 AC를 전달하되 프로덕션 본문은 전달하지 않는다. 재계획은 [core-replanning.md](core-replanning.md)에 따라 기존 GREEN을 유지하며 새 케이스만 RED로 검증한다. 사이클 종료 후 H1~H4 (긴급 보안 감사: CRITICAL/HIGH만) 실행.
 - **review**: 건너뛴다 (긴급 보안 감사가 H1~H4에서 대체).
 - **complete**: verify 게이트 → **AC 자가 검증**(오케스트레이터가 ac.md의 AC별 충족을 체크리스트로 판정 — product-owner 디스패치 없음. verify가 테스트 증거를 이미 강제한다) → 사용자가 요청한 경우만 commit → PR. 기본 stop-at는 verify다.
 - 긴급 버그 수정 요청("긴급/핫픽스" 키워드)도 이 경로다 — AC를 재현 조건 관점의 G-W-T로 작성한다.

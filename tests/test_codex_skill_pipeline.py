@@ -127,19 +127,17 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             return skill_bundle(path.parent)
         return path.read_text(encoding="utf-8")
 
-    def test_partial_phase_lists_include_setup(self):
-        for path in (TDD,):
-            text = self.read(path)
-            loop = text[
-                text.index("### Phase 실행 루프") : text.index("### Phase 파일 경로")
-            ]
-            self.assertIn('elif --phase == "requirements":', loop, path)
-            self.assertIn("PHASES = [explore, requirements]", loop, path)
-            self.assertIn('elif --phase == "design":', loop, path)
-            self.assertIn("PHASES = [explore, design]", loop, path)
-            remaining = "PHASES = [해당 phase만]"
-            self.assertIn(remaining, loop, path)
-            self.assertLess(loop.index("PHASES = [explore, design]"), loop.index(remaining))
+    def test_partial_document_phase_lists_use_explore_before_execution(self):
+        from test_codex_core_plan_edges import documented_policy
+
+        select = documented_policy(self, "gx-tdd/references/core-planning.md", "select_phases")
+        for mode in ("all", "core"):
+            for phase in ("requirements", "design"):
+                with self.subTest(mode=mode, phase=phase):
+                    self.assertEqual(select(mode, phase), ["explore", phase])
+        for phase in ("implement", "review", "complete"):
+            with self.subTest(phase=phase):
+                self.assertEqual(select("core", phase), [phase])
 
     def test_phase_selection_matches_loop(self):
         for path in (TDD,):
@@ -155,7 +153,6 @@ class PipelineBootstrapContractTests(unittest.TestCase):
             loop_start = text.index("### Phase 실행 루프")
             loop_end = text.index("### Phase 파일 경로", loop_start)
             loop = text[loop_start:loop_end]
-            design_list = "PHASES = [explore, design]"
             design_gate = (
                 'if phase == "design" and not exists("${DEV_DIR}/prd.md"):\n'
                 "        → phase-requirements부터 실행"
@@ -164,7 +161,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
 
             self.assertIn(design_gate, loop, path)
             self.assertIn(phase_execution, loop, path)
-            self.assertLess(loop.index(design_list), loop.index(design_gate), path)
+            self.assertLess(loop.index("PHASES ="), loop.index(design_gate), path)
             self.assertLess(loop.index(design_gate), loop.index(phase_execution), path)
 
     def test_setup_resolves_absolute_project_root_before_state_scan(self):
@@ -668,7 +665,7 @@ class TestRunBudgetContractTests(unittest.TestCase):
         text = self.read("phase-review.md")
         gate = section(text, "## Step 0: Mechanical Gate", "## Step 1:")
         contract = (TDD_PHASES.parent / "references/test-execution.md").read_text(encoding="utf-8")
-        for needle in ("test-execution.md", "모든 태스크의 필수 테스트", "정확한 증거를 공유",
+        for needle in ("test-execution.md", "REVIEW_ACTIVE_TASKS", "정확한 증거를 공유",
                        "미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청", "완료 phase라는 이유로 전체를 반복하지 않는다"):
             self.assertIn(needle, gate)
         for needle in ("configHash", "command + scope", "build -x test testClasses",
@@ -701,15 +698,22 @@ class TestRunBudgetContractTests(unittest.TestCase):
             self.assertIn(key, text, key)
 
     def test_boundary_regression_only_without_following_verify(self):
+        from test_codex_core_plan_edges import documented_policy
+
+        needs = documented_policy(self, "gx-tdd/references/core-planning.md", "needs_boundary_regression")
+        for phases, expected in (
+            (["implement"], True), (["implement", "review"], True),
+            (["implement", "complete"], False),
+        ):
+            with self.subTest(phases=phases):
+                self.assertEqual(needs(phases), expected)
         text = self.read("phase-implement.md")
         step = section(text, "## Step 3.5:", "## Step 4:")
-        self.assertIn("## Step 3.5: 경계 회귀 (--phase implement 단독 전용)", step)
-        self.assertIn("같은 실행에서 complete가 이어지면 중복 실행하지 않는다", step)
+        self.assertIn("needs_boundary_regression(PHASES)", step)
         self.assertIn("공통 영향 계획", step)
         self.assertIn("코드가 바뀌면 이전 증거를 쓰지 않는다", step)
         core = section(text, "## 핵심 모드 분기 (core)", "## Step 0: 문서 로드")
-        self.assertIn("Step 3.5(경계 회귀)는 건너뛴다", core)
-        self.assertNotIn("핵심 모드·`--phase implement` 단독: Step 3.5", text)
+        self.assertIn("needs_boundary_regression(PHASES)", core)
 
     def test_baseline_is_deferred_until_impact_scope_is_known(self):
         req = self.read("phase-requirements.md")
@@ -919,7 +923,7 @@ class AdaptiveWorkOrchestrationTests(unittest.TestCase):
         self.assertIn("execution-authorized: false", entry)
         self.assertIn("pipeline/state 초기화", consumer)
         loop = section(entry, "### Phase 실행 루프", "### Phase 파일 경로")
-        self.assertLess(loop.index("if HANDOFF_READ_ONLY"), loop.index("if core"))
+        self.assertLess(loop.index("if HANDOFF_READ_ONLY"), loop.index("PHASES ="))
         self.assertLess(loop.index("return  # READ_ONLY_COMPLETE"), loop.index("# 2. Phase별"))
 
     def test_pending_and_entry_recheck_precede_resume_branch_changes(self):

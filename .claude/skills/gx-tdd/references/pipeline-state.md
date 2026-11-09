@@ -94,6 +94,24 @@ Step 1.2에서 현재 세션/서브에이전트로 진행하는 한 실제 응�
 
 원 handoff의 `validate-handoff` 재검증은 같은 run·원문·scope·종료점·승인과 현재 프로젝트 루트를 검사한다. 내부 T계획 작성만으로 요청 진입 승인을 다시 묻지 않는다. 계획 변경은 plan/method 승인만 재검토하며, 요구범위·종료점까지 달라졌으면 그 변경의 진입 승인을 확인한다. 누락된 gx-work 승인이나 false·exit 2·pending을 일반 구현 요청 문구로 보완하지 않는다.
 
+### 핵심 모드 계획 승인·실행 범위 상태
+
+정본은 [core-planning.md](core-planning.md)다. core·mode 부재 legacy flags·core→all 전이·재개/부분 phase의 범위 복원에만 조건부로 읽는다. HANDOFF_READ_ONLY는 state를 초기화하거나 갱신하지 않고 탐색·계획 내용까지만 수행한다.
+
+| 필드 | 기록·검증 |
+|---|---|
+| `mode` | 명시 all/core 우선. 필드 부재만 restore_mode(None, saved_flags)로 독립 --core를 복원한다. 존재하는 null·빈 값·다른 값은 중단한다 |
+| `requested-phase`, `execution-phases` | 이번 명시 phase와 실제 실행 목록. 현재 명시 요청은 저장 범위·목록·커서보다 우선한다. requirements/design은 [explore, 요청phase]이며 저장 core를 all로 바꾸지 않는다 |
+| `core-plan-status`, `core-plan-approved-digest` | pending/approved 및 ac.md raw bytes + NUL byte + plan.md raw bytes의 SHA-256. 기본 pending·null. 실제 문서 쌍 승인과 현재 지문이 모두 같을 때만 유효하다 |
+| `mode-transition`, `mode-transition-status` | core-to-all 및 pending/applied. 실제 선택을 decisions.md에 먼저 보존하고 pending을 멱등 적용한 뒤 applied를 기록한다 |
+| `transition-requested-phase`, `mode-transition-source` | 실제 전체 전환으로 해제한 단독 범위(null)와 결정 기록 위치. 과거 범위·해제 이유·phase/step은 결정 로그에 보존한다 |
+
+core의 내부 T계획 정본은 `${DEV_DIR}/plan.md`다. 유효한 결합 승인 응답을 implementation-plan-file·plan.md **단독** SHA-256과 plan-approved-run/source/sha256에 연결한다. 결합지문과 단독 해시를 혼동하지 않는다. 같은 실제 응답에서 선택한 session/subagents 또는 초기 명시 선택을 execution-method 필드에 연결하면 implement 1.2~1.3이 재질문 없이 재사용한다. 결합 승인만 유효하고 방법이 없으면 방법만 보완한다. 문서 종료·수정·미응답은 승인/방법을 만들어 넣지 않는다. 원 handoff의 plan-file과 내부 구현계획 포인터는 별개다.
+
+AC/계획 변경 직전 또는 외부 변경·누락을 발견하면 core-plan-status를 pending·승인 지문을 null로 무효화한다. RED/IMPLEMENT·Gate/verify 수리·complete 진입·재개 직전 현재 문서·지문·실제 승인·pending 해제를 확인한다. 필요한 계획·승인 Step만 보완하고 유효한 같은 승인·완료 RGR·setup은 반복하지 않는다. RED/테스트/report·baseline-fingerprint는 보존하며 변경은 core-replanning의 영향 태스크만 처리한다.
+
+미적용 실제 전환 결정/pending은 mode·승인·과거 커서 복원보다 먼저 처리한다. 전체 전환은 setup 없이 execution-phases를 requirements/design/implement/review/complete로 저장하고 새 세대 phase를 pending, phase requirements·step null, verify pending·빈 지문으로 둔다. caller의 mode-transition 신호는 과거 core 루프를 끝내며 일반 완료 표시를 쓰지 않는다. applied의 이후 일반 재개는 새 전체 목록과 **현재 커서**를 유지하고 requirements로 재초기화하지 않는다. 새 명시 phase는 이 과거 목록보다 우선한다. 원 run·진입 승인·요청 포인터·stop-at와 기존 증거는 전이로 바꾸지 않는다.
+
 ### 모델 프로파일 (MODEL_PROFILE)
 
 Codex는 [모델 정책](../../gx-work/references/codex-models.md)의 helper로 아래 역할·프로파일과 태스크 리뷰·fix 격상 예외를 함께 해석한다. opus/sonnet은 원본 티어이며 메인 세션 IMPLEMENT를 mid 디스패치로 기록하지 않는다. `model-dispatches.jsonl`에 계획과 실제 도구 인자·관측값을 구분한다.
@@ -138,7 +156,7 @@ Agent prompt 크기를 관리하기 위해:
 이후 Phase에서 이전 산출물이 필요하면 **파일을 Read하여 Agent prompt에 포함**하되, 오케스트레이터 자신의 출력에는 포함하지 않는다. 각 Phase 파일에서 구체적인 요약 포맷을 정의한다.
 
 ### 문서 보관
-- phase-requirements 완료 시 확정된 PRD를 `${DEV_DIR}/prd.md`에 저장한다. **핵심 모드는 prd.md 대신 `${DEV_DIR}/ac.md`**(G-W-T 형식 AC)에 저장한다 (phase-requirements core 분기).
+- phase-requirements는 PRD를 `${DEV_DIR}/prd.md`에 저장한다. inline core는 대신 `${DEV_DIR}/ac.md`(G-W-T AC)와 코드 Read 기반 `${DEV_DIR}/plan.md`를 저장하고 두 문서를 함께 승인받는다. 명시 requirements/design은 저장 core여도 PRD 경로다. 계획 전용 인계는 요청한 저장 범위만 수행한다.
 - phase-design 완료 시 확정된 설계 문서를 `${DEV_DIR}/design.md`에 저장한다 (핵심 모드는 design 단계가 없어 미생성).
 - Trust Ledger를 `${DEV_DIR}/trust-ledger.md`에 저장한다 (핵심 모드는 H1~H4 긴급 감사 결과가 여기에 기록된다).
 - 코드 맵을 `${DEV_DIR}/codemap.md`에 저장한다 (갱신 시마다).
@@ -158,6 +176,14 @@ verify-status: pending
 verify-fingerprint: ""
 model-profile: standard
 mode: all
+requested-phase: null
+execution-phases: [setup, requirements, design, implement, review, complete]
+core-plan-status: pending
+core-plan-approved-digest: null
+mode-transition: null
+mode-transition-status: null
+transition-requested-phase: null
+mode-transition-source: null
 intent-source: user-selection
 run-id: "현재 실행 UUID"
 goal: "로그인 기능 추가"
@@ -207,13 +233,13 @@ execution-log:
 - Phase 내 주요 Step 시작/완료 시: `current-step`과 `steps` 갱신.
 - **RGR 사이클**: 각 태스크의 red/impl 단계를 `"RGR T{N} (AC-N)"` 형식의 중첩 객체로 추적한다 (구 green/refactor 키는 3석 세대 전용 — 신규 기록에 사용 금지). (옛 "coder 구현/자기점검" 형식 사용 금지)
 - **G-W-T / testability 게이트 결과**: `execution-log`에 `gate: G-W-T` 또는 `agent: test-architect` 엔트리로 기록.
-- **verify 게이트 결과**: complete Step -1의 verify 게이트 결과를 `execution-log`에 기록 (gx-commit은 gx-dev와 공유하는 스킬이라 verify 실행을 포함하지 않는다 — 조건부 경고 게이트만 있음). verify가 "위험 수용"으로 통과를 보고하면 오케스트레이터가 trust-ledger에도 기록한다.
+- **verify 게이트 결과**: complete Step -1의 verify 결과를 execution-log에 기록한다(gx-commit은 verify를 실행하지 않고 별도 보호 게이트를 적용한다). 위험 수용 통과는 오케스트레이터가 trust-ledger에도 기록한다.
 - **verify-status 전이**: [문서 수명주기](document-lifecycle.md)에 따라 현재 AC/인수 대조와 관련 context/원장 반영 후 phase-complete Step -1 최종 verify를 수행한다. 통과 시 최상위 `verify-status: passed`와 **같은 시점의 문서 포함 코드 지문을 `verify-fingerprint`에 함께 기록한다**. 이후 코드 또는 context/ 변경이 있으면 즉시 `pending`·빈 지문으로 리셋하고 AC/문서 대조부터 다시 수행한다. 차단/취소/수리 전 이번 실행이 투영한 새 ✅만 journal 해시를 확인해 조건부 원복한다. "수정"(verify 회귀 수리)을 고른 때에도 pending·빈 지문을 유지한다. 새 파이프라인 시작·부트스트랩 시 초기값은 `pending`.
 - **status 수명주기**: `status: completed`인 state.md에 **어떤 Phase든 재진입하면 `status: in_progress`로 되돌리고 `verify-status: pending`·`verify-fingerprint: ""`로 리셋한다**. 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 판별 조건으로 쓰므로, 완료 표식이 남은 채 재작업하면 게이트가 전부 꺼진다.
 - **execution-log 기록 규약**: `result:` 등 자유 텍스트에 판별 키 문자열(`verify-status: passed`, `pipeline: gx-tdd`)을 **그대로 쓰지 않는다** — 훅이 부분 문자열로 매칭하면 게이트가 조용히 꺼질 수 있다. 필요하면 "verify 통과 표식 미전이"처럼 키를 인용하지 않고 서술한다 (훅은 `verify-status`에 줄 시작 앵커를 쓰지만, 다른 키까지 앵커를 쓰지는 않는다).
 - **기준선 게이트 결과**: phase-implement Step 0.5에서 최상위 필드 `warnings-baseline: N`을 기록한다. 추출 불가 시 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다. requirements 진입 시 기준선 사전 실행을 시작했으면 최상위 `baseline-fingerprint`를 기록한다 (Claude Code·git 전용 — 절차·수용 조건은 phase-implement Step 0.5 "기준선 사전 실행" 절). 필드가 없으면 사전 실행을 하지 않은 것이다.
-- `--resume` 시 `current-step`에서 재개한다 (Phase 처음부터가 아닌 중단 Step부터). 재개 전에 `../phases/setup-resume.md`의 0.1 정합성 체크(브랜치/HEAD)를 수행한다. RGR 사이클 재개 시 `red/impl` 단계별로 매칭 (태스크의 `test-file-hash`·`test-count`와 `${DEV_DIR}/rgr-t{N}-porcelain.txt` 스냅샷 파일을 함께 사용하여 verify_implement 기준선을 유지).
-- **진입/방법 재개 게이트**: pending 질문은 state 존재 판정보다 먼저 복원한다. `setup-resume.md` 0.05의 원 handoff·승인·실행방법 검증은 0.1의 이관·stash·기록·빌드/코드 변경 전에 통과한다. 문서로 종료를 선택했으면 `phase: implement`·`status: in_progress`·`current-step: 계획 문서로 종료`·`verify-status: pending`을 유지하고 미구현을 보고한다. 실행방법을 선택한 것으로 기록하거나 phase-complete로 넘어가지 않는다.
+- `--resume`은 state 복원 → 저장 요청 범위 → PHASES 생성 → resume 커서 적용 순서로 current-step에서 재개한다. 현재 명시 phase는 과거 execution-phases/커서보다 우선한다. 완료 setup·phase는 반복하지 않고 모순은 보고한다. 먼저 setup-resume 0.05의 전이·모드·승인 복원, 다음 0.1 정합성 체크를 수행한다. RGR은 red/impl 단계·test-file-hash/test-count·rgr-t{N}-porcelain.txt로 verify_implement 기준선을 유지한다. implement 이후 complete가 실제 후속 목록에 없을 때만 needs_boundary_regression(PHASES)로 경계 전체 회귀를 수행한다.
+- **진입/방법 재개 게이트**: pending 질문은 state 존재 판정보다 먼저 복원한다. `../phases/setup-resume.md` 0.05의 원 handoff·승인·실행방법 검증은 0.1의 이관·stash·기록·빌드/코드 변경 전에 통과한다. 문서로 종료를 선택했으면 `phase: implement`·`status: in_progress`·`current-step: 계획 문서로 종료`·`verify-status: pending`을 유지하고 미구현을 보고한다. 실행방법을 선택한 것으로 기록하거나 phase-complete로 넘어가지 않는다.
 - 에이전트 호출 완료 시: `execution-log`에 엔트리 추가 (agent명, result 요약). deprecated 에이전트(coder/qa-manager)는 절대 기록되지 않는다.
 - Gate 실행 결과도 `execution-log`에 기록한다 (mechanical-gate, G-W-T, testability, verify, spec-review, quality-review).
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.

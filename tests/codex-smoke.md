@@ -44,6 +44,18 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | M2 | gx-tdd standard/eco, 기본·isolated·태스크 리뷰·fix 4~5 | 기본 구현 부모 유지; isolated mid; task reviewer mid; eco fix4~5 fresh high; 고정 agent_type 대신 role message+fork none | 미실행 |
 | M3 | Astra 부재, mid 후보 부재, effort 미지원 | 허용 모델·effort만 대체; 사유·tier collapse 경고 표시; 지원 불가 exit2 후 디스패치 없음 | 미실행 |
 
+## 핵심 모드 계획·승인 후속 검증 (2026-11-09)
+
+아래는 현재 gx-work → gx-tdd 구조의 실제 소비 프로젝트에서 확인한다. 로컬 정책·Node fixture·문서 검사는 실제 앱 승인·인증된 모델의 도구 trace를 대체하지 않는다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| Q5 | 명확한 1파일 core 수정, 과거 AC 승인만 있음 | 대상 코드 Read → ac.md·plan.md 제시 → 결합 승인 1회와 실행방법 연결; 실제 응답 전 RED/구현 0회; async ack 승인 0회; 명확한 변경의 architect·design-critic 0회 | 미실행 |
+| Q6 | plan 없는 구세션 / 같은 승인 지문 재개 / AC·계획 변경 | 계획·승인 누락이면 승인 복귀; 동일 실행·문서의 유효한 승인·방법 재사용; 변경 시 재승인; 오래된 question_set_id는 승인 불가; 기존 RGR 증거 보존 | 미실행 |
+| Q7 | 승인 후 범위 확대, 설계 결정 미정, 문서 종료 선택 | 변경 전 계획 갱신·재승인 또는 전체 전환의 실제 결정 대기; 문서 종료는 구현 승인·완료가 아님; RED 입력에 프로덕션 본문 없음 | 미실행 |
+| Q8 | core 단독 implement/complete, mode 누락·flags --core, 명시 requirements/design, read-only handoff | 요청 단계 우선; implement는 core 결합 승인 검사와 후속 complete 없는 경계 회귀; legacy 승인 누락 차단; 계획 단독은 explore 사용; 읽기 전용 handoff에 state·브랜치·코드·테스트 변경 없음 | 미실행 |
+| Q9 | core→all pending/applied 중단·재개, 완료한 케이스의 AC 추가·수정·삭제 | setup 재생성 없이 review 포함 전체 후속 단계; run/stop-at·원 진입 승인 보존; 기존 GREEN·증거 유지, delta만 RED; 수정은 새 ID·삭제는 승인된 은퇴; 전체 active 0이면 complete/자동 커밋 차단 | 미실행 |
+
 ## 보호 훅·커밋
 
 실제 hook 로드는 임시 테스트 hook에서 무해한 `Write-Output GX_HOOK_SENTINEL` 또는 `printf GX_HOOK_SENTINEL`을 **deny**하는 것으로 확인한다. 배포 hook에는 sentinel 규칙을 넣지 않는다. `/hooks`에서 테스트 정의를 확인·신뢰한 후 무해한 명령만 실행한다. 강제 push는 JSON fixture로만 테스트한다. 각 시나리오는 격리된 임시 프로젝트에서 HEAD/index 해시를 기록한다.

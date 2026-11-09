@@ -20,16 +20,24 @@ NO COMMIT/PR WITHOUT VERIFY GATE PASS
 
 ---
 
+## Step -3: 핵심 모드 승인 진입 게이트 (모든 진입 경로 공통)
+
+`scope-status: closed` 또는 `current-step: 범위 종료 확인`이면 [core-replanning.md](../references/core-replanning.md)에 따라 `return "scope-closed"`로 즉시 종료한다. 기존 증거·진행 상태를 보존하고 인수/verify·문서 완료 투영·commit/PR를 실행하지 않는다. 새 요구 범위를 실제 재확정해 명시적으로 다시 열기 전에는 단순 재개·과거 승인으로 완료하지 않는다.
+
+문서 투영·스테이징·인수/verify·수리 전에 기존 state를 읽고 [core-planning.md](../references/core-planning.md)로 mode를 정규화한다. 명시 all/core가 flags보다 우선하며 **mode 부재만** restore_mode(None, saved_flags)의 독립 --core로 복원한다. 존재하는 null·빈 값·잘못된 mode는 중단한다. 미적용 core→all 결정/pending은 공통 전이를 먼저 완성하고 mode-transition 신호로 과거 complete를 종료한다. 새 전체 목록·현재 커서를 사용하며 setup을 반복하지 않는다. gx-work origin은 원 handoff 진입 승인·run·scope·stop-at 재검증도 유지한다.
+
+`mode == "core"`이면 ac.md와 plan.md 실물을 Read하고 core-plan-status approved·현재 결합지문과 core-plan-approved-digest 일치·같은 문서 쌍의 실제 승인 근거·필수 pending 해제를 모두 확인한다. 문서 누락·변경·승인 필드 부재·불일치는 pending·지문 null로 무효화하고 requirements(core)의 필요한 G-W-T·코드 Read·계획·결합 승인 Step만 보완한다. 유효한 승인은 재질문하지 않으며 완료 setup/RGR·테스트·report·기준선은 보존한다. 이 진입 게이트를 TDD 미이행 위험 수용이나 verify 통과로 우회하지 않는다. 문서 종료·미응답은 실행/완료 승인이 아니다.
+
 모든 진입에서 `Read("../references/document-lifecycle.md")`의 사전 대조와 구현 후 계약을 수행한다. 실행 순서는 **TDD 이행 → 현재 AC/인수 대조 → 관련 문서/상태 투영 → 최종 verify → .dev 계획 완료 → 요청한 commit/PR → 상태 완료**다. Step 번호는 기존 참조 호환을 유지하며 아래 파일 순서대로 실행한다.
 
 ## Step -2: TDD 이행 게이트 (모든 진입 경로 공통)
 
 commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase complete` 단독, 수동 수정 후 재호출)에서 수행한다:
 
-1. 그 외에는 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
+1. 정규화한 mode와 state.md를 확인한다. 다음 중 하나면 **TDD 미이행 가능성**으로 판정한다:
    - `pipeline: gx-tdd` 필드가 없다 (gx-dev 이력이거나 알 수 없는 state — phases 기록을 신뢰할 수 없다)
    - `phases.implement`가 `completed`가 아니다
-   - 핵심 모드(`mode: core` 또는 `flags`의 `--core` 포함)가 **아닌데** `phases.review`가 `completed`가 아니다 (core는 review를 설계상 스킵하므로 review 부재가 정상이다)
+   - 핵심 모드(`mode == "core"`)가 **아닌데** `phases.review`가 `completed`가 아니다 (core는 review를 설계상 스킵하므로 review 부재가 정상이다. 명시 all을 과거 --core로 덮지 않는다)
 2. TDD 미이행 가능성이면 AskUserQuestion으로 위험 수용을 확인한다. 수용 시 `${DEV_DIR}/trust-ledger.md`에 "TDD 미이행 완료 실행" 항목을 기록한 후 진행하고, 거부 시 중단하며 `/gx-tdd`(전체 모드)를 안내한다.
 3. 전체 모드의 정상 순서 진입(직전 review 완료)에서는 조건이 모두 충족되므로 이 게이트는 확인만 하고 지나간다.
 
@@ -42,7 +50,7 @@ commit/PR로 이어지는 이 Phase의 **모든 진입**(전체 모드, `--phase
 - **svn**: `svn diff > ${DIFF_FILE}`로 갱신.
 
 **핵심 모드이면** product-owner를 디스패치하지 않고 오케스트레이터가 **AC 자가 검증**을 직접 수행한다 (현재 RGR/AC의 실제 실행 증거를 위에서 대조했으며 최종 verify는 문서 반영 후 수행한다):
-1. `${DEV_DIR}/ac.md`(레거시 재개로 ac.md가 없으면 prd.md)의 G-W-T AC와 RGR 사이클 결과(각 AC의 테스트 통과)·DIFF_FILE을 대조한다.
+1. 승인된 `${DEV_DIR}/ac.md`·plan.md의 G-W-T AC·AC별 검증과 현재 RGR 결과·DIFF_FILE을 대조한다. ac.md가 없으면 Step -3으로 복귀하며 PRD 폴백으로 core 승인을 대신하지 않는다.
 2. AC별 충족 체크리스트를 사용자에게 표시한다 (예: `AC-1 ✅ (shouldReject401 통과) / AC-2 ⚠️ — 사유`).
 3. 모두 충족 → Step 3 진행. 미충족이 있으면 AskUserQuestion으로 확인한다:
    ```
@@ -120,6 +128,8 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
   3. 자동 수정은 시도하지 않음 (사용자가 "수정"을 고른 경우에만 수리한다. coder 직접 호출 금지)
 
 **verify 회귀 수리** ("수정" 선택 시):
+
+core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 승인·지문·실제 응답을 다시 검사한다. 범위 밖 위치·인터페이스·검증 변경이면 코드 수정 전 중단 → 승인 무효화·계획 갱신·자체 점검 → 결합 재승인한다. 미응답/문서 종료는 수리로 진행하지 않는다. 기존 실패 증거·RED/테스트·기준선은 보존한다.
 
 1. state.md를 `verify-status: pending`·`verify-fingerprint: ""`로 두고 `current-step`을 `"verify 회귀 수리"`로 갱신한다 (이전 통과 기록이 남아 커밋 게이트가 열리는 것을 막는다).
 2. 차단 사유를 분류해 처리한다. **verify 회귀 수리에서는 테스트 파일은 수정하지 않는다** — 수리 diff는 다시 리뷰하지 않으므로, 테스트를 바꾸는 수리를 이 경로에 두면 실제 회귀가 테스트 수정으로 덮여 리뷰 없이 커밋될 수 있다.
@@ -213,7 +223,7 @@ verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-impleme
 
 `Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/pr-context.md --extra-section ${DEV_DIR}/pr-rulings.md")` — `pr-rulings.md`를 만들지 않았으면 `--extra-section` 인자를 뺀다.
 
-pull-request 스킬은 `--background`로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다 — 자동 감지는 없다 (gx-dev phase-complete와 동일한 명시 전달 방식). `--extra-section`의 `## Rulings`·`## Deferred`는 요약 없이 같은 제목으로 실린다.
+pull-request 스킬은 --background로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다. --extra-section의 ## Rulings·## Deferred는 요약 없이 같은 제목으로 실린다.
 
 ### Step 2-3: 후속 처리
 
