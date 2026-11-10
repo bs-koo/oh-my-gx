@@ -18,7 +18,7 @@ class VisualizeBoundaryTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="gx 시각화 경계 ")
         self.addCleanup(temporary.cleanup)
-        self.directory = Path(temporary.name)
+        self.directory = Path(temporary.name).resolve()  # Windows 8.3 짧은 임시 경로 정규화
         self.root = self.directory / "project"
         self.output = self.directory / "map"
         _project(self.root)

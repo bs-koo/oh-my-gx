@@ -25,7 +25,7 @@ class DeliveryFixture(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='gx 배송 경계 ')
         self.addCleanup(self.temporary.cleanup)
-        self.parent = Path(self.temporary.name)
+        self.parent = Path(self.temporary.name).resolve()  # Windows 8.3 짧은 임시 경로 정규화
         self.env = os.environ.copy()
         self.env['GIT_CONFIG_GLOBAL'] = str(self.parent / 'global.config')
         (self.parent / 'global.config').write_text('', encoding='utf-8')

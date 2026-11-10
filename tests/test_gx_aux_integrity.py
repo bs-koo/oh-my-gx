@@ -26,7 +26,7 @@ class TestIntegrityTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="gx 보존 ")
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()  # Windows 8.3 짧은 임시 경로 정규화
         self.helper = load("gx-test-integrity")
         self.write("test/current.test.js", "test('new', () => assert.equal(value(), 2));\n")
         self.write("test/existing.test.js", "test('old', () => assert.equal(value(), 1));\n")
@@ -250,7 +250,7 @@ class HumanizerRunTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="gx 윤문 ")
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()  # Windows 8.3 짧은 임시 경로 정규화
         self.helper = load("gx-humanizer-run")
         self.metadata = {"mode": "strict", "genre": "학술/리포트", "tone": "격식체",
                          "scope": "3장만", "sources": ["보고서.md"]}

@@ -17,7 +17,8 @@ class AuxAnalysisTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="gx 분석 한글 ")
         self.addCleanup(self.temp.cleanup)
-        self.project = Path(self.temp.name) / "project with spaces"
+        # Windows CI의 임시 폴더는 8.3 짧은 이름(RUNNER~1)이라 helper가 정규화한 경로와 비교하려면 먼저 정규화한다.
+        self.project = Path(self.temp.name).resolve() / "project with spaces"
         self.project.mkdir()
 
     def cli(self, script, *arguments, stdin=None):
@@ -86,7 +87,7 @@ class AuxAnalysisTests(unittest.TestCase):
             self.skipTest("junction/symlink를 만들 수 없는 환경")
 
     def test_linked_subproject_is_reported_and_requires_confirmation(self):
-        outside = Path(self.temp.name) / "outside-module"
+        outside = Path(self.temp.name).resolve() / "outside-module"
         outside.mkdir()
         (outside / "package.json").write_text("{}", encoding="utf-8")
         self.write("pom.xml", "<project/>")
