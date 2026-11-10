@@ -65,7 +65,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ## 사전 확인
 
-**미리보기 선행 분기**: `--preview`/"커밋 대상 미리보기"는 Git 루트를 확인한 뒤 `Read("references/index-helper.md")`의 미리보기 절차만 수행하고 즉시 종료한다. 아래 커밋용 사전 확인·빌드·타입 질문·스테이징·커밋은 실행하지 않는다. main/master/develop에서도 조회 자체는 허용하고, 결과를 커밋 가능 판정으로 표시하지 않으며, 파일 내용·비밀값을 출력하거나 전역 설정·작업 파일·index를 바꾸지 않는다.
+**미리보기 선행 분기**: `--preview`/"커밋 대상 미리보기"는 `Read("references/index-helper.md")`의 미리보기 절차만 수행하고 종료한다(보호 브랜치에서도 조회 허용, 커밋 가능 판정 아님, 파일 내용·비밀값 미출력, index·작업 파일 불변). 아래 사전 확인·빌드·스테이징·커밋은 실행하지 않는다.
 
 레거시 선행 검사: 현재 작업의 `status: in_progress`인 state에 `pipeline: gx-ralph` 또는 `flags`의 `--ralph`/`RALPH`가 있거나, state 유무·완료 표식과 무관하게 `ralph.lock`이 남아 있으면 빌드·스테이징·커밋·push·PR 전에 중단하고 전환을 안내한다. 훅이 로드되지 않았어도 적용한다.
 
@@ -135,7 +135,7 @@ feat: 로그인 기능 추가
 4.5. **`.dev` 무시 경고**: `.dev/` 디렉토리가 있고 `git check-ignore -q .dev/gx-ignore-probe`가 종료 코드 0이면 `.dev`가 git에서 무시되는 상태다. `git add -A`가 작업 계획과 산출물을 소리 없이 빼고 커밋하므로, `git check-ignore -v .dev/gx-ignore-probe`의 출처·줄과 함께 "`.dev`가 무시되어 작업 계획·산출물이 이 커밋에 들어가지 않습니다. `/gx-setup`에서 고칠 수 있습니다"를 경고한다. 커밋은 막지 않고 `.gitignore`도 여기서 고치지 않는다 — 커밋 도중 무시 규칙을 바꾸면 사용자가 의도하지 않은 파일까지 스테이징된다.
 5. 스테이징·보존은 helper로 수행한다(요청 형식·차단 조건은 참조 파일). 같은 작업 중 외부 Git/index 변경을 병행하지 않는다.
    - `snapshot`으로 현재 worktree의 실제 index를 작업 트리 밖에 보존한다. 기존 `index.lock`·별도 Git 경로 환경변수·split index면 변경 전에 중단한다.
-   - `stage`에 `paths`(`null`은 승인된 전체 변경, 일부 범위만 승인됐다면 실제 상대 파일 경로 배열이다(현재 run 디렉토리는 넣고 보호 브랜치 결정 기록은 넣지 않는다)), `excludes`(Step 3·범위 선택에서 확정한 EXCLUDES. 이미 staged인 파일도 HEAD 기준으로 내리고 작업 파일은 보존한다), `untrack`(Step 2의 UNTRACK, `--cached`만 사용)을 전달한다. helper는 임시 index에서 준비한 뒤 lock·HEAD·기존 index를 다시 확인해 원자적으로 반영하고, 중간 외부 변경은 채택하지 않고 차단한다. runtime·시각화 산출물·보호 브랜치 결정 기록은 항상 제외한다. 해당 pathspec은 `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/*/auto-stash.txt' '.dev/architecture' '.dev/*/visual/*' '.dev/main/decisions.md' '.dev/master/decisions.md' '.dev/develop/decisions.md' '.dev/trunk/decisions.md'`와 같다 (루프 락·로그는 다른 사용자의 게이트 판별을 흐리고, 시각화 산출물은 단발성이며, 보호 브랜치 결정 기록은 이후 모든 작업 브랜치에 섞인다). 현재 run 디렉토리는 제외하지 않는다.
+   - `stage`에 `paths`(`null`은 승인된 전체 변경, 일부 범위만 승인됐다면 실제 상대 파일 경로 배열이다(현재 run 디렉토리는 넣고 보호 브랜치 결정 기록은 넣지 않는다)), `excludes`(Step 3·범위 선택에서 확정한 EXCLUDES. 이미 staged인 파일도 HEAD 기준으로 내리고 작업 파일은 보존한다), `untrack`(Step 2의 UNTRACK, `--cached`만 사용)을 전달한다. runtime·시각화 산출물·보호 브랜치 결정 기록은 항상 제외한다. 해당 pathspec은 `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/*/auto-stash.txt' '.dev/architecture' '.dev/*/visual/*' '.dev/main/decisions.md' '.dev/master/decisions.md' '.dev/develop/decisions.md' '.dev/trunk/decisions.md'`와 같다 (루프 락·로그는 다른 사용자의 게이트 판별을 흐리고, 시각화 산출물은 단발성이며, 보호 브랜치 결정 기록은 이후 모든 작업 브랜치에 섞인다). 현재 run 디렉토리는 제외하지 않는다.
    - 커밋 **직전** `assert-excluded`의 exit 0을 확인한다. 명시 제외 경로가 cached diff에 남거나 HEAD/index가 바뀌면 커밋하지 않는다. helper 오류를 빈 목록/성공으로 간주하지 않는다.
 6. HEREDOC 포맷으로 커밋:
    ```bash
@@ -147,7 +147,7 @@ feat: 로그인 기능 추가
    EOF
    )"
    ```
-7. 스테이징/커밋이 실패하면 `restore`로 원 index bytes를 복원한다. 부분 스테이징·staged 삭제·작업 파일을 그대로 보존하며 **파일명 목록으로 reset/add하여 복원하지 않는다.** HEAD/브랜치·index가 바뀌었거나 lock·snapshot 손상·복구 실패면 강제 덮어쓰기·lock 삭제 없이 중단하고 에러와 보존된 snapshot 경로를 보고한다.
+7. 스테이징/커밋이 실패하면 `restore`로 원 index bytes를 복원한다. **파일명 목록으로 reset/add하여 복원하지 않는다.** 복원할 수 없으면 강제 덮어쓰기·lock 삭제 없이 중단하고 에러와 보존된 snapshot 경로를 보고한다.
 8. 성공하면 `git show --stat HEAD`로 결과를 표시하고 `finish`로 이 실행의 백업만 정리한다. 정리 실패는 커밋 재시도 사유가 아니며 남은 snapshot 경로를 보고한다.
 
 ## 커밋과 PR을 함께 요청한 경우

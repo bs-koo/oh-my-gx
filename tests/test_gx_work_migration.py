@@ -17,7 +17,9 @@ class UnifiedDistributionTests(unittest.TestCase):
         oversized = []
         for path in (ROOT / ".claude/skills").glob("*/SKILL.md"):
             normalized = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
-            if len(normalized.encode("utf-8")) >= 20000:
+            # Windows 체크아웃(core.autocrlf)은 줄마다 CR을 더한다. 설치본이 그 형태여도 예산 안이어야 한다.
+            windows = normalized.replace("\n", "\r\n")
+            if len(windows.encode("utf-8")) >= 20000:
                 oversized.append(path.parent.name)
         self.assertEqual(oversized, [], "진입 지시문은 20KB 미만, 상세는 조건부 참조로 둡니다")
 

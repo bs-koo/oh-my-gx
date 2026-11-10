@@ -53,13 +53,13 @@ Phase 목록을 계산하기 전에 다음 파일을 순서대로 Read한다.
 
 ### 공통 진입과 계획 인계
 
-**계획 전용 인계**: 계획만 요청은 gx-work가 대화로 끝내고, 이 인계는 PRD·설계 문서 저장을 원할 때만 온다. 아래 진입 검증을 통과해도 `read-only: true`·`execution-authorized: false`이면 [탐색 setup](phases/setup-explore.md)과 필요한 requirements/design 문서만 작성하고 종료한다. 실행 setup·pipeline/state 초기화·브랜치·빌드·테스트·RED·구현·complete는 수행하지 않는다. `ready-for-tdd`는 요청된 계획 단계에 들어갈 수 있다는 뜻이며 구현 허가를 뜻하지 않는다. 일반 구현 인계는 `execution-authorized: true`도 확인한다. `--handoff`의 origin 필드를 지워 직접 호출로 우회하지 않는다.
+**계획 전용 인계**: 계획만 요청은 gx-work가 대화로 끝내고, 이 인계는 PRD·설계 문서 저장을 원할 때만 온다. 아래 진입 검증을 통과해도 `read-only: true`·`execution-authorized: false`이면 [탐색 setup](phases/setup-explore.md)과 필요한 requirements/design 문서만 작성하고 종료한다. 실행 setup·pipeline/state 초기화·브랜치·빌드·테스트·RED·구현·complete는 수행하지 않는다. 일반 구현 인계는 `execution-authorized: true`도 확인한다. `--handoff`의 origin 필드를 지워 직접 호출로 우회하지 않는다.
 
-새로운 사용자는 `oh-my-gx:gx-work`에서 목적·종료점·기존 자료를 정리해 이 스킬로 들어온다. 직접 gx-tdd를 호출한 경우도 동일한 TDD 계약을 따른다. `--handoff <JSON>`·`--from-plan <JSON>`이 있으면 먼저 [계획 인계 계약](references/plan-handoff.md)을 읽는다. 기존 결정과 태스크는 검증해서 재사용하고 별도의 중복 계획을 만들지 않는다.
+보통 `oh-my-gx:gx-work`가 목적·종료점·자료를 정리해 넘기며, 직접 호출도 같은 TDD 계약을 따른다. `--handoff <JSON>`·`--from-plan <JSON>`이 있으면 먼저 [계획 인계 계약](references/plan-handoff.md)을 읽는다. 기존 결정과 태스크는 검증해서 재사용하고 별도의 중복 계획을 만들지 않는다.
 
 **gx-work 진입 게이트**: `origin: gx-work`인 인계는 실제 프로젝트 절대경로를 읽기 전용으로 확정하고 설치 플러그인의 `scripts/gx-work.py validate-handoff --handoff <절대경로> --project-root <실제 루트> [--git-safe-directory <실제 루트>]`가 exit 0과 `ready-for-tdd: true`를 함께 반환한 뒤에만 소비한다. 원 요청/계획 포인터·해시·run·종료점·실제 진입 응답을 검증하며, 실패·exit 2·false·미응답이면 원래 질문/보완점으로 돌아간다. 일반 구현 요청 문구로 승인을 대체하지 않는다. 이 검사는 실행 setup·브랜치/stash·빌드·RED/코드 변경·state 초기화보다 먼저다. 재개도 원래 handoff를 재검증한다. gx-work 인계가 없는 직접 호출에는 이 진입 승인을 추가하지 않는다.
 
-PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. 전체 모드는 `phase-implement` Step 1.2에서 계획과 현재 세션/서브에이전트/문서 종료를 한 응답으로 확인한다. core는 [core-planning.md](references/core-planning.md)를 조건부 Read하여 코드 Read·plan.md 작성 후 AC+계획 결합 승인 1회에 방법도 연결한다. 유효한 결합 승인은 반복하지 않고, 방법만 빠졌으면 Step 1.3에서 방법만 보완한다. 초기 명시 방법·같은 run/계획의 실제 선택과 RED/리뷰 격리를 유지하며 flags 충돌은 실제 결정으로 해소한다.
+PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. 전체 모드는 `phase-implement` Step 1.2에서 계획과 현재 세션/서브에이전트/문서 종료를 한 응답으로 확인한다. core는 [core-planning.md](references/core-planning.md)를 조건부 Read하여 코드 Read·plan.md 작성 후 AC+계획 결합 승인 1회에 방법도 연결한다. 유효한 결합 승인은 반복하지 않으며, 방법 보완·flags 충돌은 phase-implement Step 1.2~1.3을 따른다.
 
 `--phase requirements`·`--phase design`처럼 논의·계획만 요청했다면 [탐색 setup](phases/setup-explore.md)을 사용한다. 브랜치·stash·pull은 실제 구현 시작 때만 준비한다. 실행 중인 상태를 가져온 경우 원래 `run-id`·`goal`·`stop-at`를 보존한다. 새 작업의 `run-id`는 gx-work 인계면 gx-work가 만든 값, 직접 호출이면 setup이 만든 고유 값이며, 기존 산출물의 실행 식별자가 다르면 재개에 섞지 않는다.
 
