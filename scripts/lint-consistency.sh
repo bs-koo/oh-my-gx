@@ -84,12 +84,14 @@ fi
 # 최근 버전 태그 이후 배포 동작 경로가 바뀌었는데 버전이 그 태그와 같으면, 이미 설치한 사용자는
 # 같은 버전으로 보여 업데이트를 받지 못한다(v3.0.0 태그 뒤 #102가 버전 없이 머지된 이력, 2026-11-09).
 # CI는 태그를 받아야 판정할 수 있다(lint.yml fetch-depth: 0). 태그가 없으면 판정하지 않고 알린다.
-LAST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+# 릴리스 태그 접두사. 모노레포로 옮긴 사본은 '<플러그인>--v'를 쓴다(그쪽 scripts/release.sh).
+RELEASE_TAG_PREFIX='v'
+LAST_TAG=$(git describe --tags --abbrev=0 --match "${RELEASE_TAG_PREFIX}[0-9]*" 2>/dev/null || true)
 if [ -z "$LAST_TAG" ]; then
   ok "버전 태그를 찾지 못해 태그 이후 변경 검사를 건너뜀 (얕은 클론·태그 미수신)"
-elif ! printf '%s\n%s\n' "${LAST_TAG#v}" "$V_PLUGIN" | sort -V -C 2>/dev/null; then
+elif ! printf '%s\n%s\n' "${LAST_TAG#"$RELEASE_TAG_PREFIX"}" "$V_PLUGIN" | sort -V -C 2>/dev/null; then
   fail "버전 $V_PLUGIN이 최근 태그 $LAST_TAG보다 낮다. 태그 이후 버전으로 올린다"
-elif [ "v$V_PLUGIN" != "$LAST_TAG" ]; then
+elif [ "${RELEASE_TAG_PREFIX}$V_PLUGIN" != "$LAST_TAG" ]; then
   ok "버전 $V_PLUGIN은 최근 태그 $LAST_TAG 이후의 새 버전"
 else
   # 매니페스트(훅 배선 포함)도 설치본 동작이다. eval·배포되지 않는 개발 도구 스크립트는 제외한다.

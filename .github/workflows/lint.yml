@@ -49,6 +49,8 @@ jobs:
         run: python scripts/sync-codex-resources.py --check
       - name: Codex 오프라인 계약 테스트
         run: python -m unittest discover -s tests -p "test_codex_*.py" -v
+      - name: 보조 스킬 보호·복구·조회 회귀
+        run: python -m unittest discover -s tests -p "test_gx_aux_*.py" -v
       - name: 공통 진입·배포·지시문 예산
         run: python -m unittest discover -s tests -p "test_gx_work*.py" -v
       - name: 컨텍스트 인계·작업계획 정합성

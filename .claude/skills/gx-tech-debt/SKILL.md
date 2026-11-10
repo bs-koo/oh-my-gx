@@ -25,6 +25,8 @@ allowed-tools:
   - Bash(pip-audit *)
   - Bash(cargo tree *)
   - Bash(cargo audit *)
+  - Bash(python *)
+  - Bash(python3 *)
   # 읽기 도구
   - Read
   - Glob
@@ -67,6 +69,8 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 - 코드 수정 (읽기 전용)
 - 비즈니스 정책 분석 (그건 `gx-lens`)
 - 성능 벤치마크 실행
+
+정적 분석과 실제 의존성 조회를 구별한다. manifest·lock 파일 읽기는 정적 분석이며, 아래 Gradle/npm/pip/Cargo 명령은 네트워크·캐시를 사용할 수 있고 프로젝트 스크립트를 실행할 수도 있다. 이를 완전한 무변경 조회로 표시하지 않는다. 사용자가 파일 쓰기·실행·네트워크까지 금지한 범위면 해당 명령을 실행하지 않고 정적으로 확인한 버전과 `실제 조회 미실행`을 보고한다. 분석 중 설치나 제품 코드·설정 변경을 하지 않는다. Python은 설치된 순수 [결과 분류 helper](../../../scripts/gx-dependency-result.py)에만 사용하며 이 helper는 외부 명령을 실행하거나 파일을 쓰지 않는다.
 
 ## 인자
 
@@ -186,6 +190,8 @@ ANALYSIS_TYPE에 따라 해당 유형만 실행하거나, `all`이면 전체 실
 
 config `projectTypes`에서 감지된 타입 기준으로 의존성 상태를 확인한다 (**SSOT는 config**). 아래에 분석 절차가 정의된 생태계만 실행한다.
 
+사용자 정의 타입 키는 해당 프로젝트의 manifest와 `roots`로 생태계·작업 위치를 확인한다. pnpm/yarn/bun 프로젝트를 npm으로, Maven 프로젝트를 Gradle로 대신 실행하지 않는다. Python도 프로젝트 인터프리터·환경을 확인할 수 없으면 전역 pip 결과를 프로젝트 결과로 사용하지 않는다. 지원하지 않는 조합은 `unsupported`로 보고한다. 모든 실제 조회 출력은 아래 [결과 계약](references/dependency-results.md)에 따라 분류한다.
+
 **java/kotlin:**
 1. `build.gradle.kts` 또는 `build.gradle`을 Read하여 의존성 목록을 파악한다.
 2. `./gradlew dependencies` 실행이 가능하면 (`timeout: 180000`) 의존성 트리를 확인한다. Gradle은 대규모 프로젝트에서 캐시 워밍업과 그래프 구성에 1분 이상 소요되는 경우가 빈번하므로 3분으로 설정한다.
@@ -193,19 +199,19 @@ config `projectTypes`에서 감지된 타입 기준으로 의존성 상태를 �
 
 **node:**
 1. `package.json`을 Read하여 의존성 목록을 파악한다.
-2. `npm outdated --json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. `npm outdated`는 업데이트가 존재하면 non-zero 종료코드를 반환하므로, 종료코드와 무관하게 stdout의 JSON 출력을 우선 파싱한다. stdout가 비어있거나 명령 자체가 실행 불가인 경우에만 분석 실패로 간주한다.
-3. `npm audit --json` (`timeout: 30000`)으로 알려진 취약점을 확인한다. `npm audit`도 취약점 발견 시 non-zero를 반환하므로 동일하게 stdout 기준으로 파싱한다.
+2. npm 프로젝트이면 `npm outdated --json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. non-zero가 발견을 뜻할 수 있으므로 stdout를 보존하되 성공 스키마·종료코드를 함께 분류한다. `{}`와 오류 JSON 객체를 구별한다.
+3. `npm audit --json` (`timeout: 30000`)으로 알려진 취약점을 확인한다. 취약점 발견에 따른 non-zero는 성공 스키마가 확인된 경우에만 분석 결과로 인정한다. `error` 객체·빈 출력·파싱 실패를 취약점 0건으로 바꾸지 않는다.
 
 **python:**
 1. `requirements.txt` 또는 `pyproject.toml`을 Read한다.
 2. 버전 고정 여부 (pinned vs unpinned)를 확인한다.
-3. `pip list --outdated --format=json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. non-zero 종료코드 시에도 stdout JSON을 우선 파싱한다.
-4. `pip-audit --format=json` (`timeout: 30000`)이 실행 가능하면 알려진 취약점을 확인한다. 동일하게 stdout 기준으로 파싱한다.
+3. 확인한 프로젝트 환경에서 `pip list --outdated --format=json` (`timeout: 30000`)으로 업데이트 가능한 패키지를 확인한다. stdout의 정상 배열과 실행 실패를 구별한다.
+4. 같은 환경에서 `pip-audit --format=json` (`timeout: 30000`)이 실행 가능하면 알려진 취약점을 확인한다. 성공 스키마·건너뛴 의존성·오류·종료코드를 함께 분류한다.
 
 **rust:**
 1. `Cargo.toml`을 Read하여 의존성 목록을 파악한다.
 2. `cargo tree --depth 1` (`timeout: 60000`)로 직접 의존성을 확인한다.
-3. `cargo audit --json` (`timeout: 60000`)이 실행 가능하면 알려진 취약점을 확인한다. 미설치면 건너뛰고 보고에 명시한다. 취약점 발견 시 non-zero 종료코드를 반환하므로 종료코드와 무관하게 stdout JSON을 우선 파싱한다.
+3. `cargo audit --json` (`timeout: 60000`)이 실행 가능하면 알려진 취약점을 확인한다. 미설치면 분석 불가로 보고한다. 취약점 발견에 따른 non-zero는 정상 JSON 스키마와 개수 일치가 확인된 경우에만 결과로 인정한다.
 
 **그 외 (분석 절차 미정의 타입·감지 불가):**
 - 건너뛰지 않고 보고서에 명시 기재한다: "의존성 분석 미지원 — 수동 확인 필요 (vendored 라이브러리, git 서브모듈, 시스템 패키지 여부를 직접 점검하세요)". C/Make처럼 패키지 매니저가 없는 생태계가 여기 해당한다. 조용한 생략 금지.
@@ -249,6 +255,8 @@ Step 1의 결과를 종합하여 우선순위를 매긴다.
 - CRITICAL 1건당 -15점, HIGH 1건당 -5점, MEDIUM 1건당 -2점, LOW 1건당 -1점
 - 최저 0점. 100점에서 감산한다.
 - 등급: A(90+), B(75+), C(60+), D(40+), F(40 미만)
+
+이는 **분석한 범위의 휴리스틱 점수**이며 프로젝트 전체의 안전성·품질 보증이 아니다. 요청한 모든 유형·의존성 조회의 상태를 먼저 채우고 [결과 계약](references/dependency-results.md)의 `health` 계산을 사용한다. `partial`·`error`·`timeout`·`unsupported`·미실행이 하나라도 있으면 전체 점수와 등급은 `산정 보류`로 표시하고 미분석 경계를 나열한다. 미분석을 0건으로 입력해 100점을 만들지 않는다. 확인된 발견과 우선순위는 그대로 보고한다.
 
 ## Step 3: 보고서 출력
 

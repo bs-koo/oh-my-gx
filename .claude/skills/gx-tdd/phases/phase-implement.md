@@ -1,5 +1,7 @@
 # phase-implement: RED-GREEN-REFACTOR 사이클 (TDD 강제)
 
+`Read("../references/requirements-dialogue.md")`로 **단독 진입·재개·승인 재사용 전** 현재 요청의 중요한 미정을 확인한다. 남아 있으면 필요한 requirements 문답에서 `waiting`으로 대기하며 기준선·RED·구현을 시작하지 않는다. 기존 승인 파일의 존재로 우회하지 않고, 답변 후 같은 run·커서·실행 범위로 돌아와 변경된 문서/승인만 보완한다. 문답 해소는 구현 승인이 아니며 기존 core 결합 승인/전체 계획 승인과 방법 선택을 유지한다.
+
 Codex에서는 이 phase 파일 기준 `../../gx-work/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/red-writer.md`·`agents/implementer.md`·`agents/reviewer.md` 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 해당 역할 본문·도구 제약을 사용한다. 각 역할의 기존 report와 spec/quality YAML 반환 계약은 유지한다.
 
 ## Iron Law

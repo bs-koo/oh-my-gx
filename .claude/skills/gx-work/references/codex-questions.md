@@ -10,7 +10,7 @@
 
 ## 필수 질문의 등록·대기·재개
 
-설치된 [질문 helper](../../../../scripts/codex-question.py)를 사용한다. 경로는 codex-runtime에서 확인한 설치 루트와 소비 프로젝트 루트로 조립한다. `--dev-dir`은 해당 프로젝트 안의 현재 `.dev/<branch-slug>`다. 초기 setup처럼 state.md가 아직 없으면 현재 Git 브랜치·SVN 활성 작업을 기준으로 같은 작업 경로를 먼저 확정한다. 순수 gx-context 등 파이프라인 밖 질문은 `.dev/<현재 브랜치 또는 작업 slug>`에 질문만 저장하며 가짜 pipeline state를 생성하지 않는다.
+설치된 [질문 helper](../../../../scripts/codex-question.py)를 사용한다. 단, gx-tdd 읽기 전용 인계·문서 저장 금지·대화 전용 계획의 질문은 helper에 등록하지 않고 자연어로 묻고 실제 답을 기다린다(gx-tdd `references/requirements-dialogue.md` 3절). 경로는 codex-runtime에서 확인한 설치 루트와 소비 프로젝트 루트로 조립한다. `--dev-dir`은 해당 프로젝트 안의 현재 `.dev/<branch-slug>`다. 초기 setup처럼 state.md가 아직 없으면 현재 Git 브랜치·SVN 활성 작업을 기준으로 같은 작업 경로를 먼저 확정한다. 순수 gx-context 등 파이프라인 밖 질문은 `.dev/<현재 브랜치 또는 작업 slug>`에 질문만 저장하며 가짜 pipeline state를 생성하지 않는다.
 
 등록 입력 예:
 

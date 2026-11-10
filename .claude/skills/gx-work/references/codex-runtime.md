@@ -15,6 +15,8 @@
 
 ## 역할 프롬프트 전달
 
+gx-lens처럼 파일 작성을 금지한 분석의 모델 계산·기록은 [모델 정책](codex-models.md)의 읽기 전용 예외를 따른다. `--capabilities -` 표준입력으로 계산하고 디스패치 근거는 대화에 반환한다. 입력·기록용 파일이나 `.dev`를 만들지 않으며 나머지 역할·프로파일·allowlist 검증은 유지한다.
+
 오케스트레이터는 읽은 역할 본문·소비 프로젝트의 `AGENTS.md`/`CLAUDE.md` 지침·태스크 전문을 합쳐 실제 `collaboration.spawn_agent` 도구의 `message`에 전달한다. index의 `tools`는 아래 대응표로 변환해 **역할 지침**으로 같은 message에 넣는다. 예를 들어 reviewer의 `Read, Glob, Grep`는 읽기/검색을 위한 `exec_command`만 허용하고 빌드·테스트·상태변경·임의 명령은 금지한다고 전달한다. 해당 역할에 `Write`가 없지만 report 파일이 필요한 경우 자식은 형식에 맞는 결과를 반환하고 부모가 파일로 저장한다. red-writer의 Bash는 허용되더라도 역할 본문의 구현 코드 열람·수정 금지가 우선한다. 도구 목록을 하네스 권한 집행으로 주장하지 않는다.
 
 | 역할 tools 원문 | Codex에서 가능한 대응 | 전달할 제약 |

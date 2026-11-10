@@ -9,6 +9,8 @@ allowed-tools:
   - Glob
   - Grep
   - Bash(mkdir *)
+  - Bash(python *)
+  - Bash(python3 *)
   - WebSearch
   - WebFetch
   - Task
@@ -33,7 +35,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 Arguments 문자열에서 아래 규칙으로 파싱한다:
 
-- `--output <경로>`: 결과물을 이 경로에 저장한다(저장 모드). 미지정이면 아래 "결과 전달 방식"을 따른다
+- `--output <경로>`: 결과물을 이 경로에 저장한다(저장 모드). 미지정이면 아래 "결과 전달 방식"을 따른다. 저장 모드에서 확정한 절대경로를 `OUTPUT_PATH`로 유지한다.
 - `--format report|comparison|summary`: 결과물 형태 사전 지정. 지정 시 Q2 스킵
 - 나머지 토큰: 리서치 주제
 - 인자 없음: Q1부터 인터뷰 시작
@@ -52,12 +54,13 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - **검색 실패를 숨기지 않는다.** 찾지 못한 정보는 ❓로 남기고 명시한다.
 - **차단된 페이지를 즉시 포기하지 않는다.** 응답이 길이/시그니처 키워드로 차단 판정되면 Jina Reader(`r.jina.ai`)로 재시도한다. 호출 상한 도달 또는 재시도 실패 시 ❓로 명시한다.
 - **기술/학술/한국 뉴스 주제는 공식 API를 병행 시도한다.** 키워드에 신호 단어가 있으면 WebSearch와 함께 Phase 0 API를 호출하여 결과 품질을 보강한다.
+- 출처 발행일·확인일·대상 버전/기간을 구별한다. 최신성 판단이 불가하면 미확인으로 남기며, 사실과 출처를 바탕으로 한 추정·가설을 구별한다.
 
 ## 결과 전달 방식
 
 | 상황 | 모드 | 전달 |
 |---|---|---|
-| `--output` 지정, 또는 사용자가 "저장해줘"·"파일로 남겨줘"처럼 저장을 요청 | 저장 모드 | 결과물을 파일로 저장한다. `--output`이 없으면 `.research/{주제슬러그}-{YYYYMMDD}.md` |
+| `--output` 지정, 또는 사용자가 "저장해줘"·"파일로 남겨줘"처럼 저장을 요청 | 저장 모드 | 결과물을 파일로 저장한다. `--output`이 없으면 Step 2 helper가 확보한 실행별 디렉터리의 `report.md` |
 | gx-work를 거친 호출, "저장하지 마"·"파일 만들지 마" 요청, 그 밖의 기본 | 대화 모드 | 파일·디렉토리를 만들지 않고 `.gitignore`도 바꾸지 않는다. 결과물을 대화로 전달한다 |
 
 저장 요청과 "저장하지 마"가 함께 있으면 더 나중의 명시 지시를 따르고, 판단할 수 없으면 대화 모드로 전달한 뒤 저장 여부를 묻는다.
@@ -66,18 +69,21 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 
 ```
 {프로젝트루트}/.research/
-├── findings.md                     ← 중간 산출물 (검색 결과 기록)
-└── {주제슬러그}-{YYYYMMDD}.md      ← 최종 결과물
+└── {YYYYMMDD}-{주제슬러그}-{고유값}/
+    ├── findings.md                 ← 이번 실행의 중간 결과 (FINDINGS_PATH)
+    └── report.md                   ← 기본 최종 결과 (OUTPUT_PATH)
 ```
 
-`.research/`는 저장 모드에서만 쓰는 로컬 산출물 위치다. 기본 위치(`.research/`)에 저장할 때만 프로젝트 `.gitignore`에 `.research/` 항목이 없으면 추가하고 추가했다는 사실을 알린다. `--output`으로 다른 경로를 지정했으면 그 파일은 사용자가 관리하는 산출물이므로 `.gitignore`를 건드리지 않는다.
+`.research/`는 `--output` 없이 저장하는 저장 모드에서만 쓰는 로컬 산출물 위치다. Step 2에서 실행 디렉터리를 확보했을 때만 프로젝트 `.gitignore`에 `.research/` 항목이 없으면 추가하고 그 사실을 알린다. `--output`으로 정한 경로는 사용자가 관리하는 산출물이라 `.research/`를 만들지 않고 `.gitignore`도 바꾸지 않는다. 기존·중단 실행과 공유 `.research/findings.md`는 덮어쓰지 않는다.
 
 ## 워크플로우
 
 ### Step 0: 사전 준비
 
-- **대화 모드**: 준비할 것이 없다. 디렉토리를 만들거나 `.gitignore`를 바꾸지 않는다.
-- **저장 모드**: `--output`이 없으면 프로젝트 루트에 `.research/`를 만들고, `.gitignore`에 `.research/` 항목이 없으면 추가한다. `--output`이 있으면 그 경로의 상위 디렉토리만 만든다.
+1. 프로젝트 루트와 인자·기존 출력 경로를 읽어 확인한다. 아직 산출물을 생성하지 않는다.
+2. 아래 인터뷰에서 실제로 취소하면 종료한다. 무응답은 취소나 기본값 선택으로 취급하지 않으며 공통 질문 계약을 따른다.
+- **대화 모드**: 디렉토리를 만들거나 `.gitignore`를 바꾸지 않는다.
+- **저장 모드**: 경로와 `.gitignore`는 Step 2의 실행별 경로 확보에서 처리한다.
 
 ### Step 1: 인터뷰 (AskUserQuestion)
 
@@ -132,6 +138,16 @@ AskUserQuestion(
 
 인터뷰 결과를 기반으로 검색을 수행한다.
 
+**실행별 경로 확보 (저장 모드만)**: 대화 모드는 이 절을 건너뛰고 파일을 만들지 않는다. 저장 모드는 실제 주제·결과 형태·깊이가 확정된 뒤 설치된 [gx-research-output.py](../../../scripts/gx-research-output.py)를 실행한다. Bash는 `python3`, Windows PowerShell은 `python`과 공통 UTF-8 입출력 설정을 사용한다. 소비 프로젝트 cwd를 설치 위치로 간주하지 않는다.
+
+```text
+python "<설치 helper 절대경로>" reserve --cwd "<PROJECT_ROOT>" --topic "<확정 주제>" --date "<YYYYMMDD>"
+```
+
+사용자 지정 경로가 있으면 `--output "<지정 경로>"`를 전달한다. 인자는 데이터로 안전하게 전달하며 사용자 텍스트를 셸 문자열로 이어 붙이지 않는다. exit 0의 `run_dir`·`findings_path`·`output_path`를 각각 `RUN_DIR`·`FINDINGS_PATH`·`OUTPUT_PATH`로 유지한다. `--output`을 주면 helper는 실행 디렉터리를 만들지 않고 `run_dir`·`findings_path`를 `null`로 돌려주며, 이때 중간 근거는 작업 메모리에 둔다. 같은 날 같은 주제도 배타적으로 다른 실행 디렉터리를 확보한다. 기존 지정 파일이 있으면 덮어쓰지 않고 새 경로 선택을 기다린다. reserve 실패 시 검색·완료 처리로 진행하지 않는다. 실행 디렉터리를 확보한 경우에만 이 시점에 `.gitignore`의 `.research/`를 보강한다.
+
+이하 `findings.md` 지시는 저장 모드에서 **이번 실행의 `FINDINGS_PATH`**(값이 `null`이면 작업 메모리)를, 대화 모드에서 작업 메모리를 뜻한다. 자식은 반환만 하고 오케스트레이터가 해당 파일에 기록한다. 중단·부분 결과도 이 디렉터리에 보존하며 자동 정리하거나 다른 실행의 근거로 섞지 않는다.
+
 **2-1. 키워드 도출**
 
 주제에서 검색 키워드를 도출한다:
@@ -144,26 +160,9 @@ AskUserQuestion(
 
 **2-2a. Phase 0 공식 API 검사**
 
-주제와 키워드를 **lowercase + Unicode NFC 정규화** 후 아래 신호 단어를 **substring** 검사한다 (단어 경계 미요구). 매칭된 카테고리가 있으면 해당 API를 WebSearch와 **병행** WebFetch로 호출한다. URL의 `{키워드}` 자리는 **URL-encode**한다 (한국어·공백·특수문자 안전 처리).
+주제와 키워드를 정규화해 카탈로그의 신호 단어와 대조하고, 매칭된 카테고리가 있으면 해당 API를 WebSearch와 **병행** WebFetch로 호출한다. `Read("references/phase0-apis.md")`로 정규화·URL-encode 규칙, 카테고리별 신호 단어·엔드포인트·응답 처리 힌트와 모드별 호출 수(꼼꼼은 매칭 전부, 빠르게는 최대 2개)를 확인해 적용한다.
 
-Phase 0 API 카탈로그:
-
-| 카테고리 | 신호 단어 | API 엔드포인트 | 응답 처리 힌트 |
-|----------|----------|---------------|---------------|
-| 학술 논문 | `arxiv`, `논문`, `paper`, `preprint` | `http://export.arxiv.org/api/query?search_query=all:{키워드}&max_results=10` | Atom XML → entry별 title·summary·author·published 추출 |
-| 오픈소스 저장소 | `github`, `repo`, `오픈소스`, `라이브러리` | `https://api.github.com/search/repositories?q={키워드}&per_page=10` | JSON items → full_name·description·stargazers_count·language |
-| Hacker News | `hacker news`, `hn`, `해커뉴스` | `https://hn.algolia.com/api/v1/search?query={키워드}&hitsPerPage=10` | hits → title·url·points·num_comments |
-| 프로그래밍 Q&A | `stackoverflow`, `스택오버플로우` | `https://api.stackexchange.com/2.3/search?intitle={키워드}&site=stackoverflow&order=desc&sort=votes` | items → title·link·score·answer_count |
-| npm 패키지 | `npm`, `노드 패키지`, `node package` | `https://registry.npmjs.org/-/v1/search?text={키워드}&size=10` | objects[].package → name·description·version·links.repository |
-| PyPI 패키지 | `pypi`, `파이썬 패키지`, `python package` | `https://pypi.org/pypi/{정확한 패키지명}/json` | info → name·summary·version·project_url. 404면 결과 없음으로 기록 |
-| 백과사전 | `wikipedia`, `위키`, `정의`, `용어` | `https://ko.wikipedia.org/api/rest_v1/page/summary/{topic}` | title·extract·content_urls.desktop.page. 404 시 영어 fallback 1회: `https://en.wikipedia.org/api/rest_v1/page/summary/{topic}` |
-| 한국 종합 뉴스 | "최근/최신/뉴스/보도" 중 1개 + 정치/사회/경제/IT 도메인 키워드 (단순 기술 키워드만 있으면 미매칭) | `https://news.google.com/rss/search?q={키워드}&hl=ko&gl=KR&ceid=KR:ko` | RSS item별 title·link·pubDate·source. 최근 10건 |
-
-**모드 차등**:
-- 꼼꼼: 매칭된 모든 카테고리 호출
-- 빠르게: 매칭된 카테고리 중 **최대 2개** 호출 (관련도 순: 긴 신호어 우선 → 주제 등장 위치 우선)
-
-**Phase 0 응답 실패 정책**: API 호출이 4xx/5xx거나 응답 검증 실패 시 **Jina Reader 재시도는 하지 않는다** (무인증 공개 API라 차단 가능성 낮음). 즉시 findings "Phase 0 결과" 섹션에 `❓ {카테고리}: API 응답 실패`를 남기고 다음 카테고리로 진행한다(저장 모드의 기본 위치면 findings.md 파일, 그 밖에는 작업 메모리).
+**Phase 0 응답 실패 정책**: API 호출이 4xx/5xx거나 응답 검증 실패 시 **Jina Reader 재시도는 하지 않는다** (무인증 공개 API라 차단 가능성 낮음). 즉시 findings "Phase 0 결과" 섹션에 `❓ {카테고리}: API 응답 실패`를 남기고 다음 카테고리로 진행한다(저장 모드면 `FINDINGS_PATH`, 대화 모드면 작업 메모리).
 
 매칭된 카테고리가 없으면 이 단계를 건너뛰고 2-2b로 진행한다.
 
@@ -215,7 +214,7 @@ Phase 0 API 카탈로그:
    - Jina 응답이 검증 통과면 결과 채택, `via Jina Reader` 표기
    - Jina 응답도 검증 실패면 ❓ 기록 후 다음 URL로 진행
 
-4. 결과를 아래 findings 형식으로 정리한다 (Phase 0 결과 + WebSearch 결과 병합). 기본 위치(`.research/`)에 저장하는 저장 모드면 `.research/findings.md`에 기록하고 매 실행 시 기존 findings.md를 덮어쓴다. `--output`으로 다른 경로에 저장하는 경우와 대화 모드는 `.research/`를 만들지 않고 파일 없이 작업 메모리로만 유지한다.
+4. 결과를 아래 findings 형식으로 정리한다 (Phase 0 결과 + WebSearch 결과 병합). 저장 모드면 `FINDINGS_PATH`에 이번 실행의 결과만 기록하고 다른 실행이나 과거 공유 findings.md를 덮어쓰지 않는다. 대화 모드는 파일 없이 작업 메모리로만 유지한다.
 
 **findings.md 형식:**
 
@@ -365,15 +364,15 @@ Q2 답변(또는 `--format`)에 따라 결과물을 작성한다.
 2. ...
 ```
 
-**저장 경로 (저장 모드):** `--output` 지정 시 해당 경로, 미지정 시 `.research/{주제슬러그}-{YYYYMMDD}.md`. 대화 모드는 위 형식의 결과물을 대화로 출력한다.
+**저장 경로 (저장 모드):** Step 2에서 확정한 `OUTPUT_PATH` 하나만 사용한다. 보고서 본문은 UTF-8 표준입력으로 `python "<설치 helper 절대경로>" save --output "<OUTPUT_PATH>"`에 전달한다. helper가 기존 파일을 덮지 않는 배타 저장을 수행한다. reserve 후 다른 실행이 같은 지정 경로를 만들었어도 덮어쓰지 않는다. 쓰기 실패면 중간 결과를 보존하고 완료를 표시하지 않는다. exit 0의 `output_path`와 `context_command`를 완료 안내에 사용한다. 대화 모드는 위 형식의 결과물을 대화로 출력한다.
 
-주제 슬러그 생성: 주제를 소문자로 변환하고, 공백이나 특수문자를 하이픈(-)으로 대체하여 생성한다.
+주제 슬러그는 helper가 소문자·Unicode NFC로 정규화하고 공백이나 특수문자를 하이픈(-)으로 대체한다. 빈 슬러그는 research로 두며 고유값을 붙인다.
   예: "클라우드 네이티브 트렌드" → `클라우드-네이티브-트렌드`
   예: "C# vs. Java" → `c-vs-java`
 
 ### Step 5: 완료 안내
 
-결과물 생성 후 아래 형식으로 안내한다. 대화 모드는 결과물 본문 뒤에 첫째 블록을, 저장 모드는 둘째 블록을 쓴다.
+대화 모드는 결과물 본문 뒤에 첫째 블록을, 저장 모드는 저장 helper 성공 후 둘째 블록을 쓴다. 저장 모드는 기본 `.research/` 경로를 재구성하지 않고 **실제 `OUTPUT_PATH`**와 helper가 반환한 후속 명령을 그대로 사용한다. 후속 context 반영은 안내이며 자동 실행하지 않는다.
 
 ```
 리서치 완료 (대화로 전달, 파일 없음) — 소스: {N}개 참조
@@ -382,8 +381,8 @@ Q2 답변(또는 `--format`)에 따라 결과물을 작성한다.
 
 ```
 리서치 완료:
-- 결과 파일: {저장 경로}
+- 결과 파일: {OUTPUT_PATH}
 - 소스: {N}개 참조
 
-/gx-context <도메인명> --from {저장 경로} 로 context에 반영할 수 있습니다.
+{context_command} 로 context에 반영할 수 있습니다.
 ```

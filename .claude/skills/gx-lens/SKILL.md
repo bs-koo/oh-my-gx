@@ -31,7 +31,7 @@ allowed-tools:
 - `AskUserQuestion`: 현재 모드와 용도가 허용하는 `request_user_input_async`·`request_user_input` 또는 자연어로 묻고 실제 답변을 기다린다. 이 스킬은 **질문 기록 helper**, pending/capture 파일, 작업 상태 파일을 만들지 않는다. 필요한 질문·답변은 대화 안에서만 유지한다. 공통 규약의 파일 기록 절차보다 이 읽기 전용 경계가 우선한다.
 - `allowed-tools`는 Codex 권한 강제가 아니다. 모든 자식에도 아래 경계를 전달한다.
 
-**현재 프로젝트 파일을 작성·수정하지 않는다.** 보고서는 대화에만 출력한다. 빌드·테스트, 애플리케이션 실행, 네트워크/API 호출, 의존성 설치, Git 변경(스테이징·커밋·푸시·설정 변경)을 수행하지 않는다. 기존 테스트·설정·문서는 읽을 수 있다. Python 실행은 설치된 [근거 확인 helper](scripts/check_evidence.py)에만 사용한다. 읽기 전용 분석을 개발·검증·커밋 파이프라인으로 전환하지 않는다.
+**현재 프로젝트 파일을 작성·수정하지 않는다.** 보고서는 대화에만 출력한다. 빌드·테스트, 애플리케이션 실행, 네트워크/API 호출, 의존성 설치, Git 변경(스테이징·커밋·푸시·설정 변경)을 수행하지 않는다. 기존 테스트·설정·문서는 읽을 수 있다. Python 실행은 설치된 [근거 확인 helper](scripts/check_evidence.py)와 Codex 전문 위임에 필요한 순수 [모델 정책 helper](../../../scripts/codex-model-policy.py)에만 사용한다. `PYTHONDONTWRITEBYTECODE=1`로 두며 모델 입력은 `--capabilities -` 표준입력으로 전달한다. 프로파일·allowlist·effort를 검증하고 디스패치 근거는 공통 모델 정책의 읽기 전용 예외에 따라 대화에만 유지한다. capabilities·모델 기록·`.dev` 파일을 만들지 않는다. 읽기 전용 분석을 개발·검증·커밋 파이프라인으로 전환하지 않는다.
 
 ## 소통과 판단
 

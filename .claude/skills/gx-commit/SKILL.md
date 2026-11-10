@@ -1,7 +1,7 @@
 ---
 name: gx-commit
-description: Git 변경사항의 커밋(commit) 요청에 사용한다. 보호 브랜치·검증 상태를 확인하고 브랜치 규칙에 맞는 한국어 메시지로 커밋한다.
-argument-hint: [커밋 메시지] [--skip-context-sync]
+description: Git 변경사항의 커밋(commit), 커밋 대상 미리보기, 포함·제외 파일 확인 요청에 사용한다. 보호 브랜치·검증 상태를 확인하고 브랜치 규칙에 맞는 한국어 메시지로 커밋한다.
+argument-hint: "[커밋 메시지 | --preview] [--skip-context-sync]"
 allowed-tools:
   # git - 커밋 핵심
   - Bash(git rev-parse:*)
@@ -22,6 +22,9 @@ allowed-tools:
   - Bash(git reset:*)
   - Bash(git log:*)
   - Bash(git rm:*)
+  # 양 하네스의 인덱스 보존·제외 helper (Python 3.10+)
+  - Bash(python:*)
+  - Bash(python3:*)
   # 파일 도구
   - Read
   - Glob
@@ -39,6 +42,7 @@ allowed-tools:
 Arguments:
 - 인자 없음: 타입은 브랜치에서 파싱, 메시지는 변경 내용에서 자동 생성
 - ARGS[0]만: 커밋 메시지로 사용. 타입은 브랜치에서 파싱
+- `--preview` 또는 "커밋 대상 미리보기": 아래 조회 분기로 실행하고 종료한다.
 - `--skip-context-sync`: 커밋 후 context 동기화 질문을 생략한다. context 동기화를 자체 단계로 처리하는 파이프라인(gx-tdd phase-complete)이 전달한다. 플래그는 먼저 분리하며 커밋 메시지로 쓰지 않는다.
 
 **하네스 적응**: 이 문서는 Claude Code 도구명으로 서술한다. 다른 하네스에서 실행 중이면 아래 대응으로 옮겨 수행한다.
@@ -60,6 +64,8 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 - `"git"` 또는 `""` (미설정) → 아래 절차를 계속 진행한다.
 
 ## 사전 확인
+
+**미리보기 선행 분기**: `--preview`/"커밋 대상 미리보기"는 Git 루트를 확인한 뒤 `Read("references/index-helper.md")`의 미리보기 절차만 수행하고 즉시 종료한다. 아래 커밋용 사전 확인·빌드·타입 질문·스테이징·커밋은 실행하지 않는다. main/master/develop에서도 조회 자체는 허용하고, 결과를 커밋 가능 판정으로 표시하지 않으며, 파일 내용·비밀값을 출력하거나 전역 설정·작업 파일·index를 바꾸지 않는다.
 
 레거시 선행 검사: 현재 작업의 `status: in_progress`인 state에 `pipeline: gx-ralph` 또는 `flags`의 `--ralph`/`RALPH`가 있거나, state 유무·완료 표식과 무관하게 `ralph.lock`이 남아 있으면 빌드·스테이징·커밋·push·PR 전에 중단하고 전환을 안내한다. 훅이 로드되지 않았어도 적용한다.
 
@@ -121,15 +127,16 @@ feat: 로그인 기능 추가
 
 ## 커밋 실행
 
-0. `git diff --cached --name-only`로 기존 staged 파일 목록을 캡처한다. (커밋 실패 시 원래 staged 상태를 복원하기 위함)
-1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다. 목록에 **현재 브랜치 슬러그가 아닌 `.dev/{다른-slug}/`** 경로가 있으면 다른 작업의 잔재일 수 있으므로 포함 여부를 사용자에게 확인한다. 단 `.dev/architecture/`와 `.dev/*/visual/`은 gx-visualize의 단발성 산출물이므로 묻지 않는다 — 5단계에서 스테이징하지 않는다. 현재 작업 state(`.dev/{branch-slug}/state.md`)의 `run-id`가 `^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$` 형식이면 그 실행 입력 디렉토리 `.dev/<run-id>/`와, 보호 브랜치에서 질문할 때 남은 결정 기록 `.dev/{main,master,develop,trunk}/decisions.md`는 다른 작업 잔재로 묻지 않는다. 현재 run 디렉토리는 커밋에 포함한다 — state가 가리키는 인계 입력과 진입 결정 기록이 공유돼야 다른 PC·워크트리에서 재개할 수 있다(질문·잠금 같은 런타임 파일은 `.gitignore` 공유 블록이 계속 제외한다). 보호 브랜치 결정 기록만 5단계에서 스테이징하지 않는다. 두 처리를 `커밋 포함: .dev/<run-id>/ (실행 입력) · 커밋 제외: .dev/main/decisions.md (보호 브랜치 결정 기록)`처럼 실제 경로로 한 줄 알린다.
-2. 빌드 아티팩트 패턴(`.claude/config.json`의 모든 `projectTypes.*.artifacts`와 레거시 `buildArtifactPatterns`의 **합집합** — 타입별 artifacts가 SSOT)이 tracked 파일 목록에 있으면: `.gitignore` 파일이 존재하는지 `test -f .gitignore`로 먼저 확인한다. 파일이 존재하면 해당 패턴이 `.gitignore`에 있는지 grep으로 확인하고, 있으면 `git rm -r --cached <pattern>`으로 tracking을 해제한다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 `.gitignore` 생성/추가 여부를 확인한다. **주의: 반드시 `--cached` 플래그를 사용할 것. `--cached` 없이 `git rm`을 실행하면 파일이 삭제된다.**
-3. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조)이 목록에 있으면 사용자에게 경고하고 스테이징에서 제외할지 확인한다.
+0. `Read("references/index-helper.md")`로 helper 실행 방법을 확인한다. **Claude Code와 Codex 모두** 설치 루트의 [../../../scripts/gx-commit-index.py](../../../scripts/gx-commit-index.py)를 확인된 Python 3.10+로 사용한다(UTF-8 stdin JSON 입력·JSON 출력, `cwd`는 소비 Git 루트 절대경로). helper 부재·실패는 스테이징/커밋 전에 중단한다.
+1. `git status --short`로 변경 파일 목록을 확인하고, 목록을 사용자에게 표시한다. 목록에 **현재 브랜치 슬러그가 아닌 `.dev/{다른-slug}/`** 경로가 있으면 다른 작업의 잔재일 수 있으므로 포함 여부를 사용자에게 확인한다. 단 `.dev/architecture/`와 `.dev/*/visual/`은 gx-visualize의 단발성 산출물이므로 묻지 않는다 — 5단계에서 스테이징하지 않는다. 현재 state의 `run-id`(`^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$`)가 가리키는 `.dev/<run-id>/`와 보호 브랜치 질문의 결정 기록 `.dev/{main,master,develop,trunk}/decisions.md`는 잔재로 묻지 않는다. run 디렉토리는 다른 PC·워크트리에서 재개하도록 커밋에 포함하고(질문·잠금 런타임 파일은 `.gitignore` 공유 블록이 제외한다), 보호 브랜치 결정 기록은 5단계 helper가 제외한다. 이를 `커밋 포함: .dev/<run-id>/ · 커밋 제외: .dev/main/decisions.md`처럼 한 줄 알린다.
+2. 빌드 아티팩트 패턴(`.claude/config.json`의 모든 `projectTypes.*.artifacts`와 레거시 `buildArtifactPatterns`의 **합집합** — 타입별 artifacts가 SSOT)이 tracked 파일 목록에 있으면: `.gitignore` 파일 존재와 패턴을 확인한다. 일치하는 실제 tracked 파일 경로를 `UNTRACK` 배열에 모은다. `.gitignore`가 없거나 패턴이 없으면 사용자에게 생성/추가 여부를 확인한다. 이 단계에서는 index를 변경하지 않고 Step 5 helper의 `untrack`으로 넘긴다. helper의 tracking 해제는 `--cached`만 사용하여 작업 파일을 보존한다.
+3. 민감 파일 패턴(`.claude/config.json` → `sensitiveFilePatterns` 참조)이 목록에 있으면 사용자에게 경고하고 스테이징에서 제외할지 확인한다. 사용자가 명시적으로 제외한 **실제 파일 경로**를 `EXCLUDES` 배열에 기록한다. 이미 staged인 파일도 같은 제외 대상이다. 응답 대기 중에는 index를 변경하지 않는다.
 4. 변경 파일이 20개를 초과하면 변경 범위를 요약한다. 사용자가 이번 범위의 구현·커밋·PR을 이미 요청했고 다른 작업 변경이 없으면 동일 스테이징 승인을 반복하지 않는다. 관련 없는 변경이 섞였거나 범위가 불명확할 때만 포함 여부를 확인한다.
 4.5. **`.dev` 무시 경고**: `.dev/` 디렉토리가 있고 `git check-ignore -q .dev/gx-ignore-probe`가 종료 코드 0이면 `.dev`가 git에서 무시되는 상태다. `git add -A`가 작업 계획과 산출물을 소리 없이 빼고 커밋하므로, `git check-ignore -v .dev/gx-ignore-probe`의 출처·줄과 함께 "`.dev`가 무시되어 작업 계획·산출물이 이 커밋에 들어가지 않습니다. `/gx-setup`에서 고칠 수 있습니다"를 경고한다. 커밋은 막지 않고 `.gitignore`도 여기서 고치지 않는다 — 커밋 도중 무시 규칙을 바꾸면 사용자가 의도하지 않은 파일까지 스테이징된다.
-5. 스테이징:
-   - 제외 파일 없음: `git add -A` 후 런타임 파일·시각화 산출물·보호 브랜치 결정 기록을 unstage한다: `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/*/auto-stash.txt' '.dev/architecture' '.dev/*/visual/*' '.dev/main/decisions.md' '.dev/master/decisions.md' '.dev/develop/decisions.md' '.dev/trunk/decisions.md' 2>/dev/null` (루프 락·반복 로그는 커밋 대상이 아니다 — 커밋되면 다른 사용자의 라우팅·게이트 판별이 오작동한다. 시각화 산출물은 매 실행 다시 만드는 단발성이고 Mermaid 자산만 3.4MB다. `'.dev/*/visual'`처럼 끝의 `/*`를 빼면 하위 파일과 매치되지 않는다. 보호 브랜치 결정 기록은 작업 브랜치를 만들기 전의 질문 기록이라 커밋하면 이후 모든 작업 브랜치에 섞인다). 현재 run 디렉토리는 unstage하지 않는다.
-   - 제외 파일 있음: `git add <나머지 파일 각각 지정>` (위 런타임 파일·시각화 산출물·보호 브랜치 결정 기록은 지정하지 않는다. 현재 run 디렉토리는 지정한다)
+5. 스테이징·보존은 helper로 수행한다(요청 형식·차단 조건은 참조 파일). 같은 작업 중 외부 Git/index 변경을 병행하지 않는다.
+   - `snapshot`으로 현재 worktree의 실제 index를 작업 트리 밖에 보존한다. 기존 `index.lock`·별도 Git 경로 환경변수·split index면 변경 전에 중단한다.
+   - `stage`에 `paths`(`null`은 승인된 전체 변경, 일부 범위만 승인됐다면 실제 상대 파일 경로 배열이다(현재 run 디렉토리는 넣고 보호 브랜치 결정 기록은 넣지 않는다)), `excludes`(Step 3·범위 선택에서 확정한 EXCLUDES. 이미 staged인 파일도 HEAD 기준으로 내리고 작업 파일은 보존한다), `untrack`(Step 2의 UNTRACK, `--cached`만 사용)을 전달한다. helper는 임시 index에서 준비한 뒤 lock·HEAD·기존 index를 다시 확인해 원자적으로 반영하고, 중간 외부 변경은 채택하지 않고 차단한다. runtime·시각화 산출물·보호 브랜치 결정 기록은 항상 제외한다. 해당 pathspec은 `git reset -q -- '.dev/*/ralph.lock' '.dev/*/iter-*.log' '.dev/*/auto-stash.txt' '.dev/architecture' '.dev/*/visual/*' '.dev/main/decisions.md' '.dev/master/decisions.md' '.dev/develop/decisions.md' '.dev/trunk/decisions.md'`와 같다 (루프 락·로그는 다른 사용자의 게이트 판별을 흐리고, 시각화 산출물은 단발성이며, 보호 브랜치 결정 기록은 이후 모든 작업 브랜치에 섞인다). 현재 run 디렉토리는 제외하지 않는다.
+   - 커밋 **직전** `assert-excluded`의 exit 0을 확인한다. 명시 제외 경로가 cached diff에 남거나 HEAD/index가 바뀌면 커밋하지 않는다. helper 오류를 빈 목록/성공으로 간주하지 않는다.
 6. HEREDOC 포맷으로 커밋:
    ```bash
    git commit -m "$(cat <<'EOF'
@@ -140,8 +147,8 @@ feat: 로그인 기능 추가
    EOF
    )"
    ```
-7. 커밋이 실패하면 `git reset HEAD`로 스테이징을 원복한 뒤, step 0에서 캡처한 기존 staged 파일이 있으면 `git add <파일>`로 재스테이징하여 원래 상태를 복원하고, 사용자에게 에러를 보고한다.
-8. `git show --stat HEAD`로 결과 표시
+7. 스테이징/커밋이 실패하면 `restore`로 원 index bytes를 복원한다. 부분 스테이징·staged 삭제·작업 파일을 그대로 보존하며 **파일명 목록으로 reset/add하여 복원하지 않는다.** HEAD/브랜치·index가 바뀌었거나 lock·snapshot 손상·복구 실패면 강제 덮어쓰기·lock 삭제 없이 중단하고 에러와 보존된 snapshot 경로를 보고한다.
+8. 성공하면 `git show --stat HEAD`로 결과를 표시하고 `finish`로 이 실행의 백업만 정리한다. 정리 실패는 커밋 재시도 사유가 아니며 남은 snapshot 경로를 보고한다.
 
 ## 커밋과 PR을 함께 요청한 경우
 

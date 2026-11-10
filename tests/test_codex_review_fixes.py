@@ -264,7 +264,18 @@ class LowFindingTests(unittest.TestCase):
         policy = body.split("**Phase 0 응답 실패 정책**", 1)[1].split("\n", 1)[0]
         self.assertIn("저장 모드", policy)
         merge = next(line for line in body.splitlines() if line.startswith("4. 결과를 아래 findings 형식"))
-        self.assertIn("기본 위치", merge)
+        for marker in ("FINDINGS_PATH", "대화 모드", "덮어쓰지 않는다"):
+            self.assertIn(marker, merge)
+
+    def test_research_run_reservation_is_save_mode_only(self):
+        # Codex 보강의 실행별 경로 helper는 저장 모드에서만 쓰고, 대화 모드는 파일을 만들지 않는다.
+        body = read(SKILLS / "gx-research/SKILL.md")
+        reserve = body.split("**실행별 경로 확보", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("저장 모드", reserve)
+        self.assertIn("gx-research-output.py", reserve)
+        finish = body.split("### Step 5: 완료 안내", 1)[1]
+        for marker in ("대화로 전달, 파일 없음", "{OUTPUT_PATH}", "{context_command}"):
+            self.assertIn(marker, finish)
 
     def test_recorded_entry_answer_is_reused_only_for_same_run(self):
         body = read(WORK / "SKILL.md")

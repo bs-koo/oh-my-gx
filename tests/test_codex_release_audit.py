@@ -89,10 +89,18 @@ class CommitRunInputExclusionTests(unittest.TestCase):
                           "현재 run 디렉토리를 unstage하면 재개에 필요한 인계 입력이 공유되지 않는다")
 
     def test_explicit_file_staging_includes_run_inputs_and_omits_protected_captures(self):
-        step_five = between(self.body, "5. 스테이징:", "\n6. ")
-        explicit = between(step_five, "제외 파일 있음", "\n")
-        self.assertIn("현재 run 디렉토리는 지정", explicit)
+        step_five = between(self.body, "5. 스테이징", "\n6. ")
+        explicit = between(step_five, "일부 범위만 승인됐다면", "\n")
+        self.assertIn("현재 run 디렉토리", explicit)
         self.assertIn("보호 브랜치 결정 기록", explicit)
+
+    def test_documented_pathspec_matches_commit_helper_exclusions(self):
+        # 스테이징은 helper가 하므로, 문서에 적은 제외 pathspec과 helper의 실제 목록이 같아야 한다.
+        import ast
+        source = text(ROOT / "scripts/gx-commit-index.py")
+        runtime = ast.literal_eval(re.search(r"(?m)^RUNTIME = (\[.*\])$", source).group(1))
+        command = re.search(r"`(git reset -q -- [^`]+)`", self.body).group(1)
+        self.assertEqual(re.findall(r"'([^']+)'", command), runtime)
 
 
 class CommitContextSyncSkipTests(unittest.TestCase):

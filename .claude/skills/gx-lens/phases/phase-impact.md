@@ -24,6 +24,8 @@
 
 선택한 역할은 상위 SKILL의 하네스 매핑을 따른다. Claude는 필요한 `Task(subagent_type="oh-my-gx:architect")` 또는 `Task(subagent_type="oh-my-gx:security-auditor")`만 호출한다. Codex는 설치된 공통 runtime의 index·역할 본문·모델 정책을 읽고 현재 실제 스키마로 같은 태스크를 위임한다.
 
+Codex 모델 계산은 읽기 전용 예외의 `--pipeline standalone --capabilities -`를 사용한다. 현재 capabilities는 표준입력으로 전달하고 config override·확정 프로파일·allowlist·effort 검사를 유지한다. helper 결과와 실제 spawn 인자·agent_id·관측 모델은 대화에만 보관한다. `DEV_DIR`나 입력/디스패치 파일을 만들지 않는다.
+
 역할마다 아래 태스크 전문을 전달한다.
 
 > 현재 프로젝트의 명시된 변경 아이디어에 대해서만 영향도를 분석하라. 일반 설계/전체 보안 감사로 확대하지 마라. 코드·문서·설정 파일을 읽고 검색할 수 있으나 작성·빌드·테스트·앱 실행·네트워크·의존성 설치·Git 변경을 하지 마라. 현재 구현과 문서상 의도를 분리하고 확인/추정/미확인을 표시하라. 대상 파일의 이름만으로 규칙을 판정하지 마라.

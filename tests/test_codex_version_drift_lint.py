@@ -6,6 +6,7 @@ v3.0.0 태그 뒤 #102가 버전 표기 없이 main에 들어가 설치본과 ma
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,6 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LINT = ROOT / "scripts" / "lint-consistency.sh"
+# 릴리스 태그 접두사는 린트가 정본이다. 모노레포 이관본은 '<플러그인>--v'를 쓴다.
+TAG_PREFIX = re.search(r"(?m)^RELEASE_TAG_PREFIX='([^']+)'$", LINT.read_text(encoding="utf-8")).group(1)
+TAG = TAG_PREFIX + "1.0.0"
 PRELUDE = 'set -uo pipefail\nFAIL=0\nfail() { echo "  FAIL: $1"; FAIL=1; }\nok() { echo "  ok: $1"; }\n'
 
 
@@ -53,7 +57,7 @@ class VersionDriftLintTest(unittest.TestCase):
         self.write("docs/guide.md", "v1\n")
         self.write("scripts/lint-consistency.sh", "# v1\n")
         self.commit("init")
-        self.git("tag", "v1.0.0")
+        self.git("tag", TAG)
 
     def git(self, *args):
         subprocess.run(["git", *args], cwd=self.repo, check=True, capture_output=True)
@@ -86,7 +90,7 @@ class VersionDriftLintTest(unittest.TestCase):
         self.commit("skill change")
         code, out = self.run_section()
         self.assertEqual(code, 1, out)
-        self.assertIn("v1.0.0 이후 배포 경로가 바뀌었는데", out)
+        self.assertIn(f"{TAG} 이후 배포 경로가 바뀌었는데", out)
         self.assertIn(".claude/skills/gx-sample/SKILL.md", out)
 
     def test_uncommitted_skill_change_is_also_detected(self):
@@ -100,7 +104,7 @@ class VersionDriftLintTest(unittest.TestCase):
         self.commit("skill change with bump")
         code, out = self.run_section()
         self.assertEqual(code, 0, out)
-        self.assertIn("최근 태그 v1.0.0 이후의 새 버전", out)
+        self.assertIn(f"최근 태그 {TAG} 이후의 새 버전", out)
 
     def test_docs_only_change_passes(self):
         self.write("docs/guide.md", "v2\n")
@@ -149,7 +153,7 @@ class VersionDriftLintTest(unittest.TestCase):
         self.assertNotIn("warning:", out)
 
     def test_missing_tag_skips_with_notice(self):
-        self.git("tag", "-d", "v1.0.0")
+        self.git("tag", "-d", TAG)
         self.write(".claude/skills/gx-sample/SKILL.md", "v2\n")
         self.commit("skill change without tags")
         code, out = self.run_section()
