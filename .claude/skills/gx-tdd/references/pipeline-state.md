@@ -21,7 +21,7 @@
 - ...
 ```
 
-**생성**: phase-setup의 Step 0.4에서 초기 맵을 생성한다.
+**생성**: phase-setup의 Step 4에서 초기 맵을 생성한다.
 **누적**: 각 agent 출력에 "탐색 추가 항목" 섹션이 있으면 해당 항목을 맵에 append한다. 누적 맵은 **최대 25개**로 제한한다. 초과 시 참조 파일부터 제거한다.
 **저장**: 코드 맵이 갱신될 때마다 `${DEV_DIR}/codemap.md`에 Write한다.
 **전달**: 모든 agent 호출 시 현재 코드 맵을 프롬프트에 포함한다.
@@ -81,7 +81,7 @@ gx-work 인계의 진입 승인은 TDD로 연결할 **원래 요청 범위**에 
 | 필드 | 기록·검증 |
 |---|---|
 | `run-id`, `goal`, `stop-at` | 원래 실행 식별자·목표·종료점. 다른 실행과 섞거나 권한을 확장하지 않는다 |
-| `handoff-file`, `request-file`, `plan-file` | 존재하는 원문/인계의 절대 포인터. request 인계에 없는 plan-file은 생략하며 원문을 프롬프트로 복사하지 않는다 |
+| `handoff-file`, `request-file`, `plan-file` | 존재하는 원문/인계의 프로젝트 상대경로 포인터(예: `.dev/<run-id>/handoff.json`). 이전 세션이 남긴 절대경로 값도 읽는다(setup-resume 0.05). request 인계에 없는 plan-file은 생략하며 원문을 프롬프트로 복사하지 않는다 |
 | `entry-approved-run`, `entry-approved-source`, `entry-approved-scope-sha256` | 검증된 gx-work `entry-approval`의 run·실제 응답 출처·scope-sha256. question-set-id는 결정 기록/작업 문맥에도 보존한다. 직접 gx-tdd 호출에는 만들어 넣지 않는다 |
 | `implementation-plan-file`, `implementation-plan-sha256` | TDD 내부의 구체 T태스크·순서·테스트 의도가 담긴 파일과 현재 SHA-256. 기존 유효한 계획을 재사용하며 원래 request-file/plan-file 포인터를 덮지 않는다 |
 | `plan-approved-run`, `plan-approved-source`, `plan-approved-sha256` | Step 1.2에서 실제 검토 응답을 확인한 run·출처·내부 계획 해시 |
@@ -92,7 +92,7 @@ Step 1.2에서 현재 세션/서브에이전트로 진행하는 한 실제 응�
 
 `session`은 GREEN/REFACTOR를 현재 세션에서 수행하며 `--isolated`가 없어야 한다. `subagents`는 implementer 디스패치를 위해 `--isolated`를 기록한다. 최초 실제 방법 선택을 반영할 때만 해당 플래그를 맞추고 다른 플래그는 보존한다. 재개/명시 선택/기존 flags가 충돌하면 근거를 보고하고 해소 전 실행하지 않는다.
 
-원 handoff의 `validate-handoff` 재검증은 같은 run·원문·scope·종료점·승인과 현재 프로젝트 루트를 검사한다. 내부 T계획 작성만으로 요청 진입 승인을 다시 묻지 않는다. 계획 변경은 plan/method 승인만 재검토하며, 요구범위·종료점까지 달라졌으면 그 변경의 진입 승인을 확인한다. 누락된 gx-work 승인이나 false·exit 2·pending을 일반 구현 요청 문구로 보완하지 않는다.
+원 handoff의 `validate-handoff` 재검증은 같은 run·원문·scope·종료점·승인과 현재 프로젝트 루트를 검사한다. 내부 T계획 작성만으로 요청 진입 승인을 다시 묻지 않는다. 계획 변경은 plan/method 승인만 재검토하며, 요구범위·종료점까지 달라졌으면 그 변경의 진입 승인을 확인한다. 누락된 gx-work 승인이나 false·exit 2·pending을 일반 구현 요청 문구로 보완하지 않는다. 실패가 실제 사용자 결정에 따른 종료점 변경이나 경로 이동 때문일 때만 setup-resume 0.05의 재발급(`reissue`) 뒤 다시 검사한다.
 
 ### 핵심 모드 계획 승인·실행 범위 상태
 
@@ -188,12 +188,12 @@ intent-source: user-selection
 run-id: "현재 실행 UUID"
 goal: "로그인 기능 추가"
 stop-at: verify
-handoff-file: "/absolute/project/.dev/request/handoff.json"
-request-file: "/absolute/project/.dev/request/request.json"
+handoff-file: ".dev/20261109-153000-login/handoff.json"
+request-file: ".dev/20261109-153000-login/intake.json"
 entry-approved-run: "현재 실행 UUID"
 entry-approved-source: "진입 질문의 실제 사용자 응답"
 entry-approved-scope-sha256: "원래 요청 범위 SHA-256"
-implementation-plan-file: "/absolute/project/.dev/feat-login/implementation-plan.md"
+implementation-plan-file: ".dev/feat-login/implementation-plan.md"
 implementation-plan-sha256: "구체 T계획 SHA-256"
 plan-approved-run: "현재 실행 UUID"
 plan-approved-source: "계획 검토의 실제 사용자 응답"
@@ -213,7 +213,7 @@ args: "로그인 기능 추가"
 started: 2026-02-17T10:30:00
 last-known-head: 7c9e814
 auto-stashed: false
-config-setup-attempts: 0
+auto-stash: ""
 warnings-baseline: 12
 baseline-fingerprint: "7c9e814:3ca970cc12ab"
 current-step: "RGR T2: FIX R2"
@@ -245,7 +245,7 @@ execution-log:
 - 정체 감지 시: 해당 `execution-log` 엔트리에 `stagnation: {패턴}` 필드를 추가한다.
 - phase-complete 완료 시: 현재 요청 범위의 AC/인수·문서 대조·최종 verify·요청한 종료점이 모두 성공한 경우만 `status: completed`로 갱신한다. 구현 완료, 검증 완료, PR 생성, 실제 merged는 구분한다. 미충족/미검증/위험 수용 AC가 남은 W행은 진행을 유지한다. pending 질문·충돌·요청한 commit/PR 실패도 완료로 덮지 않는다.
 - **문서 대조 기록**: 같은 run-id의 document-pre/post 결과·snapshot·document-journal과 reports/document-lifecycle.md를 복원한다. 완료 투영의 원래 값·before/after 해시·현재 AC 실행 근거를 보존한다. 최종 verify 후 새 PR URL은 .dev 전달 기록에만 쓴다. context/ 원장 갱신은 후속 명시적 sync 또는 문서 대조/최종 verify 재실행에서 처리한다.
-- 새 파이프라인 시작 시 기존 state.md를 덮어쓴다. `config-setup-attempts`도 0으로 초기화.
+- 새 파이프라인 시작 시 같은 run이거나 끝난 state.md만 덮어쓴다. 다른 run-id의 `status: in_progress` state는 덮지 않는다(phase-setup Step 5 이름 충돌 확인·Step 7). `auto-stashed: true`면 `auto-stash`에 자동 stash SHA를 둔다(setup-branch.md).
 
 ### verify 지문 (verify-fingerprint)
 

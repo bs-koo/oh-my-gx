@@ -93,7 +93,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ## 공유 변수
 
-다른 스킬과 동일한 명명 규칙을 따른다 (gx-dev "공유 규칙" 참조):
+다른 스킬과 동일한 명명 규칙을 따른다 ([gx-tdd 공유 규칙](../gx-tdd/references/pipeline-state.md) 참조):
 
 - `BRANCH`: `git branch --show-current` 결과.
 - `PROJECT_ROOT`: `git rev-parse --show-toplevel`로 확인한 소비 프로젝트의 절대경로.
@@ -149,7 +149,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 `--base`가 지정되지 않았으면 다음 우선순위로 결정한다:
 
 1. **state.md 우선**: `${DEV_DIR}/state.md`가 존재하면 Read하여 `base:` 필드를 추출하여 `${BASE_BRANCH}`로 사용한다. `/gx-work`가 phase-setup에서 결정한 값과 동일하게 정렬된다 (재질문 없음).
-2. **자동 감지** (state.md 없거나 base 필드 없을 때, gx-dev "베이스 브랜치 감지" 규칙과 동일):
+2. **자동 감지** (state.md 없거나 base 필드 없을 때, gx-tdd 공유 규칙의 "베이스 브랜치 감지"와 동일):
    - `git branch --list main master develop`로 존재하는 브랜치 확인.
    - 2개 이상이면 AskUserQuestion으로 선택:
      ```

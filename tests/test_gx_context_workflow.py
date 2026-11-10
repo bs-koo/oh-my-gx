@@ -152,6 +152,28 @@ class ContextIntakeTests(unittest.TestCase):
             self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["goal"], payload["goal"])
             self.assertEqual(json.loads(source.read_text(encoding="utf-8")), payload)
 
+    def test_work_id_is_returned_with_the_shared_format(self):
+        self.assertIsNone(self.normalize()["work-id"])
+        for work in ("W01", "W118", "W1000"):
+            with self.subTest(work=work):
+                self.assertEqual(self.normalize(**{"work-id": work})["work-id"], work)
+        for bad in ("W1", "W０１", "W-01", "w01", 1):
+            with self.subTest(bad=bad):
+                with self.assertRaisesRegex(ValueError, "work-id"):
+                    self.normalize(**{"work-id": bad})
+
+    def test_direct_call_normalizes_from_stdin_without_creating_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = Path(directory)
+            payload = {"run-id": "context-20261109-120000", "goal": "결제 용어 정리",
+                       "intent": "plan", "stop-at": "plan", "sources": [], "decisions": []}
+            result = subprocess.run([sys.executable, str(HELPER), "-"], cwd=consumer,
+                                    input=json.dumps(payload, ensure_ascii=False),
+                                    capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["goal"], payload["goal"])
+            self.assertEqual(list(consumer.iterdir()), [])
+
     def test_both_input_modes_reference_the_same_installed_contract(self):
         bundle = ROOT / ".claude/skills/gx-context"
         for mode in ("create", "from-document"):
@@ -191,6 +213,28 @@ class ContextPlanTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["ready"], ["W01"])
         self.assertEqual(result["blocked"], [{"id": "W02", "dependencies": ["W01"]}])
+
+    def test_work_ids_allow_two_or_more_ascii_digits_only(self):
+        module = self.helper()
+        ledger = [self.ledger(requirement=f"FR-{number}") for number in (1, 2, 3)]
+        rows = [self.row("W99", requirements="FR-1", status="완료"),
+                self.row("W100", requirements="FR-2", dependencies="W99"),
+                self.row("W1000", requirements="FR-3")]
+        result = module.analyze(rows, ledger)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["ready"], ["W100", "W1000"])
+        for bad in ("W1", "W０１", "W-01", "w01", "W12a"):
+            with self.subTest(bad=bad):
+                errors = module.check([self.row(bad)])
+                self.assertTrue(any("ID 형식" in error for error in errors), errors)
+
+    def test_same_number_with_leading_zeros_is_a_duplicate(self):
+        # W01과 W001은 같은 작업 번호다. 둘이 공존하면 착수·완료 기록이 엉뚱한 행으로 갈 수 있다.
+        errors = self.helper().check([self.row("W01", requirements="FR-1"), self.row("W001", requirements="FR-2")])
+        self.assertTrue(any("같은 번호" in error and "W001" in error and "W01" in error for error in errors), errors)
+        self.assertFalse(any("같은 번호" in error for error in
+                             self.helper().check([self.row("W10", requirements="FR-1"),
+                                                  self.row("W100", requirements="FR-2")])))
 
     def test_missing_and_duplicate_requirement_assignments_fail_closed(self):
         rows = [self.row("W01"), self.row("W02")]

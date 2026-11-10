@@ -80,9 +80,11 @@ class WorkEntryTests(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_resume_does_not_silently_expand_authorized_endpoint(self):
+        # F08: 오류 대신 저장 종료점을 유지하고 변경 요청을 결정 대상으로 돌려준다(종료점 변경 절차 → reissue).
         self.active()
-        with self.assertRaisesRegex(ValueError, "stop-at"):
-            work.route(self.root, "resume", stop_at="pr")
+        result = work.route(self.root, "resume", stop_at="pr")
+        self.assertEqual((result["action"], result["stop-at"], result["requested-stop-at"]), ("resume", "commit", "pr"))
+        self.assertTrue(result["stop-at-change-required"])
 
     def test_readonly_intent_cannot_be_combined_with_mutating_endpoint(self):
         for intent in ("understand", "plan"):

@@ -57,6 +57,17 @@ class DecisionTests(unittest.TestCase):
                 (trunk / "pending-question.json").write_text(json.dumps({"questions": [question]}), encoding="utf-8")
                 self.assertTrue(capture.question_helper_owns_capture(workspace, payload))
 
+    def test_svn_active_pointer_ignores_utf8_bom(self):
+        # gx-work.py·pre-tool-guard.sh와 같은 해석: BOM이 있어도 같은 slug다.
+        failed = subprocess.CompletedProcess([], 128, "", "not a git repository")
+        with tempfile.TemporaryDirectory() as workspace:
+            root = Path(workspace)
+            (root / ".svn").mkdir()
+            (root / ".dev").mkdir()
+            (root / ".dev/.active").write_bytes("\ufeffgamma\n".encode("utf-8"))
+            with mock.patch.object(capture.subprocess, "run", return_value=failed):
+                self.assertEqual(capture.branch_slug(workspace), "gamma")
+
     def test_svn_active_pointer_cannot_traverse_directories(self):
         failed = subprocess.CompletedProcess([], 128, "", "not a git repository")
         with tempfile.TemporaryDirectory() as workspace:

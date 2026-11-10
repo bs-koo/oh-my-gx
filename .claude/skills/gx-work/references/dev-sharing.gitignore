@@ -5,5 +5,7 @@
 /.dev/*/answered-question.json
 /.dev/*/.question-lock
 /.dev/*/model-dispatches.jsonl
+/.dev/*/discarded-question-*.json
+/.dev/*/auto-stash.txt
 /.dev/*/logs/
 /.dev/*/evidence/

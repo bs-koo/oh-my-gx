@@ -24,7 +24,7 @@ NO COMMIT/PR WITHOUT VERIFY GATE PASS
 
 `scope-status: closed` 또는 `current-step: 범위 종료 확인`이면 [core-replanning.md](../references/core-replanning.md)에 따라 `return "scope-closed"`로 즉시 종료한다. 기존 증거·진행 상태를 보존하고 인수/verify·문서 완료 투영·commit/PR를 실행하지 않는다. 새 요구 범위를 실제 재확정해 명시적으로 다시 열기 전에는 단순 재개·과거 승인으로 완료하지 않는다.
 
-문서 투영·스테이징·인수/verify·수리 전에 기존 state를 읽고 [core-planning.md](../references/core-planning.md)로 mode를 정규화한다. 명시 all/core가 flags보다 우선하며 **mode 부재만** restore_mode(None, saved_flags)의 독립 --core로 복원한다. 존재하는 null·빈 값·잘못된 mode는 중단한다. 미적용 core→all 결정/pending은 공통 전이를 먼저 완성하고 mode-transition 신호로 과거 complete를 종료한다. 새 전체 목록·현재 커서를 사용하며 setup을 반복하지 않는다. gx-work origin은 원 handoff 진입 승인·run·scope·stop-at 재검증도 유지한다.
+문서 투영·스테이징·인수/verify·수리 전에 기존 state를 읽고 [core-planning.md](../references/core-planning.md)로 mode를 정규화한다. 명시 all/core가 flags보다 우선하며 **mode 부재만** restore_mode(None, saved_flags)의 독립 --core로 복원한다. 존재하는 null·빈 값·잘못된 mode는 중단한다. 미적용 core→all 결정/pending은 공통 전이를 먼저 완성하고 mode-transition 신호로 과거 complete를 종료한다. 새 전체 목록·현재 커서를 사용하며 setup을 반복하지 않는다. gx-work origin은 원 handoff 진입 승인·run·scope·stop-at 재검증도 유지한다. 재검증 실패가 종료점 변경이나 경로 이동 때문이면 [재개 계약 0.05](setup-resume.md)대로 인계를 재발급(`reissue`)하고 다시 검증한다. 그 밖의 실패는 완료를 진행하지 않고 원래 진입 확인으로 돌아간다.
 
 `mode == "core"`이면 ac.md와 plan.md 실물을 Read하고 core-plan-status approved·현재 결합지문과 core-plan-approved-digest 일치·같은 문서 쌍의 실제 승인 근거·필수 pending 해제를 모두 확인한다. 문서 누락·변경·승인 필드 부재·불일치는 pending·지문 null로 무효화하고 requirements(core)의 필요한 G-W-T·코드 Read·계획·결합 승인 Step만 보완한다. 유효한 승인은 재질문하지 않으며 완료 setup/RGR·테스트·report·기준선은 보존한다. 이 진입 게이트를 TDD 미이행 위험 수용이나 verify 통과로 우회하지 않는다. 문서 종료·미응답은 실행/완료 승인이 아니다.
 
@@ -170,12 +170,12 @@ core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 �
 
 ## Step 1: Commit
 
-`stop-at: verify`이면 이 Step을 실행하지 않고 Step 5로 이동한다. 종료점이 없는 구 세션은 기존 사용자 요청에서 복원하며, 요청 없는 커밋을 기본값으로 삼지 않는다.
+`stop-at: verify`이면 이 Step을 실행하지 않고 Step 5로 이동한다. 이번 세션의 사용자 발화가 커밋·PR을 명시했으면("커밋만"·"PR만", 저장된 goal·ARGS·인계 목표는 근거가 아니다) 건너뛰기 전에 [종료점 변경](../references/intent-routing.md#종료점-변경)으로 결정 기록·state `stop-at` 갱신·(gx-work 인계면) 재발급을 먼저 한다. 종료점이 없는 구 세션은 기존 사용자 요청에서 복원하며, 요청 없는 커밋을 기본값으로 삼지 않는다.
 
 **svn인 경우** → `gx-commit` 스킬은 git 전용이므로 건너뛴다. "SVN 프로젝트입니다. verify 게이트 통과를 확인하고, `svn add --force .`로 신규 파일(.dev 산출물 포함)이 등록되었는지 확인한 뒤 `svn commit`을 직접 실행해주세요." 출력 후 Step 5로 진행한다.
 
 **git인 경우:**
-`Skill("oh-my-gx:gx-commit")`을 호출하여 커밋한다 (Step -1 verify 게이트 통과 후 → commit).
+`Skill(skill: "oh-my-gx:gx-commit", args: "--skip-context-sync")`을 호출하여 커밋한다 (Step -1 verify 게이트 통과 후 → commit). 관련 context 동기화는 Step 3·4에서 이미 확인했으므로 gx-commit의 커밋 후 동기화 질문을 다시 띄우지 않게 한다.
 
 > 주의: `oh-my-gx:gx-commit`은 독립적으로도 사용하는 스킬로 verify 실행(테스트 실행 증거 수집)을 포함하지 않는다 (`verify-status` 기반 조건부 경고 게이트만 있다).
 > verify 책임은 전적으로 Step -1(`oh-my-gx:gx-verify`)에 있다. Step -1 이후 코드 변경이 발생했다면 commit 전에 Step 0·3·4에서 문서를 다시 대조/반영한 뒤 Step -1의 최종 영향 계획을 생성하고 유효한 동일 증거만 재사용한다.
@@ -184,7 +184,7 @@ core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 �
 
 ## Step 2: PR 생성
 
-`stop-at: pr`인 경우에만 실행한다. `commit`·`verify`이면 Step 5로 이동한다. PR 생성·push의 실제 권한은 이번 요청 또는 보존한 결정 기록에 있어야 한다.
+`stop-at: pr`인 경우에만 실행한다. `commit`·`verify`이면 Step 5로 이동한다. 이번 세션의 사용자 발화가 PR을 명시했는데(저장된 goal·ARGS·인계 목표는 근거가 아니다) 저장 값이 다르면 Step 1과 같이 [종료점 변경](../references/intent-routing.md#종료점-변경)을 먼저 한다. PR 생성·push의 실제 권한은 이번 요청 또는 보존한 결정 기록에 있어야 한다.
 
 **svn인 경우** → 건너뛴다 (Step 1에서 이미 건너뜀. SVN은 PR 개념이 없다).
 
@@ -221,7 +221,7 @@ core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 �
 
 `${DEV_DIR}/pr-context.md` 조립이 완료된 후 **args로 파일을 명시 전달**하여 호출한다:
 
-`Skill(skill: "oh-my-gx:gx-pull-request", args: "--background ${DEV_DIR}/pr-context.md --extra-section ${DEV_DIR}/pr-rulings.md")` — `pr-rulings.md`를 만들지 않았으면 `--extra-section` 인자를 뺀다.
+`Skill(skill: "oh-my-gx:gx-pull-request", args: "${BASE_BRANCH} --background ${DEV_DIR}/pr-context.md --extra-section ${DEV_DIR}/pr-rulings.md")` — `BASE_BRANCH`는 state의 `base`이며 첫 위치 인자로 넘겨 gx-pull-request가 베이스를 다시 묻지 않게 한다. `pr-rulings.md`를 만들지 않았으면 `--extra-section` 인자를 뺀다.
 
 pull-request 스킬은 --background로 받은 파일만 PR 본문(Background + Audit Summary)에 반영한다. --extra-section의 ## Rulings·## Deferred는 요약 없이 같은 제목으로 실린다.
 

@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 린트 [1/36]이 최근 버전 태그 이후 배포 경로 변경과 버전을 대조하려면 태그가 필요하다.
+          fetch-depth: 0
       - name: 정합성 린트
         run: bash scripts/lint-consistency.sh
       - name: 훅 회귀 테스트

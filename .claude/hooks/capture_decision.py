@@ -60,7 +60,8 @@ def branch_slug(cwd):
     root = Path(cwd)
     if (root / ".svn").is_dir():
         try:
-            active = (root / ".dev/.active").read_text(encoding="utf-8").splitlines()[0]
+            # BOM은 지운다(scripts/gx-work.py·pre-tool-guard.sh와 같은 해석).
+            active = (root / ".dev/.active").read_text(encoding="utf-8-sig").splitlines()[0]
             if (re.fullmatch(r"[A-Za-z0-9._-]+", active) and active != "."
                     and ".." not in active and not active.endswith(".")):
                 return active

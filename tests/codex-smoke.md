@@ -56,6 +56,20 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | Q8 | core 단독 implement/complete, mode 누락·flags --core, 명시 requirements/design, read-only handoff | 요청 단계 우선; implement는 core 결합 승인 검사와 후속 complete 없는 경계 회귀; legacy 승인 누락 차단; 계획 단독은 explore 사용; 읽기 전용 handoff에 state·브랜치·코드·테스트 변경 없음 | 미실행 |
 | Q9 | core→all pending/applied 중단·재개, 완료한 케이스의 AC 추가·수정·삭제 | setup 재생성 없이 review 포함 전체 후속 단계; run/stop-at·원 진입 승인 보존; 기존 GREEN·증거 유지, delta만 RED; 수정은 새 ID·삭제는 승인된 은퇴; 전체 active 0이면 complete/자동 커밋 차단 | 미실행 |
 
+## gx-work 전수조사 후속 검증 (3.1.0, 2026-11-10)
+
+로컬 helper·계약 테스트(`test_gx_work_audit.py`·`test_codex_work_audit.py`·`test_codex_tdd_audit.py`·`test_codex_release_audit.py`)와 `evals/`의 트리거 기대값은 실제 앱의 스킬 선택·질문 UI·인증된 모델의 도구 trace를 대체하지 않는다. 결함 ID는 `.dev/fix-gx-work-audit/audit-report.md`다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| W1 | Claude Code·Codex 각각 스킬 이름 없이 "로그인 실패 5회면 잠금 기능 만들어줘", "이 버그 고쳐줘", "TDD로 개발해줘" (F02) | 처음 두 요청은 gx-work, 세 번째는 gx-tdd가 선택됨; 선택된 스킬과 첫 도구 호출 trace | 미실행 |
+| W2 | `.dev/plan.md`에 W118 행이 있는 프로젝트에서 "W118 시작해줘" (F01) | 인계 `work-id: W118`, gx-tdd setup의 작업 참조·착수 기록, `work-id 형식 오류` 없음 | 미실행 |
+| W3 | 미커밋 `.dev/plan.md`와 run 입력만 있는 베이스에서 진입 승인 (F03) | stash 0회; 작업 브랜치에 plan.md·인계 파일 유지; 다른 진행 중 실행의 미커밋 변경이 있으면 아무것도 바꾸지 않고 중단 | 미실행 |
+| W4 | verify로 진행 중인 실행에 "이어서 PR까지" (F04·F28) | decisions.md 기록 → state `stop-at: pr` → `reissue` 새 인계 → `validate-handoff` 통과 → 재개; 진입 확인에서 멈추지 않음 | 미실행 |
+| W5 | Codex에서 답하지 않은 진입 질문이 남은 상태로 다른 목표 요청 (F17) | route `pending-goal` 대조; `이전 질문에 답하기`/`폐기하고 새 작업` 질문; 실제 답 뒤에만 `codex-question.py discard` exit 0과 보관 파일·decisions 기록 | 미실행 |
+| W6 | Codex 샌드박스 git 소유권 불일치 (F06) | `--git-safe-directory`로 route·handoff·validate-handoff 정상 판정; 전역 `safe.directory` 변경 없음 | 미실행 |
+| W7 | SVN 활성 포인터가 진행 중 구버전 실행을 가리킬 때 새 목표 (F36) | 기록·잠금 불변; `route --slug <새 slug>`가 새 slug만 검사; gx-tdd 인계 `--slug`로 `.dev/.active` 갱신 | 미실행 |
+
 ## 보호 훅·커밋
 
 실제 hook 로드는 임시 테스트 hook에서 무해한 `Write-Output GX_HOOK_SENTINEL` 또는 `printf GX_HOOK_SENTINEL`을 **deny**하는 것으로 확인한다. 배포 hook에는 sentinel 규칙을 넣지 않는다. `/hooks`에서 테스트 정의를 확인·신뢰한 후 무해한 명령만 실행한다. 강제 push는 JSON fixture로만 테스트한다. 각 시나리오는 격리된 임시 프로젝트에서 HEAD/index 해시를 기록한다.

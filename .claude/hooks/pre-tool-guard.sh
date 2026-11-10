@@ -249,6 +249,9 @@ case "$CMD" in
     # slug로 둔갑해 폴백에도 걸리지 않는다. 공백 포함 값은 아래 case에서 불안전으로 걸러진다.
     ACTIVE_SLUG=""
     [ -f "$WC_ROOT/.dev/.active" ] && ACTIVE_SLUG=$(head -1 "$WC_ROOT/.dev/.active" 2>/dev/null | tr -d '\r\n')
+    # 편집기가 붙인 UTF-8 BOM은 지운다 — 남기면 slug 디렉토리를 못 찾고 trunk로 폴백해 그 작업의 verify 게이트가 빠진다
+    # (scripts/gx-work.py·capture_decision.py와 같은 해석).
+    ACTIVE_SLUG=${ACTIVE_SLUG#$'\xEF\xBB\xBF'}
     # 부재·공백·공백 포함·안전하지 않은 값(/ 또는 ..)이면 .dev/trunk로 폴백(레거시 세션·verify 방어 유지).
     case "$ACTIVE_SLUG" in ""|"."|*" "*|*"	"*|*/*|*\\*|*..*) ACTIVE_SLUG="trunk" ;; esac
     # 스테일 포인터 방어: 값이 있어도 가리키는 state.md가 없으면 trunk로 폴백한다.

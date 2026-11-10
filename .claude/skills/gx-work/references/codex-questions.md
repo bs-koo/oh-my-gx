@@ -15,8 +15,10 @@
 등록 입력 예:
 
 ```json
-{"phase":"design","questions":[{"id":"design_approval","header":"설계 확인","question":"설계서를 확인해주세요.","options":[{"label":"승인 (Recommended)","description":"구현 단계로 진행합니다."},{"label":"수정 요청","description":"수정 내용을 후속 질문으로 확인합니다."}]}]}
+{"phase":"design","goal":"사용자 원문 목표","run_id":"20261109-153000-pay-limit","questions":[{"id":"design_approval","header":"설계 확인","question":"설계서를 확인해주세요.","options":[{"label":"승인 (Recommended)","description":"구현 단계로 진행합니다."},{"label":"수정 요청","description":"수정 내용을 후속 질문으로 확인합니다."}]}]}
 ```
+
+`goal`·`run_id`는 선택이지만 state가 아직 없는 질문(gx-work 진입 질문 등)에는 넣는다. 그래야 다음 요청에서 route가 `pending-goal`·`pending-run-id`로 같은 작업의 질문인지 대조한다. 이때 `--dev-dir`은 현재 작업 디렉토리 `.dev/<branch-slug>`(SVN은 활성 slug, `--slug`로 새 slug를 시작하면 그 새 slug)여야 route가 찾는다.
 
 Windows PowerShell 예시:
 
@@ -39,9 +41,15 @@ python "$pluginRoot/scripts/codex-question.py" status --cwd '<PROJECT_ROOT>' --d
 python "$pluginRoot/scripts/codex-question.py" answer --cwd '<PROJECT_ROOT>' --dev-dir '.dev/<slug>' --input '<actual-answer.json>'
 ```
 
+6. 미응답 질문을 버리고 새 작업으로 가겠다는 **실제 사용자 답변**이 있을 때만 `discard`로 폐기한다. 시간 경과·새 요청의 도착만으로 폐기하지 않고 pending 파일을 직접 지우지 않는다. exit 0이면 pending이 같은 디렉토리의 `discarded-question-<UTC 시각>.json`으로 보관되고 `decisions.md`에 폐기 사유가 기록된다. 형식이 깨진 pending도 원문 바이트를 보관 파일에 담고 해제한다(결과 `malformed: true`, 정상 pending은 `malformed: false`). pending 없음, `.question-lock` 있음, `--reason` 누락·빈 값이면 exit 2(`{"status":"blocked","error"}`)이므로 멈추고 보고한다. 질문 helper의 `answer` 영수증은 선택값(`answers`)도 남기며, gx-work route는 이를 `answered-selection`으로 돌려준다.
+
+```powershell
+python "$pluginRoot/scripts/codex-question.py" discard --cwd '<PROJECT_ROOT>' --dev-dir '.dev/<slug>' --reason '<실제 사용자 결정 근거>'
+```
+
 helper 입력은 오케스트레이터가 전달한 실제 사용자 답변에 의존한다. helper가 앱 사용자 이벤트의 진위를 증명하거나 하네스 모든 도구를 강제로 차단하는 것은 아니다. optional 질문에는 helper를 의무 등록하지 않으며 도구의 무응답 처리 규칙을 따른다. 헤드리스 실행에서 필수 질문이 필요하면 BLOCKED와 질문·phase를 기록해 종료한다. 무응답을 승인으로 간주하지 않는다.
 
-비정상 종료로 `.question-lock`이 남으면 프로세스와 pending·결정 기록을 확인한 뒤 명시적으로 복구한다. 잠금이 있는 동안 helper는 exit 2를 반환하며 자동으로 잠금을 없애 승인·기록을 추측하지 않는다. pending·완료 영수증·잠금·모델 호출 JSONL은 현재 세션 런타임 파일이므로 Git에 공유하지 않는다.
+비정상 종료로 `.question-lock`이 남으면 프로세스와 pending·결정 기록을 확인한 뒤 명시적으로 복구한다. 잠금이 있는 동안 helper는 exit 2를 반환하며 자동으로 잠금을 없애 승인·기록을 추측하지 않는다. pending·완료 영수증·폐기 보관 파일·잠금·모델 호출 JSONL은 현재 세션 런타임 파일이므로 Git에 공유하지 않는다.
 
 ## 기록과 훅
 

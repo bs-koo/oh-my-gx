@@ -141,7 +141,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
    ```
    ⚠️ SVN CLI가 설치되어 있지 않습니다.
-   /gx-work의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
+   gx-tdd의 리뷰·검증 단계에서 svn diff가 필요합니다.
 
    {OS별 안내}
 
@@ -186,7 +186,7 @@ VCS_TYPE이 git이면 `Read("references/authentication-git.md")`, svn이면 `Rea
 
 ### 3.5단계: .dev 공유 확인 (git)
 
-git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-dev가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
+git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-tdd가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
 
 ### 4단계: Google Chat 알림 연동 (선택)
 
@@ -225,7 +225,7 @@ gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로�
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-work {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 기본 종료점 verify — 커밋·PR은 요청 시)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 💡 화면 설계서가 있다면:
@@ -237,12 +237,12 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-work {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 종료점 verify)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 ⚠️ SVN 프로젝트:
 - /gx-commit, /gx-pull-request는 SVN에서 미지원
-- /gx-work 리뷰까지 완료 후 svn commit은 직접 수행하세요
+- /gx-work 검증(verify)까지 완료 후 svn commit은 직접 수행하세요
 ```
 
 ### Codex 모델 설정 안내

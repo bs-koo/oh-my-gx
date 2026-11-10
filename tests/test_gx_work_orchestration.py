@@ -12,6 +12,7 @@ from test_gx_work import plan
 
 
 work = load("gx_work_orchestration", "scripts/gx-work.py")
+gate = load("gx_work_orchestration_question", "scripts/codex-question.py")
 
 
 class OrchestrationTests(unittest.TestCase):
@@ -35,6 +36,17 @@ class OrchestrationTests(unittest.TestCase):
 
     def snapshot(self):
         return {p.relative_to(self.root).as_posix(): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def answered_entry(self):
+        """F11: question-set-id는 질문 helper가 실제 답변을 기록한 값이어야 한다."""
+        question = {"id": "gx_work_tdd_entry", "header": "TDD 진입", "question": "gx-tdd로 진행할까요?",
+                    "options": [{"label": "gx-tdd로 진행", "description": "범위대로 진행"},
+                                {"label": "여기서 종료", "description": "개발하지 않음"}]}
+        identifier = gate.run("register", self.root, ".dev/run-1",
+                              {"phase": "work-entry", "questions": [question]})[0]["question_set_id"]
+        gate.run("answer", self.root, ".dev/run-1", {"question_set_id": identifier,
+                 "answers": {"gx_work_tdd_entry": {"answers": ["gx-tdd로 진행"]}}})
+        return identifier
 
     def test_fresh_work_route_recommends_preparation_without_dispatching_tdd(self):
         result = work.route(self.root, "implement", stop_at="pr", goal="엑셀 다운로드")
@@ -67,10 +79,11 @@ class OrchestrationTests(unittest.TestCase):
         self.assertFalse(work.validate_handoff(self.save(result), self.root)["ready-for-tdd"])
 
     def test_actual_next_step_answer_allows_tdd_to_build_its_own_plan(self):
-        result = self.prepare(entry_approval_source="u3: 이 범위로 TDD 진행", question_set_id="q-entry")
+        identifier = self.answered_entry()
+        result = self.prepare(entry_approval_source="u3: 이 범위로 TDD 진행", question_set_id=identifier)
         self.assertTrue(result["ready-for-tdd"])
         self.assertEqual(result["origin"], "gx-work")
-        self.assertEqual(result["entry-approval"]["question-set-id"], "q-entry")
+        self.assertEqual(result["entry-approval"]["question-set-id"], identifier)
         checked = work.validate_handoff(self.save(result), self.root)
         self.assertTrue(checked["ready-for-tdd"])
         self.assertEqual(checked["run-id"], "run-1")
@@ -87,9 +100,12 @@ class OrchestrationTests(unittest.TestCase):
         self.assertFalse(work.validate_handoff(handoff, self.root)["ready-for-tdd"])
 
     def test_run_endpoint_goal_and_digest_tampering_are_rejected(self):
+        # I2: v2의 project-root는 표시용이라 결박 대상이 아니다(v1 결박은 test_gx_work_audit F04).
+        # 대신 지문이 묶는 프로젝트 상대 포인터를 같은 내용의 다른 파일로 바꾸는 변조를 거절한다.
         first = self.prepare(entry_approval_source="u3: TDD 진행")
+        (self.root / "copied-request.json").write_bytes(self.request.read_bytes())
         for key, value in (("run-id", "other-run"), ("stop-at", "commit"), ("goal", "다른 목표"),
-                           ("input-sha256", "0" * 64), ("project-root", str(self.root.parent))):
+                           ("input-sha256", "0" * 64), ("request-file", "copied-request.json")):
             with self.subTest(key=key):
                 changed = copy.deepcopy(first)
                 changed[key] = value
@@ -104,7 +120,7 @@ class OrchestrationTests(unittest.TestCase):
         self.assertFalse(work.validate_handoff(self.save(result), self.root)["ready-for-tdd"])
 
     def test_entry_response_metadata_changes_are_detected(self):
-        first = self.prepare(entry_approval_source="u3: TDD 진행", question_set_id="q-entry")
+        first = self.prepare(entry_approval_source="u3: TDD 진행", question_set_id=self.answered_entry())
         for field, value in (("source", "u-other: 다른 답변"), ("question-set-id", "q-another")):
             with self.subTest(field=field):
                 changed = copy.deepcopy(first)

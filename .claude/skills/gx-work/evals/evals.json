@@ -1,0 +1,189 @@
+{
+  "skill_name": "gx-work",
+  "kind": "trigger",
+  "run-status": "NOT_RUN",
+  "note": "자연어 요청이 어느 GX 스킬로 들어가야 하는지의 기대값이다. 실제 세션에서 스킬 선택을 관측하지 않았으므로 NOT_RUN이다. 설치 발견·모델 선택·질문 UI의 증거로 쓰지 않는다. should_trigger는 gx-work가 받아야 하는지 여부다.",
+  "evals": [
+    {
+      "id": 1,
+      "scenario": "기능 구현",
+      "prompt": "계량기 목록 화면에 사용량을 엑셀로 내려받는 버튼을 추가해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "관련 context·코드 근거를 정리하고 종료점과 함께 TDD 진입 질문을 한 번에 묻는다.",
+      "expectations": ["진입 답변 전에는 브랜치·코드·테스트를 바꾸지 않는다", "종료점 기본값은 verify다"],
+      "files": []
+    },
+    {
+      "id": 2,
+      "scenario": "버그 수정",
+      "prompt": "비밀번호가 맞는데도 가끔 로그인에서 401이 나요. 이 버그 좀 고쳐 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "원인 근거를 조사해 보고하고 수정 범위를 제시한 뒤 TDD 진입 질문을 묻는다.",
+      "expectations": ["gx-tdd를 바로 실행하지 않고 gx-work가 진입을 확인한다", "최초 요청을 진입 답변으로 치지 않는다"],
+      "files": []
+    },
+    {
+      "id": 3,
+      "scenario": "기획서로 PR까지",
+      "prompt": "docs/기획/알림설정.md 기획서대로 개발해서 PR까지 올려 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "기획서의 관련 절을 근거로 범위를 정리하고 종료점 pr을 표시한 진입 질문을 묻는다.",
+      "expectations": ["요청에 명시된 종료점 pr은 다시 묻지 않는다", "PR 생성은 gx-tdd 완료 단계의 게이트를 거친다"],
+      "files": []
+    },
+    {
+      "id": 4,
+      "scenario": "계획만",
+      "prompt": "결제 한도 변경을 어떻게 구현할지 계획만 세워 줘. 코드는 건드리지 마.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "planning.md의 필드로 계획을 대화에 제시하고 끝낸다.",
+      "expectations": ["파일·인계·질문 기록을 만들지 않는다", "브랜치·빌드·테스트를 실행하지 않는다"],
+      "files": []
+    },
+    {
+      "id": 5,
+      "scenario": "구조 파악",
+      "prompt": "정산 모듈이 어떻게 돌아가는지 구조를 파악해서 설명해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "관련 코드·context를 읽고 근거와 불확실성을 보고한다(understand).",
+      "expectations": ["읽기 전용으로 끝난다", "그림을 요청하지 않았으므로 gx-visualize를 실행하지 않는다"],
+      "files": []
+    },
+    {
+      "id": 6,
+      "scenario": "이어서",
+      "prompt": "어제 하던 작업 이어서 해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "route로 진행 중 실행과 미응답 질문을 확인하고 기존 run을 gx-tdd --resume으로 잇는다.",
+      "expectations": ["새 run을 만들지 않는다", "진행 중 실행이 없으면 그 사실을 알리고 새 작업 여부를 묻는다"],
+      "files": []
+    },
+    {
+      "id": 7,
+      "scenario": "W03 시작",
+      "prompt": "W03 시작해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": ".dev/plan.md의 W03 행 상태·의존·작업 위치를 확인해 진입 질문에 함께 보여준다.",
+      "expectations": ["plan.md에 W03 행이 없으면 작업 참조로 보지 않는다", "착수 확인 결과를 인계 decisions에 남긴다"],
+      "files": []
+    },
+    {
+      "id": 8,
+      "scenario": "요구사항 추가",
+      "prompt": "계량기 도메인에 '사용량 엑셀 다운로드' 요구사항을 추가해 줘.",
+      "expected_skill": "oh-my-gx:gx-context",
+      "should_trigger": false,
+      "expected_output": "gx-context가 원장과 작업 계획에 반영하고 개발로 확장하지 않는다.",
+      "expectations": ["gx-work가 아니라 gx-context가 받는다"],
+      "files": []
+    },
+    {
+      "id": 9,
+      "scenario": "요구사항 추가 후 개발까지",
+      "prompt": "관리자는 계량기 사용량을 엑셀로 받을 수 있어야 해. 이걸 요구사항에 넣고 바로 개발까지 진행해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "gx-context로 원장·계획을 반영한 뒤 같은 run으로 TDD 진입 질문을 묻는다.",
+      "expectations": ["gx-context 결과에서 끝내지 않고 진입 질문으로 이어진다", "문서 반영과 개발 진입을 같은 run-id로 묶는다"],
+      "files": []
+    },
+    {
+      "id": 10,
+      "scenario": "용어 정리",
+      "prompt": "결제 도메인 용어를 정리해 줘.",
+      "expected_skill": "oh-my-gx:gx-context",
+      "should_trigger": false,
+      "expected_output": "gx-context가 결제 도메인 glossary를 갱신한다.",
+      "expectations": ["gx-work가 아니라 gx-context가 받는다", "이미 말한 도메인과 갱신 항목을 다시 묻지 않는다"],
+      "files": []
+    },
+    {
+      "id": 11,
+      "scenario": "기술 비교",
+      "prompt": "인증 방식으로 JWT와 서버 세션을 비교해 줘.",
+      "expected_skill": "oh-my-gx:gx-research",
+      "should_trigger": false,
+      "expected_output": "gx-research가 출처를 갖춘 비교표를 대화로 전달한다.",
+      "expectations": ["gx-work가 아니라 gx-research가 받는다", "저장을 요청하지 않았으므로 파일·.gitignore를 바꾸지 않는다"],
+      "files": []
+    },
+    {
+      "id": 12,
+      "scenario": "정책 영향",
+      "prompt": "환불 가능 기간을 7일에서 14일로 바꾸면 코드 어디가 영향을 받는지 확인해 줘.",
+      "expected_skill": "oh-my-gx:gx-lens",
+      "should_trigger": false,
+      "expected_output": "gx-lens가 정책 위치와 영향 범위를 읽기 전용으로 보고한다.",
+      "expectations": ["gx-work가 아니라 gx-lens가 받는다"],
+      "files": []
+    },
+    {
+      "id": 13,
+      "scenario": "TDD로",
+      "prompt": "TDD로 비밀번호 정책 검증 기능을 개발해 줘.",
+      "expected_skill": "oh-my-gx:gx-tdd",
+      "should_trigger": false,
+      "expected_output": "TDD를 명시했으므로 gx-tdd가 직접 받는다.",
+      "expectations": ["gx-work가 아니라 gx-tdd가 받는다"],
+      "files": []
+    },
+    {
+      "id": 14,
+      "scenario": "커밋",
+      "prompt": "지금 변경사항 커밋해 줘.",
+      "expected_skill": "oh-my-gx:gx-commit",
+      "should_trigger": false,
+      "expected_output": "gx-commit이 보호 브랜치·검증 상태를 확인하고 커밋한다.",
+      "expectations": ["gx-work가 아니라 gx-commit이 받는다"],
+      "files": []
+    },
+    {
+      "id": 15,
+      "scenario": "커밋하고 PR",
+      "prompt": "커밋하고 PR 올려 줘.",
+      "expected_skill": "oh-my-gx:gx-commit",
+      "follow-up-skill": "oh-my-gx:gx-pull-request",
+      "should_trigger": false,
+      "expected_output": "gx-commit이 성공한 뒤에만 gx-pull-request를 실행한다.",
+      "expectations": ["커밋이 실패하면 PR로 넘어가지 않는다"],
+      "files": []
+    },
+    {
+      "id": 16,
+      "scenario": "랄프로",
+      "prompt": "랄프로 알림 기능 개발해 줘.",
+      "expected_skill": "oh-my-gx:gx-work",
+      "should_trigger": true,
+      "expected_output": "제거된 무인 반복 실행 요청이므로 지원 중단을 알리고 실행하지 않는다(unsupported-request).",
+      "expectations": ["일반 TDD 개발이나 커밋으로 조용히 대체하지 않는다"],
+      "files": []
+    },
+    {
+      "id": 17,
+      "scenario": "context 동기화",
+      "prompt": "결제 도메인 status.md를 최근 머지된 커밋 기준으로 동기화해 줘.",
+      "expected_skill": "oh-my-gx:gx-context",
+      "should_trigger": false,
+      "expected_output": "gx-context 동기화 모드가 결제 도메인 원장을 갱신한다.",
+      "expectations": ["gx-work가 아니라 gx-context가 받는다", "요청에 있는 도메인을 다시 묻지 않는다"],
+      "files": []
+    },
+    {
+      "id": 18,
+      "scenario": "문서 정리",
+      "prompt": "요구사항 문서 정리해서 작업 나눠 줘.",
+      "expected_skill": "oh-my-gx:gx-context",
+      "should_trigger": false,
+      "expected_output": "gx-context가 원장과 작업 계획(.dev/plan.md)을 만들거나 고친다.",
+      "expectations": ["gx-work가 아니라 gx-context가 받는다", "개발로 자동 확장하지 않는다"],
+      "files": []
+    }
+  ]
+}

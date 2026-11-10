@@ -78,6 +78,31 @@ if [ -n "$REC" ] && grep -q '직접 입력' "$REC"; then
 else
   echo "  FAIL: Other 자유 입력에 선택 표식 없음"; FAIL=1
 fi
+# python3가 실행되지 않거나 3.10 미만이면(Windows Store 별칭 등) python 3.10+로 넘어가야 한다.
+# 이름만 확인하고 실행하면 기록이 조용히 빠진다 — 가짜 python3를 PATH 앞에 둬 재현한다.
+REALPY=""
+for c in python3 python; do
+  if "$c" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' </dev/null >/dev/null 2>&1; then
+    REALPY=$(command -v "$c"); break
+  fi
+done
+if [ -z "$REALPY" ]; then
+  echo "  FAIL: Python 3.10 이상이 없어 capture-decision 인터프리터 탐색을 검증하지 못함"; FAIL=1
+else
+  FAKEBIN="$TMP/fakebin"; PYDIR="$TMP/pycap"; mkdir -p "$FAKEBIN" "$PYDIR"
+  printf '#!/bin/sh\nexit 1\n' > "$FAKEBIN/python3"
+  printf '#!/bin/sh\nexec "%s" "$@"\n' "$REALPY" > "$FAKEBIN/python"
+  chmod +x "$FAKEBIN/python3" "$FAKEBIN/python"
+  if command -v cygpath >/dev/null 2>&1; then PYARG=$(cygpath -m "$PYDIR"); else PYARG="$PYDIR"; fi
+  printf '{"tool_name":"AskUserQuestion","cwd":"%s","tool_input":{"questions":[{"header":"H","question":"Q3","options":[{"label":"A","description":"da"}]}]},"tool_response":{"answers":{"Q3":"A"}}}' \
+    "$PYARG" | PATH="$FAKEBIN:$PATH" bash "$CAP" >/dev/null 2>&1
+  PYREC=$(find "$PYDIR" -name decisions.md 2>/dev/null | head -1)
+  if [ -n "$PYREC" ] && grep -q 'Q3' "$PYREC"; then
+    echo "  ok: capture-decision이 쓸 수 없는 python3 대신 python 3.10+로 기록"
+  else
+    echo "  FAIL: python3를 쓸 수 없을 때 python으로 넘어가지 않아 결정 기록이 빠짐"; FAIL=1
+  fi
+fi
 
 echo "[2/6] 추출 견고성 (오탐 방어)"
 printf '{"tool_input":{"command":"echo hello","description":"%s 관련 안내"}}' "$SVN_C" > "$TMP/fp3.json"
@@ -122,6 +147,18 @@ else
   echo "  FAIL: SVN 잠금만 남은 실행을 안내하지 않음"; FAIL=1
 fi
 rm -f "$SB/.dev/beta/ralph.lock"
+# 메모장 등이 붙인 UTF-8 BOM이 있어도 SVN 활성 포인터는 같은 slug를 가리켜야 한다.
+# BOM을 그대로 두면 slug 디렉토리를 못 찾고 trunk로 폴백해 그 작업의 verify 경고가 빠진다(gx-work.py와 같은 해석).
+mkdir -p "$SB/.dev/gamma"
+printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > "$SB/.dev/gamma/state.md"
+printf '\xEF\xBB\xBFgamma\n' > "$SB/.dev/.active"
+SVN_BOM_REASON=$(cd "$SB" && bash "$OLDPWD/$HOOK" < "$TMP/svn1.json")
+if printf '%s' "$SVN_BOM_REASON" | grep -F '.dev/gamma/state.md' >/dev/null; then
+  echo "  ok: SVN 활성 포인터의 BOM 제거 후 verify 경고"
+else
+  echo "  FAIL: BOM 붙은 SVN 활성 포인터가 slug를 놓침"; FAIL=1
+fi
+rm -rf "$SB/.dev/gamma" "$SB/.dev/.active"
 printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: passed\n' > "$SB/.dev/feat-x/state.md"
 assert_repo "verify 통과 후 무개입" commit1 PASS
 printf 'pipeline: gx-dev\nstatus: in_progress\n' > "$SB/.dev/feat-x/state.md"

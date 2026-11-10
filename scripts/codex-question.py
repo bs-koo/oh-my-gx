@@ -3,11 +3,14 @@
 이 helper는 정규화된 입력을 검증한다. 앱 팝업, 질문 도구의 용도 제한,
 실제 사용자 이벤트 여부는 증명하지 않으므로 호출자가 현재 스키마와 응답을 확인한다.
 모든 명령은 --cwd PROJECT --dev-dir .dev/SLUG를 받고 register/answer는
---input UTF8_JSON_FILE을 받는다. status의 exit 2는 미응답 또는 상태 오류다.
+--input UTF8_JSON_FILE, discard는 --reason "실제 사용자 결정 근거"를 받는다.
+status의 exit 2는 미응답 또는 상태 오류, discard의 exit 2는 폐기할 질문 없음·잠금·입력 오류다.
 """
 
 import argparse
+import base64
 from contextlib import contextmanager
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -21,7 +24,10 @@ import uuid
 
 PENDING = "pending-question.json"
 RECEIPT = "answered-question.json"
+DISCARDED = "discarded-question-{stamp}.json"
 HEADER = "# 의사결정 기록\n\n확인 질문과 선택을 기록한다.\n"
+# gx-work run-id 형식(I3)과 같다.
+RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{2,79}")
 
 
 def read_json(path):
@@ -125,7 +131,16 @@ def questions_input(value):
                                "description": nonempty(option.get("description"), "description")})
         result.append({"id": identifier, "header": header, "question": body,
                        "options": normalized})
-    return {"phase": phase, "questions": result}
+    # 선택 문맥: 질문을 만든 작업의 목표·run-id. route가 새 요청과 대조하는 데 쓴다.
+    context = {}
+    if "goal" in value:
+        context["goal"] = nonempty(value["goal"], "goal")
+    if "run_id" in value:
+        if not isinstance(value["run_id"], str) or not RUN_ID.fullmatch(value["run_id"]):
+            raise ValueError(f"run_id 값 {value['run_id']!r}이(가) 형식에 맞지 않습니다. "
+                             "기대: [A-Za-z0-9][A-Za-z0-9._-]{2,79}")
+        context["run_id"] = value["run_id"]
+    return {"phase": phase, "questions": result, **context}
 
 
 def pending_input(value):
@@ -161,8 +176,8 @@ def register(directory, value):
     path = directory / PENDING
     if path.exists():
         pending = pending_input(read_json(path))
-        if {key: pending[key] for key in ("phase", "questions")} != normalized:
-            raise ValueError("미응답 질문을 다른 질문 또는 phase로 덮어쓸 수 없습니다.")
+        if {key: pending[key] for key in ("phase", "questions", "goal", "run_id") if key in pending} != normalized:
+            raise ValueError("미응답 질문을 다른 질문·phase·작업(goal/run_id)으로 덮어쓸 수 없습니다.")
     else:
         pending = {"version": 1, "question_set_id": str(uuid.uuid4()), **normalized}
         atomic_json(path, pending)
@@ -225,21 +240,82 @@ def answer(directory, value):
     repeated = marker in text
     if not repeated:
         atomic_text(decisions, text + "\n" + marker + "\n" + render_decision(pending, response))
-    atomic_json(directory / RECEIPT, {"question": pending, "answer_digest": answer_digest})
+    # 선택값을 함께 남겨 gx-work route가 진입 답변이 '진행'이었는지 확인할 수 있게 한다.
+    atomic_json(directory / RECEIPT, {"question": pending, "answer_digest": answer_digest,
+                                      "answers": response["answers"]})
     path.unlink()
     return {"status": "answered", "phase": pending["phase"], "repeated": repeated,
             "answer_provenance": "caller_normalized; user_event_not_verified"}
 
 
-def run(command, cwd, dev_dir, value=None):
+def discard(directory, reason):
+    """실제 사용자 결정으로 미응답 질문을 보관 파일로 옮기고 결정 기록을 남긴다.
+
+    순서는 보관 → 기록 → pending 해제다. 중간 실패 뒤 재시도하면 같은 질문의
+    보관 파일과 기록을 재사용해 중복을 만들지 않는다. 형식이 깨진 pending은 원문 바이트를
+    base64로 그대로 보관하고 원문 SHA-256으로 식별한다.
+    """
+    raw = (directory / PENDING).read_bytes()
+    try:
+        pending = pending_input(json.loads(raw.decode("utf-8-sig")))
+    except (ValueError, KeyError, TypeError):
+        pending = None
+    raw_digest = hashlib.sha256(raw).hexdigest()
+    identifier = pending["question_set_id"] if pending else None
+    archive = None
+    for candidate in sorted(directory.glob(DISCARDED.format(stamp="*"))):
+        try:
+            stored = read_json(candidate)
+            if (stored["question"]["question_set_id"] == identifier if pending
+                    else stored.get("raw-sha256") == raw_digest):
+                archive = candidate
+                break
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if archive is None:
+        archive = directory / DISCARDED.format(stamp=now.strftime("%Y%m%dT%H%M%S%fZ"))
+        stored = {"question": pending, "reason": reason, "discarded-at": now.isoformat(timespec="seconds")}
+        if pending is None:
+            stored.update({"malformed": True, "raw-sha256": raw_digest,
+                           "raw-base64": base64.b64encode(raw).decode("ascii")})
+        atomic_json(archive, stored)
+    marker = f"<!-- gx-question-discarded:{identifier or 'raw-sha256:' + raw_digest} -->"
+    decisions = directory / "decisions.md"
+    text = decisions.read_text(encoding="utf-8") if decisions.exists() else HEADER
+    if marker not in text:
+        # 답변 marker(gx-question:<id>:<digest>)·Q/A 표기를 쓰지 않아 답변 기록으로 오인되지 않는다.
+        lines = [f"\n{marker}\n", f"\n## {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} · 질문 폐기\n\n"]
+        if pending:
+            lines.append(f"**phase.** {pending['phase']}\n\n")
+            lines.extend(f"**폐기한 질문.** {question['header']}: {question['question']} (ID {question['id']})\n"
+                         for question in pending["questions"])
+        else:
+            lines.append(f"**폐기한 질문.** 형식이 깨진 {PENDING} (원문 SHA-256 {raw_digest}, 보관 {archive.name})\n")
+        lines.append(f"\n**사유.** {reason}\n")
+        atomic_text(decisions, text + "".join(lines))
+    (directory / PENDING).unlink()
+    return {"status": "discarded", "phase": pending["phase"] if pending else None, "question_set_id": identifier,
+            "archive": archive.name, "malformed": pending is None,
+            "reason_provenance": "caller_supplied; user_event_not_verified"}
+
+
+def run(command, cwd, dev_dir, value=None, reason=None):
     directory = workspace(cwd, dev_dir)
-    if command == "status":
-        path = directory / PENDING
+    if command in ("status", "discard"):
         if (directory / ".question-lock").exists():
             raise ValueError("질문 상태 변경 중입니다. 잠금이 남았다면 작업 상태를 확인하세요.")
+    if command == "status":
+        path = directory / PENDING
         if not path.exists():
             return {"status": "clear"}, 0
         return view(pending_input(read_json(path))), 2
+    if command == "discard":
+        reason = nonempty(reason, "reason(실제 사용자 결정 근거)")
+        if not (directory / PENDING).exists():
+            raise ValueError("폐기할 미응답 질문이 없습니다.")
+        with locked(directory):
+            return discard(directory, reason), 0
     with locked(directory):
         return (register(directory, value) if command == "register"
                 else answer(directory, value)), 0
@@ -249,16 +325,19 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("register", "answer", "status"))
+    parser.add_argument("command", choices=("register", "answer", "status", "discard"))
     parser.add_argument("--cwd", required=True)
     parser.add_argument("--dev-dir", required=True)
     parser.add_argument("--input", type=Path)
+    parser.add_argument("--reason")
     args = parser.parse_args()
     try:
-        if args.command != "status" and args.input is None:
+        if args.command in ("register", "answer") and args.input is None:
             raise ValueError("register/answer는 --input JSON 파일이 필요합니다.")
-        value = read_json(args.input) if args.input else None
-        result, code = run(args.command, args.cwd, args.dev_dir, value)
+        if args.command == "discard" and args.reason is None:
+            raise ValueError("discard는 --reason에 실제 사용자 결정 근거가 필요합니다.")
+        value = read_json(args.input) if args.input and args.command in ("register", "answer") else None
+        result, code = run(args.command, args.cwd, args.dev_dir, value, args.reason)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         result, code = {"status": "blocked", "error": str(exc)}, 2
     print(json.dumps(result, ensure_ascii=False))

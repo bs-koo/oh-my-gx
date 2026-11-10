@@ -1,53 +1,75 @@
 ---
 name: gx-work
-description: 프로젝트 파악·문서·계획·개발·조사·작업 재개 요청의 총괄 진입점이다. 의도와 진행 상태를 파악해 필요한 GX 스킬과 다음 단계를 제안하고, 사용자 응답에 따라 작업을 연결한다.
+description: 기능 구현·버그 수정·PR까지 개발·진행 중 작업 이어서·'W01 시작'·계획만·구조 파악 요청의 기본 진입점이다. 의도와 진행 상태를 확인해 조사·문서 정리(gx-context)·TDD 개발(gx-tdd)·커밋/PR을 필요한 만큼만 연결하고, 실제 응답을 받은 뒤 다음 단계로 넘어간다. TDD를 명시한 요청은 gx-tdd가 직접 받는다.
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 ---
 
-# GX Work — 개발 작업 진행
+# GX Work — 작업 진입과 연결
 
-사용자의 목표·범위·완료점과 현재 상태를 파악하고 **필요한 스킬 수행 → 결과와 다음 단계 제안 → 실제 결정 → 후속 작업**을 연결한다. 개발 실행은 gx-tdd가 맡으며 고정된 준비 파이프라인을 만들지 않는다. 한국어로 응답한다.
+사용자의 목표·범위·종료점과 현재 진행 상태를 파악해 **필요한 스킬 수행 → 결과와 다음 단계 제안 → 실제 결정 → 후속 작업**을 연결한다. 개발 실행은 gx-tdd가 맡으며 이 스킬은 고정 준비 파이프라인이나 두 번째 구현 루프를 만들지 않는다. 한국어로 응답한다.
 
-**하네스 적응**: Claude Code는 `Skill("oh-my-gx:...")`로 호출한다. Codex는 이 파일 위치 기준 [references/codex-runtime.md](references/codex-runtime.md)를 먼저 읽고 대상 스킬의 설치된 `SKILL.md`와 게이트를 수행한다. 도구 이름·모델은 현재 스키마를 따른다. PowerShell 읽기는 `Get-Content -Encoding UTF8`. helper는 확인한 설치 플러그인 루트의 `scripts/gx-work.py`를 사용한다. 소비 프로젝트의 `.claude/rules/`가 설치돼 있다고 가정하지 않는다.
+**하네스 적응**: Claude Code는 `Skill("oh-my-gx:...")`와 `AskUserQuestion`을 쓴다. Codex는 이 파일 위치 기준 [references/codex-runtime.md](references/codex-runtime.md)를 먼저 읽고 대상 스킬의 설치된 `SKILL.md` 절차와 게이트를 그대로 수행한다. 도구 이름·모델은 현재 스키마를 따르고, 소비 프로젝트에 `.claude/rules/`가 있다고 가정하지 않는다.
 
-## 진입과 범위
+- **플러그인 루트**: 이 SKILL.md가 있는 디렉토리 기준 `../../..`이다. 그 루트에 `scripts/gx-work.py`가 있는지 확인한 뒤 helper를 실행한다. Codex는 codex-runtime의 설치 루트 확인을 따른다. 소비 프로젝트의 `scripts/`나 개발 저장소 경로로 대신하지 않는다.
+- **실행 파일·인코딩**: Windows PowerShell은 `python`, POSIX는 `python3`를 쓴다. 파일은 BOM 없는 UTF-8로 읽고 쓰며 PowerShell 읽기는 `Get-Content -Encoding UTF8`이다.
 
-1. **대화의 명시적 요청이 최우선**이다. 원문 목표, 제공 문서, 결정 근거와 종료점을 보존한다. 이미 답한 같은 run·범위의 진입 승인·진행 방식·모델 질문을 반복하지 않는다. 일반 구현·PR 요청은 문서 준비와 요청 범위의 근거이며 이후 제시하는 TDD 진입 질문의 실제 답변을 대신하지 않는다. 내부 판단 위임은 유지하되 결과에 영향을 주는 미정·충돌은 질문한다.
-2. 프로젝트 지침과 현재 작업 경로의 상태·잠금을 읽기 전용으로 확인해 지원 중단 검사를 먼저 적용한다. 진행 중 gx-ralph/구버전 flags는 `migration-required`, `ralph.lock`은 `loop-active`로 중단하며 구버전 질문을 재개하지 않는다. 잠금·프로세스·기록을 변경하지 않는다. 통과한 정상 작업은 기존 pending 질문을 먼저 복원한다. **state가 없어도 route 전에 `.dev/<slug>/pending-question.json`을 복원**하며 가짜 gx-tdd state를 만들지 않는다. Git은 현재 branch-slug의 `.dev/<slug>/state.md`, SVN은 `.dev/.active`를 쓴다. **진행 중 gx-tdd 실행이 있고 구현을 요청했다면 새 파이프라인보다 기존 중단 지점을 먼저 복원**한다. gx-dev 등 다른 pipeline은 `migration-required`로 실행을 멈추고 명시 전환 결정을 받는다. completed인 구버전은 기록만 보존하고 재개하지 않으며, 새 목표는 새 진입 결정으로 시작할 수 있다. 사용자 목표가 다른 작업이면 혼합하지 말고 별도 작업 여부만 해소한다. `understand`·`plan`·상태 조회는 진행 중 실행이 있어도 읽기 전용으로 종료한다.
-3. 새 요청은 아래 결과로 정규화한다. 자연어 의미와 대화의 부정·제한을 함께 읽으며 단어 하나로 라우팅하지 않는다.
+## 진행 순서
 
-| 사용자 목표 | 수행·종료 |
-|---|---|
-| 프로젝트/도메인 파악, 원인 조사, 상태만 | 관련 코드·context·문서를 읽고 근거·불확실성을 보고한다. 실행·설정 변경 없음 |
-| 계획/설계만, 외부 계획 검토 | 계획의 종류와 기존 자료를 확인해 조회·부족/충돌 검토에서 종료. 구체 PRD·설계·T계획이 요청되면 gx-tdd의 계획 전용 절차를 사용하며 실행용 setup·구현 없음 |
-| 기능 구현·버그 수정 | 필요한 근거·관련 문서를 정리하고 [TDD 진입 결정](references/tdd-entry.md)의 실제 응답 후 gx-tdd로 인계. PRD·설계·구체 구현계획은 gx-tdd가 소유. 기본 종료점은 검증된 변경(`verify`) |
-| 커밋까지, PR까지 | 명시 요청에 맞춰 `commit` 또는 `pr`까지 인계. 이전 허가는 같은 범위에서 유지 |
-| 진행 중 작업 이어서 | 기존 run-id·목표·stop-at·현재 step을 복원하여 gx-tdd 재개 |
-| 컨텍스트 등록/동기화만 | `oh-my-gx:gx-context`로 연결하고 종료. 개발로 자동 확장하지 않음 |
-| 리뷰만·커밋만·PR만 | 해당 gx-tdd phase 또는 gx-commit/gx-pull-request의 게이트를 수행하고 요청 결과에서 종료 |
-
-이해·계획·상태만 요청한 경우 **stash, checkout, pull, 브랜치/worktree 생성, gx-setup, 빌드·테스트를 실행하지 않는다**. 보고서 저장을 요청하지 않았다면 소비 프로젝트에 계획·state 파일도 만들지 않는다. 계획 작성은 대화 안에서 가능하다. `gx-setup`은 자동 호출하지 않으며 설정의 실제 누락이 필요한 실행을 막을 때만 알려준다.
-
-## 필요한 작업과 다음 단계
-
-계획·인계·결과를 제시할 때는 [판단과 검증 전달](references/reviewability.md)을 적용한다. 중요한 선택의 이유·원문 근거·미확인 범위를 기존 기록으로 설명하며 새 질문 단계나 일괄 퀴즈를 만들지 않는다.
-
-명시적 무인 반복 실행 요청은 [지원 중단 규약](../gx-tdd/references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)에 따라 먼저 중단한다. `--ralph`·`랄프로` 등의 실행 요청을 일반 개발이나 커밋으로 자동 대체하지 않으며, 설명·제거 요청·파일명·인용은 실행 명령으로 오인하지 않는다.
-
-[작업 총괄 계약](references/tdd-entry.md)을 읽고 현재 부족한 근거에 맞춰 gx-context·gx-lens·gx-research·기존 계획 조회 등 필요한 절차만 사용한다. 각 스킬의 opt-in·읽기 전용·쓰기 권한을 유지하며 모든 스킬을 강제하지 않는다. 허가된 관련 context·요구사항·W계획 준비 자체에는 일괄 확인을 추가하지 않는다. context는 도메인·요구사항·W목록을 관리하고 gx-tdd가 PRD·설계·T태스크 구현계획을 만든다.
-
-수행 결과와 추천 다음 단계를 제시한다. 다음 단계가 조사·문서 보완이면 해당 작업까지만 수행한다. 목표·범위가 바뀌는 큰 전환은 실제 답변 후 진행하며 모든 결과를 TDD로 연결하지 않는다.
-
-## 계획 재사용과 실행 인계
-
-계획이 필요한 요청에서만 [references/planning.md](references/planning.md)를 읽는다. `--from-plan`은 문서 경로를 가져오는 기능이며 승인 표시가 아니다. 이미 있는 계획을 다시 쓰지 않고 실행에 필요한 부족·충돌만 보완한다. 도메인 context·외부 문서·대화 결정은 출처 포인터로 정규화한다. 사용자가 승인한 범위의 일상적 구현 판단을 추가 승인 단계로 만들지 않는다.
-
-TDD 진입 직전에 목표·범위·관련 문서/FR/W·종료점을 제시하고 **“이 작업을 gx-tdd로 구체화·개발할까요?”**라고 묻는다. `gx-tdd로 진행` / `문서·범위 보완` / `여기서 종료`의 실제 선택을 기다린다. 미응답·async ack·헤드리스는 `pending`/`BLOCKED`이며 gx-tdd 호출·setup·브랜치/worktree 변경·W착수·빌드·테스트·코드 수정·커밋을 시작하지 않는다. 같은 run·범위의 유효한 승인은 재사용하고 범위가 바뀌면 변경 내용을 보여준 뒤 확인한다.
-
-실제 진입 답변을 받은 뒤 [references/handoff.md](references/handoff.md)의 요청 또는 기존 계획 인계를 만든다. 구체 계획이 없는 요청에 정규화 구현계획 작성을 강제하지 않는다. `validate-handoff`의 `ready-for-tdd: true`일 때만 인계한다. [관련 문서 연결](../gx-context/references/development-sync.md)의 context·요구사항·W 포인터를 보존하며 최종 AC 확정·문서 대조·실패 복구는 gx-tdd가 같은 자료를 재사용한다. 읽기 전용·명시 문서 금지는 우선한다. 원문·계획 본문을 여러 프롬프트로 복사하지 않고 파일 포인터와 관련 단위 ID만 전달한다:
+1. **요청 보존** — 원문 목표·제공 문서·제외 범위·요청한 종료점과 대화의 결정·부정·제한을 그대로 둔다. 단어 하나로 라우팅하지 않으며, 같은 run·범위에서 이미 답한 선택은 다시 묻지 않는다. 결과에 영향을 주는 미정·충돌만 묻는다.
+2. **의도 분류** — 아래 **의도별 처리** 표로 의도와 종료점을 정한다. 이해·계획·상태만이면 읽기 전용으로 끝낸다.
+3. **상태 확인(읽기 전용)** — 프로젝트 지침을 읽고 분류한 의도로 `route`를 실행해 진행 상태·잠금·미응답 질문을 확인한다. 결과는 아래 **route 결과별 처리**를 따른다. 잠금·프로세스·기록은 바꾸지 않는다.
+4. **필요한 근거만 준비** — [작업 총괄 계약](references/tdd-entry.md)의 스킬 표에서 지금 부족한 근거에 맞는 스킬만 쓴다. 모든 스킬을 돌거나 결과를 개발로 자동 확장하지 않는다.
+5. **결과와 다음 단계 제시** — [판단과 검증 전달](references/reviewability.md)에 따라 근거·불확실성·추천 다음 단계를 짧게 보여준다. 새 질문 단계나 일괄 퀴즈를 만들지 않는다.
+6. **진입 질문** — 다음 단계가 개발이면 tdd-entry.md의 진입 질문을 종료점과 함께 한 번에 묻고 실제 답을 기다린다. 답 전에는 gx-tdd 호출·브랜치/worktree·빌드·테스트·코드·커밋을 시작하지 않는다.
+7. **인계** — 실제 진입 답변 뒤 [references/handoff.md](references/handoff.md)로 인계 파일을 만들고 `validate-handoff`가 `ready-for-tdd: true`일 때만 넘긴다. 원문·계획 본문을 프롬프트로 복사하지 않고 파일 포인터와 관련 ID만 전달한다.
 
 `Skill("oh-my-gx:gx-tdd", args="<원래 목표> --handoff <인계.json>")`
 
-기존 정규화 구현계획이 있을 때만 `--from-plan <계획.json>`을 추가한다. Codex는 같은 인자·파일 포인터로 설치된 gx-tdd의 절차를 실행한다. gx-tdd가 PRD·설계·T태스크 계획을 확정한 뒤 현재 세션 중심(`session`)/구현 서브에이전트(`subagents`, `--isolated`) 방식을 실제 선택받는다. 이 스킬에서 구체 구현계획·RED/GREEN/REFACTOR 단계나 코드 본문을 미리 작성하지 않는다. 직접 gx-tdd 독립 호출과 기존 진행 state·pending 질문·verify·보호 브랜치·커밋/PR 게이트는 기존 계약을 유지한다.
+기존 정규화 구현계획이 있을 때만 `--from-plan <계획.json>`을 더한다([references/planning.md](references/planning.md)). gx-tdd는 인계받은 목표 문장으로 모드를 다시 판정하지 않으므로, 사용자가 요청에서 밝힌 핵심 모드·베이스 브랜치는 `--core`·`--base <브랜치>` 플래그로 붙이고(SVN 새 slug는 `--slug <새 slug>`), 모델 프로파일은 요청 파일의 `model-profile`로 넘긴다(인계 지문에 묶인다). `--from-plan`은 문서 경로를 가져올 뿐 승인 표시가 아니다. Codex는 같은 인자·파일 포인터로 설치된 gx-tdd 절차를 실행한다. PRD·설계·T태스크 구현계획과 실행 방식(`session`/`subagents`) 선택은 gx-tdd가 소유하며 여기서 미리 작성하지 않는다. 직접 gx-tdd 독립 호출과 기존 state·pending·verify·보호 브랜치·커밋/PR 게이트는 그대로 유지된다.
 
-자연어 자동 발견은 하네스·설치 상태에 달려 있다. 실제 세션에서 확인하기 전 작동한다고 보고하지 않는다. 발견이 안 되는 환경에서는 `/gx-work <목표>`를 명시 진입점으로 안내한다. 로컬 테스트는 라우팅·계획 데이터 계약만 검증하며 설치 발견·실제 모델·질문 UI의 증거를 대신하지 않는다.
+## 의도별 처리
+
+| 사용자 목표 | 처리 | 종료점 |
+|---|---|---|
+| 프로젝트·도메인 구조 파악, 원인 조사, 상태 조회 | 관련 코드·context·문서를 읽고 근거와 불확실성을 보고한다 | `understand` |
+| 계획/설계만, 외부 계획 검토 | [planning.md](references/planning.md)의 필드로 계획을 대화에 제시한다. 파일·인계·질문 기록을 만들지 않는다. PRD·설계 문서 저장을 원할 때만 tdd-entry.md의 계획 전용 질문 후 gx-tdd 읽기 전용 인계 | `plan` |
+| 기능 구현·버그 수정 | 근거 정리 → 진입 질문 → gx-tdd 인계 | `verify` (요청하면 `commit`·`pr`) |
+| 작업 ID 지정(`W03 시작`) | `.dev/plan.md`에 같은 행이 있을 때만 작업 참조. tdd-entry.md의 W 착수 확인 후 진입 질문 | 위와 같음 |
+| 지금 할 수 있는 작업 | tdd-entry.md의 준비된 W 조회(읽기 전용) | `understand` |
+| 진행 중 작업 이어서 | route `resume`의 run-id·목표·종료점·step으로 gx-tdd `--resume` | 저장된 종료점 |
+| 컨텍스트·용어·요구사항 정리, 진행 상태 동기화 | `oh-my-gx:gx-context`로 연결하고 그 결과에서 끝낸다 | `plan` |
+| 요구사항 정리 후 개발까지 | gx-context로 원장·계획을 반영한 뒤 같은 run으로 진입 질문 → 인계 | 요청한 종료점 |
+| 리뷰만 | 진행 중 gx-tdd 실행이면 `Skill("oh-my-gx:gx-tdd", args="--phase review")`, 완료된 구현의 교차 검토는 `oh-my-gx:gx-cross-review` | 리뷰 결과 |
+| 커밋만·PR만 | route `--intent status`의 `state-file`로 현재 브랜치의 gx-tdd 실행 기록을 확인한다. 진행 중이거나 verify로 끝난 실행이면 아래 **종료점 변경**으로 재검증 뒤 진행한다. gx-tdd 실행 기록이 없으면 gx-commit·gx-pull-request 게이트만 수행(PR은 커밋 성공 뒤) | 요청한 결과 |
+
+이해·계획·상태만 요청하면 **stash, checkout, pull, 브랜치/worktree 생성, gx-setup, 빌드·테스트를 실행하지 않는다**. 저장 요청이 없으면 계획·질문·state 파일도 만들지 않는다. gx-setup은 자동 호출하지 않고 실제 누락이 실행을 막을 때만 `/oh-my-gx:gx-setup` 실행을 안내한다.
+
+명시적 무인 반복 실행 요청(`--ralph`·`랄프로` 등)은 [지원 중단 규약](../gx-tdd/references/intent-routing.md#제거된-무인-반복-경로--실행-전-중단)에 따라 먼저 멈추고 일반 개발이나 커밋으로 조용히 대체하지 않는다. 설명·제거 요청·파일명·인용은 실행 명령으로 보지 않는다.
+
+## route 결과별 처리
+
+`python <플러그인 루트>/scripts/gx-work.py route --project-root <프로젝트 루트> --intent <understand|plan|status|implement|resume> [--stop-at <종료점>] --goal "<원문 목표>" [--git-safe-directory <프로젝트 루트>] [--slug <SVN 작업 slug>]`로 판정한다(프로젝트 루트 규칙은 handoff.md). Codex 샌드박스처럼 git 소유권 불일치가 나는 환경에서만 확인된 프로젝트 루트를 `--git-safe-directory`로 넘긴다. 결과의 `requested-stop-at`은 이번 요청의 종료점이다. exit 2의 `{"error": ...}`(git 오류·입력 오류)는 상태 없음으로 넘기지 않고 내용을 그대로 보여준 뒤 멈춘다.
+
+| `action` | 뜻 | 처리 |
+|---|---|---|
+| `understand`·`plan`·`status` | 읽기 전용 요청 | 진행 중 실행이 있어도 읽기만 하고 보고 후 종료 |
+| `implement` | 이어갈 실행 없음 | 근거 준비 → 진입 질문 → 인계 |
+| `resume` | 같은 목표의 gx-tdd 실행이 진행 중 | `run-id`·`goal`·`stop-at`·`state-file`을 복원해 `Skill("oh-my-gx:gx-tdd", args="--resume")`. 새 run을 만들지 않는다. `requested-stop-at`이 저장값과 다르면 **종료점 변경** |
+| `no-active-run` | 이어서 할 실행이 없음 | 이어갈 대상이 없음을 알리고 새 작업으로 시작할지 묻는다 |
+| `scope-review-required` | 진행 중 실행과 목표가 다름 | 두 목표를 합치지 않고 `기존 작업 이어서` / `별도 작업으로 시작`을 묻는다. 별도면 **새 범위로 시작** |
+| `awaiting-decision` | 답하지 않은 질문이 있음 | **미응답 질문 대조** |
+| `resume-selection-required` | SVN 활성 포인터 없이 후보가 여럿 | 후보만 보여주고 선택을 받는다. 선택 전에는 읽기·질문만, 선택 뒤 포인터를 복원해 다시 판정한다(handoff.md) |
+| `migration-required` | 진행 중 gx-ralph·구버전 flags·gx-dev 실행 | 기록 경로만 안내하고 실행하지 않는다. **새 범위로 시작** |
+| `loop-active` | `ralph.lock`이 있음 | 잠금·프로세스를 건드리지 않고 새 실행을 막는다 |
+| `unsupported-request` | 제거된 무인 반복 실행 요청 | 지원 중단을 알리고 다른 실행으로 대체하지 않는다 |
+| `detached-head` | 브랜치가 없는 HEAD | 읽기 전용 보고만 한다. 체크아웃·브랜치 생성은 사용자가 정한다 |
+
+`stale-pending-file`·`stale-answered-file`은 완료된 실행에 남은 질문·답변 기록이다. 알리기만 하고 질문 대기나 재사용 근거로 다루지 않는다. 어느 결과든 `detached-head: true`가 붙으면 브랜치 없는 HEAD라는 뜻이므로 실행 setup으로 넘어가지 않는다. `stop-at-change-required: true`면 같은 실행의 저장 종료점과 이번 요청이 다르므로 **종료점 변경**으로 간다(저장값은 helper가 바꾸지 않는다). `entry-answer-recorded: true`면 같은 목표의 진입 질문 답이 이미 기록돼 있다. `answered-run-id`가 이번 대화의 run-id와 같고 `answered-selection`의 첫 답이 `gx-tdd로 진행`일 때만(이때 `requires-user-decision: false`) 다시 묻지 않는다. 다른 선택이면 그 선택을 따르고, 이전 세션의 기록이면 기록된 답을 보여주고 다시 확인한다. `answered-question-set-id`의 decisions.md 기록을 읽어 `gx-tdd로 진행`이면 같은 run-id·question-set-id로 인계하고, 다른 선택이면 그 선택을 따른다.
+
+## 진행 중 실행의 변경
+
+- **미응답 질문 대조**: `pending-goal`·`pending-run-id`·`pending-phase`를 이번 요청과 대조한다. 같은 작업이면 원래 질문을 다시 보여주고 실제 답을 원래 phase에 기록해 잇는다. 다른 작업이면 `이전 질문에 답하기` / `폐기하고 새 작업`을 묻는다. 폐기는 실제 답을 근거로 `python <플러그인 루트>/scripts/codex-question.py discard --cwd <프로젝트 루트> --dev-dir <질문의 .dev/slug> --reason "<실제 사용자 결정 근거>"`가 exit 0일 때만 인정하고 route를 다시 판정한다. 형식이 깨진 pending도 원문을 보관하고 해제한다(결과 `malformed: true`). exit 2(lock, pending 없음, `--reason` 누락·빈 값)면 멈추고 보고한다. 질문 파일을 직접 지우지 않는다.
+- **종료점 변경**: 진행 중이거나 verify로 끝난 gx-tdd 실행에 저장된 `stop-at`과 다른 종료점을 명시하면("이어서 PR까지", "커밋만", "PR만") 그 요청을 종료점 변경 결정으로 다룬다. 정본은 gx-tdd [intent-routing의 종료점 변경](../gx-tdd/references/intent-routing.md#종료점-변경)이다. 원문 근거를 state 디렉토리의 `decisions.md`에 기록한 뒤 gx-tdd에 `--resume --stop-at <새 종료점>`(verify로 끝난 실행은 `--phase complete --stop-at <새 종료점>`)으로 넘기면, gx-tdd가 state `stop-at` 갱신, 완료 실행의 진행 상태 복귀와 verify 재통과, gx-work 인계의 `reissue --stop-at <새 종료점> --change-source "<근거>"`, state 승인 지문 갱신을 순서대로 한다. 기본값·외부 문서로 종료점을 넓히지 않는다.
+- **새 범위로 시작**: 진행 중인 다른 실행과 구버전(gx-ralph·gx-dev)의 기록·질문·잠금은 그대로 둔다. 같은 브랜치에 새 실행을 겹치지 않는다. 미커밋 변경이 없으면 베이스 브랜치로 돌아가고, 미커밋 변경이 있으면 그 변경이 따라오지 않도록 새 워크트리(`git worktree add <경로> -b <새 브랜치> <베이스>`)를 만든 뒤 그 위치에서 `/oh-my-gx:gx-work <새 목표>`로 다시 시작하도록 안내한다. 새 실행은 새 브랜치·새 run-id·새 진입 질문을 쓰며 구버전 PRD·AC·커밋은 근거 문서로만 연결한다. 구버전 실행으로 되돌리라고 안내하지 않는다. SVN은 브랜치가 없으므로 새 목표에 쓸 slug를 사용자에게 받아 `--slug <새 slug>`로 시작한다. route에 같은 `--slug`를 넘기면 `.dev/.active` 대신 그 slug의 기록만 검사하고 결과에 `requested-slug`가 남는다. gx-tdd 인계 인자에도 `--slug <새 slug>`를 붙이면 setup이 `.dev/.active`를 새 slug로 바꾼다.
+
+자연어 자동 발견은 하네스·설치 상태에 달려 있다. 실제 세션에서 확인하기 전 작동한다고 보고하지 않으며, 발견되지 않는 환경에서는 `/oh-my-gx:gx-work <목표>`를 명시 진입점으로 안내한다. 로컬 테스트와 `evals/`의 트리거 기대값은 라우팅·데이터 계약만 다루며 설치 발견·실제 모델·질문 UI의 증거를 대신하지 않는다.

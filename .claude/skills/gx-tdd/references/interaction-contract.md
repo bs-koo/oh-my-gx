@@ -70,6 +70,16 @@ AskUserQuestion(
 ```
 "수정 요청" 선택 시 후속 질문으로 수정 내용을 받고 답변을 기다린다. 원 질문 UI Other의 자유 입력은 바로 처리한다.
 
+### 이전 질문 정리
+
+새 작업이나 재개를 시작할 때 질문 helper `status`가 exit 2(미응답)이거나 `.dev/<slug>/pending-question.json`이 있으면, 그 질문의 목표·run·phase를 이번 요청과 대조한다.
+
+- 같은 작업이면 원래 질문을 다시 보여 주고 실제 답을 원래 phase에 기록해 이어 간다.
+- 다른 작업이면 새 질문으로 덮지 않고 `이전 질문에 답하기 (Recommended)` / `폐기하고 새 작업`을 묻는다. Claude Code는 AskUserQuestion을 쓴다. Codex는 pending이 있어 helper가 새 등록을 거부하므로 등록하지 않고 현재 도구나 자연어로 묻고, 질문을 담은 final 응답으로 턴을 끝내 실제 답을 기다린다.
+  - **이전 질문에 답하기** → 원래 질문을 표시하고 그 답을 기록·해제한 뒤 원래 작업으로 돌아간다. 새 요청은 그다음에 다시 받는다.
+  - **폐기하고 새 작업** → `python <플러그인 루트>/scripts/codex-question.py discard --cwd <PROJECT_ROOT> --dev-dir <질문의 .dev/slug> --reason "<실제 사용자 결정 근거>"`를 실행한다(POSIX는 `python3`, 플러그인 루트는 이 파일 기준 `../../../..`). exit 0이면 pending이 `discarded-question-<UTC 시각>.json`으로 보관되고 decisions.md에 기록된 것이므로 새 작업을 진행한다. exit 2(pending 없음·`.question-lock` 있음)면 멈추고 보고한다.
+- 응답 없이 폐기하지 않는다. 시간 경과·새 요청 도착·추천 값은 폐기 결정이 아니며 pending 파일을 직접 지우거나 옮기지 않는다. 헤드리스는 BLOCKED와 질문을 기록하고 종료한다.
+
 ---
 
 ## 에러 처리
