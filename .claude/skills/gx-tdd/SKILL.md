@@ -79,8 +79,11 @@ PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. �
 # 1. 모드에 따라 Phase 목록 결정
 # gx-work handoff는 위 진입 게이트 통과 후에만 Phase를 실행한다.
 if HANDOFF_READ_ONLY:  # 검증된 read-only: true, execution-authorized: false
+    Read("references/requirements-dialogue.md")
     Read(setup-explore); 요청한 requirements/design 계획 내용만 제시
     # 문서 저장은 요청한 범위만. setup·pipeline/state·코드·테스트 변경 없이 종료.
+    if 사용자 중단: return "stopped"
+    if 중요한 미정/응답 대기: return "waiting"
     return  # READ_ONLY_COMPLETE
 if requested_phase == "requirements":
     PHASES = [explore, requirements]
@@ -97,6 +100,10 @@ else:  # ALL
 
 # 2. Phase별 순차 실행 (건너뛰기 금지)
 for phase in PHASES:
+
+    if phase in [requirements, design, implement, complete]:
+        Read("references/requirements-dialogue.md")
+        # waiting/stopped면 중단. ready는 승인이 아님.
 
     # implement/complete에 scope-status closed이면 scope-closed로 종료(자동 완료/커밋 금지).
     # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
@@ -143,6 +150,7 @@ for phase in PHASES:
     # 이 경우 2d의 phase 완료 표시나 다음 phase를 수행하지 않는다.
 
     # 2d. state.md 갱신
+    # 문답 적용 Phase는 ready와 기존 게이트 충족 때만 완료. waiting/stopped면 종료한다.
     # Codex에서 질문 대기로 phase가 끝나지 않았다면 완료 표시를 하지 않고 현재 phase를 유지한다.
     # complete는 Step 5의 실제 완료 조건을 통과했을 때만 완료 표시한다.
     # 미충족 AC/미검증/문서 충돌/요청한 전달 실패이면 in_progress를 유지하고 중단한다.

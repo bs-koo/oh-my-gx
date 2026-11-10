@@ -28,12 +28,16 @@ class JsonArgumentParser(argparse.ArgumentParser):
         raise SystemExit(2)
 
 
+def decode_object(text: str, source) -> dict:
+    value = json.loads(text)
+    if not isinstance(value, dict):
+        raise ValueError(f"JSON 객체가 필요합니다: {source}")
+    return value
+
+
 def read_object(path: Path) -> dict:
     """BOM을 허용하되 잘못된 파일을 기본 설정으로 숨기지 않는다."""
-    value = json.loads(path.read_text(encoding="utf-8-sig"))
-    if not isinstance(value, dict):
-        raise ValueError(f"JSON 객체가 필요합니다: {path}")
-    return value
+    return decode_object(path.read_text(encoding="utf-8-sig"), path)
 
 
 def nonempty_string(value, label: str) -> str:
@@ -190,7 +194,8 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = JsonArgumentParser(description=__doc__)
-    parser.add_argument("--capabilities", type=Path, required=True, help="현재 세션의 실제 지원 모델 JSON")
+    parser.add_argument("--capabilities", type=Path, required=True,
+                        help="현재 세션의 실제 지원 모델 JSON 파일 또는 표준입력 -")
     parser.add_argument("--cwd", type=Path, required=True, help="소비 프로젝트 루트")
     parser.add_argument("--pipeline", choices=ECO_ROLES, required=True)
     parser.add_argument("--role", required=True, help="설치된 index의 GX 역할 이름")
@@ -200,10 +205,12 @@ def main() -> int:
     parser.add_argument("--execution", choices=("agent", "session"), default="agent")
     args = parser.parse_args()
     try:
-        result = resolve_policy(capabilities=read_object(args.capabilities), cwd=args.cwd,
+        capabilities = (decode_object(sys.stdin.buffer.read().decode("utf-8-sig"), "stdin")
+                        if str(args.capabilities) == "-" else read_object(args.capabilities))
+        result = resolve_policy(capabilities=capabilities, cwd=args.cwd,
                                 pipeline=args.pipeline, role=args.role, profile=args.profile,
                                 scope=args.scope, fix_round=args.fix_round, execution=args.execution)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, UnicodeError) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False))
         return 2
     print(json.dumps(result, ensure_ascii=False))

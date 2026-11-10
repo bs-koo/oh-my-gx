@@ -9,6 +9,8 @@ allowed-tools:
   - Bash(node *)
   - Bash(which *)
   - Bash(codex *)
+  - Bash(python *)
+  - Bash(python3 *)
   # 파일 시스템 (읽기/조회)
   - Bash(test *)
   - Bash(mkdir *)
@@ -276,24 +278,7 @@ advisor의 컨텍스트 한계를 고려하여 다음 우선순위로 산출물�
 
 ### 2-2. diff 수집
 
-`Diff 수집 규칙`에 따라 diff를 파일에 직접 리다이렉트한다 (메인 컨텍스트 절약).
-
-```bash
-mkdir -p "${DEV_DIR}"
-git diff "$(git merge-base HEAD "${BASE_BRANCH}")" > "${DIFF_FILE}"
-# untracked 파일은 git index에 없어 위 diff에 포함되지 않으므로 별도 합산
-git ls-files --others --exclude-standard -z | while IFS= read -r -d '' f; do
-  git diff --no-index --binary /dev/null "$f" 2>/dev/null
-done >> "${DIFF_FILE}"
-```
-> `git diff <merge-base-commit>`는 working tree와 merge-base의 차이를 한 번에 보여주므로 staged + unstaged + 커밋된 변경은 모두 포함되지만, **`git add` 전 untracked 파일은 누락**된다. `/gx-work` 직후 `git add` 전에 cross-review를 호출하는 흐름을 지원하기 위해 `git ls-files --others --exclude-standard`로 untracked 목록을 별도 수집하여 `git diff --no-index`로 신규 파일 diff를 합산한다.
-
-`wc -l < "${DIFF_FILE}"`로 줄 수 확인. **500줄 이상**이거나 `${SCOPE}` == `stat`인 경우:
-```bash
-git diff "$(git merge-base HEAD "${BASE_BRANCH}")" --stat > "${DIFF_FILE}"
-echo "---" >> "${DIFF_FILE}"
-echo "위는 요약입니다. 변경된 파일을 Read 도구로 직접 확인하라." >> "${DIFF_FILE}"
-```
+`Read("references/diff-collection.md")`의 설치 helper 호출·결과 검증을 수행한다. 명시 stat·500줄 전환에도 untracked 경로·통계를 보존하고, 전체 파일 목록을 advisor에 전달한다. 빈 변경은 종료하며 실패 결과로 기존 diff를 덮어쓰거나 재사용하지 않는다.
 
 ### 2-3. 컨텍스트 통합
 

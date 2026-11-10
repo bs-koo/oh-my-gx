@@ -9,6 +9,8 @@ allowed-tools:
   - Glob
   - Grep
   - Bash(mkdir *)
+  - Bash(python *)
+  - Bash(python3 *)
   - WebSearch
   - WebFetch
   - Task
@@ -33,7 +35,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 Arguments 문자열에서 아래 규칙으로 파싱한다:
 
-- `--output <경로>`: 결과물 저장 경로. 미지정 시 `.research/{주제슬러그}-{YYYYMMDD}.md`
+- `--output <경로>`: 결과물 저장 경로. 미지정 시 아래 helper가 확보한 실행별 디렉터리의 `report.md`. 확정한 절대경로를 `OUTPUT_PATH`로 유지한다.
 - `--format report|comparison|summary`: 결과물 형태 사전 지정. 지정 시 Q2 스킵
 - 나머지 토큰: 리서치 주제
 - 인자 없음: Q1부터 인터뷰 시작
@@ -52,23 +54,25 @@ Arguments 문자열에서 아래 규칙으로 파싱한다:
 - **검색 실패를 숨기지 않는다.** 찾지 못한 정보는 ❓로 남기고 명시한다.
 - **차단된 페이지를 즉시 포기하지 않는다.** 응답이 길이/시그니처 키워드로 차단 판정되면 Jina Reader(`r.jina.ai`)로 재시도한다. 호출 상한 도달 또는 재시도 실패 시 ❓로 명시한다.
 - **기술/학술/한국 뉴스 주제는 공식 API를 병행 시도한다.** 키워드에 신호 단어가 있으면 WebSearch와 함께 Phase 0 API를 호출하여 결과 품질을 보강한다.
+- 출처 발행일·확인일·대상 버전/기간을 구별한다. 최신성 판단이 불가하면 미확인으로 남기며, 사실과 출처를 바탕으로 한 추정·가설을 구별한다.
 
 ## 런타임 디렉토리
 
 ```
 {프로젝트루트}/.research/
-├── findings.md                     ← 중간 산출물 (검색 결과 기록)
-└── {주제슬러그}-{YYYYMMDD}.md      ← 최종 결과물
+└── {YYYYMMDD}-{주제슬러그}-{고유값}/
+    ├── findings.md                 ← 이번 실행의 중간 결과 (FINDINGS_PATH)
+    └── report.md                   ← 기본 최종 결과 (OUTPUT_PATH)
 ```
 
-`.research/`는 `.gitignore` 대상이다. 스킬 실행 시 프로젝트 `.gitignore`에 `.research/` 항목이 없으면 자동 추가한다.
+`.research/`는 `.gitignore` 대상이다. 주제와 방향이 확정돼 조사를 시작할 때 프로젝트 `.gitignore`에 `.research/` 항목이 없으면 추가한다. 기존·중단 실행과 공유 `.research/findings.md`는 덮어쓰지 않는다.
 
 ## 워크플로우
 
 ### Step 0: 사전 준비
 
-1. 프로젝트 루트에 `.research/` 디렉토리가 없으면 생성한다.
-2. `.gitignore`에 `.research/` 항목이 없으면 추가한다.
+1. 프로젝트 루트와 인자·기존 출력 경로를 읽어 확인한다. 아직 산출물을 생성하지 않는다.
+2. 아래 인터뷰에서 실제로 취소하면 종료한다. 무응답은 취소나 기본값 선택으로 취급하지 않으며 공통 질문 계약을 따른다.
 
 ### Step 1: 인터뷰 (AskUserQuestion)
 
@@ -122,6 +126,16 @@ AskUserQuestion(
 ### Step 2: 검색 전략 수립 + 실행
 
 인터뷰 결과를 기반으로 검색을 수행한다.
+
+**실행별 경로 확보**: 실제 주제·결과 형태·깊이가 확정된 뒤 설치된 [gx-research-output.py](../../../scripts/gx-research-output.py)를 실행한다. Bash는 `python3`, Windows PowerShell은 `python`과 공통 UTF-8 입출력 설정을 사용한다. 소비 프로젝트 cwd를 설치 위치로 간주하지 않는다.
+
+```text
+python "<설치 helper 절대경로>" reserve --cwd "<PROJECT_ROOT>" --topic "<확정 주제>" --date "<YYYYMMDD>"
+```
+
+사용자 지정 경로가 있으면 `--output "<지정 경로>"`를 전달한다. 인자는 데이터로 안전하게 전달하며 사용자 텍스트를 셸 문자열로 이어 붙이지 않는다. exit 0의 `run_dir`·`findings_path`·`output_path`를 각각 `RUN_DIR`·`FINDINGS_PATH`·`OUTPUT_PATH`로 유지한다. 같은 날 같은 주제도 배타적으로 다른 실행 디렉터리를 확보한다. 기존 지정 파일이 있으면 덮어쓰지 않고 새 경로 선택을 기다린다. reserve 실패 시 검색·완료 처리로 진행하지 않는다. 이 시점에 `.gitignore`의 `.research/`를 보강한다.
+
+이하 `findings.md` 지시는 모두 **이번 실행의 `FINDINGS_PATH`**를 뜻한다. 자식은 반환만 하고 오케스트레이터가 해당 파일에 기록한다. 중단·부분 결과도 이 디렉터리에 보존하며 자동 정리하거나 다른 실행의 근거로 섞지 않는다.
 
 **2-1. 키워드 도출**
 
@@ -206,7 +220,7 @@ Phase 0 API 카탈로그:
    - Jina 응답이 검증 통과면 결과 채택, `via Jina Reader` 표기
    - Jina 응답도 검증 실패면 ❓ 기록 후 다음 URL로 진행
 
-4. `.research/findings.md`에 결과 기록 (Phase 0 결과 + WebSearch 결과 병합). 매 실행 시 기존 findings.md를 덮어쓴다.
+4. `FINDINGS_PATH`에 이번 실행의 결과만 기록한다 (Phase 0 결과 + WebSearch 결과 병합). 다른 실행이나 과거 공유 findings.md를 덮어쓰지 않는다.
 
 **findings.md 형식:**
 
@@ -356,20 +370,20 @@ Q2 답변(또는 `--format`)에 따라 결과물을 작성한다.
 2. ...
 ```
 
-**저장 경로:** `--output` 지정 시 해당 경로, 미지정 시 `.research/{주제슬러그}-{YYYYMMDD}.md`
+**저장 경로:** Step 2에서 확정한 `OUTPUT_PATH` 하나만 사용한다. 보고서 본문은 UTF-8 표준입력으로 `python "<설치 helper 절대경로>" save --output "<OUTPUT_PATH>"`에 전달한다. helper가 기존 파일을 덮지 않는 배타 저장을 수행한다. reserve 후 다른 실행이 같은 지정 경로를 만들었어도 덮어쓰지 않는다. 쓰기 실패면 중간 결과를 보존하고 완료를 표시하지 않는다. exit 0의 `output_path`와 `context_command`를 완료 안내에 사용한다.
 
-주제 슬러그 생성: 주제를 소문자로 변환하고, 공백이나 특수문자를 하이픈(-)으로 대체하여 생성한다.
+주제 슬러그는 helper가 소문자·Unicode NFC로 정규화하고 공백이나 특수문자를 하이픈(-)으로 대체한다. 빈 슬러그는 research로 두며 고유값을 붙인다.
   예: "클라우드 네이티브 트렌드" → `클라우드-네이티브-트렌드`
   예: "C# vs. Java" → `c-vs-java`
 
 ### Step 5: 완료 안내
 
-결과물 생성 후 아래 형식으로 안내한다:
+저장 helper 성공 후 아래 형식으로 안내한다. 기본 `.research/` 경로를 재구성하지 않고 **실제 `OUTPUT_PATH`**와 helper가 반환한 후속 명령을 그대로 사용한다. 후속 context 반영은 안내이며 자동 실행하지 않는다.
 
 ```
 리서치 완료:
-- 결과 파일: .research/{파일명}.md
+- 결과 파일: {OUTPUT_PATH}
 - 소스: {N}개 참조
 
-/gx-context <도메인명> --from .research/{파일명}.md 로 context에 반영할 수 있습니다.
+{context_command} 로 context에 반영할 수 있습니다.
 ```

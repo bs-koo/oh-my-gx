@@ -9,10 +9,14 @@
 전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있음을 먼저 알리고 실행한다.
 
 ```text
-python ../scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-since <REF>] [--domain <DOMAIN>] [--labels <LABELS_JSON>]
+python ../scripts/build_map.py <PROJECT_ROOT> [--map-dir <MAP_DIR>] [--changed-since <REF>] [--domain <DOMAIN>] [--labels <LABELS_JSON>] [--backend auto|archify|mermaid|static]
 ```
 
-스킬 호출의 인자는 이 명령에 이렇게 옮긴다. `--project-root <PROJECT_ROOT>`는 첫 번째 위치 인자 `<PROJECT_ROOT>`가 된다 — `build_map.py`에는 `--project-root` 플래그가 없다. `--map-dir`·`--changed-since`·`--domain`·`--labels`는 이름 그대로 넘긴다. `--map-dir`를 생략하면 `<PROJECT_ROOT>/.dev/architecture/`에 쓴다. 상대경로 `--map-dir`는 명령을 실행한 현재 폴더 기준이므로 절대경로로 넘긴다.
+스킬 호출의 인자는 이 명령에 이렇게 옮긴다. `--project-root <PROJECT_ROOT>`는 첫 번째 위치 인자 `<PROJECT_ROOT>`가 된다 — `build_map.py`에는 `--project-root` 플래그가 없다. `--map-dir`·`--changed-since`·`--domain`·`--labels`·`--backend`는 이름 그대로 넘긴다. `--map-dir`를 생략하면 `<PROJECT_ROOT>/.dev/architecture/`에 쓴다. 상대경로 `--map-dir`는 명령을 실행한 현재 폴더 기준이므로 절대경로로 넘긴다.
+
+`--backend static`은 Archify 탐지·설치와 Mermaid 자산 다운로드 없이 표를 생성한다. `mermaid`는 Archify를 건너뛰고 공유 Mermaid 자산만 확인한다. 기본 `auto`와 `archify`는 기존 Archify → Mermaid → static 폴백을 유지하며 실제 backend를 보고한다. 명시된 backend가 보고의 `requested_backend`에 남는다.
+
+한 출력 폴더는 한 실행만 갱신한다. 이미 `.gx-map.lock`이 있으면 두 번째 호출은 `busy: true`·`validation_status: failed`·`index_path: null`을 반환하고 진행 중인 manifest·HTML·잠금을 건드리지 않는다. 다른 출력 폴더로 실행하거나 기존 실행의 종료를 기다린다. 강제 종료로 잠금이 남았으면 기존 프로세스가 종료됐는지 확인한 뒤 해당 잠금만 제거하고 재실행한다. 사용 중인 잠금을 자동 삭제하지 않는다.
 
 이 명령은 도메인마다 Archify 검증·전달을 거쳐 몇 분이 걸릴 수 있다(kreb admin 도메인 8개 실측 약 2분 30초). 명령 실행의 시간 제한을 10분(600000ms)으로 두거나 백그라운드로 실행하고 끝날 때까지 기다린다. 제한에 걸려 끊겼으면 같은 명령을 다시 실행한다 — 매번 전체를 다시 만들므로 결과는 같다.
 

@@ -46,13 +46,11 @@ archify_renderer = _load("render_archify")
 fallback_renderer = _load("render_fallback")
 index_builder = _load("build_index")
 backend_detector = _load("detect_backend")
+output_guard = _load("output_guard")
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    pending = path.with_name(path.name + ".tmp")
-    pending.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    pending.replace(path)
+    output_guard.write_json(path, payload)
 
 
 def apply_labels(ir: dict[str, Any], labels: dict[str, str]) -> int:
@@ -114,6 +112,7 @@ def _render_domain(
     archify_command: Any,
     archify_discovery: dict[str, Any] | None = None,
     preserve_previous: bool = True,
+    backend: str = "auto",
 ) -> dict[str, Any]:
     ir_path = map_dir / "ir" / f"{name}{IR_SUFFIX}"
     receipts_dir = map_dir / "receipts"
@@ -174,17 +173,28 @@ def _render_domain(
     pending.replace(ir_path)
     entry["ir_path"] = str(ir_path)
     try:
-        result = archify_renderer.render_archify(
-            ir_path, receipts_dir, archify_command,
-            project_root=project_root, output_name=name, html_dir=map_dir / "domains",
-            archify_discovery=archify_discovery,
-        )
+        if backend in {"mermaid", "static"}:
+            result = fallback_renderer.render(
+                ir_path, receipts_dir, backend, project_root=project_root,
+                output_name=name, html_dir=map_dir / "domains",
+            )
+        else:
+            result = archify_renderer.render_archify(
+                ir_path, receipts_dir, archify_command,
+                project_root=project_root, output_name=name, html_dir=map_dir / "domains",
+                archify_discovery=archify_discovery,
+            )
     except (OSError, ValueError, RuntimeError) as exc:
         return failed([str(exc)])
     try:
         rendered = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
     except (OSError, ValueError, KeyError) as exc:
         return failed([f"렌더 결과를 확인하지 못했습니다: {exc}"])
+    if backend in {"mermaid", "static"}:
+        artifact = Path(result["html_path"])
+        if rendered.get("status") != "valid" or not artifact.is_file() or artifact.stat().st_size == 0:
+            return failed(["명시 backend가 유효한 현재 HTML을 생성하지 못했습니다."])
+        rendered.update(status="fallback", artifact_path=str(artifact), requested_backend=backend)
     if _domain_status(rendered) == "failed":
         return failed(rendered.get("errors", ["렌더러가 현재 HTML을 생성하지 못했습니다."]))
     entry.update(
@@ -228,6 +238,17 @@ def _rerender_with_mermaid_asset(entry: dict[str, Any], map_dir: Path, project_r
         _write_json(receipt_path, preserved)
 
 
+def _new_report(root: Path, output: Path, domain: str | None, backend: str) -> dict[str, Any]:
+    return {
+        "view": "service", "project_root": str(root), "requested_domain": domain,
+        "requested_backend": backend, "map_dir": str(output), "index_path": None,
+        "validation_status": "failed", "domains": [], "map_domains": [], "changes": None,
+        "cross_domain_edge_count": 0, "unresolved_edge_count": 0, "skipped": [],
+        "mermaid_asset": None, "missing_inputs": [], "labels_applied": 0,
+        "generated_at": datetime.now(timezone.utc).isoformat(), "revision": None,
+    }
+
+
 def build_map(
     project_root: Path | str,
     map_dir: Path | str | None = None,
@@ -235,6 +256,31 @@ def build_map(
     domain: str | None = None,
     labels: dict[str, str] | None = None,
     archify_command: Any = None,
+    backend: str = "auto",
+) -> dict[str, Any]:
+    """명시 backend를 검증하고 출력 폴더의 한 실행만 전체 맵을 갱신한다."""
+    if backend not in {"auto", "archify", "mermaid", "static"}:
+        raise ValueError("backend는 auto, archify, mermaid, static 중 하나여야 합니다.")
+    root = Path(project_root).resolve()
+    output = (Path(map_dir) if map_dir is not None else root / DEFAULT_MAP_DIR).resolve()
+    try:
+        with output_guard.output_lock(output):
+            return _build_map_unlocked(root, output, changed_since, domain, labels, archify_command, backend)
+    except output_guard.OutputBusyError as error:
+        # 소유 중인 실행의 manifest·receipt·HTML을 쓰거나 이전 결과를 이번 성공으로 내지 않는다.
+        report = _new_report(root, output, domain, backend)
+        report.update(busy=True, reason=str(error))
+        return report
+
+
+def _build_map_unlocked(
+    project_root: Path | str,
+    map_dir: Path | str,
+    changed_since: str | None,
+    domain: str | None,
+    labels: dict[str, str] | None,
+    archify_command: Any,
+    backend: str,
 ) -> dict[str, Any]:
     """`project_root`의 아키텍처 맵을 `map_dir`(기본 `<project_root>/.dev/architecture`)에 만든다.
 
@@ -255,24 +301,8 @@ def build_map(
                 for name, entry in previous_domains.items()} if (
                     domain is not None and previous.get("project_root") in (None, str(root))) else {}
     known_domains: set[str] = set(retained)
-    report: dict[str, Any] = {
-        "view": "service",
-        "project_root": str(root),
-        "requested_domain": domain,
-        "map_dir": str(map_dir),
-        "index_path": None,
-        "validation_status": "failed",
-        "domains": [],
-        "changes": None,
-        "cross_domain_edge_count": 0,
-        "unresolved_edge_count": 0,
-        "skipped": [],
-        "mermaid_asset": None,
-        "missing_inputs": [],
-        "labels_applied": 0,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "revision": fallback_renderer._short_head(root),
-    }
+    report = _new_report(root, map_dir, domain, backend)
+    report["revision"] = fallback_renderer._short_head(root)
 
     def publish() -> None:
         entries = {name: {"domain": name, "validation_status": "not_generated", "html_path": None,
@@ -362,7 +392,7 @@ def build_map(
     report["domains"] = []
     # Archify 탐지·설치는 실행당 한 번만 - 도메인마다 다시 부르면 사내망이 막힌
     # 환경에서 도메인 수만큼 설치 시도가 되풀이된다(2026-09-28 최종 리뷰 I1).
-    discovery = backend_detector.ensure_archify() if archify_command is None else None
+    discovery = backend_detector.ensure_archify() if backend in {"auto", "archify"} and archify_command is None else None
     available_domains = set(parts) | {name for name, entry in retained.items()
         if entry.get("validation_status") in {"verified", "fallback"}
         and entry.get("html_path") and (map_dir / "domains" / f"{name}.html").is_file()}
@@ -386,7 +416,8 @@ def build_map(
             part["meta"]["changes"] = {**domain_meta, "removed": removed, "removed_edges": removed_edges}
         report["domains"].append(_render_domain(name, part, map_dir, root, archify_command, discovery,
             preserve_previous=(previous.get("project_root") in (None, str(root))
-                and bool(previous_domains.get(name, {}).get("html_path") or previous_domains.get(name, {}).get("last_good")))))
+                and bool(previous_domains.get(name, {}).get("html_path") or previous_domains.get(name, {}).get("last_good"))),
+            backend=backend))
 
     mermaid_domains = [entry for entry in report["domains"] if entry["backend"] == "mermaid"]
     if mermaid_domains:
@@ -408,6 +439,7 @@ def main() -> int:
     parser.add_argument("--changed-since", metavar="REF")
     parser.add_argument("--domain")
     parser.add_argument("--labels", type=Path)
+    parser.add_argument("--backend", choices=("auto", "archify", "mermaid", "static"), default="auto")
     args = parser.parse_args()
 
     labels = None
@@ -421,7 +453,7 @@ def main() -> int:
         ):
             parser.error('--labels는 {"스캔 라벨": "한국어 라벨"} 형태의 JSON 객체여야 합니다.')
 
-    report = build_map(args.project_root, args.map_dir, args.changed_since, args.domain, labels)
+    report = build_map(args.project_root, args.map_dir, args.changed_since, args.domain, labels, backend=args.backend)
     # Windows 콘솔 기본 인코딩(cp949)은 보고의 일부 문자(—)를 쓰지 못해 UnicodeEncodeError로
     # 죽는다(2026-09-28 콜드런). 보고는 항상 UTF-8로 낸다.
     if hasattr(sys.stdout, "reconfigure"):

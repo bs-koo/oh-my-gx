@@ -4,9 +4,11 @@
 
 `.claude/config.json`의 `projectTypes`를 프로젝트에 맞게 등록한다. **SSOT는 config에 등록된 값**이며, 힌트 카탈로그는 제안용이다.
 
-1. **기존 등록 확인**: config `projectTypes` 중 `detect` 파일이 프로젝트 루트에 존재하는 타입이 있으면 → `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 등록 유지)` 출력 후 **7(하네스 확인)으로 진행**한다 (config는 갱신하지 않는다). 등록 내용을 그대로 두더라도 하네스 확인은 수행한다 — 명령이 config에 적혀 있다는 것과 그 명령이 실제로 도는 것은 다른 문제이고, 이 간극이 파이프라인 후반(구현 직전)에야 드러나면 PRD·설계를 다 만든 뒤 되돌아가야 한다.
-   **여러 타입의 detect 파일이 동시에 존재하면** 첫 매칭으로 단락하지 않고 아래 3의 다중 감지 분기로 처리한다.
-2. **빌드 파일 스캔**: Glob으로 `Makefile`, `CMakeLists.txt`, `project.yml`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, `setup.py`, `requirements.txt`, `go.mod`, `*.csproj`, `*.sln`, `composer.json`, `build.gradle`, `build.gradle.kts`, `package.json`을 탐색한다.
+1. **등록 출처와 기존 값 확인**: 상위 스킬의 `CONFIG_SOURCE`를 유지한다. `existing`의 사용자 명령·`roots`·확장 필드는 보존한다. `template`은 이번에 복사한 제안 기본값이므로 검증된 기존 등록이 아니다. 한 타입이 매칭돼도 여기서 7로 단락하지 않는다.
+2. **추가·하위 빌드 파일 스캔**: 설치된 [gx-setup-scan.py](../../../../scripts/gx-setup-scan.py)를 `python "<GX_PLUGIN_ROOT>/scripts/gx-setup-scan.py" --cwd "<PROJECT_ROOT>" --config-source "<CONFIG_SOURCE>"`로 실행한다 (Bash는 `python3`, PowerShell은 `python`). helper는 설정을 쓰지 않고 루트·하위 빌드 마커, 등록된 타입·`roots`와 미확인 마커를 반환한다. `.claude`·`.dev`·빌드/의존성·다른 worktree와 링크는 제외한다. exit 2 또는 `scan_errors`는 조사 실패로 보고하며 '추가 타입 없음'으로 바꾸지 않는다. helper 부재 시 같은 제외 경계의 Glob으로 조사하고 불완전한 범위를 명시한다.
+   - 마커: `Makefile`, `CMakeLists.txt`, `project.yml`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, `setup.py`, `requirements.txt`, `go.mod`, `*.csproj`, `*.sln`, `composer.json`, `build.gradle`, `build.gradle.kts`, `package.json`.
+   - `existing`이고 미확인 마커·읽기 실패가 없을 때만 `프로젝트 타입 등록 : 완료 ✅ ({타입}, 기존 등록 유지)` 출력 후 **7(하네스 확인)으로 진행**한다. 기존 명령을 힌트 기본값으로 바꾸지 않는다.
+   - `template` 또는 미확인 마커가 있으면 아래 3으로 진행한다. `build.gradle` + `frontend/package.json`처럼 하위 스택도 포함한다. 같은 프로젝트의 대체 마커는 하나로 묶고 독립 프로젝트는 분리한다. config 부재를 복구한 이번 실행과 사용자가 검증한 기존 등록을 구별한다.
 3. **제안 생성**: `Read("project-type-hints.md")`로 힌트 카탈로그를 읽어 감지 파일과 매칭한다.
    - 매칭되면 해당 행의 타입 키·build/test·warningPattern·artifacts를 제안 값으로 사용한다.
    - **여러 행이 매칭되면** 두 가지 상황을 구분한다. 잘못 고르면 한쪽 레이어가 영구히 검증되지 않으므로 사용자에게 물어본다.
@@ -25,7 +27,7 @@
        }]
      )
      ```
-     복합을 선택하면 각 행의 명령을 `&&`로 잇고 타입 키는 프로젝트를 나타내는 이름으로 제안한다 (예: `fullstack`). 명령 조합 규칙과 주의점은 힌트 카탈로그의 "복합 타입" 절을 따른다.
+     복합을 선택하면 각 행의 명령을 `&&`로 잇고 타입 키는 프로젝트를 나타내는 이름으로 제안한다 (예: `fullstack`). 기존에 별도 타입·`roots`가 등록돼 있으면 이를 보존하고 미등록 프로젝트만 추가하는 안도 제시한다. 기존 `roots`를 지우거나 미확인 마커만으로 자동 확대하지 않는다. 명령 조합 규칙과 주의점은 힌트 카탈로그의 "복합 타입" 절을 따른다.
    - 매칭되지 않으면 프로젝트 구조(빌드 스크립트, README, CI 설정)를 근거로 추론해 제안하되 근거를 함께 표시한다. 근거 없는 명령을 지어내지 않는다.
    - 아무 빌드 파일도 감지되지 않으면 → `프로젝트 타입 등록 : 건너뜀 (감지 실패)` 출력 후 1단계로 진행한다 (파이프라인 게이트가 fail-closed로 처리).
 4. **사용자 확인**:

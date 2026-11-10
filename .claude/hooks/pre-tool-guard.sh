@@ -3,6 +3,7 @@
 # JSON permissionDecision 출력으로 차단(deny)·확인(ask), exit 0으로 통과
 
 set -uo pipefail
+DEFERRED_REASON=""
 
 # plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -152,15 +153,20 @@ esac
 
 # G1 + G3: git commit 가드 — 인접 패턴: "git commit"(rtk/체이닝 포함), "git -C <dir> commit", "git -c <opt> commit"
 case "$CMD" in
-  *"git commit"*|*"git -C "*commit*|*"git -c "*commit*)
-    GIT_DIR=""
-    CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -z "$CURRENT_BRANCH" ]; then
-      GIT_DIR=$(echo "$CMD" | sed -n 's/.*git[[:space:]]\{1,\}-C[[:space:]]\{1,\}\([^[:space:]"\\]\{1,\}\).*/\1/p' 2>/dev/null || echo "")
-      if [ -n "$GIT_DIR" ] && [ -d "$GIT_DIR" ]; then
-        CURRENT_BRANCH=$(git -C "$GIT_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "")
-      fi
+  *"git commit"*|*"git -C"*commit*|*"git -c "*commit*|*"git --"*commit*|*"git.exe "*commit*)
+    # JSON 원문을 전달한다. shlex로 인용/연속 -C를 해석하며 동적·모호한 경로는 차단한다.
+    HOOK_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+    TARGET_PYTHON=$(command -v python3 || command -v python || echo "")
+    if [ -z "$TARGET_PYTHON" ] || ! "$TARGET_PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' >/dev/null 2>&1 ||
+       ! GIT_TARGETS=$(printf '%s' "$INPUT" | "$TARGET_PYTHON" "$HOOK_ROOT/../../scripts/gx-git-target.py"); then
+      printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Git 커밋 대상 경로를 확정하지 못했습니다. Python 3.10+와 명시적인 git -C 경로를 확인하세요."}}'
+      exit 0
     fi
+    # 한 명령에 여러 저장소의 commit이 있으면 각각 검사한다.
+    DEFERRED_REASON=""
+    while IFS= read -r GIT_DIR; do
+      [ -n "$GIT_DIR" ] || continue
+      CURRENT_BRANCH=$(git -C "$GIT_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "")
 
     # G1: 보호 브랜치(main/master/develop)에서 직접 커밋 차단
     if [[ "$CURRENT_BRANCH" =~ ^(develop|main|master)$ ]]; then
@@ -179,10 +185,10 @@ EOF
     # G3: gx-tdd verify 게이트 — 미통과 상태의 커밋은 사용자 확인(ask)을 요구
     # deny가 아닌 ask인 이유: 스킬/라우팅 층에 문서화된 "위험 수용" 경로를 보존하면서,
     # 컨텍스트 압축·라우팅 우회와 무관하게 항상 동작하는 결정론적 확인 지점을 만든다.
-    if [ -n "$GIT_DIR" ]; then
-      GIT_ROOT=$(git -C "$GIT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
-    else
-      GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+    GIT_ROOT=$(git -C "$GIT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
+    if [ -z "$GIT_ROOT" ]; then
+      printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "커밋 대상 Git 저장소를 확인할 수 없습니다."}}'
+      exit 0
     fi
     if [ -n "$GIT_ROOT" ]; then
       if [ -n "$CURRENT_BRANCH" ]; then
@@ -223,6 +229,11 @@ EOF
         else
           GATE_REASON="verify 게이트 미통과 상태입니다 (${GATE_LABEL}: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
         fi
+        # 앞 저장소의 ask로 뒤 저장소의 보호 브랜치/레거시 deny를 가리지 않는다.
+        if [ "$GATE_DECISION" = "ask" ]; then
+          DEFERRED_REASON="${DEFERRED_REASON:+$DEFERRED_REASON; }$GIT_DIR: $GATE_REASON"
+          continue
+        fi
         cat <<EOF
 {
   "hookSpecificOutput": {
@@ -235,6 +246,7 @@ EOF
         exit 0
       fi
     fi
+    done <<< "$GIT_TARGETS"
     ;;
 esac
 
@@ -284,4 +296,10 @@ EOF
     exit 0
     ;;
 esac
+# 모든 강한 deny(Git 보호·레거시·SVN)를 평가한 다음에만 보류한 ask를 반환한다.
+if [ -n "${DEFERRED_REASON:-}" ]; then
+  printf '%s' "$DEFERRED_REASON" | "$TARGET_PYTHON" -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.stdin.buffer.read().decode("utf-8")}}))' ||
+    printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Git 검증 대기 판정을 인코딩하지 못했습니다."}}'
+  exit 0
+fi
 exit 0
