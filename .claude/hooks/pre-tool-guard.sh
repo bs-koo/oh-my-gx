@@ -3,6 +3,7 @@
 # JSON permissionDecision 출력으로 차단(deny)·확인(ask), exit 0으로 통과
 
 set -uo pipefail
+DEFERRED_REASON=""
 
 # plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -150,17 +151,44 @@ EOF
     ;;
 esac
 
-# G1 + G3: git commit 가드 — 인접 패턴: "git commit"(rtk/체이닝 포함), "git -C <dir> commit", "git -c <opt> commit"
+# G1 + G3: git commit 가드 — 인접 패턴: "git commit"(rtk/체이닝/래퍼 포함), "git -C/-c/-P/--… commit", "git.exe commit"
 case "$CMD" in
-  *"git commit"*|*"git -C "*commit*|*"git -c "*commit*)
-    GIT_DIR=""
-    CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -z "$CURRENT_BRANCH" ]; then
-      GIT_DIR=$(echo "$CMD" | sed -n 's/.*git[[:space:]]\{1,\}-C[[:space:]]\{1,\}\([^[:space:]"\\]\{1,\}\).*/\1/p' 2>/dev/null || echo "")
-      if [ -n "$GIT_DIR" ] && [ -d "$GIT_DIR" ]; then
-        CURRENT_BRANCH=$(git -C "$GIT_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "")
+  *"git commit"*|*"git -"*commit*|*"git.exe "*commit*)
+    # JSON 원문을 helper에 넘겨 인용·heredoc·셸 래퍼·cd를 해석한 커밋 대상 목록을 받는다. 동적·모호한 경로는 차단한다.
+    HOOK_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+    # python3 → python 순서로 실제 실행해 3.10 이상을 고른다. Windows의 python3는 Store 별칭이거나
+    # 3.10 미만일 수 있어 첫 이름만 보면 모든 커밋이 막힌다(capture-decision.sh와 같은 방식).
+    TARGET_PYTHON=""
+    for candidate in python3 python; do
+      if "$candidate" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' </dev/null >/dev/null 2>&1; then
+        TARGET_PYTHON=$candidate
+        break
       fi
+    done
+    if [ -n "$TARGET_PYTHON" ]; then
+      if ! GIT_TARGETS=$(printf '%s' "$INPUT" | "$TARGET_PYTHON" "$HOOK_ROOT/../../scripts/gx-git-target.py"); then
+        # helper는 판정하지 못한 원인 한 줄을 stdout에 남긴다. JSON 문자열이 깨지지 않게 제어문자·따옴표·백슬래시를 바꾼다.
+        TARGET_REASON=$(printf '%s' "$GIT_TARGETS" | head -1 | tr -d '\000-\037' | tr '"\\' "'/")
+        printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Git 커밋 대상을 확정하지 못했습니다: %s. 커밋할 저장소를 git -C <경로>로 명시하세요."}}\n' \
+          "${TARGET_REASON:-대상 판정 helper가 실패했습니다}"
+        exit 0
+      fi
+    else
+      # Python 3.10+가 없으면 이전 bash 판정으로 보호를 유지한다: cwd와 따옴표 없는 `git -C <경로>`를 검사한다.
+      GIT_TARGETS="?."
+      while IFS= read -r FALLBACK_DIR; do
+        [ -n "$FALLBACK_DIR" ] && [ -d "$FALLBACK_DIR" ] && GIT_TARGETS="$GIT_TARGETS"$'\n'"?$FALLBACK_DIR"
+      done <<< "$(printf '%s\n' "$CMD" | sed -n 's/.*git[[:space:]]\{1,\}-C[[:space:]]\{1,\}\([^[:space:]"\\]\{1,\}\).*/\1/p')"
     fi
+    # 한 명령에 여러 저장소의 commit이 있으면 각각 검사한다.
+    # 루프 변수로 GIT_DIR를 쓰지 않는다 — export된 GIT_DIR를 덮어쓰면 아래 git 호출이 대상 저장소를 잃는다.
+    DEFERRED_REASON=""
+    while IFS= read -r TARGET_DIR; do
+      [ -n "$TARGET_DIR" ] || continue
+      # `?` 접두는 대상을 해석하지 못해 대신 검사하는 경로다. Git 저장소가 아니면 건너뛴다(이전 훅과 같은 판정).
+      TARGET_OPTIONAL=0
+      case "$TARGET_DIR" in "?"*) TARGET_OPTIONAL=1; TARGET_DIR=${TARGET_DIR#\?} ;; esac
+      CURRENT_BRANCH=$(git -C "$TARGET_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "")
 
     # G1: 보호 브랜치(main/master/develop)에서 직접 커밋 차단
     if [[ "$CURRENT_BRANCH" =~ ^(develop|main|master)$ ]]; then
@@ -179,10 +207,11 @@ EOF
     # G3: gx-tdd verify 게이트 — 미통과 상태의 커밋은 사용자 확인(ask)을 요구
     # deny가 아닌 ask인 이유: 스킬/라우팅 층에 문서화된 "위험 수용" 경로를 보존하면서,
     # 컨텍스트 압축·라우팅 우회와 무관하게 항상 동작하는 결정론적 확인 지점을 만든다.
-    if [ -n "$GIT_DIR" ]; then
-      GIT_ROOT=$(git -C "$GIT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
-    else
-      GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+    GIT_ROOT=$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
+    if [ -z "$GIT_ROOT" ]; then
+      [ "$TARGET_OPTIONAL" -eq 1 ] && continue
+      printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "커밋 대상 Git 저장소를 확인할 수 없습니다."}}'
+      exit 0
     fi
     if [ -n "$GIT_ROOT" ]; then
       if [ -n "$CURRENT_BRANCH" ]; then
@@ -223,6 +252,11 @@ EOF
         else
           GATE_REASON="verify 게이트 미통과 상태입니다 (${GATE_LABEL}: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
         fi
+        # 앞 저장소의 ask로 뒤 저장소의 보호 브랜치/레거시 deny를 가리지 않는다.
+        if [ "$GATE_DECISION" = "ask" ]; then
+          DEFERRED_REASON="${DEFERRED_REASON:+$DEFERRED_REASON; }$TARGET_DIR: $GATE_REASON"
+          continue
+        fi
         cat <<EOF
 {
   "hookSpecificOutput": {
@@ -235,6 +269,7 @@ EOF
         exit 0
       fi
     fi
+    done <<< "$GIT_TARGETS"
     ;;
 esac
 
@@ -249,6 +284,9 @@ case "$CMD" in
     # slug로 둔갑해 폴백에도 걸리지 않는다. 공백 포함 값은 아래 case에서 불안전으로 걸러진다.
     ACTIVE_SLUG=""
     [ -f "$WC_ROOT/.dev/.active" ] && ACTIVE_SLUG=$(head -1 "$WC_ROOT/.dev/.active" 2>/dev/null | tr -d '\r\n')
+    # 편집기가 붙인 UTF-8 BOM은 지운다 — 남기면 slug 디렉토리를 못 찾고 trunk로 폴백해 그 작업의 verify 게이트가 빠진다
+    # (scripts/gx-work.py·capture_decision.py와 같은 해석).
+    ACTIVE_SLUG=${ACTIVE_SLUG#$'\xEF\xBB\xBF'}
     # 부재·공백·공백 포함·안전하지 않은 값(/ 또는 ..)이면 .dev/trunk로 폴백(레거시 세션·verify 방어 유지).
     case "$ACTIVE_SLUG" in ""|"."|*" "*|*"	"*|*/*|*\\*|*..*) ACTIVE_SLUG="trunk" ;; esac
     # 스테일 포인터 방어: 값이 있어도 가리키는 state.md가 없으면 trunk로 폴백한다.
@@ -284,4 +322,11 @@ EOF
     exit 0
     ;;
 esac
+# 모든 강한 deny(Git 보호·레거시·SVN)를 평가한 다음에만 보류한 ask를 반환한다.
+if [ -n "${DEFERRED_REASON:-}" ]; then
+  # Python 없이도(폴백 판정) ask를 낼 수 있게 JSON 문자열 이스케이프를 셸에서 한다.
+  ESCAPED_REASON=$(printf '%s' "$DEFERRED_REASON" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": "%s"}}\n' "$ESCAPED_REASON"
+  exit 0
+fi
 exit 0

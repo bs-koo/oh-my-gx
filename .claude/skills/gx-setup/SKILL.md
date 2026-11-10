@@ -1,7 +1,7 @@
 ---
 name: gx-setup
-argument-hint: "없음"
-description: oh-my-gx의 초기 설정 요청에 사용한다. 버전 관리·빌드·테스트 설정을 등록하고 필수 도구와 인증 상태를 확인한다.
+argument-hint: "[--inspect]"
+description: oh-my-gx의 초기 설정이나 현재 프로젝트의 설정 진단만 요청할 때 사용한다.
 disable-model-invocation: true
 allowed-tools:
   - "Bash(echo *)"
@@ -12,11 +12,14 @@ allowed-tools:
   - "Bash(command *)"
   - "Bash(uname *)"
   - "Bash(java *)"
+  - "Bash(javac *)"
   - "Bash(winget install *)"
   - "Bash(choco install *)"
   - "Bash(scoop install *)"
   - "Bash(brew install *)"
   - "Bash(test *)"
+  - "Bash(python *)"
+  - "Bash(python3 *)"
   - Read
   - Write
   - Edit
@@ -43,16 +46,22 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 ## 실행 절차
 
+### 설정 진단만 (`--inspect` 또는 "설정 진단만")
+
+이 요청일 때만 `Read("references/inspect.md")`로 진단하고 종료한다. 초기 설정으로 진행하지 않으며 config·`.gitignore`·승인 기록 작성과 설치·네트워크·빌드·테스트 실행을 금지한다. 일반 설정은 아래 절차를 따른다.
+
 아래 단계를 **순서대로** 실행한다. 각 단계 완료 시 `{항목} : 완료 ✅` 형식으로 출력한다.
 
 ### 0단계: VCS 감지
 
 프로젝트의 버전 관리 시스템을 감지하고 `.claude/config.json`에 저장한다.
 
+생성 전에 config 존재 여부를 대화의 `CONFIG_SOURCE`에 `existing` 또는 `template`로 기록한다. 이 값은 이번 실행에서만 유지하며 config에 새 필드로 쓰지 않는다. 이번에 템플릿에서 복사한 타입은 사용자가 검증한 기존 등록이 아니다. 0.5단계에 이 출처를 전달한다.
+
 0. **config.json 생성·검증** (다른 단계보다 먼저): 기존 소비 프로젝트 `.claude/config.json`이 있으면 읽고 JSON으로 파싱한다. 오류가 있으면 파일 경로와 오류를 보고하고 setup을 중단한다. 기존 설정은 자동 덮어쓰지 않는다.
    - **없으면**: 이 SKILL.md 위치 기준 `Read("references/config.template.json")`로 번들 템플릿을 UTF-8로 읽고 JSON으로 파싱한다. 로드나 파싱이 실패하면 실패 파일 경로를 보고하고 setup을 중단한다. Codex에서는 위 helper에 빈 updates 객체 `{}`를 전달해 템플릿에서 생성한다. Claude Code에서는 정상 템플릿을 소비 프로젝트 `.claude/config.json`에 기록한다. 이후 **다시 읽어 JSON으로 파싱한다**. 재검증에 성공했을 때만 `config.json 생성 : 완료 ✅`를 출력하고 아래 1로 진행한다. 쓰기/재읽기 실패면 완료를 표시하지 않고 중단한다.
    - **있으면**: 기존 JSON 파싱 성공 후 아래 1로 진행한다.
-1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 1단계로 진행.
+1. `.claude/config.json`의 `"vcs"` 필드를 확인한다. 값이 이미 설정되어 있으면 (`"git"` 또는 `"svn"`) → `VCS_TYPE`에 그 값을 대입하고 실제 VCS와 일치하는지 확인한다. 다르면 사용자 판단을 기다리고 자동 덮어쓰지 않는다. 일치하면 갱신 없이 `VCS 감지 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 0.5단계로 진행.
 2. 값이 비어있으면 → `git rev-parse --is-inside-work-tree 2>/dev/null`로 Git 저장소인지 확인한다.
 3. 결과에 따라 분기:
    - **성공** → `VCS_TYPE = "git"`
@@ -131,7 +140,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
       | brew | `brew install gh` |
 
    e. 설치 완료 후 `which gh`로 재확인 → 성공하면 `gh : 완료 ✅` 출력
-   f. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 계속 진행
+   f. 설치 실패 시 → 수동 설치 안내 (https://cli.github.com) 출력 후 `gh : 미설치`로 기록한다. 인증에서 gh 명령을 실행하지 않고 `GH 인증 : 미확인 (gh 미설치)`로 표시한 뒤 독립 설정은 계속 진행한다.
    g. 패키지 매니저가 감지되지 않으면 → 수동 설치 안내 (https://cli.github.com) 출력. `/gx-setup` 재실행 안내.
 
 **svn인 경우:**
@@ -141,7 +150,7 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
    ```
    ⚠️ SVN CLI가 설치되어 있지 않습니다.
-   /gx-work의 자기점검·리뷰 단계에서 svn diff가 필요합니다.
+   gx-tdd의 리뷰·검증 단계에서 svn diff가 필요합니다.
 
    {OS별 안내}
 
@@ -163,19 +172,13 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 
 #### JDK (java 계열 타입만)
 
-0.5단계에서 **이번 실행의 detect 파일 매칭으로 감지된 타입(0.5단계에서 신규 등록됐든 기존 유지든)** 중 java 계열(gradle/maven 기반 — `java-spring`, `java-maven` 등 build/test 명령에 `gradlew` 또는 `mvn`이 포함된 타입)이 있을 때만 실행한다. config에 java 계열 항목이 존재해도 이번 프로젝트에서 detect 파일이 매칭되지 않으면 건너뛴다. 없으면 `JDK : 건너뜀 (java 계열 타입 없음)` 출력 후 2단계로 진행한다.
+0.5단계의 **이번 detect 매칭**에 Java 계열(Gradle/Maven, build/test에 `gradlew`/`mvn`)이 있을 때만 수행한다. config 등록만으로 실행하지 않는다. 미감지면 `JDK : 건너뜀 (java 계열 타입 없음)` 출력 후 2단계로 간다.
 
-1. `uname -s`로 OS를 감지한다.
-2. `java -version`으로 JDK 설치 여부와 버전을 확인한다.
-3. JDK 8 이상이 설치되어 있으면 → `JDK : 완료 ✅ (버전)` 출력
-4. 없거나 버전이 낮으면 → OS별 설치 안내를 제공한다:
-   - **Linux**: `sudo apt install openjdk-17-jdk` 또는 `sudo yum install java-17-openjdk-devel`
-   - **macOS**: `brew install openjdk@17`
-   - **Windows (MSYS/Git Bash)**: https://adoptium.net 에서 다운로드 안내
+해당 타입이 있을 때만 `Read("references/jdk.md")`로 런타임과 `javac`의 존재·버전을 확인한다. 컴파일러 확인 전 완료로 표시하지 않으며 설치·네트워크·환경 자동 변경은 하지 않는다.
 
 ### 2단계: 인증
 
-VCS_TYPE이 git이면 `Read("references/authentication-git.md")`, svn이면 `Read("references/authentication-svn.md")`를 읽어 해당 경로만 수행한다. SVN 사용자명·비밀번호를 대화로 수집하지 않는다. git은 gh auth status로 기존 인증을 확인하며 필요할 때만 device flow를 진행한다.
+VCS_TYPE이 git이고 gh 실행이 확인됐으면 `Read("references/authentication-git.md")`, svn이고 svn 실행이 확인됐으면 `Read("references/authentication-svn.md")`를 읽어 해당 경로만 수행한다. CLI 미설치·실행 실패를 미인증으로 추정해 로그인하지 않고 인증 미확인으로 표시한다. SVN 사용자명·비밀번호를 대화로 수집하지 않는다. git은 gh auth status로 기존 인증을 확인하며 필요할 때만 device flow를 진행한다.
 
 ### 3단계: context/ 초기 구조 안내
 
@@ -186,7 +189,7 @@ VCS_TYPE이 git이면 `Read("references/authentication-git.md")`, svn이면 `Rea
 
 ### 3.5단계: .dev 공유 확인 (git)
 
-git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-dev가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
+git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-tdd가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
 
 ### 4단계: Google Chat 알림 연동 (선택)
 
@@ -225,7 +228,7 @@ gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로�
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-work {요청}           → 전체 개발 사이클 (PRD~PR)
+/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 기본 종료점 verify — 커밋·PR은 요청 시)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 💡 화면 설계서가 있다면:
@@ -237,12 +240,12 @@ requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-work {요청}           → 개발 사이클 (PRD~리뷰)
+/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 종료점 verify)
 /gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
 
 ⚠️ SVN 프로젝트:
 - /gx-commit, /gx-pull-request는 SVN에서 미지원
-- /gx-work 리뷰까지 완료 후 svn commit은 직접 수행하세요
+- /gx-work 검증(verify)까지 완료 후 svn commit은 직접 수행하세요
 ```
 
 ### Codex 모델 설정 안내
@@ -252,6 +255,6 @@ Codex에서는 [모델 정책](../gx-work/references/codex-models.md)을 참조�
 ## 주의사항
 
 - 각 단계를 **하나씩** 실행하고, 실패하면 원인을 파악하여 사용자에게 안내한다.
-- 설치 도중 에러가 나면 멈추고 사용자에게 상황을 설명한다.
+- 설치 도중 에러가 나면 해당 도구의 설치·인증 경로를 멈추고 상황을 설명한다. 위에서 허용한 독립 설정만 계속하며 실패 항목에 완료를 표시하지 않는다.
 - 이미 완료된 항목은 재실행하지 않고 `완료 ✅` 만 출력한다.
 - `config.json`의 `vcs` 값이 이미 설정되어 있는 경우, 0단계에서는 감지된 VCS와 일치하는지 확인하며, 다를 경우 사용자에게 물어본다.

@@ -123,7 +123,7 @@ service를 선택했으면 일반 산출물 수집·실행 대신 `Read("referen
 
 ## 실패 계약
 
-- gx-dev 등의 선택 단계에서 시각화가 실패하면 `visualization_status: failed`, 실패 이유, receipt 경로를 기록하되 개발·리뷰·커밋 파이프라인은 실패시키지 않는다.
+- gx-tdd 완료 단계(Step 5.5) 등의 선택 단계에서 시각화가 실패하면 `visualization_status: failed`, 실패 이유, receipt 경로를 기록하되 개발·리뷰·커밋 파이프라인은 실패시키지 않는다.
 - 사용자가 “시각화만” 요청했거나 이 스킬을 직접 호출했다면 실패 이유, 누락 입력, 마지막 진단, 재실행 명령을 반환하고 시각화 호출 자체를 실패로 끝낸다. HTML 경로를 성공처럼 제시하지 않는다.
 - 폴백 HTML이 검증되면 `fallback`으로 성공 산출물을 반환하되 Archify 성공이라고 표현하지 않는다.
 - 모든 백엔드가 실패하면 stale HTML을 제거하고 `failed` receipt를 남긴다.

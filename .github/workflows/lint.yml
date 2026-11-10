@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 린트 [1/36]이 최근 버전 태그 이후 배포 경로 변경과 버전을 대조하려면 태그가 필요하다.
+          fetch-depth: 0
       - name: 정합성 린트
         run: bash scripts/lint-consistency.sh
       - name: 훅 회귀 테스트
@@ -46,6 +49,8 @@ jobs:
         run: python scripts/sync-codex-resources.py --check
       - name: Codex 오프라인 계약 테스트
         run: python -m unittest discover -s tests -p "test_codex_*.py" -v
+      - name: 보조 스킬 보호·복구·조회 회귀
+        run: python -m unittest discover -s tests -p "test_gx_aux_*.py" -v
       - name: 공통 진입·배포·지시문 예산
         run: python -m unittest discover -s tests -p "test_gx_work*.py" -v
       - name: 컨텍스트 인계·작업계획 정합성

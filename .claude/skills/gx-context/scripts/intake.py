@@ -8,13 +8,20 @@ import argparse
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
+import sys
 
 
 CONSEQUENTIAL = {"scope", "behavior", "architecture", "acceptance", "removal"}
+# gx-work·gx-tdd와 같은 작업 ID 형식: `W` + 두 자리 이상 ASCII 숫자 (W01, W118)
+WORK_ID = re.compile(r"\AW[0-9]{2,}\Z")
 
 
 def normalize_intake(payload):
     """누락된 중요 결정만 질문으로 남기고 원문 대신 원장 포인터를 돌려준다."""
+    work_id = payload.get("work-id")
+    if work_id is not None and (not isinstance(work_id, str) or not WORK_ID.match(work_id)):
+        raise ValueError(f"work-id: W와 두 자리 이상 ASCII 숫자가 필요합니다 (예: W01, W118): {work_id!r}")
     approval = deepcopy(payload.get("approval", {"status": "unconfirmed", "source": None}))
     if approval.get("status") not in {"approved", "unconfirmed"}:
         raise ValueError("approval.status: approved 또는 unconfirmed가 필요합니다")
@@ -105,21 +112,30 @@ def normalize_intake(payload):
         "observed-facts": observations,
         "context-paths": deepcopy(payload.get("context-paths", [])),
         "plan-file": payload.get("plan-file"),
+        "work-id": work_id,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path, help="UTF-8 intake JSON 파일")
-    parser.add_argument("--output", type=Path, help="UTF-8 인계 JSON 파일")
+    parser.add_argument("input", help="UTF-8 intake JSON 파일 또는 stdin(-)")
+    parser.add_argument("--output", type=Path, help="UTF-8 인계 JSON 파일 (없으면 stdout)")
     args = parser.parse_args()
-    result = normalize_intake(json.loads(args.input.read_text(encoding="utf-8")))
+    # 직접 호출의 context-only 정리는 파일 없이 stdin/stdout으로 처리한다.
+    # Windows PowerShell 5.1이 붙이는 UTF-8 BOM은 읽을 때만 허용한다.
+    source = sys.stdin.read() if args.input == "-" else Path(args.input).read_text(encoding="utf-8-sig")
+    result = normalize_intake(json.loads(source.removeprefix("\ufeff")))
     text = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.write_text(text, encoding="utf-8")
     else:
-        print(text, end="")
+        sys.stdout.write(text)
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, OSError):
+            pass
     main()

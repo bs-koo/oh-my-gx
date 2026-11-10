@@ -16,7 +16,9 @@ for stream in (sys.stdout, sys.stderr):
 HEADER = ["ID", "작업", "도메인", "요구사항", "의존", "작업 위치", "상태"]
 # 폐기: 요구사항이 삭제되어 할 일이 없어진 작업. 행을 지우지 않고 상태로 남긴다
 STATES = {"대기", "진행", "완료", "폐기"}
-ID_RE = re.compile(r"^W\d{2}$")
+# 작업 ID는 `W` + 두 자리 이상 ASCII 숫자다(W01·W118). `\d`는 전각 숫자도 받으므로 쓰지 않고,
+# `$`는 끝 개행을 허용하므로 `\Z`로 닫는다. 하이픈은 이슈 키 패턴과 겹치므로 받지 않는다.
+ID_RE = re.compile(r"\AW[0-9]{2,}\Z")
 
 
 def parse_table(text, header, allow_empty=False):
@@ -67,13 +69,22 @@ def check(rows):
 
     for r in rows:
         if not ID_RE.match(r["ID"]):
-            errors.append(f"{r['ID']}: ID 형식은 W + 두 자리 숫자입니다 (하이픈 금지)")
+            errors.append(f"{r['ID']}: ID 형식은 W + 두 자리 이상 숫자입니다 (하이픈 금지)")
         if r["상태"] not in STATES:
             errors.append(f"{r['ID']}: 상태는 {'/'.join(sorted(STATES))} 중 하나여야 합니다 (현재 '{r['상태']}')")
 
     dup = {i for i in ids if ids.count(i) > 1}
     if dup:
         errors.append(f"ID 중복: {', '.join(sorted(dup))}")
+
+    # W01과 W001처럼 앞자리 0만 다른 ID는 같은 작업 번호다. 둘이 공존하면 착수·완료 기록이 엉뚱한 행으로 간다.
+    numbers = {}
+    for i in dict.fromkeys(ids):
+        if ID_RE.match(i):
+            numbers.setdefault(int(i[1:]), []).append(i)
+    for same in numbers.values():
+        if len(same) > 1:
+            errors.append(f"같은 번호의 ID: {', '.join(same)} (앞자리 0만 다른 ID는 하나로 맞춘다)")
 
     # 의존 실존
     known = set(ids)

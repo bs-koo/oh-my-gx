@@ -1,7 +1,7 @@
 ---
 name: gx-tdd
 version: 1.0.0
-description: 기능 개발·버그 수정의 TDD 실행과 기존 TDD 작업 재개 요청에 사용한다. 요구사항·설계·구현계획을 구체화하고 RED-GREEN-REFACTOR와 완료 검증을 수행한다.
+description: TDD를 명시한 개발, gx-work에서 인계된 실행, 기존 TDD 작업 재개에 사용한다. 일반 개발·버그 수정 요청은 gx-work가 먼저 받는다. 요구사항·설계·구현계획을 구체화하고 RED-GREEN-REFACTOR와 완료 검증을 수행한다.
 argument-hint: "<자연어 요청>"
 allowed-tools: ["Bash(python *)", "Bash(python3 *)", "Bash(git *)", "Bash(svn *)", "Bash(test *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(ls *)", "Bash(find *)", "Bash(pwd *)", "Bash(basename *)", "Bash(dirname *)", "Bash(which *)", "Bash(grep *)", "Bash(wc *)", "Bash(echo *)", "Bash(mktemp *)", "Bash(sort *)", "Bash(rm -f *)", "Bash(./gradlew *)", "Bash(npm *)", "Bash(bun *)", "Bash(npx *)", "Bash(pnpm *)", "Bash(yarn *)", "Bash(pytest *)", "Bash(go *)", "Bash(make *)", "Bash(cmake *)", "Bash(ctest *)", "Bash(ceedling *)", "Bash(cargo *)", "Bash(mvn *)", "Bash(dotnet *)", "Bash(gh *)", "Bash(GH_HOST= *)", "Read", "Edit", "Write", "Glob", "Grep", "Task", "AskUserQuestion", "Skill"]
 ---
@@ -53,15 +53,15 @@ Phase 목록을 계산하기 전에 다음 파일을 순서대로 Read한다.
 
 ### 공통 진입과 계획 인계
 
-**계획 전용 인계**: 아래 진입 검증을 통과해도 `read-only: true`·`execution-authorized: false`이면 [탐색 setup](phases/setup-explore.md)과 필요한 requirements/design의 계획 내용만 수행하고 여기서 종료한다. 실행 setup·pipeline/state 초기화·브랜치·빌드·테스트·RED·구현·complete는 수행하지 않는다. 문서 저장 요청이 없으면 결과를 대화에만 제시한다. `ready-for-tdd`는 요청된 계획 단계에 들어갈 수 있다는 뜻이며 구현 허가를 뜻하지 않는다. 일반 구현 인계는 `execution-authorized: true`도 확인한다. `--handoff`의 origin 필드를 지워 직접 호출로 우회하지 않는다.
+**계획 전용 인계**: 계획만 요청은 gx-work가 대화로 끝내고, 이 인계는 PRD·설계 문서 저장을 원할 때만 온다. 아래 진입 검증을 통과해도 `read-only: true`·`execution-authorized: false`이면 [탐색 setup](phases/setup-explore.md)과 필요한 requirements/design 문서만 작성하고 종료한다. 실행 setup·pipeline/state 초기화·브랜치·빌드·테스트·RED·구현·complete는 수행하지 않는다. 일반 구현 인계는 `execution-authorized: true`도 확인한다. `--handoff`의 origin 필드를 지워 직접 호출로 우회하지 않는다.
 
-새로운 사용자는 `oh-my-gx:gx-work`에서 목적·종료점·기존 자료를 정리해 이 스킬로 들어온다. 직접 gx-tdd를 호출한 경우도 동일한 TDD 계약을 따른다. `--handoff <JSON>`·`--from-plan <JSON>`이 있으면 먼저 [계획 인계 계약](references/plan-handoff.md)을 읽는다. 기존 결정과 태스크는 검증해서 재사용하고 별도의 중복 계획을 만들지 않는다.
+보통 `oh-my-gx:gx-work`가 목적·종료점·자료를 정리해 넘기며, 직접 호출도 같은 TDD 계약을 따른다. `--handoff <JSON>`·`--from-plan <JSON>`이 있으면 먼저 [계획 인계 계약](references/plan-handoff.md)을 읽는다. 기존 결정과 태스크는 검증해서 재사용하고 별도의 중복 계획을 만들지 않는다.
 
-**gx-work 진입 게이트**: `origin: gx-work`인 인계는 실제 프로젝트 절대경로를 읽기 전용으로 확정하고 설치 플러그인의 `scripts/gx-work.py validate-handoff --handoff <절대경로> --project-root <실제 루트>`가 exit 0과 `ready-for-tdd: true`를 함께 반환한 뒤에만 소비한다. 원 요청/계획 포인터·해시·run·종료점·실제 진입 응답을 검증하며, 실패·exit 2·false·미응답이면 원래 질문/보완점으로 돌아간다. 일반 구현 요청 문구로 승인을 대체하지 않는다. 이 검사는 실행 setup·브랜치/stash·빌드·RED/코드 변경·state 초기화보다 먼저다. 재개도 원래 handoff를 재검증한다. gx-work 인계가 없는 직접 호출에는 이 진입 승인을 추가하지 않는다.
+**gx-work 진입 게이트**: `origin: gx-work`인 인계는 실제 프로젝트 절대경로를 읽기 전용으로 확정하고 설치 플러그인의 `scripts/gx-work.py validate-handoff --handoff <절대경로> --project-root <실제 루트> [--git-safe-directory <실제 루트>]`가 exit 0과 `ready-for-tdd: true`를 함께 반환한 뒤에만 소비한다. 원 요청/계획 포인터·해시·run·종료점·실제 진입 응답을 검증하며, 실패·exit 2·false·미응답이면 원래 질문/보완점으로 돌아간다. 일반 구현 요청 문구로 승인을 대체하지 않는다. 이 검사는 실행 setup·브랜치/stash·빌드·RED/코드 변경·state 초기화보다 먼저다. 재개도 원래 handoff를 재검증한다. gx-work 인계가 없는 직접 호출에는 이 진입 승인을 추가하지 않는다.
 
-PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. 전체 모드는 `phase-implement` Step 1.2에서 계획과 현재 세션/서브에이전트/문서 종료를 한 응답으로 확인한다. core는 [core-planning.md](references/core-planning.md)를 조건부 Read하여 코드 Read·plan.md 작성 후 AC+계획 결합 승인 1회에 방법도 연결한다. 유효한 결합 승인은 반복하지 않고, 방법만 빠졌으면 Step 1.3에서 방법만 보완한다. 초기 명시 방법·같은 run/계획의 실제 선택과 RED/리뷰 격리를 유지하며 flags 충돌은 실제 결정으로 해소한다.
+PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. 전체 모드는 `phase-implement` Step 1.2에서 계획과 현재 세션/서브에이전트/문서 종료를 한 응답으로 확인한다. core는 [core-planning.md](references/core-planning.md)를 조건부 Read하여 코드 Read·plan.md 작성 후 AC+계획 결합 승인 1회에 방법도 연결한다. 유효한 결합 승인은 반복하지 않으며, 방법 보완·flags 충돌은 phase-implement Step 1.2~1.3을 따른다.
 
-`--phase requirements`·`--phase design`처럼 논의·계획만 요청했다면 [탐색 setup](phases/setup-explore.md)을 사용한다. 브랜치·stash·pull은 실제 구현 시작 때만 준비한다. 실행 중인 상태를 가져온 경우 원래 `run-id`·`goal`·`stop-at`를 보존한다. 새 작업은 gx-work helper가 생성한 고유 `run-id`를 사용하며, 기존 산출물의 실행 식별자가 다르면 재개에 섞지 않는다.
+`--phase requirements`·`--phase design`처럼 논의·계획만 요청했다면 [탐색 setup](phases/setup-explore.md)을 사용한다. 브랜치·stash·pull은 실제 구현 시작 때만 준비한다. 실행 중인 상태를 가져온 경우 원래 `run-id`·`goal`·`stop-at`를 보존한다. 새 작업의 `run-id`는 gx-work 인계면 gx-work가 만든 값, 직접 호출이면 setup이 만든 고유 값이며, 기존 산출물의 실행 식별자가 다르면 재개에 섞지 않는다.
 
 완료점 기본값은 `verify`다. 사용자가 요청한 `commit`·`pr`만 추가 실행한다. 기존 세션에 종료점이 없으면 기존 요청과 실제 승인 근거에서 복원하고, 근거 없이 commit/PR 권한을 만들어 넣지 않는다.
 
@@ -79,8 +79,11 @@ PRD·설계·구체 T태스크 계획은 이 파이프라인이 완성한다. �
 # 1. 모드에 따라 Phase 목록 결정
 # gx-work handoff는 위 진입 게이트 통과 후에만 Phase를 실행한다.
 if HANDOFF_READ_ONLY:  # 검증된 read-only: true, execution-authorized: false
-    Read(setup-explore); 요청한 requirements/design 계획 내용만 제시
-    # 문서 저장은 요청한 범위만. setup·pipeline/state·코드·테스트 변경 없이 종료.
+    Read("references/requirements-dialogue.md")
+    Read(setup-explore); 요청한 requirements/design 계획 내용만 작성·제시
+    if 사용자 중단: return "stopped"
+    if 중요한 미정/응답 대기: return "waiting"  # 저장 전에 멈춘다
+    # 확인된 요청 문서만 .dev/<run-id>/에 저장. setup·pipeline/state·코드·테스트 변경 없이 종료.
     return  # READ_ONLY_COMPLETE
 if requested_phase == "requirements":
     PHASES = [explore, requirements]
@@ -97,6 +100,10 @@ else:  # ALL
 
 # 2. Phase별 순차 실행 (건너뛰기 금지)
 for phase in PHASES:
+
+    if phase in [requirements, design, implement, complete]:
+        Read("references/requirements-dialogue.md")
+        # waiting/stopped면 중단. ready는 승인이 아님.
 
     # implement/complete에 scope-status closed이면 scope-closed로 종료(자동 완료/커밋 금지).
     # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
@@ -143,6 +150,7 @@ for phase in PHASES:
     # 이 경우 2d의 phase 완료 표시나 다음 phase를 수행하지 않는다.
 
     # 2d. state.md 갱신
+    # 문답 적용 Phase는 ready와 기존 게이트 충족 때만 완료. waiting/stopped면 종료한다.
     # Codex에서 질문 대기로 phase가 끝나지 않았다면 완료 표시를 하지 않고 현재 phase를 유지한다.
     # complete는 Step 5의 실제 완료 조건을 통과했을 때만 완료 표시한다.
     # 미충족 AC/미검증/문서 충돌/요청한 전달 실패이면 in_progress를 유지하고 중단한다.
@@ -184,7 +192,7 @@ Phase 실행은 필수 참조 roles-and-phases.md의 Agent 팀과 조건부 호�
 > 3. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 > 5. `MODEL_PROFILE`: 기존 state 값 > 명시 --eco/--standard > config.json modelProfile > standard 순이다. 목록 계산 전에 [core-planning.md](references/core-planning.md)의 `restore_mode(saved_mode, saved_flags)`로 기존 mode와 승인 필드를 복원한다. 단독 implement/complete도 현재 결합 승인 검사와 필요한 계획 보완을 생략하지 않는다.
-> 6. 현재 DEV_DIR의 제거된 실행 경로 검사를 먼저 수행하고 해당하면 쓰기 없이 중단한다. gx-work 인계는 진입 게이트를 먼저 통과해야 한다. 기존 state가 있으면 쓰기 전에 [재개 계약 0.05](phases/setup-resume.md)로 원 handoff·승인·방법을 복원/검증한다. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, 원래 `flags`). [상태 계약](references/pipeline-state.md)의 run·진입 승인·원문 포인터·실행방법 필드도 보존한다. **이미 존재하고 `status: completed`이면 `status: in_progress`·`verify-status: pending`으로 되돌리고 `verify-fingerprint`를 비운다.** 재진입 게이트 4곳(훅·라우팅·gx-commit·gx-pull-request)이 `status: in_progress`를 요구한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다. `pipeline`/`verify-status`는 커밋/PR 게이트(skill-routing·gx-commit·gx-pull-request)에 필요하다.
+> 6. 현재 DEV_DIR의 제거된 실행 경로 검사를 먼저 수행하고 해당하면 쓰기 없이 중단한다. gx-work 인계는 진입 게이트를 먼저 통과해야 한다. 기존 state가 `status: completed`이면 재진입 요청(종료점 변경·명시 phase)을 decisions.md에 기록하고 `status: in_progress`·`verify-status: pending`으로 되돌리며 `verify-fingerprint`를 비운 뒤 검증한다(helper가 완료 실행을 거절해 검증 전 유일한 쓰기다. 실패하면 status·verify-status·verify-fingerprint를 원복하고 멈춘다). 기존 state는 쓰기 전에 [재개 계약 0.05](phases/setup-resume.md)로 원 handoff·승인·방법을 복원/검증한다. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, 원래 `flags`). [상태 계약](references/pipeline-state.md)의 run·진입 승인·원문 포인터·실행방법 필드도 보존한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다.
 > 7. `--work {ID}`가 지정되었으면 **기존 work-id를 먼저 대조**한다. 다른 작업이면 기존 연결을 보존하고 명시적인 전환 결정을 받기 전 기록하지 않는다. `references/document-lifecycle.md`의 사전 대조로 행·원장·run/branch 연결을 검증한 뒤에만 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰므로 없는 ID를 만들거나 조용히 무시하지 않는다. work 미지정도 관련 원장·W계획을 확인하며, 조회/계획/문서 금지 범위는 쓰지 않는다.
 
 ---

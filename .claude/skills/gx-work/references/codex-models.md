@@ -16,7 +16,7 @@
 
 특정 모델을 유지하려면 `family` 대신 `model`을 지정한다. 예를 들어 `{"mid":{"model":"gpt-6.1-sol","reasoning_effort":"medium"}}`은 더 높은 Sol 버전이 허용돼도 지정한 지원 모델을 유지한다. model과 family를 동시에 넣지 않는다. 최신 정책은 자식 배정에만 적용하고 메인 세션 모델을 자동 교체하지 않는다.
 
-모델명은 불변 API가 아니다. 실행 전 노출된 spawn allowlist와 각 모델의 허용 effort를 `capabilities.json`에 새로 적는다. 과거 세션의 파일을 재사용하거나 API 모델 목록·config 모델명으로 spawn 사용 가능 여부를 추측하지 않는다. 이 파일은 실행 입력이며 사용자 전역 Codex 설정을 바꾸지 않는다. 새로운 계열 이름이나 모델 명명 규칙이 생기면 정책 지원을 확인하며, 모든 미래 모델의 출시 순서·별칭 지원을 보장한다고 설명하지 않는다.
+모델명은 불변 API가 아니다. 실행 전 노출된 spawn allowlist와 각 모델의 허용 effort로 새 capabilities 객체를 구성한다. 일반 파이프라인은 `capabilities.json` 파일을 쓸 수 있다. **읽기 전용 분석은 `--capabilities -`로 UTF-8 JSON을 표준입력에 전달하며 파일을 만들지 않는다.** 과거 세션의 파일을 재사용하거나 API 모델 목록·config 모델명으로 spawn 사용 가능 여부를 추측하지 않는다. 이 입력은 사용자 전역 Codex 설정을 바꾸지 않는다. 새로운 계열 이름이나 모델 명명 규칙이 생기면 정책 지원을 확인하며, 모든 미래 모델의 출시 순서·별칭 지원을 보장한다고 설명하지 않는다.
 
 ```json
 {"models":{"gpt-6-astra":["low","medium","high","xhigh"],"gpt-6.1-sol":["low","medium","high","xhigh"]},"parent_model":"gpt-6.1-sol","parent_reasoning_effort":"high"}
@@ -46,6 +46,10 @@ exit 0과 JSON의 `model`·`reasoning_effort`·`effective_tier`를 확인한 후
 TDD implementer fix 4~5는 fresh agent 격상이므로 `--execution session`과 조합하면 exit 2다. session 결과에는 현재 부모 모델·effort가 필요하며 누락 시 실패한다. 부모가 신규 자식 allowlist 밖이어도 실제 현재 세션 정보는 그대로 표시한다.
 
 ## 호출과 근거
+
+**읽기 전용 예외:** gx-lens 등 파일 작성을 금지한 분석은 설치된 순수 `codex-model-policy.py`를 `PYTHONDONTWRITEBYTECODE=1`로 실행할 수 있다. `--pipeline standalone --role <선택한 GX 역할> --profile <확정 프로파일> --capabilities - --cwd <PROJECT_ROOT>`에 현재 capabilities JSON을 표준입력으로 전달한다. PowerShell에서는 공통 규약의 UTF-8 입출력 설정을 먼저 적용한다. helper는 config·설치 index를 읽고 JSON을 반환할 뿐 파일을 쓰거나 모델을 호출하지 않는다. 기존 capabilities 파일 경로 호출은 그대로 지원한다.
+
+이 경로는 `DEV_DIR`·capabilities 파일·`model-dispatches.jsonl`을 만들지 않는다. 아래 호출 근거와 같은 필드를 **대화 안의 레코드로 반환·재사용**한다. 요청 모델·실제 spawn 인자·agent_id·관측 모델(미확인 시 null)을 구분한다. 파일 기록을 생략해도 모델/effort 검증과 역할 본문 전달은 수행한다. 일반 쓰기 가능한 파이프라인은 아래 파일 기록 규약을 유지한다.
 
 helper는 모델 선택 결과를 계산할 뿐 collaboration 도구를 호출하지 않는다. 반환된 `spawn_args`에 역할 본문·tools 제약·프로젝트 지침·태스크 전문을 합친 `message`와 `task_name`을 더해 실제 `collaboration.spawn_agent`를 직접 호출한다. `fork_turns: "none"`을 유지한다. `agent_type`은 생략하거나 현재 스키마가 허용하는 `default`를 쓰며, `architect`·`code-reviewer` 등 하네스 고정 모델 역할로 바꾸지 않는다. 역할명과 모델 설정의 일치는 서로 다른 문제다.
 

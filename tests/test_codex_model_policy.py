@@ -325,6 +325,34 @@ class ModelPolicyTests(unittest.TestCase):
         self.assertIn("error", json.loads(result.stdout))
         self.assertNotIn("Traceback", result.stderr)
 
+    def stdin_cli(self, payload):
+        return subprocess.run([sys.executable, str(ROOT / "scripts/codex-model-policy.py"),
+                               "--capabilities", "-", "--cwd", str(self.project),
+                               "--pipeline", "standalone", "--role", "architect"],
+                              input=payload, cwd=self.project, capture_output=True,
+                              text=True, encoding="utf-8")
+
+    def test_stdin_capabilities_preserve_project_files_and_respect_profile_overrides(self):
+        self.config({"modelProfile": "eco", "codex": {"modelTiers": {"high": {
+            "model": "gpt-6-astra", "reasoning_effort": "high"}}}})
+        before = {p.relative_to(self.project): p.read_bytes()
+                  for p in self.project.rglob("*") if p.is_file()}
+        result = self.stdin_cli(json.dumps(self.capabilities))
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertEqual(json.loads(result.stdout)["spawn_args"], {
+            "fork_turns": "none", "model": "gpt-6-astra", "reasoning_effort": "high"})
+        self.assertEqual(before, {p.relative_to(self.project): p.read_bytes()
+                                 for p in self.project.rglob("*") if p.is_file()})
+
+    def test_stdin_capabilities_validate_json_allowlist_and_effort_without_fallback_files(self):
+        for payload in ('{broken', '[]', '{"models":{}}', '{"models":{"gpt-6-astra":["medium"]}}'):
+            with self.subTest(payload=payload):
+                result = self.stdin_cli(payload)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("error", json.loads(result.stdout))
+                self.assertNotIn("No such file", result.stdout)
+        self.assertEqual(list(self.project.iterdir()), [])
+
     def test_cli_argument_errors_return_json_and_exit_two(self):
         for args in (("--profile", "wrong"), ("--fix-round", "6"), ("--fix-round", "nan")):
             with self.subTest(args=args):

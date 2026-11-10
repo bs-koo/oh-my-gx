@@ -11,11 +11,11 @@ gx-work·gx-tdd의 구현 전후에 사용하는 좁은 대조 경로다. **정�
 TDD 진입 승인에 결박한 원래 request/plan 파일은 덮어쓰지 않는다. TDD 안에서 구체화한 AC·변경 파일은 별도 문서 대조 입력에 보강한다. 진입 요청과 내부 계획/대조 기록을 혼동해 정상 재개에서 승인 지문을 바꾸지 않는다. 실제 목표·범위 변경은 결과를 제시한 뒤 다시 확인한다.
 
 ```text
-python <설치된 gx-context>/scripts/development.py inspect --project-root <project> --plan <normalized-plan.json> --run-id <run> --branch <실제 branch/slug> --phase pre [--work Wnn] [--previous <이전 inspect 보고서.json>] [--no-document-write]
+python <설치된 gx-context>/scripts/development.py inspect --project-root <project> --plan <normalized-plan.json> --run-id <run-id> --branch <실제 branch/slug> --phase pre [--work <W ID>] [--previous <이전 inspect 보고서.json>] [--no-document-write]
 python <설치된 gx-context>/scripts/development.py summary --report <저장한 inspect 보고서.json>
 ```
 
-쓰기 허용 실행은 완전한 inspect 결과를 `.dev/<run>/document-pre.json`에 한 번 저장하고 모델에는 summary만 전달한다. 다음 `--previous`에는 같은 보고서 또는 내부 snapshot 객체를 저장한 파일을 사용한다. post는 같은 plan/run/work에 `--phase post`를 준다. PowerShell은 BOM 없는 UTF-8 입출력을 보장한다. 읽기 전용에는 `--plan -`로 stdin JSON을 주고 stdout을 메모리에 받아 `summary --report -`에 전달하여 임시 파일도 만들지 않는다. **inspect exit 1/2는 summary exit 0로 가리지 않는다.**
+`--work`는 `W` + 두 자리 이상 ASCII 숫자(`W01`, `W118`)이며, 계획에 행이 없을 때 `next-work-id`는 표 전체 최댓값의 다음 번호다(W99 다음은 W100). 쓰기 허용 실행은 완전한 inspect 결과를 gx-work 실행 입력과 같은 `.dev/<run-id>/document-pre.json`에 한 번 저장하고 모델에는 summary만 전달한다. 다음 `--previous`에는 같은 보고서 또는 내부 snapshot 객체를 저장한 파일을 사용한다. post는 같은 plan/run/work에 `--phase post`를 준다. PowerShell은 BOM 없는 UTF-8 입출력을 보장한다. 읽기 전용에는 `--plan -`로 stdin JSON을 주고 stdout을 메모리에 받아 `summary --report -`에 전달하여 임시 파일도 만들지 않는다. **inspect exit 1/2는 summary exit 0로 가리지 않는다.**
 
 | 결과 | 처리 |
 |---|---|

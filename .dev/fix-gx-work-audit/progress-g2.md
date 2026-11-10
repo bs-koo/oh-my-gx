@@ -1,0 +1,22 @@
+# G2 gx-tdd 진행 기록
+
+- F03 GREEN: setup-branch.md(미커밋 분류·run-id 자동 stash·SHA 복원)로 Step 2를 분리하고 setup-resume·pipeline-state에 복원 경로와 `auto-stash` 필드 추가
+- F21 GREEN: config 부재는 `/oh-my-gx:gx-setup` 안내 후 중단, Skill 호출·재시도 카운터 제거(pipeline-state 필드 포함)
+- F01 GREEN: intent-routing 값 형식 `^W[0-9]{2,}$`·문장 토큰 정규식, setup-work 3.0.5 형식 검증, document-lifecycle `--work <W ID>`
+- F02 GREEN: description을 TDD 명시·gx-work 인계·TDD 재개로 좁히고 일반 개발은 gx-work가 먼저 받는다고 명시
+- F18 GREEN: state 포인터 예시·표를 프로젝트 상대경로로, 구 절대경로 읽기·이관 후 보정을 setup-resume에 추가, `.dev/planning/` 제거
+- F25 GREEN: plan-handoff "선택 필드", phase-implement 1.2 인계 `execution-method` 기본 선택 분기, Step 1.5 순위 2
+- F04 GREEN: plan-handoff 재검증 실패 출구(`reissue`, v1·v2), setup-resume 0.05 재발급 후 재검증, phase-complete Step -3 연결
+- F19·F42 GREEN: 계획 전용 인계는 PRD·설계 문서 저장 요청일 때만, run-id 생성 주체(gx-work 인계/직접 호출 setup)
+- F22 GREEN: intent-routing Step 1 "gx-work 인계의 모드 판정", Step 2 표 미적용
+- F17 GREEN: interaction-contract "이전 질문 정리"(답하기/폐기, `discard` exit 0만 인정), setup-resume·phase-setup Step 0 연결
+- F26 GREEN: setup-branch 이름 충돌 확인을 Step 5(git·svn) 전에, Step 7·pipeline-state 덮어쓰기 금지
+- F23 GREEN: phase-complete Step 2-2가 `${BASE_BRANCH}`(state `base`)를 첫 인자로 전달
+- F28 GREEN: intent-routing "종료점 변경"(decisions → state → reissue), PHASE 매핑·phase-complete Step 1·2 연결
+- F33 GREEN: setup-work 착수 확인 재사용·type 무질문, Step 6 같은 실행 재사용, gx-commit `--skip-context-sync` 전달, 하네스 표에 args
+- F43 GREEN: 진입 승인은 AC 확정이 아님(phase-requirements), 계획 문서 종료 재개는 Step 1.2 질문 재제시(setup-resume·phase-implement)
+- F20 GREEN: 하네스 게이트는 진행 상태 유지·`docs/test-harness-guide.md`·`--resume`, `하네스 준비 대기` 재개 커서, frontend-testing §8
+- F32·F36 GREEN: 현행 gx-dev 안내 제거, 구버전 state 안내를 새 브랜치·워크트리로 바꿔 순환 제거, intent-routing "구버전 기록에서 빠져나오기"
+- F41 GREEN: pipeline-state "phase-setup의 Step 4", golden S29(stop-at 반영)·S3·S15·S20·S21·S30 갱신
+- 정리: setup-branch 질문의 Codex 대기 안내, maintenance-notes에 재발급·브랜치 준비·질문 정리 짝 위치 3행, pipeline-state 재검증 서술에 재발급 출구 연결
+- 검증: test_codex_tdd_audit 28/28, discover test_codex_* 375 OK, 린트 구간 2~5·11~16·18~36 ok

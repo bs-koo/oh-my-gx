@@ -1,5 +1,7 @@
 # phase-implement: RED-GREEN-REFACTOR 사이클 (TDD 강제)
 
+`Read("../references/requirements-dialogue.md")`로 **단독 진입·재개·승인 재사용 전** 현재 요청의 중요한 미정을 확인한다. 남아 있으면 필요한 requirements 문답에서 `waiting`으로 대기하며 기준선·RED·구현을 시작하지 않는다. 기존 승인 파일의 존재로 우회하지 않고, 답변 후 같은 run·커서·실행 범위로 돌아와 변경된 문서/승인만 보완한다. 문답 해소는 구현 승인이 아니며 기존 core 결합 승인/전체 계획 승인과 방법 선택을 유지한다.
+
 Codex에서는 이 phase 파일 기준 `../../gx-work/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/red-writer.md`·`agents/implementer.md`·`agents/reviewer.md` 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 해당 역할 본문·도구 제약을 사용한다. 각 역할의 기존 report와 spec/quality YAML 반환 계약은 유지한다.
 
 ## Iron Law
@@ -84,7 +86,7 @@ AskUserQuestion(
     question: "{레이어}에 테스트 러너가 감지되지 않습니다. 설계에 해당 컴포넌트 {N}건이 포함되어 있습니다. 어떻게 진행할까요?",
     header: "하네스 게이트",
     options: [
-      { label: "하네스 구축 후 재실행", description: "테스트 러너를 먼저 설치합니다. 러너가 없으면 실패 테스트를 쓸 수 없어 gx-tdd로는 구축할 수 없습니다 — oh-my-gx:gx-work로 별도 수행 후 이 파이프라인을 재개하세요" },
+      { label: "하네스 구축 후 재실행", description: "테스트 러너를 먼저 준비합니다. 러너가 없으면 실패 테스트를 쓸 수 없어 이 파이프라인 밖에서 준비하고, 끝나면 --resume으로 이 단계부터 이어 갑니다" },
       { label: "해당 AC 제외 후 진행", description: "러너가 있는 레이어의 AC만 RGR로 구현합니다. 제외한 AC는 trust-ledger에 기록되며, 그 부분은 별도 작업이 필요합니다" },
       { label: "중단", description: "요구사항 범위를 다시 정의합니다" }
     ],
@@ -93,7 +95,7 @@ AskUserQuestion(
 )
 ```
 
-- **"하네스 구축 후 재실행"** → 대상 레이어와 권장 러너를 안내하고 파이프라인을 중단한다 (`status: cancelled`). 프론트엔드면 `references/frontend-testing.md` §8의 안내를 함께 전달한다.
+- **"하네스 구축 후 재실행"** → 대상 레이어와 권장 러너를 안내하고 진행 상태를 남긴 채 멈춘다(`status: in_progress`, `current-step: 하네스 준비 대기`). 러너 준비는 파이프라인 밖에서 한다: 플러그인 `docs/test-harness-guide.md`의 레이어별 안내를 따르고, 새 프로젝트 타입이면 사용자가 `/oh-my-gx:gx-setup`의 타입 등록으로 `test` 명령을 기록한다. 준비 뒤 `/oh-my-gx:gx-tdd --resume`이 이 게이트부터 다시 확인한다. 프론트엔드면 `references/frontend-testing.md` §8의 안내를 함께 전달한다.
 - **"해당 AC 제외 후 진행"** → **프론트 AC 제외**(또는 러너 없는 해당 레이어의 AC 제외)로 처리한다. 기존 케이스가 있으면 문서·테스트 변경 전 `../references/core-replanning.md`대로 active hash 확인·불변 이력 보관을 먼저 한다. 핵심 모드는 기존 승인을 무효화한 뒤 ac.md에 제외 표시하고 plan.md의 retire 변경표까지 갱신하여 두 문서를 함께 재승인받는다. 전체 모드도 승인된 제외 범위를 변경표에 명시한다. 이후 red-writer만 승인된 active 집합을 정리하고 태스크를 복원한다. 제외 항목은 `${DEV_DIR}/trust-ledger.md`의 `### 위험 수용`에 `- [하네스 부재 AC 제외] {AC-N}: {레이어} 러너 없음 (implement/Step 0.5)` 형식으로 기록한다. **제외 후 남은 AC가 0건이면** 승인된 은퇴 정리·검증 후 아래 범위 종료 분기를 따른다 (기존 변경 자동 원복·커밋 금지). 삭제-only는 가짜 RED·프로덕션 변경을 허가하지 않으며 남은 active GREEN과 source 불변을 검증한다. 진행 중 `baseline-fingerprint`와 기존 plan/proof도 지우지 않고 현재 실행 증거의 재사용 조건으로 판단한다.
 - **"중단"** → `status: cancelled`.
 
@@ -135,7 +137,7 @@ AC 제외로 범위가 비면 다음 Phase로 넘기지 않는다. 승인된 ret
 - T1, T2, T3은 **순차 실행** (의존성 체인).
 ```
 
-태스크마다 정확한 변경/테스트 파일 경로, 공개 인터페이스·제약, G-W-T 시나리오·경계값, RED→GREEN→REFACTOR의 구체 순서, focused 명령·cwd·예상 실패/성공과 검증·리뷰 초점을 기재한다. 코드 전체를 미리 작성하지 않는다. 기존 유효한 구체 계획 파일이 있으면 해당 절을 재사용하고, 없으면 위 내용을 `${DEV_DIR}/implementation-plan.md`에 저장한다. `implementation-plan-file`에 절대 포인터, `implementation-plan-sha256`에 파일의 현재 SHA-256을 기록한다. 외부 request-file/plan-file을 이 내부 계획 포인터로 덮지 않는다.
+태스크마다 정확한 변경/테스트 파일 경로, 공개 인터페이스·제약, G-W-T 시나리오·경계값, RED→GREEN→REFACTOR의 구체 순서, focused 명령·cwd·예상 실패/성공과 검증·리뷰 초점을 기재한다. 코드 전체를 미리 작성하지 않는다. 기존 유효한 구체 계획 파일이 있으면 해당 절을 재사용하고, 없으면 위 내용을 `${DEV_DIR}/implementation-plan.md`에 저장한다. `implementation-plan-file`에 프로젝트 상대경로(예: `.dev/feat-login/implementation-plan.md`), `implementation-plan-sha256`에 파일의 현재 SHA-256을 기록한다. 외부 request-file/plan-file을 이 내부 계획 포인터로 덮지 않는다.
 
 ### 1.15 태스크 수 가드
 
@@ -185,6 +187,7 @@ AskUserQuestion(
 
 - **현재 세션/서브에이전트** → 한 실제 응답으로 `plan-approved-source`·`plan-approved-run`·`plan-approved-sha256`과 `execution-method`·`execution-method-run`·`execution-method-plan-sha256`·`execution-method-source`를 모두 기록하고 Step 1.3에서 검증·flags 반영한다. 승인 질문을 추가하지 않는다.
 - **초기 명시 방법 있음** → 그 선택을 보존해 질문을 "이 계획을 {현재 세션/서브에이전트}으로 진행할까요?"로 바꾸고 "계획 승인"·"수정 요청"·"계획 문서로 종료"를 제시한다. 실제 계획 승인 응답과 원래 명시 선택 근거를 각각 기록해 두 승인 필드를 모두 확정한다. 방법을 다시 고르게 하지 않는다.
+- **인계의 `execution-method`** → gx-work 인계가 넘긴 `session`/`subagents`는 해당 선택지를 첫 번째에 두고 `(Recommended)`를 붙이는 기본값일 뿐 명시 선택이 아니다. 위 세 선택지 질문을 그대로 묻고 실제 응답으로만 기록한다.
 - **계획 승인만 응답, 방법 미정** → plan-approved 세 필드만 기록하고 Step 1.3에서 빠진 방법만 확인한다.
 - **계획 문서로 종료** → Step 1.3의 미구현 종료 처리를 즉시 수행한다.
 - **수정 요청** → 수정 선택 시 별도 후속 질문에서 변경할 항목을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영한다. 원 질문 UI Other에 수정 내용이 있으면 그 답변을 사용한다. 계획을 재제시하며 기존 계획·방법 승인 해시는 새 계획에 재사용하지 않는다.
@@ -637,7 +640,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 ## state.md 추적
 
 ```yaml
-implementation-plan-file: "/absolute/project/.dev/task/implementation-plan.md"
+implementation-plan-file: ".dev/feat-limit/implementation-plan.md"
 implementation-plan-sha256: "계획 파일 SHA-256"
 plan-approved-run: "현재 run-id"
 plan-approved-source: "계획 검토의 실제 응답 출처"
@@ -702,9 +705,10 @@ steps:
 일반 중단 지점 재개 전에는 setup-resume 0.05의 진입 승인·현재 계획 해시·방법/flags도 검증한다. 유효한 같은 run·계획의 선택은 재사용하고, 부족한 계획 검토/방법만 Step 1.2~1.3에서 확정한 후 아래 중단 지점으로 돌아온다. 완료된 RED·태스크/보고서·fix 카운터는 보존한다.
 
 - `"기준선 게이트"` → Step 0.5부터 재실행
+- `"하네스 준비 대기"` → Step 0.5의 레이어별 하네스 게이트부터 다시 확인한다. 러너가 아직 없으면 같은 질문으로 멈춘다.
 - `"태스크 분해 승인"` → 저장된 내부 계획·해시를 읽어 Step 1.2부터 재개. 유효한 계획 전체를 다시 분해하지 않는다.
 - `"실행방법 선택"` → Step 1.3에서 원래 미응답 질문을 복원한다.
-- `"계획 문서로 종료"` → 미구현 상태와 계획 경로를 보고하고 종료한다. 사용자의 새 실제 실행 응답이 있으면 같은 계획의 Step 1.3에서 이어간다.
+- `"계획 문서로 종료"` → 미구현 상태와 계획 경로를 보고하고 Step 1.2 질문을 다시 제시한다. 현재 세션/서브에이전트 응답이면 같은 계획의 Step 1.3에서 이어 가고, 다시 문서 종료·무응답이면 종료한다.
 - `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
 - `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
 - `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)

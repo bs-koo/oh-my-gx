@@ -19,11 +19,11 @@ gx-work에서 들어온 개발과 직접 gx-tdd 호출이 공유한다. 먼저 [
 3. 하네스가 확인한 현재 Git branch 또는 SVN slug를 `--branch`로 전달한다. 지정된 W행이 없거나 다른 실행의 진행 행과 충돌하면 해당 행을 조용히 만들거나 합치지 않는다. 같은 작업인지 필요한 범위만 확인한다.
 
 ```text
-python <설치된 gx-context>/scripts/development.py inspect --project-root <PROJECT_ROOT> --plan <기존 계획 또는 검사 입력 JSON> --run-id <RUN_ID> --phase pre --intent implement --branch <현재 branch/slug> [--work Wnn] [--previous <이전 inspect 보고서 JSON>] [--no-document-write] > <document-pre.json>
+python <설치된 gx-context>/scripts/development.py inspect --project-root <PROJECT_ROOT> --plan <기존 계획 또는 검사 입력 JSON> --run-id <RUN_ID> --phase pre --intent implement --branch <현재 branch/slug> [--work <W ID>] [--previous <이전 inspect 보고서 JSON>] [--no-document-write] > <document-pre.json>
 python <설치된 gx-context>/scripts/development.py summary --report <document-pre.json>
 ```
 
-`--intent`는 실제 `implement|resume|understand|plan|status`를 사용한다. 최초에는 `--previous`를 생략한다. 쓰기가 허용된 inspect JSON 전체는 BOM 없는 UTF-8 파일로 리다이렉트하고 모델에는 `summary --report`의 제한된 정보만 표시한다. PowerShell도 같은 UTF-8 인코딩을 보장한다. 결과의 `snapshot`은 helper가 읽으므로 별도 추출/변환하지 않는다. 저장한 `${DEV_DIR}/document-pre.json` 전체를 다음 `--previous`에 그대로 전달한다. 재검사 출력은 별도 next 파일에 받고 성공 후 기준 보고서를 갱신한다. 같은 파일을 입력/리다이렉트 대상으로 써서 이전 근거를 비우지 않는다. setup 전 DEV_DIR이 미정이면 같은 run-id의 `.dev/planning/{RUN_ID}/`에 검사 입력/결과만 임시 보존하고 확정 후 그 실행의 파일만 옮긴다. 다른 계획/실행 상태를 덮어쓰지 않는다.
+`--intent`는 실제 `implement|resume|understand|plan|status`를 사용한다. 최초에는 `--previous`를 생략한다. 쓰기가 허용된 inspect JSON 전체는 BOM 없는 UTF-8 파일로 리다이렉트하고 모델에는 `summary --report`의 제한된 정보만 표시한다. PowerShell도 같은 UTF-8 인코딩을 보장한다. 결과의 `snapshot`은 helper가 읽으므로 별도 추출/변환하지 않는다. 저장한 `${DEV_DIR}/document-pre.json` 전체를 다음 `--previous`에 그대로 전달한다. 재검사 출력은 별도 next 파일에 받고 성공 후 기준 보고서를 갱신한다. 같은 파일을 입력/리다이렉트 대상으로 써서 이전 근거를 비우지 않는다. setup 전 DEV_DIR이 미정이면 같은 run-id의 실행 입력 디렉토리 `.dev/{RUN_ID}/`에 검사 입력/결과를 보존하고 state에는 프로젝트 상대경로로 가리킨다. 다른 계획/실행 상태를 덮어쓰지 않는다.
 
 read-only에 기존 입력 파일도 없으면 `--plan -`에 goal·`units: []`·근거 metadata JSON을 stdin으로 주고 파일을 만들지 않는다. inspect stdout을 메모리에서 받아 `summary --report -`의 stdin으로 넘겨 제한된 요약과 미반영 차이만 대화에 표시한다. inspect의 exit 1/2를 summary의 exit 0로 가리지 않도록 **첫 명령의 종료 코드를 반드시 보존·판정**한다. 문서 금지로 기록할 수 없는 차이는 대화 또는 사용자가 허용한 실행 기록에만 남긴다.
 

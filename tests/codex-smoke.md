@@ -56,6 +56,49 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | Q8 | core 단독 implement/complete, mode 누락·flags --core, 명시 requirements/design, read-only handoff | 요청 단계 우선; implement는 core 결합 승인 검사와 후속 complete 없는 경계 회귀; legacy 승인 누락 차단; 계획 단독은 explore 사용; 읽기 전용 handoff에 state·브랜치·코드·테스트 변경 없음 | 미실행 |
 | Q9 | core→all pending/applied 중단·재개, 완료한 케이스의 AC 추가·수정·삭제 | setup 재생성 없이 review 포함 전체 후속 단계; run/stop-at·원 진입 승인 보존; 기존 GREEN·증거 유지, delta만 RED; 수정은 새 ID·삭제는 승인된 은퇴; 전체 active 0이면 complete/자동 커밋 차단 | 미실행 |
 
+## gx-work 전수조사 후속 검증 (3.1.0, 2026-11-10)
+
+로컬 helper·계약 테스트(`test_gx_work_audit.py`·`test_codex_work_audit.py`·`test_codex_tdd_audit.py`·`test_codex_release_audit.py`)와 `evals/`의 트리거 기대값은 실제 앱의 스킬 선택·질문 UI·인증된 모델의 도구 trace를 대체하지 않는다. 결함 ID는 `.dev/fix-gx-work-audit/audit-report.md`다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| W1 | Claude Code·Codex 각각 스킬 이름 없이 "로그인 실패 5회면 잠금 기능 만들어줘", "이 버그 고쳐줘", "TDD로 개발해줘" (F02) | 처음 두 요청은 gx-work, 세 번째는 gx-tdd가 선택됨; 선택된 스킬과 첫 도구 호출 trace | 미실행 |
+| W2 | `.dev/plan.md`에 W118 행이 있는 프로젝트에서 "W118 시작해줘" (F01) | 인계 `work-id: W118`, gx-tdd setup의 작업 참조·착수 기록, `work-id 형식 오류` 없음 | 미실행 |
+| W3 | 미커밋 `.dev/plan.md`와 run 입력만 있는 베이스에서 진입 승인 (F03) | stash 0회; 작업 브랜치에 plan.md·인계 파일 유지; 다른 진행 중 실행의 미커밋 변경이 있으면 아무것도 바꾸지 않고 중단 | 미실행 |
+| W4 | verify로 진행 중인 실행에 "이어서 PR까지" (F04·F28) | decisions.md 기록 → state `stop-at: pr` → `reissue` 새 인계 → `validate-handoff` 통과 → 재개; 진입 확인에서 멈추지 않음 | 미실행 |
+| W5 | Codex에서 답하지 않은 진입 질문이 남은 상태로 다른 목표 요청 (F17) | route `pending-goal` 대조; `이전 질문에 답하기`/`폐기하고 새 작업` 질문; 실제 답 뒤에만 `codex-question.py discard` exit 0과 보관 파일·decisions 기록 | 미실행 |
+| W6 | Codex 샌드박스 git 소유권 불일치 (F06) | `--git-safe-directory`로 route·handoff·validate-handoff 정상 판정; 전역 `safe.directory` 변경 없음 | 미실행 |
+| W7 | SVN 활성 포인터가 진행 중 구버전 실행을 가리킬 때 새 목표 (F36) | 기록·잠금 불변; `route --slug <새 slug>`가 새 slug만 검사; gx-tdd 인계 `--slug`로 `.dev/.active` 갱신 | 미실행 |
+
+## 보조 스킬 기능·경계 후속 검증 (2026-11-10)
+
+아래는 실제 설치 cache의 소비 프로젝트 세션에서 확인한다. 임시 파일·Git 저장소 회귀와 모델 응답 mock은 로컬 근거이며 실제 스킬 발견·도구 호출·검수 모델의 수행을 대신하지 않는다. 이번 변경에서는 아래 실제 세션을 실행하지 않았다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| A1 | main에서 `gx-commit --preview`, 이미 staged인 민감 경로와 부분 staged 수정 | 후보·이미 담긴 경로·제외 이유만 표시; 본문·비밀값 노출 없음; HEAD/index/작업 파일 불변; 빌드·커밋 없음 | 미실행 |
+| A2 | 작업 브랜치, 부분 staged 수정·staged 삭제·명시 제외가 있는 실패 커밋 | 제외가 실제 index에서 빠짐; 실패 시 원 index 복원; unstaged 내용 보존; 외부 index 변경은 덮어쓰지 않고 복구 경로 표시 | 미실행 |
+| A3 | cwd는 작업 브랜치, `git -C` 대상은 main 또는 검증 미완료 저장소 | 실제 대상 저장소에 보호·검증 적용; 연속 명령 뒤 deny가 앞 ask에 가려지지 않음; HEAD 불변 | 미실행 |
+| A4 | 500줄 이상 tracked diff와 untracked 파일이 함께 있는 교차 리뷰 | stat과 전체 파일 목록에 양쪽 모두 포함; 내용 축약 여부 명시; 파일 변경 없음 | 미실행 |
+| A5 | 단독 GREEN 중 다른 테스트·실행 설정 변경 또는 테스트 하위 폴더 읽기 실패 | 전체 기준선의 누락·변조·불완전 탐색 차단; 승인 없는 테스트 삭제·skip으로 완료 처리하지 않음 | 미실행 |
+| A6 | `gx-humanizer --history`, 중단/옛 형식/완료 산출물이 섞인 이력 | 실행 상태·장르·산출물 위치 조회; 새 run·파일 쓰기·본문 출력 없음; 파일 존재를 strict 통과로 승격하지 않음 | 미실행 |
+| A7 | 중단 run 이후 동시 윤문 예약, strict 검수 사이 작업본 변경 | 기존 run 보존·서로 다른 ID; 원문·확정 장르·톤·범위 전달; 두 검수와 채택본이 같은 run/round/rewrite 지문에 연결됨 | 미실행 |
+| A8 | 새 Gradle+frontend 저장소와 사용자 정의 타입에서 `gx-setup --inspect` | 발견 루트·등록 여부·누락 설정 표시; config/gitignore/state 불변; 설치·네트워크·테스트 실행 없음 | 미실행 |
+| A9 | 읽기 전용 lens, 실패/부분 의존성 결과, research 지정 출력 | 모델 메타를 프로젝트 파일 없이 전달; 오류를 0건/건강도100으로 표시하지 않음; 확정 출력 경로로 저장·완료 링크 일치 | 미실행 |
+| A10 | 명시 static/mermaid 시각화와 같은 출력 경로의 동시 실행 | Archify 탐지·설치 없음; 중복 실행은 busy로 종료하고 선행 manifest/HTML 보존; 실패 뒤 자기 잠금만 해제 | 미실행 |
+
+## 전체·핵심 요구사항 문답 후속 검증 (2026-11-10)
+
+아래는 이번 문답 계약의 실제 설치 앱 검증이다. 로컬 pending 파일 회귀·문서 모의평가는 실제 질문 UI·모델의 중요도 판정을 대체하지 않는다. 실행하지 않은 항목은 미실행으로 유지한다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| I1 | core 새 정책 미정, 첫 답변에서 새 예외 발견, 추가 답변 미제공 | 오케스트레이터가 직접 후속 질문; 인터뷰용 PO/architect/critic 호출 없음; AC·계획 확정·RED·구현 없음 | 미실행 |
+| I2 | all의 두 번째 PO 출력에도 중요한 질문 잔존 | 실제 답변까지 requirements 대기; 1회/2회 상한으로 설계·구현 진행 없음; 해소 뒤 현재 PRD 승인 별도 확인 | 미실행 |
+| I3 | 문답 도중 중단/재개, 부분 답변·늦은 token·async ack·의미 불충분 답변 | 원 phase·질문·run·커서 보존; 실제 필요한 답변까지 대기; 해소를 기록 수신 성공만으로 추정하지 않음 | 미실행 |
+| I4 | 유효한 동일 승인/답변 재개, 이후 새 요청과 승인 정책 충돌 | 같은 범위는 재인터뷰 없이 재개; 새 충돌만 질문; 변경 시 이력 보존·승인 무효화·재승인 | 미실행 |
+| I5 | HANDOFF_READ_ONLY·저장 금지, 단독 design/implement의 중요 미정, 비차단 가정 | read-only는 확인된 요청 문서만 `.dev/<run-id>/`에 저장하고 state/pending/decisions 무쓰기(Claude 결정 기록 훅 기록은 예외), 저장 금지는 무쓰기; 단독 진입도 미정 차단; 비차단만 남으면 이유를 기록하고 기존 승인 경로 유지 | 미실행 |
+
 ## 보호 훅·커밋
 
 실제 hook 로드는 임시 테스트 hook에서 무해한 `Write-Output GX_HOOK_SENTINEL` 또는 `printf GX_HOOK_SENTINEL`을 **deny**하는 것으로 확인한다. 배포 hook에는 sentinel 규칙을 넣지 않는다. `/hooks`에서 테스트 정의를 확인·신뢰한 후 무해한 명령만 실행한다. 강제 push는 JSON fixture로만 테스트한다. 각 시나리오는 격리된 임시 프로젝트에서 HEAD/index 해시를 기록한다.

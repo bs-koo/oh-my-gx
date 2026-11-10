@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(cat:*)
   - Bash(rm -f:*)
   - AskUserQuestion
+  - Skill
 ---
 
 # PR 작성
@@ -34,6 +35,7 @@ Codex 지문 helper의 설치 경로는 **이 SKILL.md 디렉토리 기준** [..
 Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Content -Encoding UTF8`.
 
 - `AskUserQuestion` → 공통 codex-runtime의 질문 대기 계약으로 옮긴다. 실제 모드·용도가 허용하는 `request_user_input`·`request_user_input_async` 또는 자연어를 사용한다. 필수 질문은 pending 상태를 저장하고 실제 답변·결정 기록 전 다음 단계로 넘어가지 않는다. async 반환은 답변이 아니며 본문·선택지를 표시한다.
+- `Skill(skill: "oh-my-gx:gx-commit")` → 설치된 `../gx-commit/SKILL.md`를 읽어 보호 브랜치·verify·스테이징 게이트를 포함한 절차를 그대로 수행한다.
 
 도구 이름이 다르다는 이유로 게이트를 건너뛰지 않는다. 확인·검증 단계는 하네스와 무관하게 유지한다.
 
@@ -44,7 +46,8 @@ Codex on Windows: read this SKILL.md and referenced files as UTF-8; use `Get-Con
 - `"git"` 또는 `""` (미설정) → 아래 절차를 계속 진행한다.
 
 Arguments:
-- ARGS[0] (optional): 베이스 브랜치. 미지정 시 자동 감지:
+- 인자 파싱: `--background`·`--extra-section`과 각 값을 먼저 분리하고, 남은 첫 위치 인자를 ARGS[0]로 본다.
+- ARGS[0] (optional): 베이스 브랜치. **주어지면 그 값을 쓰고 아래 자동 감지와 질문을 하지 않는다** — gx-tdd phase-complete처럼 state의 `base`를 넘긴 호출자가 이미 확정한 값이다. 형식·존재 확인은 Step 2에서 한다. 미지정 시 자동 감지:
   1. `git branch --list main master develop`로 존재하는 브랜치 확인
   2. 존재하는 브랜치가 **2개 이상**이면 → 다음과 같이 선택을 요청한다:
      ```
@@ -98,11 +101,14 @@ Arguments:
 - Git 저장소인지 확인
 - `git rev-parse --abbrev-ref HEAD`로 현재 브랜치 확인 — 결과가 `HEAD`(detached 상태)이면: "detached HEAD 상태에서는 PR을 생성할 수 없습니다. 브랜치를 checkout한 후 다시 시도해주세요." 출력 후 **즉시 종료**
 - `git remote get-url origin` 으로 origin remote 존재 확인 — **없으면**: "origin remote가 설정되어 있지 않습니다. `git remote add origin <URL>`로 설정해주세요." 출력 후 **즉시 종료**
-- 베이스 브랜치명 검증: `^[a-zA-Z0-9._/-]+$` 패턴 매칭. 영문자, 숫자, `-`, `_`, `.`, `/`만 허용. 그 외 문자 포함 시 "잘못된 브랜치명 형식입니다." 출력 후 즉시 종료
+- 베이스 브랜치명 검증: `^[a-zA-Z0-9._/-]+$` 패턴 매칭. 영문자, 숫자, `-`, `_`, `.`, `/`만 허용. 그 외 문자 포함 시 "잘못된 브랜치명 형식입니다." 출력 후 즉시 종료. 이어서 `git rev-parse --verify --quiet <base>` 또는 `git rev-parse --verify --quiet origin/<base>`로 존재를 확인하고, 둘 다 실패하면 "베이스 브랜치 `<base>`를 찾을 수 없습니다." 출력 후 종료한다. ARGS[0]로 받은 베이스가 형식·존재 확인에 실패해도 질문으로 대체하지 않고 종료한다.
 - 현재 브랜치가 베이스 브랜치가 아닌지 확인 — 같으면: "베이스 브랜치에서는 PR을 생성할 수 없습니다."
+- **미커밋 변경 선행 확인**: 커밋 유무보다 먼저 `git status --porcelain`으로 미커밋 변경을 본다. gx-commit이 커밋하지 않는 파일(`.dev/*/ralph.lock`·`.dev/*/iter-*.log`·`.dev/architecture/`·`.dev/*/visual/`·`.dev/*/auto-stash.txt`·`.dev/{main,master,develop,trunk}/decisions.md`)은 미커밋 변경으로 치지 않는다. 이번 요청에서 gx-commit을 이미 수행했으면 다시 부르지 않는다 — 사용자가 일부 변경을 일부러 뺐을 수 있으므로, 남은 변경은 이번 PR에 들어가지 않는다고 경고하고 커밋된 내용으로 진행한다. 현재 실행 입력 디렉토리의 변경은 gx-commit이 커밋하는 작업이므로 미커밋 변경에 포함한다. 이 스킬이 `--background`·`--extra-section`으로 받은 파일(gx-tdd가 PR 직전에 만드는 PR 입력)은 미커밋 변경으로 치지 않는다. 남은 변경이 있으면:
+  - 사용자가 커밋과 PR을 함께 요청했으면(예: "커밋하고 PR 올려") 여기서 멈추고 `Skill(skill: "oh-my-gx:gx-commit")`을 먼저 수행한다. gx-commit이 성공한 뒤에만 이 스킬을 처음부터 다시 수행하고, 실패·중단되면 PR을 진행하지 않고 그 결과를 보고한다.
+  - PR만 요청했고 베이스 대비 커밋이 없으면: "PR에 담을 커밋이 없고 미커밋 변경이 있습니다. `oh-my-gx:gx-commit`으로 먼저 커밋한 뒤 다시 요청해주세요." 출력 후 종료한다.
+  - PR만 요청했고 커밋이 있으면: 미커밋 변경은 이번 PR에 들어가지 않는다고 경고하고 "커밋 먼저(`oh-my-gx:gx-commit` 안내 후 종료)" / "커밋된 내용으로 PR 진행" 중 선택을 받는다.
 - 베이스 브랜치 대비 커밋이 있는지 확인 — 없으면: "PR을 생성할 커밋이 없습니다."
-- 미커밋 변경사항이 있으면 경고하고, 커밋 먼저 할지 진행할지 확인
-- **verify 경고 게이트 (gx-tdd·레거시 gx-ralph 기록)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`는 제거된 레거시 실행이다. status가 in_progress이거나 ralph.lock이 남아 있으면 검증 표식과 무관하게 PR 전에 중단한다. 기록과 변경을 보존하고 외부 프로세스 종료·명시적 gx-tdd 전환을 안내하며 자동 재개·상태 변환을 하지 않는다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(gx-dev 등)에는 적용하지 않는다.
+- **verify 경고 게이트 (gx-tdd·레거시 gx-ralph 기록)**: Git 루트 기준 `.dev/{branch-slug}/state.md`(branch-slug = 현재 브랜치명의 `/`를 `-`로 치환)가 존재하고 `pipeline: gx-tdd` 또는 `pipeline: gx-ralph`이며 `status: in_progress`이고 **(a) `verify-status`가 `passed`가 아니거나 (b) `verify-fingerprint`가 기록되어 있는데 현재 코드 지문과 트리 성분이 다르면**(=verify 통과 후 코드가 바뀜 — HEAD 성분은 참고용이며, 검증된 코드가 그대로 커밋되어 HEAD만 전진한 경우는 일치로 간주한다) — verify 게이트 미통과(또는 통과 후 코드 변경) 상태의 PR이다. 사용자에게 경고하고 진행 여부를 확인한다 (진행 시 PR 본문 Checklist에 "verify 미통과 PR" 또는 "verify 통과 후 변경 PR"을 명시). `pipeline: gx-ralph`는 제거된 레거시 실행이다. status가 in_progress이거나 ralph.lock이 남아 있으면 검증 표식과 무관하게 PR 전에 중단한다. 기록과 변경을 보존하고 외부 프로세스 종료·명시적 gx-tdd 전환을 안내하며 자동 재개·상태 변환을 하지 않는다. 지문 계산 규약은 gx-commit의 verify 경고 게이트 항목과 동일하며, `verify-fingerprint`가 없는 구 세션은 (a)만 판정한다. `pipeline` 필드가 없거나 다른 값인 state.md(제거된 gx-dev의 레거시 기록 등)에는 적용하지 않는다.
 - **Codex 지문 계산·중단**: 위 게이트에서 현재 코드 지문이 필요하면 설치된 GX 플러그인 루트의 `scripts/codex-fingerprint.py`를 확인하고, `git rev-parse --show-toplevel`로 확인한 소비 프로젝트 절대경로로 `--cwd`를 지정한다. Windows는 확인된 Python 3.10+로 `python "<GX_PLUGIN_ROOT>/scripts/codex-fingerprint.py" --cwd "<PROJECT_ROOT>"`, Linux는 `python3 "$GX_PLUGIN_ROOT/scripts/codex-fingerprint.py" --cwd "$PROJECT_ROOT"`를 실행한다. **exit 0과 stdout의 정확한 한 줄 `^[0-9a-f]+:[0-9a-f]{12}$`**을 확인한 뒤 **트리 성분만** state.md와 대조한다. helper 부재·실패·빈/잘못된 출력이면 Codex에서 PR 실행을 중단한다. Codex에서는 `verify-status` 미통과나 트리 성분 불일치도 gx-verify를 안내하고 PR 실행 전에 중단하며, 사용자 위험 수용만으로 넘기지 않는다. 임시 인덱스 직접 Git 명령은 `.git/objects` 쓰기를 일으키므로 Codex에서 사용하지 않는다. Claude Code는 위 기존 계산·위험 수용 분기를 유지한다.
 
 ## GH_HOST 감지

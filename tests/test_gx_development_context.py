@@ -216,12 +216,32 @@ class DevelopmentContextTests(unittest.TestCase):
                 self.write(".dev/plan.md", PLAN_HEADER + f"| W01 | 작업 | 결제 | {ref} | - | - | 대기 |\n")
                 self.assertFalse(self.inspect(work_id="W01")["ready-for-tdd"])
 
-    def test_identifier_exhaustion_is_reported_without_reusing_ids(self):
+    def test_work_ids_continue_past_two_digits_without_reuse(self):
+        # 작업 ID는 `W` + 두 자리 이상 숫자다. W99 다음은 W100이며 범위 소진으로 막거나 ID를 재사용하지 않는다.
         self.registered(work_state="완료")
         self.write(".dev/plan.md", PLAN_HEADER + "| W99 | 완료 | 결제 | FR-1 | - | - | 완료 |\n")
         result = self.inspect()
-        self.assertIsNone(result["next-work-id"])
-        self.assertFalse(result["ready-for-tdd"])
+        self.assertEqual(result["next-work-id"], "W100")
+        self.assertEqual(result["structural-errors"]["count"], 0)
+        self.assertFalse(any("소진" in blocker for blocker in result["blockers"]))
+        self.write(".dev/plan.md", PLAN_HEADER + "| W118 | 완료 | 결제 | FR-1 | - | - | 완료 |\n")
+        self.assertEqual(self.inspect()["next-work-id"], "W119")
+
+    def test_three_or_more_digit_work_ids_are_selected_like_two_digit_ids(self):
+        self.registered()
+        for work in ("W118", "W1000"):
+            with self.subTest(work=work):
+                self.write(".dev/plan.md", PLAN_HEADER + f"| {work} | 한도 오류 수정 | 결제 | FR-1 | - | - | 대기 |\n")
+                result = self.inspect(work_id=work)
+                self.assertTrue(result["ready-for-tdd"], result["structural-errors"])
+                self.assertEqual(result["work"]["ID"], work)
+
+    def test_malformed_work_ids_are_rejected(self):
+        self.registered()
+        for work in ("W1", "W０１", "W-01", "w01", "W01\n", "W١٢"):
+            with self.subTest(work=work):
+                with self.assertRaisesRegex(ValueError, "work-id"):
+                    self.inspect(work_id=work)
 
     def test_external_document_and_dev_directory_symlinks_are_rejected(self):
         self.registered()

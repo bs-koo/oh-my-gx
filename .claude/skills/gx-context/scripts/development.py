@@ -147,8 +147,9 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
         raise ValueError("프로젝트 디렉터리와 비어 있지 않은 run-id가 필요합니다")
     if phase not in ("pre", "post") or intent not in ("implement", "resume", "understand", "plan", "status"):
         raise ValueError("phase 또는 intent 형식 오류")
-    if work_id is not None and not re.fullmatch(r"W[0-9]{2}", work_id):
-        raise ValueError("work-id는 W와 두 자리 숫자여야 합니다")
+    parser = parser_module()
+    if work_id is not None and (not isinstance(work_id, str) or not parser.ID_RE.match(work_id)):
+        raise ValueError(f"work-id는 W와 두 자리 이상 ASCII 숫자여야 합니다 (예: W01, W118): {work_id!r}")
     if branch is not None and (not isinstance(branch, str) or not branch.strip() or "\n" in branch or "\r" in branch):
         raise ValueError("실제 branch/slug 값이 필요합니다")
     if request_data is None:
@@ -165,7 +166,6 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
         raise ValueError("units는 작업 객체 목록이어야 합니다")
     requested = qualified(root, request.get("requirements", []))
     old = validate_previous(root, previous, run_id, work_id)
-    parser = parser_module()
     errors, notices, rows, ledger = [], [], [], []
     docs = {}
 
@@ -285,12 +285,10 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
                 or (branch and state.get("branch") == branch) or same_directory):
             if state.get("run-id") != run_id or (branch and state.get("branch") not in (None, branch)):
                 blockers.append("다른 진행 중 run/브랜치가 선택 작업을 사용하고 있습니다")
-    numbers = [int(row["ID"][1:]) for row in rows if re.fullmatch(r"W\d{2}", row["ID"])]
-    number = max(numbers, default=0) + 1
-    next_work = f"W{number:02d}" if number <= 99 else None
+    # W99 다음은 W100이다. 폐기·완료 행을 포함한 최댓값 다음 번호를 쓰고 기존 ID를 재사용하지 않는다.
+    numbers = [int(row["ID"][1:]) for row in rows if parser.ID_RE.match(row["ID"])]
+    next_work = f"W{max(numbers, default=0) + 1:02d}"
     registered = bool(selected and row_refs and scope.issubset(index))
-    if not work_id and next_work is None:
-        blockers.append("작업 ID 범위가 소진되었습니다. 기존 ID를 재사용하지 않습니다")
     file_hashes = {key: value["sha256"] for key, value in sorted(docs.items())}
     req_hashes = {f"{item['domain']}:{item['id']}": digest(item) for item in related}
     input_hash = digest({"request": request, "work-id": work_id, "branch": branch, "intent": intent,

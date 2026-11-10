@@ -81,6 +81,40 @@ if [ -n "$V_PLUGIN" ] && [ "$V_PLUGIN" = "$V_MARKET" ] && [ "$V_PLUGIN" = "$V_CO
 else
   fail "버전 불일치: plugin.json=$V_PLUGIN marketplace.json=$V_MARKET codex-plugin=$V_CODEX CHANGELOG=$V_CHANGE"
 fi
+# 최근 버전 태그 이후 배포 동작 경로가 바뀌었는데 버전이 그 태그와 같으면, 이미 설치한 사용자는
+# 같은 버전으로 보여 업데이트를 받지 못한다(v3.0.0 태그 뒤 #102가 버전 없이 머지된 이력, 2026-11-09).
+# CI는 태그를 받아야 판정할 수 있다(lint.yml fetch-depth: 0). 태그가 없으면 판정하지 않고 알린다.
+# 릴리스 태그 접두사. 모노레포로 옮긴 사본은 '<플러그인>--v'를 쓴다(그쪽 scripts/release.sh).
+RELEASE_TAG_PREFIX='v'
+LAST_TAG=$(git describe --tags --abbrev=0 --match "${RELEASE_TAG_PREFIX}[0-9]*" 2>/dev/null || true)
+if [ -z "$LAST_TAG" ]; then
+  ok "버전 태그를 찾지 못해 태그 이후 변경 검사를 건너뜀 (얕은 클론·태그 미수신)"
+elif ! printf '%s\n%s\n' "${LAST_TAG#"$RELEASE_TAG_PREFIX"}" "$V_PLUGIN" | sort -V -C 2>/dev/null; then
+  fail "버전 $V_PLUGIN이 최근 태그 $LAST_TAG보다 낮다. 태그 이후 버전으로 올린다"
+elif [ "${RELEASE_TAG_PREFIX}$V_PLUGIN" != "$LAST_TAG" ]; then
+  ok "버전 $V_PLUGIN은 최근 태그 $LAST_TAG 이후의 새 버전"
+else
+  # 매니페스트(훅 배선 포함)도 설치본 동작이다. eval·배포되지 않는 개발 도구 스크립트는 제외한다.
+  # stderr는 따로 받는다 — autocrlf 줄끝 경고가 변경 목록에 섞이면 오탐이 된다. 실패는 종료 코드로만 판정한다.
+  DRIFT_ERR=$(mktemp)
+  if DRIFT=$(git diff --name-only "$LAST_TAG" -- .claude/skills .claude/hooks .claude/config.json agents hooks.json scripts \
+      .claude-plugin .codex-plugin \
+      ':(exclude).claude/skills/*/evals/*' ':(exclude)scripts/lint-consistency.sh' ':(exclude)scripts/hook-tests.sh' \
+      ':(exclude)scripts/behavior-tests.sh' ':(exclude)scripts/test-behavior-tests.sh' \
+      ':(exclude)scripts/sync-codex-resources.py' ':(exclude)scripts/codex-probe-hook.sh' 2>"$DRIFT_ERR"); then
+    :
+  else
+    fail "태그 $LAST_TAG 대비 변경 확인(git diff) 실패: $(head -3 "$DRIFT_ERR")"
+    DRIFT=""
+  fi
+  rm -f "$DRIFT_ERR"
+  if [ -n "$DRIFT" ]; then
+    fail "태그 $LAST_TAG 이후 배포 경로가 바뀌었는데 버전이 그대로($V_PLUGIN)다. 버전과 CHANGELOG를 올린다:"
+    printf '%s\n' "$DRIFT" | head -10 | sed 's/^/         /'
+  else
+    ok "태그 $LAST_TAG 이후 배포 경로 변경 없음"
+  fi
+fi
 
 echo "[2/36] 서브에이전트 도구명 통일 (Task)"
 if grep -rn 'Agent(subagent_type' .claude/skills >/dev/null 2>&1; then
@@ -323,9 +357,13 @@ echo "[16/36] context 변경 승인·종료점 + 진입점 형제 스킬 호출"
 grep -qF '**임의 반영 금지**' .claude/skills/gx-tdd/phases/phase-complete.md || fail "context 변경 승인 게이트 누락"
 grep -qF 'stop-at: verify' .claude/skills/gx-tdd/phases/phase-complete.md || fail "context 커밋 종료점 게이트 누락"
 grep -q "다른 스킬의 프로세스를 실행할 때 아래 경로에서 Read한다" .claude/skills/gx-work/SKILL.md && fail "레거시 형제 스킬 호출 지시 잔존"
+# phase-complete는 context·작업 계획 완료 반영을 별도 직접 커밋 없이 Step 1의 gx-commit 커밋에 넣는다.
+# 라우팅 규칙이 사라진 직접 커밋 예외("context 변경사항 자동 커밋")를 다시 적지 않게 현재 규칙을 확인한다.
+grep -q "status.md·작업 계획 완료 반영은 별도 직접 커밋 없이" .claude/rules/skill-routing.md \
+  || fail "skill-routing context 반영 커밋 규칙 누락"
 grep -q "context 변경사항 자동 커밋" .claude/rules/skill-routing.md \
-  || fail "skill-routing context 커밋 예외 누락"
-[ "$FAIL" -eq 0 ] && ok "context 커밋 예외 헤더·라우팅 + 레거시 Read 제거 확인"
+  && fail "skill-routing에 제거된 context 직접 커밋 예외 잔존"
+[ "$FAIL" -eq 0 ] && ok "context 반영 커밋 규칙·라우팅 + 레거시 Read 제거 확인"
 
 echo "[17/36] force-push 훅 가드 G4"
 grep -q "force-push 차단" .claude/hooks/pre-tool-guard.sh || fail "훅 force-push 가드(G4) 주석 누락"
@@ -340,6 +378,8 @@ for f in .claude/hooks/pre-tool-guard.sh .claude/rules/skill-routing.md .claude/
   grep -qF '.dev/.active' "$f" || fail "svn .dev/.active consumer 누락: $f"
 done
 grep -q 'ACTIVE_SLUG' .claude/hooks/pre-tool-guard.sh || fail "훅 ACTIVE_SLUG 해석 누락"
+# gx-work route helper도 SVN 활성 작업을 .dev/.active로 읽는다 — 해석이 훅·capture와 어긋나면 잠금 검사를 놓친다.
+grep -qF '".active"' scripts/gx-work.py || fail "svn .dev/.active consumer 누락: scripts/gx-work.py"
 [ "$FAIL" -eq 0 ] && ok "SVN .dev/.active producer·consumer·폴백 확인"
 
 echo "[19/36] cross-review fallback 3원 조건 + humanizer P1 커버리지"

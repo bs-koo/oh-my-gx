@@ -124,7 +124,7 @@ gx-visualize progress --backend static
 ### 명령 하나로 만듭니다
 
 ```text
-python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [--changed-since <기준 ref>] [--domain <도메인>] [--labels <라벨 JSON>]
+python scripts/build_map.py <프로젝트 루트> [--map-dir <출력 폴더>] [--changed-since <기준 ref>] [--domain <도메인>] [--labels <라벨 JSON>] [--backend auto|archify|mermaid|static]
 ```
 
 스캔부터 인덱스까지 이 명령이 모두 수행하고 JSON 보고를 출력합니다. gx-work·gx-tdd 완료 단계에서 "아키텍처 맵 갱신"을 고르면 파이프라인이 기준 브랜치를 `--changed-since`로 넘겨 이 명령을 실행합니다. 전체 스캔은 저장소 규모에 따라 시간이 걸릴 수 있어 실행 전에 먼저 알립니다. 실측(kreb admin, 도메인 8개): 변경 표시를 포함해 약 2분 30초가 걸렸고, 대부분은 Archify가 그림 속 근거 링크를 저장소와 대조하는 시간입니다.
@@ -198,7 +198,7 @@ API·메서드·원래 클래스명·모든 HTTP 경로로 검색할 수 있습�
 4. service는 build_map 명령으로 재실행하고, 다른 뷰는 필요하면 `--backend static`으로 재실행합니다. 보고서에는 사용한
    재실행 명령을 그대로 남깁니다.
 
-gx-dev의 선택 단계에서 모든 백엔드가 실패하면
+gx-tdd 완료 단계의 선택 시각화에서 모든 백엔드가 실패하면
 `visualization_status: failed`와 실패 이유, receipt 경로를 기록하고 본
 개발·리뷰·커밋 파이프라인은 계속할 수 있습니다. 사용자가 “시각화만” 요청한
 경우에는 `html_path: null`, 누락 입력, 마지막 진단, 재실행 명령을 반환하며 성공한
