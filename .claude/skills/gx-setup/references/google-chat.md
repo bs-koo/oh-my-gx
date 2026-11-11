@@ -9,7 +9,7 @@
 1. `.claude/config.json`의 `notifications.googleChat` 확인:
    - `webhookUrl`이 이미 채워져 있으면 →
      `Google Chat 연동 : 완료 ✅ (기존 설정 사용)` 출력. 건너뜀.
-   - `webhookUrl`이 비어있으면 → 2번으로.
+   - `webhookUrl`이 비어있으면 → 2번으로. `declined: true`(이전에 거절)여도 gx-setup에서는 다시 묻는다. 이 값은 다른 스킬의 미설정 안내만 막는다.
 
 2. 사용자에게 연동 여부를 묻는다:
    ```
@@ -25,7 +25,7 @@
      }]
    )
    ```
-   - "건너뛰기" → 건너뜀
+   - "건너뛰기" → `notifications.googleChat.declined`를 `true`로 기록한다(Codex는 위 helper에 `{"notifications":{"googleChat":{"declined":true}}}` updates만 전달, Claude Code는 기존 Edit). `Google Chat 연동 : 건너뜀 (거절 기록 — PR마다 연동 안내를 반복하지 않음, 바꾸려면 /gx-setup 재실행)` 출력.
    - "연동" → 3번으로
 
 3. 웹훅 URL 생성 가이드를 표시한 후 AskUserQuestion으로 URL을 받는다:
@@ -59,5 +59,5 @@
    - 건너뛰기 → 건너뜀
    - URL 입력 → `https://chat.googleapis.com/` 시작 여부 검증
    - 유효하지 않으면 1회 재입력 요청. 재입력도 유효하지 않으면 건너뜀.
-   - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`). Codex에서는 위 helper에 `{"notifications":{"googleChat":{"enabled":true,"webhookUrl":"{확정 URL}"}}}` updates만 전달한다. Claude Code는 기존 Edit를 사용한다.
+   - 유효하면 → config.json 갱신 (`enabled: true`, `webhookUrl: URL`, `declined: false`). Codex에서는 위 helper에 `{"notifications":{"googleChat":{"enabled":true,"webhookUrl":"{확정 URL}","declined":false}}}` updates만 전달한다. Claude Code는 기존 Edit를 사용한다.
      `Google Chat 연동 : 완료 ✅` 출력

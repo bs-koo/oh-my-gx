@@ -129,6 +129,23 @@ class AuxAnalysisTests(unittest.TestCase):
         self.assertFalse(records["package.json"]["needs_confirmation"])
         self.assertTrue(records["other/package.json"]["needs_confirmation"])
 
+    def test_path_detect_markers_follow_the_test_plan_rules(self):
+        self.write("backend/build.gradle.kts", "")
+        self.write("frontend/package.json", "{}")
+        self.write("tools/frontend/package.json", "{}")
+        self.write("package.json", "{}")
+        self.write(".claude/config.json", json.dumps({"projectTypes": {
+            "java-spring": {"detect": ["backend/build.gradle.kts"], "test": "cd backend && ./gradlew test"},
+            "node": {"detect": ["frontend/package.json"], "test": "pnpm test"},
+            "root": {"detect": ["**/package.json"], "roots": ["."], "test": "npm test"},
+            "fullstack": {"detect": ["frontend/package.json"], "roots": ["."], "test": "make test"}}}))
+        records = {item["path"]: item for item in self.scan()["markers"]}
+        self.assertEqual(records["backend/build.gradle.kts"]["registered_types"], ["java-spring"])
+        # A path marker counts anywhere under an explicit root; a name marker only directly in it.
+        self.assertEqual(records["frontend/package.json"]["registered_types"], ["node", "fullstack"])
+        self.assertEqual(records["package.json"]["registered_types"], ["root"])
+        self.assertTrue(records["tools/frontend/package.json"]["needs_confirmation"])
+
     def test_setup_scan_rejects_bad_config_instead_of_claiming_no_stacks(self):
         self.write(".claude/config.json", '{"projectTypes":[]}')
         result = self.cli("gx-setup-scan.py", "--cwd", self.project, "--config-source", "existing")

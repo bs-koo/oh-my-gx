@@ -30,7 +30,11 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 
 ## 각 반복 (1~2회)
 
+**승인 대기 초안 재개**: `${DEV_DIR}/design.draft.md`가 있고 `current-step`이 `설계 승인 대기`이면 architect·design-critic·test-architect를 다시 부르지 않는다. 그 초안(소형이면 함께 저장한 `implementation-plan.md` 요약 포함)을 다시 보여 Step 4의 확인 질문만 다시 한다. 초안의 `## 확인이 필요한 사항 (승인 전)` 절에서 답변 표시가 없는 항목만 다시 묻고, 답한 항목은 `${DEV_DIR}/decisions.md`의 답을 Step 4의 답으로 이어 쓴다. prd.md가 초안보다 나중에 바뀌었으면 초안을 버리고 Step 0부터 새로 한다.
+
 **Step 0**: `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 확정된 PRD를 로드한다.
+
+**환경 준비 병행**: 기준선(phase-implement Step 0.5)에 필요한 환경이 빠져 있으면(예: config `artifacts`의 `node_modules/` 부재, 프로젝트 문서에 적힌 테스트 DB 미기동) architect 디스패치와 함께 그 준비만 백그라운드로 시작한다. lock 파일 기준 의존성 설치나 프로젝트에 문서화된 준비 스크립트만 쓰고 테스트·빌드는 시작하지 않는다. 시작한 명령과 로그 경로를 execution-log에 남긴다. 백그라운드 실행을 지원하지 않는 하네스는 시작하지 않고 Step 0.5에서 준비한다.
 
 `FRONTEND_TESTING_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/frontend-testing.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). PRD·설계서에 UI 컴포넌트가 포함될 때 test-architect 프롬프트에 이 경로를 전달한다.
 
@@ -49,7 +53,7 @@ architect의 설계는 **test-architect의 testability 평가**를 통과해야 
 
 ## Task 완료 후
 
-**Step 1**: architect 출력(설계 초안 + 질문)을 사용자에게 **전문 표시**한다. Q&A 여부와 무관하게 항상 전문을 표시한다 (사용자가 설계를 검토할 수 있도록).
+**Step 1**: architect 출력(설계 초안 + 질문)을 사용자에게 **전문 표시**한다. Q&A 여부와 무관하게 항상 전문을 표시한다 (사용자가 설계를 검토할 수 있도록). 표시하는 즉시 설계 초안을 `${DEV_DIR}/design.draft.md`에 저장한다(반복마다 덮어쓴다). 승인을 기다리다 세션이 끊겨도 같은 초안으로 다시 묻기 위해서다.
 
 **Step 2**: architect 출력에서 "탐색 추가 항목"을 파싱하여 코드 맵에 누적한다.
 
@@ -146,12 +150,12 @@ design-critic 결과 처리:
 
 `current-step`을 `"design-critic + test-architect (병렬)"`로 갱신.
 
-**Step 4**: 현재 실제 질문 목록과 중요한 미정을 대조한다. 종료 문구만으로 질문이 없다고 판단하지 않는다. 제품 미정은 공통 requirements 문답, 중요한 기술 미정은 기존 설계 질문으로 해소하며 비차단 가정은 근거와 구분한다.
+**Step 4**: 현재 실제 질문 목록과 중요한 미정을 대조한다. 종료 문구만으로 질문이 없다고 판단하지 않는다. 제품 미정은 공통 requirements 문답, 중요한 기술 미정은 기존 설계 질문으로 해소하며 비차단 가정은 근거와 구분한다. 설계 확인 질문 직전에 testability 평가를 초안 파일 끝에 `## Testability 평가 (test-architect)` 섹션으로 덧붙이고 `current-step`을 `"설계 승인 대기"`로 갱신한다. 이번에 물을 질문 목록(Agent 출력의 "확인이 필요한 사항"과 검토에서 나온 결정 질문)도 그 뒤에 `## 확인이 필요한 사항 (승인 전)` 절로 덧붙인다. 일부 답을 받으면 답은 `${DEV_DIR}/decisions.md`(질문 기록 훅의 기록, 자연어 답은 직접 기록)에 있으므로 해당 항목 끝에 `→ 답변: decisions.md`를 붙여 다시 저장한다. 질문 본문의 설계 요약은 몇 줄로 짧게 둔다(전문은 Step 1에서 보였다).
 
 **실제 필수 질문이나 중요한 미정이 있으면**:
-- 설계 초안을 사용자에게 출력한다.
-- Agent 출력의 "확인이 필요한 사항"을 **에이전트 질문 → AskUserQuestion 변환 규칙** (SKILL.md 공유 규칙)에 따라 변환하여 사용자에게 순서대로 제시한다.
-- 사용자 답변을 수렴하여 다음 반복으로 전달.
+- 설계 초안 전문은 Step 1에서 보였으므로 다시 출력하지 않고 질문에 필요한 부분만 짧게 인용한다.
+- Agent 출력의 "확인이 필요한 사항"을 **에이전트 질문 → AskUserQuestion 변환 규칙** (SKILL.md 공유 규칙)에 따라 변환하여 사용자에게 제시한다. 초안이 가정값을 밝힌 서로 독립인 결정 질문은 아래 설계 확인 질문과 **한 호출로 묶는다**(하네스 질문 수 한도 안에서. 넘치면 결정 질문을 먼저 묻는다). 각 결정 질문의 첫 선택지는 초안의 가정값이다. 모든 결정에서 가정값을 고르고 설계를 승인하면 그 응답으로 확정한다. 승인 게이트는 없애지 않는다.
+- 가정과 다른 답이 있거나 묶지 못한 질문의 답은 수렴하여 다음 반복으로 전달하고, 승인은 갱신된 설계에서 다시 받는다.
 
 **실제 필수 질문과 중요한 미정이 없으면** (`ready`; 종료 문구는 승인 아님):
 - **승인/수정 공통 패턴** (SKILL.md 공유 규칙)에 따라 AskUserQuestion을 사용한다:
@@ -168,6 +172,7 @@ design-critic 결과 처리:
     }]
   )
   ```
+- **소형 설계의 계획·실행 방법 묶음**: "설계 규모"가 소형이고 요청 범위에 implement가 있으면, 확인 질문 전에 phase-implement Step 1~1.1의 분해 규칙으로 T계획을 만들어 `${DEV_DIR}/implementation-plan.md`에 저장하고 `implementation-plan-file`·`implementation-plan-sha256`을 기록한다. 질문 본문에 태스크 요약(태스크·수용 기준·순서 몇 줄)을 붙이고, 위 2선택 대신 [core-planning §3의 결합 승인](../references/core-planning.md) 방식으로 phase-implement 1.2의 세 선택지와 추천 기준을 쓴다. 질문은 "설계와 구현 계획을 함께 확인해주세요. 어떤 방식으로 구현할까요? 수정할 사항은 직접 입력해주세요."다. 응답 뒤 계획 해시가 표시 때와 같을 때만 현재 세션/서브에이전트 응답을 설계 승인이자 `plan-approved-*`·`execution-method-*`(출처: 이 설계 확인 응답) 기록으로 쓴다. 계획 문서로 종료는 설계를 확정 저장한 뒤 phase-implement Step 1.3의 같은 항목대로 끝낸다. 직접 입력한 수정은 아래 수정 요청과 같다. 태스크가 8개를 넘거나 중형·대형이면 묶지 않고 implement의 태스크 수 가드·1.2를 따로 거친다. Codex stable id는 `design_approval`을 그대로 쓴다.
 - 승인 → 중요 미정·testability 게이트를 충족한 뒤 현재 요청 범위의 다음 단계로 진행한다. 명시 `--phase design`은 설계 결과로 종료한다.
 - 수정 요청 → 수정 선택 시 별도 후속 질문으로 수정할 부분을 묻고 실제 수정 답변을 기다린 뒤 수정 내용을 반영해 다음 반복으로 진행한다. 원 질문 UI Other에 직접 입력한 수정 답변은 별도 경로에서 사용한다.
 
@@ -175,8 +180,8 @@ design-critic 결과 처리:
 
 **Phase 완료 후 저장**:
 현재 중요한 미정·미응답이 없고 기존 설계 승인이 유효한지 먼저 확인한다. 대기 중에는 확정 저장/완료 보고를 하지 않으며 기존 실행·이력을 보존한다.
-1. 확정된 설계 문서를 `${PROJECT_ROOT}/${DEV_DIR}/design.md`에 Write한다.
-2. **test-architect 평가 결과를 설계서에 병합**: 설계서 끝에 `## Testability 평가 (test-architect)` 섹션을 추가한다. red-writer가 이 섹션을 참조하여 격리 전략을 결정한다.
+1. 승인된 초안(`design.draft.md`)을 `## 확인이 필요한 사항 (승인 전)` 절을 빼고 `${PROJECT_ROOT}/${DEV_DIR}/design.md`로 옮겨 Write하고 초안 파일은 지운다.
+2. **test-architect 평가 결과를 설계서에 병합**: 설계서 끝에 `## Testability 평가 (test-architect)` 섹션이 있는지 확인하고 없으면 추가한다. red-writer가 이 섹션을 참조하여 격리 전략을 결정한다.
 
 **Phase 완료 보고 (요약 모드)**:
 설계서 저장 후 사용자에게 **요약만** 출력한다 (Step 1에서 이미 전문을 표시했으므로 반복하지 않음):
@@ -184,7 +189,7 @@ design-critic 결과 처리:
 설계 확정: <제목>
 - 변경 범위: N개 파일 (신규 N, 수정 N)
 - 구현 순서: N단계
-- Testability score: N/10 ✅ (test-architect 평가)
+- 테스트 가능성 점수(testability): N/10 ✅
 - 저장: ${DEV_DIR}/design.md
 ```
 이후 Phase에서 설계서가 필요하면 파일을 Read하여 Agent prompt에 포함한다.

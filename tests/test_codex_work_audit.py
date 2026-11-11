@@ -19,7 +19,7 @@ RESEARCH = SKILLS / "gx-research"
 ROUTE_ACTIONS = (
     "understand", "plan", "status", "implement", "resume", "no-active-run", "scope-review-required",
     "awaiting-decision", "resume-selection-required", "migration-required", "loop-active",
-    "unsupported-request", "detached-head",
+    "unsupported-request", "detached-head", "setup-required", "resume-elsewhere",
 )
 
 
@@ -127,11 +127,12 @@ class EntryCanonTests(unittest.TestCase):
     def test_entry_and_endpoint_are_asked_in_one_question_call(self):
         self.assertIn("한 번의 질문 호출", self.entry)
         block = next(part for part in self.entry.split("```")[1::2] if "AskUserQuestion(" in part)
-        self.assertEqual(len(re.findall(r"(?m)^\s*question:", block)), 2)
+        # v3.2.0: 진입·종료점에 모드·프로파일까지 한 호출로 묻는다(이미 밝힌 항목은 뺀다).
+        self.assertEqual(len(re.findall(r"(?m)^\s*question:", block)), 4)
         for group in re.findall(r"options:\s*\[(.*?)\]", block, re.S):
             self.assertIn(len(re.findall(r"\{\s*label:", group)), (2, 3))
         self.assertIn('header: "종료점"', block)
-        self.assertIn("종료점이 이미 명시", self.entry)
+        self.assertIn("이미 밝힌 항목은 질문에서 빼고", self.entry)
 
     def test_claude_code_records_without_helper_and_codex_passes_real_set_id(self):
         self.assertIn("helper 등록 없이", self.entry)
@@ -235,7 +236,7 @@ class HandoffContractDocTests(unittest.TestCase):
         pointer = self.example["request-file"]
         self.assertFalse(pointer.startswith("/") or re.match(r"^[A-Za-z]:", pointer), pointer)
         self.assertTrue(pointer.startswith(".dev/" + self.example["run-id"] + "/"))
-        for field in ("work-id", "execution-method", "model-profile"):
+        for field in ("work-id", "execution-method", "model-profile", "mode"):
             self.assertIn(field, self.example)
         self.assertNotEqual(self.example["input-sha256"], self.example["entry-approval"]["scope-sha256"])
         for marker in ("프로젝트 루트 기준 POSIX 상대경로", "표시용", "v1"):

@@ -5,6 +5,7 @@
 snapshot 일치는 관련 자료의 재사용 힌트이며 의미적 정합성의 증명이 아니다.
 """
 import argparse
+import fnmatch
 import hashlib
 import importlib.util
 import json
@@ -112,6 +113,32 @@ def validate_previous(root, previous, run_id, work_id):
     return value
 
 
+def custom_format_paths(root):
+    """config documentChecks.customFormatPaths: 규약 표가 아닌 프로젝트 고유 형식 문서(상대 경로·glob). 없거나 null이면 []."""
+    path = local(root, ".claude/config.json")
+    config = read_json(path) if path.is_file() else {}
+    checks = config.get("documentChecks") if isinstance(config, dict) else None
+    checks = {} if checks is None else checks
+    patterns = checks.get("customFormatPaths") if isinstance(checks, dict) else False
+    patterns = [] if patterns is None else patterns
+    if not isinstance(patterns, list) or any(not isinstance(item, str) or not item for item in patterns):
+        raise ValueError("documentChecks.customFormatPaths는 프로젝트 상대 경로 목록이어야 합니다")
+    return patterns
+
+
+def ruled_errors(root, path, run_id):
+    """같은 run에서 예외 처리(Ruling)한 구조 오류 문구. 다른 run의 기록은 쓰지 않는다."""
+    if path is None:
+        return set()
+    value = read_json(local(root, str(path)))
+    if not isinstance(value, dict) or value.get("run-id") != run_id:
+        raise ValueError("예외 처리 기록의 run-id가 현재 실행과 다릅니다")
+    items = value.get("items")
+    if not isinstance(items, list) or any(not isinstance(item, str) or not item for item in items):
+        raise ValueError("예외 처리 기록 items는 구조 오류 문구 목록이어야 합니다")
+    return set(items)
+
+
 def state_fields(path):
     return {key: value.strip().strip("\"'") for key, value in
             re.findall(r"^([a-z][a-z-]*):[ \t]*([^\r\n]*)", path.read_text(encoding="utf-8"), re.M)}
@@ -141,7 +168,8 @@ def summarize(report):
 
 
 def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previous=None,
-            intent="implement", no_document_write=False, branch=None, request_data=None):
+            intent="implement", no_document_write=False, branch=None, request_data=None,
+            skip_registration=False, ruled=None):
     root = Path(project_root).resolve()
     if not root.is_dir() or not isinstance(run_id, str) or not run_id.strip():
         raise ValueError("프로젝트 디렉터리와 비어 있지 않은 run-id가 필요합니다")
@@ -166,8 +194,23 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
         raise ValueError("units는 작업 객체 목록이어야 합니다")
     requested = qualified(root, request.get("requirements", []))
     old = validate_previous(root, previous, run_id, work_id)
-    errors, notices, rows, ledger = [], [], [], []
+    custom = custom_format_paths(root)
+    accepted = ruled_errors(root, ruled, run_id)
+    errors, notices, rows, ledger, skipped = [], [], [], [], []
+    unread = set()  # 고유 형식이라 읽지 못한 문서. 그 문서가 없어서 생기는 연쇄 오류도 notice로 낮춘다.
     docs = {}
+
+    def format_issue(path, exc):
+        name = relative(root, path)
+        if isinstance(exc, ValueError) and any(fnmatch.fnmatchcase(name, item) for item in custom):
+            unread.add(name)
+            notices.append(f"고유 형식 문서라 표 대조에서 제외: {name}: {exc}")
+        else:
+            errors.append(f"{name}: {exc}")
+
+    def drop_ruled():
+        skipped.extend(item for item in errors if item in accepted)
+        errors[:] = [item for item in errors if item not in accepted]
 
     def add(value, reason):
         target = local(root, str(value))
@@ -215,13 +258,13 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
                                    "status": item["상태"], "ac": item["AC"], "pr": item["PR"],
                                    "path": relative(root, path)})
             except (ValueError, OSError) as exc:
-                errors.append(f"{relative(root, path)}: {exc}")
+                format_issue(path, exc)
     work_plan = add(".dev/plan.md", "work-registry")
     if work_plan.is_file():
         try:
             rows = parser.parse_table(work_plan.read_text(encoding="utf-8"), parser.HEADER, allow_empty=True)
         except (ValueError, OSError) as exc:
-            errors.append(f".dev/plan.md: {exc}")
+            format_issue(work_plan, exc)
     # 원장에 없는 거대 범위가 확장되기 전에 차단한다. W 원장의 크기와 별도로 제한한다.
     for row in rows:
         for token in re.split(r"[,·]", row["요구사항"]):
@@ -234,14 +277,21 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
                 errors.append(f"{row['ID']}: 요구사항 선행 0 별칭은 허용하지 않습니다")
             if match and int(match[2]) - int(match[1]) > max(len(ledger), 10000):
                 errors.append(f"{row['ID']}: 원장에 비해 과도한 요구사항 범위입니다")
+    drop_ruled()
     analysis = {}
     if not errors:
         analysis = parser.analyze(rows, ledger)
+        plan_unread = not work_plan.is_file() or relative(root, work_plan) in unread
+        unread_domains = {Path(name).parent.name for name in unread if name.startswith("context/")}
         for error in analysis["errors"]:
-            if not work_plan.is_file() and error.startswith("미배정 요구사항:"):
+            if ((plan_unread and error.startswith("미배정 요구사항:"))
+                    or any(f"원장에 없는 요구사항 {name}:" in error for name in unread_domains)):
                 notices.append(error)
             else:
                 errors.append(error)
+        drop_ruled()
+    if skipped:
+        notices.append(f"같은 실행에서 예외 처리한 구조 오류 {len(skipped)}건은 다시 보고하지 않습니다")
     selected = next((row for row in rows if row["ID"] == work_id), None)
     row_refs = set()
     if selected and not errors:
@@ -291,8 +341,14 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
     registered = bool(selected and row_refs and scope.issubset(index))
     file_hashes = {key: value["sha256"] for key, value in sorted(docs.items())}
     req_hashes = {f"{item['domain']}:{item['id']}": digest(item) for item in related}
-    input_hash = digest({"request": request, "work-id": work_id, "branch": branch, "intent": intent,
-                         "no-document-write": bool(no_document_write)})
+    hashed = {"request": request, "work-id": work_id, "branch": branch, "intent": intent,
+              "no-document-write": bool(no_document_write)}
+    # 새 선택 입력은 쓸 때만 지문에 넣어 기존 snapshot의 reuse 판정을 바꾸지 않는다.
+    if skip_registration:
+        hashed["skip-registration"] = True
+    if accepted:
+        hashed["ruled"] = sorted(accepted)
+    input_hash = digest(hashed)
     snapshot = {"schema-version": 1, "project-root": str(root), "run-id": run_id, "work-id": work_id,
                 "input-digest": input_hash, "files": file_hashes, "requirements": req_hashes,
                 "global-digest": digest({"rows": rows, "ledger": ledger})}
@@ -301,11 +357,15 @@ def inspect(project_root, plan_path, run_id, *, phase="pre", work_id=None, previ
     changed_refs = sorted(key for key in set(req_hashes) | set(old["requirements"] if old else {})
                           if not old or req_hashes.get(key) != old["requirements"].get(key))
     readonly = no_document_write or intent in ("understand", "plan", "status")
-    ready = registered and not errors and not blockers
+    # 등록 생략(핵심 모드·버그 수정)은 새 원장·W행을 만들지 않고 진행한다. 이미 연결된 행은 그대로 갱신한다.
+    ready = (registered or skip_registration) and not errors and not blockers
     if readonly:
         action = "report-only"
     elif errors or blockers:
         action = "repair-required"
+    elif not registered and skip_registration:
+        action = "register-skipped"
+        notices.append("문서 원장 등록 생략(원하면 '문서에도 등록'이라고 요청)")
     elif not registered:
         action = "register-required"
     elif old and old["input-digest"] == input_hash and not changed and not changed_refs:
@@ -345,6 +405,9 @@ def main():
     command.add_argument("--intent", choices=("implement", "resume", "understand", "plan", "status"), default="implement")
     command.add_argument("--branch")
     command.add_argument("--no-document-write", action="store_true")
+    command.add_argument("--skip-registration", action="store_true",
+                         help="미등록이어도 새 원장·W행을 만들지 않는다(핵심 모드·버그 수정)")
+    command.add_argument("--ruled", type=Path, help="같은 run에서 예외 처리한 구조 오류 기록 JSON")
     summary = commands.add_parser("summary")
     summary.add_argument("--report", required=True, help="점검 보고서 또는 stdin JSON(-)")
     args = parser.parse_args()
@@ -356,6 +419,7 @@ def main():
             result = inspect(args.project_root, args.plan, args.run_id, phase=args.phase, work_id=args.work,
                              previous=args.previous, intent=args.intent, branch=args.branch,
                              no_document_write=args.no_document_write,
+                             skip_registration=args.skip_registration, ruled=args.ruled,
                              request_data=json.load(sys.stdin) if args.plan == "-" else None)
             code = 1 if result["structural-errors"]["count"] else 0
     except (OSError, ValueError, TypeError, KeyError) as exc:

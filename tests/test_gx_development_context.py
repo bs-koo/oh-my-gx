@@ -306,6 +306,102 @@ class DevelopmentContextTests(unittest.TestCase):
         self.assertTrue(json.loads(result.stdout)["ready-for-tdd"])
         self.assertEqual(before, self.bytes())
 
+    def test_skip_registration_proceeds_without_new_ledger_but_keeps_registered_rows(self):
+        # M3: 핵심 모드·버그 수정은 새 원장·W행을 만들지 않고 진행한다. 기본값은 기존처럼 등록을 요구한다.
+        before = self.bytes()
+        self.assertEqual(self.inspect()["action"], "register-required")
+        result = self.inspect(skip_registration=True)
+        self.assertEqual(result["action"], "register-skipped")
+        self.assertTrue(result["ready-for-tdd"])
+        self.assertIn("문서 원장 등록 생략(원하면 '문서에도 등록'이라고 요청)", result["notices"])
+        self.assertEqual(before, self.bytes())
+        self.registered()
+        linked = self.inspect(work_id="W01", skip_registration=True)
+        self.assertNotEqual(linked["action"], "register-skipped")
+        self.assertTrue(linked["ready-for-tdd"])
+        self.assertEqual(linked["requirements"][0]["id"], "FR-1")
+
+    def test_skip_registration_cli_flag_and_errors_still_block(self):
+        command = [sys.executable, str(HELPER), "inspect", "--project-root", str(self.root),
+                   "--plan", str(self.request_path), "--run-id", "run-1", "--skip-registration"]
+        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["action"], "register-skipped")
+        self.write("context/배송/status.md", LEDGER_HEADER + "| FR-1 | X | - | ⬜ | - |\n| FR-1 | Y | - | ⬜ | - |\n")
+        blocked = self.inspect(skip_registration=True)
+        self.assertEqual(blocked["action"], "repair-required")
+        self.assertFalse(blocked["ready-for-tdd"])
+
+    def custom_documents(self):
+        self.write("context/결제/status.md", "# 결제 현황\n| 번호 | 내용 | 진행 |\n|---|---|---|\n| 1 | 한도 | 완료 |\n")
+        self.write("context/배송/status.md", "# 배송\n| 요구 | 상태 |\n|---|---|\n| 배송비 | 진행 |\n")
+        self.write(".dev/plan.md", "# 계획\n| 순번 | 할 일 |\n|---|---|\n| 1 | 한도 |\n")
+
+    def test_custom_format_documents_are_notices_only_when_configured(self):
+        # F10: 프로젝트 고유 형식 문서의 표 형식 불일치가 매 실행 repair-required를 만들지 않게 한다.
+        self.custom_documents()
+        self.assertEqual(self.inspect(skip_registration=True)["structural-errors"]["count"], 3)
+        self.write(".claude/config.json", json.dumps(
+            {"documentChecks": {"customFormatPaths": ["context/*/status.md", ".dev/plan.md"]}}))
+        result = self.inspect(skip_registration=True)
+        self.assertEqual(result["structural-errors"]["count"], 0, result["structural-errors"])
+        self.assertEqual(result["action"], "register-skipped")
+        self.assertEqual(sum(note.startswith("고유 형식 문서라 표 대조에서 제외") for note in result["notices"]), 3)
+
+    def test_unread_custom_plan_does_not_turn_conforming_ledger_into_unassigned_errors(self):
+        self.write("context/결제/status.md", LEDGER_HEADER + "| FR-1 | 한도 초과 거부 | AC-1 | ⬜ | - |\n")
+        self.write(".dev/plan.md", "# 계획\n| 순번 | 할 일 |\n|---|---|\n| 1 | 한도 |\n")
+        self.write(".claude/config.json", json.dumps({"documentChecks": {"customFormatPaths": [".dev/plan.md"]}}))
+        result = self.inspect()
+        self.assertEqual(result["structural-errors"]["count"], 0, result["structural-errors"])
+        self.assertIn("미배정 요구사항: 결제:FR-1", result["notices"])
+        self.write(".claude/config.json", json.dumps({"documentChecks": {"customFormatPaths": "context"}}))
+        with self.assertRaisesRegex(ValueError, "customFormatPaths"):
+            self.inspect()
+
+    def test_null_document_checks_mean_no_custom_documents(self):
+        # L10: documentChecks·customFormatPaths가 null이면 미설정([])과 같다. 다른 타입은 계속 오류다.
+        self.custom_documents()
+        for config in ({"documentChecks": None}, {"documentChecks": {"customFormatPaths": None}}):
+            with self.subTest(config=config):
+                self.write(".claude/config.json", json.dumps(config))
+                self.assertEqual(self.inspect(skip_registration=True)["structural-errors"]["count"], 3)
+        self.write(".claude/config.json", json.dumps({"documentChecks": "context"}))
+        with self.assertRaisesRegex(ValueError, "customFormatPaths"):
+            self.inspect()
+
+    def test_errors_ruled_in_the_same_run_are_not_reported_again(self):
+        self.custom_documents()
+        first = self.inspect(skip_registration=True)
+        items = first["structural-errors"]["items"]
+        self.assertEqual(len(items), 3)
+        ruled = self.write(".dev/run-1/document-ruled.json",
+                           json.dumps({"run-id": "run-1", "items": items[:2]}, ensure_ascii=False))
+        partial = self.inspect(skip_registration=True, ruled=ruled)
+        self.assertEqual(partial["structural-errors"]["items"], items[2:])
+        self.assertIn("같은 실행에서 예외 처리한 구조 오류 2건은 다시 보고하지 않습니다", partial["notices"])
+        self.write(".dev/run-1/document-ruled.json", json.dumps({"run-id": "run-1", "items": items}, ensure_ascii=False))
+        cleared = self.inspect(skip_registration=True, ruled=ruled)
+        self.assertEqual(cleared["structural-errors"]["count"], 0)
+        self.assertEqual(cleared["action"], "register-skipped")
+        self.write(".dev/run-1/document-ruled.json", json.dumps({"run-id": "run-0", "items": items}, ensure_ascii=False))
+        with self.assertRaisesRegex(ValueError, "run-id"):
+            self.inspect(skip_registration=True, ruled=ruled)
+
+    def test_documented_options_exist_in_the_cli(self):
+        usage = subprocess.run([sys.executable, str(HELPER), "inspect", "--help"],
+                               capture_output=True, text=True, encoding="utf-8", timeout=15).stdout
+        sync = (HELPER.parents[1] / "references/development-sync.md").read_text(encoding="utf-8")
+        lifecycle = (ROOT / ".claude/skills/gx-tdd/references/document-lifecycle.md").read_text(encoding="utf-8")
+        for option in ("--skip-registration", "--ruled"):
+            with self.subTest(option=option):
+                self.assertIn(option, usage)
+                self.assertIn(option, sync)
+                self.assertIn(option, lifecycle)
+        for contract in ("register-skipped", "documentChecks.customFormatPaths", "document-ruled.json",
+                         "문서 원장 등록 생략(원하면 '문서에도 등록'이라고 요청)"):
+            self.assertIn(contract, sync)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,8 +59,8 @@ gx-tdd/SKILL.md에서 실행 목록을 정하기 전에 읽는다. 이 파일의
 |-------|------|----------|--------------|----------|
 | setup | phase-setup.md | (inline) | — | No |
 | requirements | phase-requirements.md | product-owner (핵심 모드는 inline — 문답·AC·코드 확인·plan 결합 승인) | **AC = Given-When-Then 강제** (G-W-T 게이트 — 오케스트레이터 직접 검증) | 중요한 미정 해소까지 |
-| design | phase-design.md | architect + design-critic + **test-architect** | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
-| implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer) → 조건부 태스크 리뷰(reviewer)** | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
+| design | phase-design.md | architect + design-critic + **test-architect** (소형은 설계 확인에 T계획·실행 방법을 묶어 승인) | **testability score ≥ 7 필수** (미충족 시 재설계) | Yes (max 2) |
+| implement | phase-implement.md | **red-writer(디스패치) → 세션 IMPLEMENT (`--isolated`: implementer) → 조건부 태스크 리뷰(reviewer)**. 서브에이전트 선택 시 독립 갈래(다른 프로젝트 루트)만 병렬 | **Iron Law 1**: 실패 테스트 없이 코드 작성 금지 | RGR 사이클 |
 | review | phase-review.md | **reviewer (spec+quality 통합 1석)** + security-auditor (병렬) | **Iron Law**: Part 1(spec) verdict 확정 전 Part 2 판정 금지 | Yes (max 2) |
 | complete | phase-complete.md | **gx-verify(스킬)** → product-owner (인수) → commit/PR | **Iron Law 3**: verify 게이트 통과 필수 (테스트 실행 증거) | 인수 재시도 (max 1) |
 

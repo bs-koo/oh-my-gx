@@ -16,10 +16,10 @@ gx-work에서 들어온 개발과 직접 gx-tdd 호출이 공유한다. 먼저 [
 
 1. 확인된 설치 gx-context 스킬 디렉토리의 `scripts/development.py`를 사용한다. 이 파일 기준 경로는 `../../gx-context/scripts/development.py`다. 소비 프로젝트의 `scripts/`나 개발 저장소의 경로를 가정하지 않는다. Windows PowerShell은 `python`, POSIX는 `python3`를 사용하고 파일은 UTF-8로 읽는다.
 2. 유효한 handoff/정규화 계획을 그대로 사용한다. 없으면 이번 사용자 `goal`, `sources`, `requirements`, `context-paths`와 현재 알려진 `units`를 검사 입력에 담는다. requirements 전에는 `units: []`를 허용한다. 이는 임시 검사 입력이며 새 계획·승인된 AC가 아니다. handoff/state의 run-id를 우선하고, 없으면 고유 ID를 한 번 생성해 setup Step 7까지 보존한다. run-id를 바꾸거나 기존 계획/질문을 재생성하지 않는다.
-3. 하네스가 확인한 현재 Git branch 또는 SVN slug를 `--branch`로 전달한다. 지정된 W행이 없거나 다른 실행의 진행 행과 충돌하면 해당 행을 조용히 만들거나 합치지 않는다. 같은 작업인지 필요한 범위만 확인한다.
+3. 하네스가 확인한 현재 Git branch 또는 SVN slug를 `--branch`로 전달한다. 지정된 W행이 없거나 다른 실행의 진행 행과 충돌하면 해당 행을 조용히 만들거나 합치지 않는다. 같은 작업인지 필요한 범위만 확인한다. 핵심 모드(`mode: core`)이거나 버그 수정 요청이면 사용자가 "문서에도 등록"을 요청하지 않은 한 pre·post 모두 `--skip-registration`을 준다. 같은 run에서 예외 처리한 구조 오류는 `--ruled`로 준다(둘 다 [개발 문서 동기화 계약](../../gx-context/references/development-sync.md)의 최소 등록과 보존).
 
 ```text
-python <설치된 gx-context>/scripts/development.py inspect --project-root <PROJECT_ROOT> --plan <기존 계획 또는 검사 입력 JSON> --run-id <RUN_ID> --phase pre --intent implement --branch <현재 branch/slug> [--work <W ID>] [--previous <이전 inspect 보고서 JSON>] [--no-document-write] > <document-pre.json>
+python <설치된 gx-context>/scripts/development.py inspect --project-root <PROJECT_ROOT> --plan <기존 계획 또는 검사 입력 JSON> --run-id <RUN_ID> --phase pre --intent implement --branch <현재 branch/slug> [--work <W ID>] [--previous <이전 inspect 보고서 JSON>] [--no-document-write] [--skip-registration] [--ruled <.dev/<run-id>/document-ruled.json>] > <document-pre.json>
 python <설치된 gx-context>/scripts/development.py summary --report <document-pre.json>
 ```
 
@@ -28,8 +28,8 @@ python <설치된 gx-context>/scripts/development.py summary --report <document-
 read-only에 기존 입력 파일도 없으면 `--plan -`에 goal·`units: []`·근거 metadata JSON을 stdin으로 주고 파일을 만들지 않는다. inspect stdout을 메모리에서 받아 `summary --report -`의 stdin으로 넘겨 제한된 요약과 미반영 차이만 대화에 표시한다. inspect의 exit 1/2를 summary의 exit 0로 가리지 않도록 **첫 명령의 종료 코드를 반드시 보존·판정**한다. 문서 금지로 기록할 수 없는 차이는 대화 또는 사용자가 허용한 실행 기록에만 남긴다.
 
 4. exit 2는 입력·경로·snapshot 오류, exit 1은 `structural-errors`다. 모두 해소 전 착수하지 않는다. exit 0도 의미 검토·사용자 승인·G-W-T 통과를 인증하지 않는다. `reuse`는 같은 실행/목표/범위/해시의 대조 자료 재사용 힌트이며 AC 증거가 아니다.
-5. `repair-required`는 관련 끊긴 참조·계획 오류만, `register-required`는 이번 승인 요청의 최소 문서만, `review-required`는 `changed-paths`·`changed-requirements`만 검토한다. `--work`의 없는 ID를 임의 생성/재사용하지 않는다. work 미지정이면 기존 관련 W행에 연결하거나 정본의 다음 W ID를 사용한다. 기존 ID·진행 행·완료 이력·무관한 도메인을 보존한다.
-6. 등록이 필요하면 `context/README.md`의 관련 인덱스, 근거 있는 도메인의 `status.md`, `.dev/plan.md`의 해당 W행만 만든다/보완한다. 도메인 근거가 없으면 사업 의미를 추정하지 않는 기술적 `project` 원장에 이번 요청만 기록한다. 이는 업무 분류가 아닌 이번 요청 추적용이라고 명시한다. glossary·PROJECTS·전체 architecture 작성이나 다섯 가지 사실 인터뷰를 강제하지 않는다. 코드 관측에서 요구사항을 새로 발명하지 않는다.
+5. `repair-required`는 관련 끊긴 참조·계획 오류만, `register-required`는 이번 승인 요청의 최소 문서만, `review-required`는 `changed-paths`·`changed-requirements`만 검토한다. `register-skipped`는 문서를 만들지 않고 helper의 등록 생략 notice 한 줄만 알린다. `--work`의 없는 ID를 임의 생성/재사용하지 않는다. work 미지정이면 기존 관련 W행에 연결하거나 정본의 다음 W ID를 사용한다. 기존 ID·진행 행·완료 이력·무관한 도메인을 보존한다.
+6. 등록이 필요하면(`register-skipped`는 제외) `context/README.md`의 관련 인덱스, 근거 있는 도메인의 `status.md`, `.dev/plan.md`의 해당 W행만 만든다/보완한다. 도메인 근거가 없으면 사업 의미를 추정하지 않는 기술적 `project` 원장에 이번 요청만 기록한다. 이는 업무 분류가 아닌 이번 요청 추적용이라고 명시한다. glossary·PROJECTS·전체 architecture 작성이나 다섯 가지 사실 인터뷰를 강제하지 않는다. 코드 관측에서 요구사항을 새로 발명하지 않는다.
 7. 필요한 문서 차이·묶음·의존의 기존 승인/위임 근거를 확인한다. 같은 변경분 승인이 유효하면 재질문하지 않는다. 범위·동작·위험이 달라지거나 아직 없는 저장 승인은 그 차이만 확인한다. context 원문은 Edit으로 보존한다. 쓰지 않기로 한 명시 범위 예외는 사유와 차이를 기록하며, 그 예외를 의미 충돌·잘못된 지정 W행 우회로 사용하지 않는다.
 8. 변경 후 `inspect --phase pre`를 다시 실행한다. 일반 개발은 `ready-for-tdd: true`를 확인하고 G-W-T·testability·실제 승인 게이트를 별도로 통과해야 한다. 문서 금지의 명시 예외는 보고된 미등록 차이를 보존하고 승인된 코드 범위만 진행한다. requirements의 G-W-T 확정 후 문서 대조 입력에 AC/FR 연결만 보강해 구현 직전에 다시 확인한다. gx-work 진입 응답에 결박한 원래 request/plan은 보존하고 별도 대조 입력을 사용한다. 내부 AC 구체화 때문에 원래 인계 지문을 바꾸지 않는다.
 

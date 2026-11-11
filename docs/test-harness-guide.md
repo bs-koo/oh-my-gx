@@ -98,7 +98,12 @@ it('천단위_구분기호를_넣는다', () => {
 
 ### 모노레포라면
 
-프론트가 하위 디렉토리에 있으면 저장소 루트에서 도는 명령으로 등록한다 (`pnpm --dir frontend test`). `cd frontend && ...` 형태는 권한 prefix와 매칭되지 않아 실행마다 프롬프트가 뜬다. 백엔드와 함께 등록하는 복합 타입 구성은 `gx-setup/references/project-type-hints.md`의 "복합 타입" 절을 따른다.
+프론트가 하위 디렉토리에 있으면 두 방법 중 하나로 등록한다.
+
+- **하위 디렉토리 타입**: `detect`에 경로를 적는다 (`"detect": ["frontend/package.json"]`, `"test": "pnpm test"`). `/`가 들어간 detect는 저장소 상대 경로로 찾고, 명령은 찾은 파일의 디렉토리(`frontend`)에서 실행된다. 관련 테스트만 고를 수 있어 큰 저장소에 유리하다. 같은 디렉토리로 들어가는 앞의 `cd frontend &&`는 테스트 선택 helper가 벗겨 내지만, 다른 디렉토리로 가는 `cd`는 config 오류다.
+- **루트 명령**: 저장소 루트에서 도는 명령으로 등록한다 (`pnpm --dir frontend test`). `cd frontend && ...` 형태는 권한 prefix와 매칭되지 않아 실행마다 프롬프트가 뜬다.
+
+`/gx-setup`은 등록 직후 이 타입이 실제로 감지되는지 확인하고, 감지되지 않으면 원인과 config 수정안을 보여준다. 백엔드와 함께 등록하는 복합 타입 구성은 `gx-setup/references/project-type-hints.md`의 "복합 타입" 절을 따른다.
 
 ### UI 테스트를 쓸 때
 

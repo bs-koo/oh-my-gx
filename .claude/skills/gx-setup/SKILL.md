@@ -191,15 +191,21 @@ VCS_TYPE이 git이고 gh 실행이 확인됐으면 `Read("references/authenticat
 
 git 저장소면 `Read("../gx-work/references/dev-ignore-check.md")`의 `.dev` 공유 확인을 수행한다. 작업 계획(`.dev/plan.md`)과 파이프라인 산출물이 팀에 공유되려면 `.dev/`가 git에서 무시되지 않아야 한다. 처음 설정할 때 한 번 잡아 두면 이후 gx-context·gx-tdd가 같은 질문을 반복하지 않는다. svn이면 건너뛴다.
 
+### 3.6단계: 기본 베이스 브랜치 (git)
+
+git이면 `Read("references/base-branch.md")`를 수행한다. `main`과 `develop`이 함께 있을 때만 한 번 묻고 `conventions.baseBranch`에 저장한다. svn이면 건너뛴다.
+
 ### 4단계: Google Chat 알림 연동 (선택)
 
 svn이면 `Google Chat 연동 : 건너뜀 (SVN — PR 기반 알림 미지원)`을 출력한다. git에서 기존 webhookUrl이 있으면 기존 설정을 유지하고 완료를 표시한다. git에서 webhookUrl이 비어있을 때만 `Read("references/google-chat.md")`의 연동 여부 질문부터 수행한다. 사용자 선택 전 URL을 수집하거나 설정을 바꾸지 않는다.
 
 ### 5단계: 모델 프로파일 (선택)
 
-gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로파일을 설정한다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
+gx-work·gx-tdd 진입 질문이 추천·현재 설정으로 표시할 모델 프로파일(`modelProfile`)을 설정한다. 답으로 쓰지 않으므로 이 값만으로는 프로파일 질문이 생략되지 않는다. 파이프라인 절차는 동일하고 에이전트 모델 수준만 달라진다.
 
-0. **세션 확정값 우선**: 이 스킬이 파이프라인의 config 부트스트랩(phase-setup config 가드의 `Skill("oh-my-gx:gx-setup")` 호출)으로 실행되었고, 이번 세션에서 모델 프로파일이 이미 확정된 경우(플래그·자연어·모드 확인 질문 답변) → **질문 없이 그 확정 값을 config.json에 기록**하고 `모델 프로파일 : 완료 ✅ ({값}, 세션 확정값 기록)` 출력 후 완료 단계로 진행한다 (프로파일 이중 질문 방지). Codex 기록은 위 helper의 `{"modelProfile":"{확정값}"}` updates만 사용한다.
+- **기본값 안내** (질문 없음): `workflowDefaults`의 `stopAt`·`mode`·`modelProfile`은 값이 있는 항목을 진입 질문에서 묻지 않고 "설정값으로 진행: …"으로 알린다. 비워 두면 매번 묻는다. `executionMethod`는 구현계획 확인 질문(gx-tdd phase-implement 1.2)의 추천값으로만 쓰이고 그 질문은 그대로 묻는다. 프로파일 질문을 없애려면 최상위 `modelProfile`이 아니라 `workflowDefaults.modelProfile`을 채운다.
+
+0. gx-setup은 사용자가 직접 실행하며 파이프라인이 호출하지 않는다. config 부재로 멈춘 파이프라인 뒤에 실행했어도 그 실행에서 고른 프로파일은 인계 파일에 있으므로 config에 옮기지 않는다. 안내된 재개 명령(`--handoff`)은 진입 답을 다시 묻지 않는다.
 1. `.claude/config.json`의 `"modelProfile"` 필드를 확인한다:
    - 값이 이미 설정되어 있으면 (`"standard"` 또는 `"eco"`) → `모델 프로파일 : 완료 ✅ ({값}, 기존 설정 유지)` 출력 후 완료 단계로 진행.
    - 비어있으면 → 2번으로.
@@ -208,7 +214,7 @@ gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로�
    AskUserQuestion(
      questions: [{
        header: "모델 프로파일",
-       question: "에이전트 모델 프로파일을 선택해주세요. 절차·게이트는 동일하고 에이전트가 사용하는 모델 수준만 달라집니다.",
+       question: "진입 질문에서 추천할 에이전트 모델 프로파일을 선택해주세요. 절차·게이트는 동일하고 에이전트가 사용하는 모델 수준만 달라집니다.",
        multiSelect: false,
        options: [
          { label: "표준", description: "역할별 기본 high/mid 모델 수준을 유지합니다. 실제 모델은 현재 하네스에서 지원하는 모델로 결정합니다" },
@@ -228,8 +234,9 @@ gx-work·gx-tdd가 에이전트를 디스패치할 때 사용할 모델 프로�
 === 퀵스타트 ===
 /gx-context {도메인}     → 도메인 지식 등록
 /gx-lens {질문}          → 현행 분석 + 영향도
-/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 기본 종료점 verify — 커밋·PR은 요청 시)
-/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트)
+/gx-work {요청}           → 작업 총괄 진입 (계획·TDD 개발, 진입 질문의 종료점 추천 pr)
+/gx-tdd {요청}           → TDD 강제 개발 사이클 (RGR + verify 게이트, 직접 gx-tdd 호출은 종료점을 묻지 않고 기본 verify)
+config workflowDefaults.stopAt이 있으면 종료점을 묻지 않고 그 값을 씁니다.
 
 💡 화면 설계서가 있다면:
 requirements/ 폴더에 넣고 /gx-context {도메인} --from requirements/ 로 등록

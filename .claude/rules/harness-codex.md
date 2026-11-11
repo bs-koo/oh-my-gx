@@ -24,7 +24,7 @@ Codex 스킬은 `../skills/gx-work/references/codex-runtime.md`를 읽는다. �
 
 ## 훅과 신뢰
 
-Codex `hooks.json`의 PreToolUse matcher는 **`^Bash$`**다. POSIX 명령은 `python3 "${PLUGIN_ROOT}/.claude/hooks/codex_hook.py" guard`, Windows 명령은 `python "${PLUGIN_ROOT}/.claude/hooks/codex_hook.py" guard`다. 어댑터가 기존 Bash 가드를 호출하고 Codex에서 지원되지 않는 `ask` 판정을 `deny`로 정규화한다. Claude Code는 기존 `Bash` 가드 호출과 ask 분기를 유지한다.
+Codex `hooks.json`의 PreToolUse matcher는 **`^Bash$`**다. POSIX 명령은 `python3 "${PLUGIN_ROOT}/.claude/hooks/codex_hook.py" guard`, Windows 명령은 `python "${PLUGIN_ROOT}/.claude/hooks/codex_hook.py" guard`다. 어댑터가 기존 Bash 가드를 호출하고 Codex에서 지원되지 않는 `ask` 판정을 `deny`로 정규화한다. 어댑터는 `permission_mode`를 지우고 `GX_HOOK_HARNESS=codex`를 넘겨, Claude Code 전용 G3 완화(bypass 모드·위험 수용 토큰·베이스 병합 커밋)를 끈다. Claude Code는 기존 `Bash` 가드 호출과 ask 분기를 유지한다.
 
 훅은 파일이 있다는 사실만으로 신뢰·실행되지 않는다. Codex 입력창의 `/hooks`에서 GX 정의를 확인하고 사용자 신뢰 상태를 확인한다. `/hooks`에 보이지 않거나 신뢰되지 않으면 보호 게이트가 실행된다고 보고하지 않는다. 이 프로젝트의 `scripts/codex-install-hooks.py`는 수동 설정이 필요한 경우 렌더링과 기존 비GX 훅 보존을 지원한다. `--write`만 파일을 변경한다. `plugin_hooks` 기능 플래그 활성화를 설치 해결책으로 권하지 않는다.
 

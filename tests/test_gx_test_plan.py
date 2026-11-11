@@ -120,6 +120,85 @@ class TestExecutionContractTests(unittest.TestCase):
         for token in ('--ownership-file', '--run-id', 'configHash', '0건', 'buildOnly', '전체 폴백'):
             self.assertIn(token, text)
 
+    def read(self, relative):
+        return (ROOT / '.claude/skills' / relative).read_text(encoding='utf-8')
+
+    def section(self, text, start, end):
+        return text[text.index(start):text.index(end, text.index(start))]
+
+    def test_plan_failure_known_failures_and_long_runs_have_one_contract(self):
+        text = self.read('gx-tdd/references/test-execution.md')
+        failure = self.section(text, '## 계획 실패 처리', '## 기존 실패')
+        for token in ('한 번', 'config 수정안', '`test-plan-override`', '`command`', '`scope`', '`reason`',
+                      '즉흥', '금지', '다시 묻지 않고'):
+            self.assertIn(token, failure)
+        # M2: the override run leaves reusable proof; Codex receives the command in a second step.
+        for token in ('gx-test-plan.py override', '`type: test-plan-override`', '`reuse`', '`record`',
+                      'gx-commit', 'codex-questions.md', '후속 질문'):
+            self.assertIn(token, failure)
+        self.assertNotIn('helper 증거 재사용은 하지 않으며', failure)
+        known = self.section(text, '## 기존 실패', '## 긴 실행과 시간 초과')
+        for token in ('`known-failures`', '새 실패', '보고만', '기존 실패 해소', '실제 사용자 응답',
+                      '`--continue`', '`-fae`'):
+            self.assertIn(token, known)
+        # H2: known failures are compared with the baseline count recorded at Step 0.5.
+        for token in ('record --baseline', '`baseline-tests.json`', '실행 수를 대조할 기준이 없음', 'plan --full'):
+            self.assertIn(token, self.section(text, '## 실행과 재사용', '## 계획 실패 처리'))
+        self.assertRegex(text, r'`context/` 아래 Markdown 문서\(`\.md`')
+        long_run = self.section(text, '## 긴 실행과 시간 초과', '## 빌드와 경고')
+        for token in ('`timeouts.build`', '600000', '`durationSeconds`', 'run_in_background', 'write_stdin',
+                      '사유', '지난 소요', '다음', '테스트 실패 아님', '백그라운드로 재실행', 'RED로 간다'):
+            self.assertIn(token, long_run)
+        self.assertIn('--known-failures-file', text)
+        self.assertIn('--duration-seconds', text)
+        self.assertRegex(text, r'`context/`[^\n]*테스트 선택 입력에서만[^\n]*지문에는 그대로 포함')
+        self.assertRegex(text, r'선택 제외 경로[^\n]*같은 focused 범위로 다시 실행')
+        adaptation = self.read('gx-tdd/references/harness-adaptation.md')
+        row = next(line for line in adaptation.splitlines() if 'run_in_background' in line)
+        self.assertIn('write_stdin', row)
+        self.assertNotIn('미지원', row)
+
+    def test_verify_blocks_only_new_failures_and_hides_internal_identifiers(self):
+        verify = self.read('gx-verify/SKILL.md')
+        self.assertNotIn('증거 없이 다음 단계 진입 불가', verify)
+        self.assertNotIn('7c9e814:3ca970cc12ab', verify)
+        self.assertNotIn('300000', verify)
+        judgement = self.section(verify, '판정 (아래 순서로', '### Step 5-A')
+        self.assertIn('`known-failures` 밖의 **새** 테스트 실패', judgement)
+        self.assertIn('test-plan-override', self.section(verify, '### Step 1:', '### Step 2:'))
+        self.assertIn('Read("references/output.md")', verify)
+        output = self.read('gx-verify/references/output.md')
+        user = self.section(output, '## 사용자 줄', '## 기록용 블록')
+        self.assertNotIn('verify-fingerprint', user)
+        self.assertIn('기존 실패', user)
+        self.assertIn('verify-fingerprint', output.split('## 기록용 블록', 1)[1])
+
+    def test_review_fixes_behavior_defects_by_default_and_repairs_in_session(self):
+        review = self.read('gx-tdd/phases/phase-review.md')
+        handling = self.section(review, '# 4a:', '# 4b:')
+        self.assertNotIn('동작 결함을 RGR 사이클로 수정할까요', handling)
+        self.assertIn('Ruling: review 동작 결함 RGR 수정', handling)
+        self.assertRegex(handling, r'if [^\n]*범위[^\n]*AC[^\n]*:\n\s+AskUserQuestion')
+        gate = self.section(review, '## Step 0: Mechanical Gate', '## Step 1:')
+        self.assertRegex(gate, r'`execution-method: session`이면 implementer를 디스패치하지 않고 \*\*세션이 직접\*\*')
+        self.assertIn('테스트 파일 무변경', gate)
+        self.assertIn('`known-failures`', gate)
+        self.assertIn('test-plan-override', gate)
+
+    def test_composite_hint_example_runs_once_from_repository_root(self):
+        hints = self.read('gx-setup/references/project-type-hints.md')
+        block = hints.split('## 복합 타입', 1)[1].split('```json', 1)[1].split('```', 1)[0]
+        types = json.loads('{' + block.strip() + '}')
+        spec = importlib.util.spec_from_file_location('test_plan_hint', HELPER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            for name in ('build.gradle.kts', 'frontend/package.json'):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text('{}', encoding='utf-8')
+            self.assertEqual([p['cwd'] for p in module.discover(root, types)], ['.'])
+
 
 class SelectionEdgeTests(unittest.TestCase):
     def setUp(self):
@@ -487,6 +566,264 @@ class TestPlanTests(unittest.TestCase):
         changed = self.write('.dev/changed.json', '["shared/auth.js"]')
         result = self.invoke('plan', '--base', 'HEAD', '--run-id', 'run-1', '--changed-file', str(changed))
         self.assertNotEqual(result.returncode, 0)
+
+    def test_context_documents_do_not_widen_selection_but_stay_in_fingerprint(self):
+        before = self.plan(['web/src/login.js'])
+        self.write('context/auth/status.md', '| FR-1 | done |')
+        after = self.plan(['web/src/login.js', 'context/auth/status.md'])
+        self.assertNotIn('context/auth/status.md', after['changed'])
+        self.assertEqual([e['scope'] for e in self.entries_for_tests(after)], [['tests/login.test.js']])
+        # Same entry (command and scope) but a new tree: the proof is rerun with the same focused scope.
+        self.assertEqual([e['id'] for e in before['entries']], [e['id'] for e in after['entries']])
+        self.assertNotEqual(before['fingerprint'].split(':')[1], after['fingerprint'].split(':')[1])
+
+    def record(self, plan, *extra, exit_code=0, tests=3, failures=0):
+        path = self.write('.dev/plan.json', json.dumps(plan))
+        log = self.write('.dev/test.log', '3 passed\n')
+        proof = self.root / '.dev/proof.json'
+        entry = self.entries_for_tests(plan)[0]
+        result = self.invoke('record', '--plan', str(path), '--entry', entry['id'], '--proof', str(proof),
+                             '--log', str(log), '--exit-code', str(exit_code), '--tests', str(tests),
+                             '--failures', str(failures), *extra)
+        return path, proof, entry, result
+
+    def test_only_baseline_known_failures_can_produce_reusable_proof(self):
+        known = self.write('.dev/known.json', '["LoginTest.locked"]')
+        listed = self.write('.dev/failed.json', '["LoginTest.locked"]')
+        unlisted = self.write('.dev/new.json', '["LoginTest.reset"]')
+        plan = self.plan(['web/src/login.js'])
+        # The failing baseline is not evidence, but its executed count is kept for later comparison.
+        *_, baseline = self.record(plan, '--baseline', exit_code=1, failures=1)
+        self.assertNotEqual(baseline.returncode, 0)
+        path, proof, entry, result = self.record(plan, '--failed-file', str(listed),
+                                                 '--known-failures-file', str(known), exit_code=1, failures=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(proof.read_text(encoding='utf-8'))['knownFailures'], ['LoginTest.locked'])
+        reuse = self.invoke('reuse', '--plan', str(path), '--entry', entry['id'], '--proof', str(proof),
+                            '--known-failures-file', str(known))
+        self.assertEqual(reuse.returncode, 0, reuse.stderr)
+        self.assertEqual(json.loads(reuse.stdout)['knownFailures'], ['LoginTest.locked'])
+        self.assertNotEqual(self.reuse(path, proof, entry).returncode, 0)
+        for failed, failures in ((unlisted, 1), (listed, 2), (None, 1)):
+            with self.subTest(failed=failed, failures=failures):
+                extra = ('--failed-file', str(failed)) if failed else ()
+                *_, result = self.record(plan, *extra, '--known-failures-file', str(known),
+                                         exit_code=1, failures=failures)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(json.loads(proof.read_text(encoding='utf-8'))['passed'])
+
+    def test_known_failures_need_a_baseline_count_that_this_run_reaches(self):
+        """H2: a runner that stops at the first (known) failure must not pass with later tests skipped."""
+        known = self.write('.dev/known.json', '["LoginTest.locked"]')
+        listed = self.write('.dev/failed.json', '["LoginTest.locked"]')
+        plan = self.plan(['web/src/login.js'])
+        accept = ('--failed-file', str(listed), '--known-failures-file', str(known))
+        _, proof, _, result = self.record(plan, *accept, exit_code=1, failures=1)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('실행 수를 대조할 기준이 없음', result.stderr)
+        self.assertFalse(json.loads(proof.read_text(encoding='utf-8'))['passed'])
+        *_, baseline = self.record(plan, '--baseline', exit_code=1, tests=5, failures=1)
+        self.assertNotEqual(baseline.returncode, 0)
+        counts = json.loads((proof.parent / 'baseline-tests.json').read_text(encoding='utf-8'))
+        self.assertEqual(counts, [{'project': 'node:web', 'scope': ['tests/login.test.js'], 'tests': 5}])
+        *_, fewer = self.record(plan, *accept, exit_code=1, tests=4, failures=1)
+        self.assertNotEqual(fewer.returncode, 0)
+        self.assertIn('fewer than the baseline 5', fewer.stderr)
+        self.assertFalse(json.loads(proof.read_text(encoding='utf-8'))['passed'])
+        *_, reached = self.record(plan, *accept, exit_code=1, tests=5, failures=1)
+        self.assertEqual(reached.returncode, 0, reached.stderr)
+        # Runs without known failures and build entries never depend on the baseline count.
+        *_, clean = self.record(plan, exit_code=0, tests=1)
+        self.assertEqual(clean.returncode, 0, clean.stderr)
+
+    def test_full_run_is_compared_with_a_baseline_of_any_scope_in_the_same_project(self):
+        entry = {'project': 'node:web', 'scope': ['*']}
+        counts = self.write('.dev/evidence/baseline-tests.json', json.dumps([
+            {'project': 'node:web', 'scope': ['tests/login.test.js'], 'tests': 3},
+            {'project': 'node:api', 'scope': ['*'], 'tests': 90}]))
+        spec = importlib.util.spec_from_file_location('test_plan_counts', HELPER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.baseline_tests(counts, entry), 3)
+        self.assertEqual(module.baseline_tests(counts, {'project': 'node:web',
+                         'scope': ['tests/login.test.js', 'tests/new.test.js']}), 3)
+        self.assertIsNone(module.baseline_tests(counts, {'project': 'node:web', 'scope': ['tests/new.test.js']}))
+        self.assertIsNone(module.baseline_tests(counts, {'project': 'node:other', 'scope': ['*']}))
+
+    def override(self, command='./run-all-tests.sh', *scope):
+        result = self.invoke('override', '--run-id', 'run-1', '--command', command,
+                             *(('--scope', *scope) if scope else ()))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_override_command_records_reusable_proof_bound_to_run_tree_and_scope(self):
+        """M2: a user-chosen test-plan-override leaves proof that commit can reuse, not a rerun or prose."""
+        # Detection fails, which is why the user chose an override; the broken config is not its identity.
+        self.write('.claude/config.json', '{"projectTypes": ')
+        plan = self.override()
+        [entry] = plan['entries']
+        self.assertEqual((plan['source'], entry['type'], entry['cwd'], entry['scope']),
+                         ('test-plan-override', 'test-plan-override', '.', ['*']))
+        path, proof, _, recorded = self.record(plan)
+        self.assertEqual(recorded.returncode, 0, recorded.stderr)
+        again = self.write('.dev/again.json', json.dumps(self.override()))
+        self.assertEqual(self.reuse(again, proof, entry).returncode, 0)
+        for changed in (self.override('./other-tests.sh'), self.override('./run-all-tests.sh', 'web/tests/login.test.js')):
+            with self.subTest(entry=changed['entries'][0]['command'], scope=changed['entries'][0]['scope']):
+                self.assertNotEqual(changed['entries'][0]['id'], entry['id'])
+        other_run = dict(plan, runId='run-2')
+        path.write_text(json.dumps(other_run), encoding='utf-8')
+        self.assertNotEqual(self.reuse(path, proof, entry).returncode, 0)
+        self.write('web/src/login.js', 'changed')
+        self.assertNotEqual(self.reuse(again, proof, entry).returncode, 0)
+        *_, zero = self.record(self.override(), tests=0)
+        self.assertNotEqual(zero.returncode, 0)
+        self.assertFalse(json.loads(proof.read_text(encoding='utf-8'))['passed'])
+
+    def test_override_scope_is_star_or_repository_relative_tests(self):
+        self.assertEqual(self.override('run', 'web/tests/b.test.js', 'web/tests/a.test.js')['entries'][0]['scope'],
+                         ['web/tests/a.test.js', 'web/tests/b.test.js'])
+        for scope in (('*', 'web/tests/a.test.js'), ('../outside.test.js',)):
+            with self.subTest(scope=scope):
+                result = self.invoke('override', '--run-id', 'run-1', '--command', 'run', '--scope', *scope)
+                self.assertNotEqual(result.returncode, 0)
+        self.assertNotEqual(self.invoke('override', '--run-id', 'run-1', '--command', ' ').returncode, 0)
+
+    def test_context_code_files_still_select_tests(self):
+        """L9: only gx-context Markdown is a selection-free document; code under context/ is a change."""
+        plan = self.plan(['web/src/login.js', 'context/auth/status.md', 'context/tools/sync.js'])
+        self.assertEqual(plan['changed'], ['context/tools/sync.js', 'web/src/login.js'])
+        self.assertEqual([e['scope'] for e in self.entries_for_tests(plan)], [['*']])
+
+    def test_duration_is_recorded_for_passed_and_failed_runs(self):
+        plan = self.plan(['web/src/login.js'])
+        _, proof, _, result = self.record(plan, '--duration-seconds', '252.5')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(proof.read_text(encoding='utf-8'))['durationSeconds'], 252.5)
+        _, proof, _, result = self.record(plan, '--duration-seconds', '600', exit_code=1)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(json.loads(proof.read_text(encoding='utf-8')),
+                         {'passed': False, 'durationSeconds': 600.0})
+
+
+class PathDetectTests(unittest.TestCase):
+    """detect markers with '/' are repository-relative paths; the project runs in the marker directory."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('test_plan', HELPER)
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+
+    def write(self, name, value=''):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(value, encoding='utf-8')
+
+    def projects(self, types):
+        return sorted((p['type'], p['cwd']) for p in self.module.discover(self.root, types))
+
+    def test_single_path_marker_uses_its_directory_as_project_cwd(self):
+        self.write('backend/build.gradle.kts')
+        self.assertEqual(self.projects({'java-spring': {
+            'detect': ['backend/build.gradle.kts'], 'test': './gradlew test'}}),
+            [('java-spring', 'backend')])
+
+    def test_multiple_path_marker_projects_are_all_detected(self):
+        self.write('backend/build.gradle.kts')
+        self.write('frontend/package.json', '{}')
+        self.write('tools/frontend/package.json', '{}')
+        self.assertEqual(self.projects({
+            'java-spring': {'detect': ['backend/build.gradle.kts'], 'test': './gradlew test'},
+            'node': {'detect': ['frontend/package.json'], 'test': 'pnpm test'}}),
+            [('java-spring', 'backend'), ('node', 'frontend')])
+
+    def test_name_and_double_star_markers_keep_matching_any_directory(self):
+        self.write('package.json', '{}')
+        self.write('web/package.json', '{}')
+        for detect in (['package.json'], ['**/package.json']):
+            with self.subTest(detect=detect):
+                self.assertEqual(self.projects({'node': {'detect': detect, 'test': 'npm test'}}),
+                                 [('node', '.'), ('node', 'web')])
+
+    def test_explicit_root_runs_composite_command_from_repository_root(self):
+        self.write('frontend/package.json', '{}')
+        types = {'fullstack': {'roots': ['.'], 'detect': ['build.gradle.kts', 'frontend/package.json'],
+                               'test': './gradlew test && pnpm --dir frontend test'}}
+        self.assertEqual(self.projects(types), [('fullstack', '.')])
+        types['fullstack']['roots'] = ['backend']
+        self.write('backend/build.txt')
+        with self.assertRaisesRegex(ValueError, 'not detected'):
+            self.projects(types)
+
+    # The real consumer layout: path markers with commands that cd into the same directory.
+    KREB = {'java-spring': {'detect': ['backend/build.gradle.kts'],
+                            'build': 'cd backend && ./gradlew build', 'test': 'cd backend && ./gradlew test',
+                            'focusedTest': 'cd backend && ./gradlew test --tests {pattern}'},
+            'node': {'detect': ['frontend/package.json'], 'build': 'cd frontend && pnpm build',
+                     'test': 'cd frontend && pnpm test && pnpm lint',
+                     'focusedTest': 'cd frontend && pnpm vitest run {files}'}}
+
+    def focused(self, project, tests, types):
+        self.write('.claude/config.json', json.dumps({'projectTypes': types}))
+        self.write('tests.json', json.dumps(tests))
+        args = type('Args', (), {'cwd': self.root, 'config': None, 'project': project,
+                                 'tests_file': self.root / 'tests.json'})()
+        return self.module.focused(args)
+
+    def kreb_fixture(self):
+        self.write('backend/build.gradle.kts')
+        self.write('backend/src/test/kotlin/LoginTest.kt', 'class LoginTest')
+        self.write('frontend/package.json', '{"scripts":{"test":"vitest run"}}')
+        self.write('frontend/src/cart.test.ts', 'test("cart", () => {})')
+
+    def test_kreb_config_is_detected_and_focused_without_its_same_directory_cd(self):
+        import shlex
+        self.kreb_fixture()
+        self.assertEqual(self.projects(self.KREB), [('java-spring', 'backend'), ('node', 'frontend')])
+        web = self.focused('node:frontend', ['frontend/src/cart.test.ts'], self.KREB)
+        self.assertEqual(web['cwd'], 'frontend')
+        self.assertEqual(shlex.split(web['command']), ['pnpm', 'vitest', 'run', 'src/cart.test.ts'])
+        api = self.focused('java-spring:backend', ['backend/src/test/kotlin/LoginTest.kt'], self.KREB)
+        self.assertEqual((api['cwd'], api['command']), ('backend', './gradlew test --tests LoginTest'))
+
+    def test_kreb_plan_runs_stripped_commands_in_each_project_directory(self):
+        self.kreb_fixture()
+        types = json.loads(json.dumps(self.KREB))
+        self.write('.claude/config.json', json.dumps({'projectTypes': types}))
+        args = type('Args', (), {'cwd': self.root, 'config': None, 'base': 'HEAD', 'run_id': 'run-1',
+                                 'changed_file': None, 'tests_file': None, 'ownership_file': None,
+                                 'full': False, 'rerun_tests': False})()
+        changed = ['backend/src/main/kotlin/Login.kt', 'context/auth/status.md']
+        with mock.patch.object(self.module, 'changed_paths', return_value=changed), \
+             mock.patch.object(self.module, 'fingerprint', return_value='123:abcdef123456'):
+            # The frontend build is custom; the existing explicit test-free build rule still applies.
+            with self.assertRaisesRegex(ValueError, 'buildOnly required'):
+                self.module.plan(args)
+            types['node']['buildOnly'] = 'cd frontend && pnpm build'
+            self.write('.claude/config.json', json.dumps({'projectTypes': types}))
+            plan = self.module.plan(args)
+        commands = {(e['cwd'], e['kind']): e['command'] for e in plan['entries']}
+        self.assertEqual(commands, {('backend', 'test'): './gradlew test',
+                                    ('backend', 'build'): './gradlew build -x test testClasses',
+                                    ('frontend', 'test'): 'pnpm test && pnpm lint',
+                                    ('frontend', 'build'): 'pnpm build'})
+
+    def test_same_directory_cd_forms_are_dropped_and_other_targets_are_configuration_errors(self):
+        self.write('backend/build.gradle.kts')
+        for command in ('cd backend && ./gradlew test', 'cd ./backend && ./gradlew test',
+                        'cd "backend" && ./gradlew test', "cd 'backend/' && ./gradlew test"):
+            with self.subTest(command=command):
+                self.assertEqual(self.module.project_commands('backend', {'test': command})['test'],
+                                 './gradlew test')
+        for command in ('cd ../shared && ./gradlew test', 'cd api && ./gradlew test', 'cd backend; ./gradlew test'):
+            with self.subTest(command=command):
+                with self.assertRaisesRegex(ValueError, 'leaves project directory'):
+                    self.module.project_commands('backend', {'test': command})
+        root = {'test': 'cd backend && ./gradlew test'}
+        self.assertEqual(self.module.project_commands('.', root), root)
 
 
 if __name__ == '__main__':

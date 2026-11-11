@@ -175,6 +175,130 @@ class CommitIndexTests(DeliveryFixture):
                                   '.dev/feat-a/state.md'])
         self.index('assert-excluded', snapshot=snap)
 
+    def test_stage_drops_question_evidence_token_and_review_copies_without_gitignore_block(self):
+        # H5: .dev를 무시하지 않는 저장소에서도 런타임·증거·토큰·재수집되는 diff 사본은 커밋에 섞이지 않는다.
+        # 재개에 쓰는 RED 기준선 porcelain·report·state는 그대로 커밋한다.
+        dropped = ('pending-question.json', 'answered-question.json', '.question-lock', 'model-dispatches.jsonl',
+                   'discarded-question-q1.json', 'logs/test.log', 'evidence/abc.log', 'verify-risk-accepted',
+                   'rgr-t1-porcelain.now.txt', 'reports/t1-diff.txt', 'reports/t1-diff-r2.txt')
+        kept = ('rgr-t1-porcelain.txt', 'reports/t1-red.md', 'state.md')
+        for name in dropped + kept:
+            self.write(self.root, f'.dev/feat-a/{name}', 'x\n')
+        snap = self.snapshot()
+        self.index('stage', snapshot=snap, paths=None, excludes=[], untrack=[])
+        staged = sorted(self.git(self.root, 'diff', '--cached', '--name-only').stdout.split())
+        self.assertEqual(staged, sorted(f'.dev/feat-a/{name}' for name in kept))
+        self.index('assert-excluded', snapshot=snap)
+        rows = {row['path']: row for row in self.index('preview')['files']}
+        self.assertFalse(rows['.dev/feat-a/evidence/abc.log']['included'])
+        self.assertTrue(rows['.dev/feat-a/rgr-t1-porcelain.txt']['included'])
+
+    def load_index_module(self):
+        spec = importlib.util.spec_from_file_location('gx_commit_index_dev', INDEX)
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.object(sys, 'dont_write_bytecode', True):
+            spec.loader.exec_module(module)
+        return module
+
+    def test_large_dev_files_are_dropped_and_dev_artifacts_local_keeps_only_plan(self):
+        # F11: 큰 .dev 파일(로그)은 모드와 무관하게 빼고 알린다. devArtifacts: local이면 .dev/plan.md만 커밋한다.
+        module = self.load_index_module()
+        for name in ('.dev/plan.md', '.dev/feat-a/state.md', '.dev/f3a9-run/handoff.json'):
+            self.write(self.root, name, 'x\n')
+        self.write(self.root, '.dev/feat-a/run.log', 'L' * 64)
+        self.write(self.root, 'app.txt', 'changed\n')
+        cases = (('commit', ['.dev/f3a9-run/handoff.json', '.dev/feat-a/state.md', '.dev/plan.md', 'app.txt'], []),
+                 ('local', ['.dev/plan.md', 'app.txt'],
+                  ['.dev/f3a9-run/handoff.json', '.dev/feat-a/run.log', '.dev/feat-a/state.md']))
+        for mode, expected, local in cases:
+            with self.subTest(mode=mode), mock.patch.dict(os.environ, self.env, clear=True), \
+                    mock.patch.object(module, 'LARGE_DEV_FILE', 16):
+                snap = module.run({'action': 'snapshot', 'cwd': str(self.root)})['snapshot']
+                result = module.run({'action': 'stage', 'cwd': str(self.root), 'snapshot': snap, 'paths': None,
+                                     'excludes': [], 'untrack': [], 'devArtifacts': mode})
+                self.assertEqual(result['largeExcluded'], ['.dev/feat-a/run.log'])
+                self.assertEqual(result['devExcluded'], local)
+                staged = sorted(self.git(self.root, 'diff', '--cached', '--name-only').stdout.split())
+                self.assertEqual(staged, expected)
+                module.run({'action': 'assert-excluded', 'cwd': str(self.root), 'snapshot': snap})
+                rows = {row['path']: row for row in module.run({'action': 'preview', 'cwd': str(self.root),
+                                                                'devArtifacts': mode})['files']}
+                self.assertFalse(rows['.dev/feat-a/run.log']['included'])
+                self.assertEqual(rows['.dev/feat-a/state.md']['included'], mode == 'commit')
+                self.assertTrue(rows['.dev/plan.md']['included'])
+                module.run({'action': 'restore', 'cwd': str(self.root), 'snapshot': snap})
+        proc = self.helper(INDEX, {'action': 'stage', 'cwd': str(self.root), 'snapshot': self.snapshot(),
+                                   'paths': None, 'excludes': [], 'devArtifacts': 'none'}, False)
+        self.assertIn('devArtifacts', proc.stderr)
+
+    @unittest.skipUnless(BASH, 'Bash 필요')
+    def test_accept_risk_token_matches_current_tree_and_hook_stops_asking(self):
+        # M8: gx-commit이 실제 응답으로 받은 위험 수용은 토큰으로 남고, 훅은 같은 트리면 한 번 더 묻지 않는다.
+        self.write(self.root, '.dev/feat-a/state.md', 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n')
+        self.write(self.root, 'app.txt', 'unverified\n')
+        payload = {'cwd': str(self.root), 'tool_name': 'Bash', 'tool_input': {'command': 'git commit -m wip'}}
+
+        def decision():
+            proc = subprocess.run([BASH, str(GUARD)], input=json.dumps(payload), cwd=self.root,
+                                  capture_output=True, encoding='utf-8', env=self.env)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            return json.loads(proc.stdout)['hookSpecificOutput']['permissionDecision'] if proc.stdout.strip() else 'PASS'
+
+        self.assertEqual(decision(), 'ask')
+        result = self.index('accept-risk')
+        self.assertEqual(result['token'], '.dev/feat-a/verify-risk-accepted')
+        fingerprint = subprocess.run([sys.executable, str(REPO / 'scripts/codex-fingerprint.py'), '--cwd', str(self.root)],
+                                     capture_output=True, encoding='utf-8', env=self.env, check=True).stdout.strip()
+        self.assertEqual((self.root / result['token']).read_text(encoding='utf-8'),
+                         f"tree: {fingerprint.split(':')[1]}\n")
+        self.assertEqual(decision(), 'allow')
+        self.write(self.root, 'app.txt', 'changed after acceptance\n')
+        self.assertEqual(decision(), 'ask')
+
+    def link_directory(self, link, target):
+        link.parent.mkdir(parents=True, exist_ok=True)
+        if os.name == 'nt' and subprocess.run(['cmd', '/c', 'mklink', '/J', str(link), str(target)],
+                                              capture_output=True).returncode == 0:
+            return
+        try:
+            os.symlink(target, link, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest('junction/symlink를 만들 수 없는 환경')
+
+    def test_accept_risk_refuses_linked_dev_paths_without_writing_outside(self):
+        # 토큰 경로 안전: .dev나 작업 디렉터리가 링크(저장소 밖)로 해석되면 토큰을 쓰지 않고 실패한다.
+        for name, link in (('dev 링크', '.dev'), ('작업 디렉터리 링크', '.dev/feat-a')):
+            with self.subTest(link=link):
+                root = self.repository(name, 'feat/a')
+                outside = self.parent / f'{name} 밖'
+                outside.mkdir()
+                self.link_directory(root / link, outside)
+                proc = self.helper(INDEX, {'action': 'accept-risk', 'cwd': str(root)}, False)
+                self.assertIn('링크', proc.stderr)
+                self.assertEqual(list(outside.rglob('*')), [])
+
+    def test_stage_refuses_unresolved_merge_paths_until_marked_resolved(self):
+        # M3: 미해결 충돌 경로(git ls-files -u)가 있으면 add -A가 충돌 표식을 해결된 것으로 스테이징한다.
+        # helper는 index를 바꾸기 전에 거부하고, git add로 해결 표시한 뒤에는 병합 커밋 스테이징을 진행한다.
+        self.git(self.root, 'checkout', '-q', '-b', 'base')
+        self.write(self.root, 'app.txt', 'base side\n')
+        self.git(self.root, 'commit', '-qam', 'base')
+        self.git(self.root, 'checkout', '-q', 'feat/a')
+        self.write(self.root, 'app.txt', 'feature side\n')
+        self.git(self.root, 'commit', '-qam', 'feature')
+        self.assertNotEqual(self.git(self.root, 'merge', '--no-edit', 'base', check=False).returncode, 0)
+        self.assertTrue(self.git(self.root, 'ls-files', '-u').stdout)
+        self.write(self.root, 'app.txt', 'resolved\n')
+        actual = self.root / '.git/index'
+        before = actual.read_bytes()
+        proc = self.helper(INDEX, {'action': 'stage', 'cwd': str(self.root), 'snapshot': self.snapshot(),
+                                   'paths': None, 'excludes': []}, False)
+        self.assertIn('ls-files -u', proc.stderr)
+        self.assertEqual(actual.read_bytes(), before)
+        self.git(self.root, 'add', 'app.txt')
+        self.index('stage', snapshot=self.snapshot(), paths=None, excludes=[])
+        self.assertEqual(self.git(self.root, 'diff', '--cached', '--name-only').stdout.strip(), 'app.txt')
+
     def test_failed_commit_restores_partial_staging_deleted_entry_and_worktree(self):
         self.write(self.root, 'app.txt', 'staged\nsecond\n')
         self.git(self.root, 'add', 'app.txt')

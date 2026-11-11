@@ -20,6 +20,8 @@
 
 `goal`·`run_id`는 선택이지만 state가 아직 없는 질문(gx-work 진입 질문 등)에는 넣는다. 그래야 다음 요청에서 route가 `pending-goal`·`pending-run-id`로 같은 작업의 질문인지 대조한다. 이때 `--dev-dir`은 현재 작업 디렉토리 `.dev/<branch-slug>`(SVN은 활성 slug, `--slug`로 새 slug를 시작하면 그 새 slug)여야 route가 찾는다.
 
+**gx-work 진입 질문의 둘째 세트**: 남은 진입 질문이 넷이라 나눠 물을 때 첫 세트는 `gx_work_tdd_entry`·`gx_work_stop_at`, 둘째 세트는 `gx_work_mode`·`gx_work_model_profile`(선택지 `전체`/`핵심`, `표준`/`에코`)이다. 둘째 세트는 같은 `--dev-dir`에 같은 `run_id`의 진입 답이 `gx-tdd로 진행`으로 기록된 뒤에만 등록되며, 그 전에 등록하면 helper가 exit 2(`blocked`)로 거절한다. 진입 답이 `문서·범위 보완`·`여기서 종료`면 둘째 세트를 묻지 않는다. 두 세트 모두 `goal`·`run_id`를 넣고, 요청·설정에서 정한 항목과 핵심 모드의 프로파일은 뺀다. `answer` 영수증(`answered-question.json`)에는 이 run에서 답한 모든 세트의 답 누적 `run_answers`와 앞 세트 id 목록 `earlier_question_set_ids`가 남는다. 인계의 `--question-set-id`에는 첫 세트 id를 넘긴다. 둘째 세트가 미응답이면 `handoff`가 exit 2다. 첫 세트 답 뒤 끊겼다가 재진입하면 route의 `entry-followup-missing`에 남은 질문만 다시 등록한다(gx-work SKILL.md).
+
 Windows PowerShell 예시:
 
 ```powershell

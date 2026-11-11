@@ -25,9 +25,11 @@ security-auditor는 reviewer와 **병렬 가능** (서로 독립).
 
 리뷰 에이전트 호출 전에 기계적 검증을 통과시킨다. [테스트 실행 계약](../references/test-execution.md)을 읽어 변경·영향 테스트와 빌드를 계획한다. **아래 Step 0-2의 태스크 선택 선행을 Build보다 먼저 수행**하고, 복원한 `REVIEW_ACTIVE_TASKS` 하나를 현재 해시 대조·필수 테스트·명시적 source/test 소유 관계·수리 후 재확인에 동일하게 사용해 태스크 간 회귀를 확인한다. review→verify→commit은 같은 실행의 정확한 증거를 공유한다. 전체 스위트는 미매핑·공유 설정·의존성 변경·사용자 전체 회귀 요청 때만 폴백한다. 완료 phase라는 이유로 전체를 반복하지 않는다.
 
-프로젝트 타입은 config.json의 `projectTypes`를, 타임아웃은 `timeouts`를 참조한다.
+프로젝트 타입은 config.json의 `projectTypes`를, 타임아웃은 `timeouts.build`를 참조한다. 긴 실행의 시작 알림·백그라운드 실행·시간 초과는 test-execution.md "긴 실행과 시간 초과"를 따른다.
 
-Git은 공유 helper 계획·정확한 증거 재사용을 사용한다. SVN은 test-execution.md의 전체 test+buildOnly 직접 실행 폴백을 사용하며 Git 지문이나 proof를 요구하지 않는다.
+Git은 공유 helper 계획·정확한 증거 재사용을 사용한다. state에 `test-plan-override`가 있으면 helper 계획 대신 그 명령의 `override` 계획으로 `reuse`를 확인하고, 없으면 실행해 `record`한다. 다시 묻지 않는다 (test-execution.md "계획 실패 처리"). SVN은 test-execution.md의 전체 test+buildOnly 직접 실행 폴백을 사용하며 Git 지문이나 proof를 요구하지 않는다.
+
+**수리 주체**: 아래 Step 0-1·0-2의 수리는 state `execution-method: session`이면 implementer를 디스패치하지 않고 **세션이 직접** 수행한다 (phase-implement Step 2-I "세션 IMPLEMENT 절차"의 절대 규칙 — 테스트 파일 수정 금지). 그 외(`subagents`·`--isolated`·필드 없는 legacy)는 implementer 수리 모드다. 어느 쪽이든 입력(에러 + focused 검증 명령)과 수리 후 **테스트 파일 무변경** 확인은 같다.
 
 ### Step 0-1: Build
 
@@ -48,9 +50,9 @@ Git은 공유 helper 계획·정확한 증거 재사용을 사용한다. SVN은 
 **실행 흐름**:
 1. 빌드 entry의 `cwd`에서 계획된 명령을 직접 실행한다. 성공/실패를 helper `record`에 전달하고 기존 proof를 갱신한다.
 2. **성공** → Step 0-2로 진행.
-3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. `Task(subagent_type="oh-my-gx:implementer")`에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 IMPLEMENT 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated)·`green-coder`(파이프라인 미호출) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 implementer가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). implementer 수정 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 재호출한다 (state.md의 `test-file-hash` 대조). 이 수리는 fix loop 라운드에 계상하지 않는다.
+3. **실패** → 직전 RGR 사이클이 컴파일 미완성 상태일 가능성이 크다. 위 **수리 주체**(session이면 세션 직접, 그 외 `Task(subagent_type="oh-my-gx:implementer")`)에 빌드 에러를 전달하여 컴파일을 통과시킨다. 이는 진행 중인 IMPLEMENT 단계의 연장이므로 **새 RED는 불필요**하다 (해당 사이클의 실패 테스트가 이미 가드 역할). **단, `coder`(deprecated)·`green-coder`(파이프라인 미호출) 직접 호출 금지.** 컴파일 에러가 **테스트 파일**에 있으면 수리 주체가 아니라 **red-writer를 재호출**한다 (테스트 수정은 red-writer 소관). 수리 후에는 변경 파일에 테스트 파일이 없는지 확인하고, 테스트가 수정되었으면 원복 후 다시 수리한다 (state.md의 `test-file-hash` 대조). 이 수리는 fix loop 라운드에 계상하지 않는다.
 
-   수리 디스패치는 **RED report 없이 시작하는 수리 모드**다 — 빌드 에러(또는 깨진 테스트 파일 경로 + 에러 전문)와, 오케스트레이터가 깨진 대상으로 조립한 focused 검증 명령(config `focusedTest` 템플릿에 깨진 테스트 파일을 대입. 미지원 타입은 전체 `test` 명령)을 전달한다. 수리 후 전체 확인은 이 Gate의 재시도 실행이 담당한다.
+   수리는 **RED report 없이 시작하는 수리 모드**다 — 빌드 에러(또는 깨진 테스트 파일 경로 + 에러 전문)와, 오케스트레이터가 깨진 대상으로 조립한 focused 검증 명령(config `focusedTest` 템플릿에 깨진 테스트 파일을 대입. 미지원 타입은 전체 `test` 명령)을 입력으로 쓴다 (implementer면 디스패치에 전달). 수리 후 전체 확인은 이 Gate의 재시도 실행이 담당한다.
 4. 수정 후 빌드를 **1회 재시도**한다.
 5. **재시도 성공** → Step 0-2로 진행.
 6. **재시도 실패** → 사용자에게 빌드 에러 표시 후 AskUserQuestion: "빌드 실패. 직접 수정 후 계속 / 중단".
@@ -71,10 +73,10 @@ legacy 세션에 세대 필드가 전혀 없으면 모든 기존 태스크를 �
 
 **실행 흐름**:
 1. Step 0 테스트 집합의 entry별 `reuse`를 확인한다. 정확한 같은 실행 증거가 없으면 entry의 `cwd`에서 직접 실행하고 결과를 `record`한다. 테스트 0건/미확정/실패는 기존 성공 증거도 무효화한다.
-2. **성공** → Step 1로 진행.
-3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. `implementer`에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 `implementer`에 롤백을 요청한다. `coder`(deprecated) 직접 호출 금지. implementer 수정 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재호출 — 프로덕션 코드로만 해결).
+2. **성공** → Step 1로 진행. state `known-failures` 목록 안의 실패만 있으면 회귀가 아니므로 수리하지 않고 "기존 실패 N건"으로 보고한 뒤 진행한다 (test-execution.md "기존 실패"). 실행 수가 기준선에 못 미치거나 대조할 기준선이 없어 `record`가 막히면 통과가 아니다 — 같은 계약의 `plan --full` 재계획을 따른다.
+3. **실패(회귀)** → 깨진 기존 테스트가 이미 RED 역할을 한다. 위 **수리 주체**(session이면 세션 직접, 그 외 `implementer`)에 깨진 테스트 + 에러를 전달해 통과시킨다 (새 RED 불필요). 직전 정리가 동작을 바꾼 것이 원인이면 같은 수리 주체가 롤백한다. `coder`(deprecated) 직접 호출 금지. 수리 후에는 **테스트 파일 무변경**을 확인한다 (무단 수정 감지 시 원복 + "테스트 수정 금지" 재강조 재수리 — 프로덕션 코드로만 해결).
 
-   수리 디스패치는 **RED report 없이 시작하는 수리 모드**다 — 빌드 에러(또는 깨진 테스트 파일 경로 + 에러 전문)와, 오케스트레이터가 깨진 대상으로 조립한 focused 검증 명령(config `focusedTest` 템플릿에 깨진 테스트 파일을 대입. 미지원 타입은 전체 `test` 명령)을 전달한다. 수리 후 전체 확인은 이 Gate의 재시도 실행이 담당한다.
+   수리는 **RED report 없이 시작하는 수리 모드**다 — 빌드 에러(또는 깨진 테스트 파일 경로 + 에러 전문)와, 오케스트레이터가 깨진 대상으로 조립한 focused 검증 명령(config `focusedTest` 템플릿에 깨진 테스트 파일을 대입. 미지원 타입은 전체 `test` 명령)을 입력으로 쓴다 (implementer면 디스패치에 전달). 수리 후 전체 확인은 이 Gate의 재시도 실행이 담당한다.
 4. 수정 후 같은 테스트 집합으로 **1회 재시도**한다.
 5. **재시도 성공** → Step 1로 진행.
 6. **재시도 실패** → 사용자에게 표시 후 AskUserQuestion: "테스트 실패. 직접 수정 후 계속 / 중단".
@@ -298,14 +300,19 @@ behavior_defects = quality.Critical + (security 중 동작 변경 동반; CRITIC
 refactor_only    = (quality.Important 중 [동작불변] 표기 항목)        # DRY/네이밍/매직넘버/추상화
                    + (security 중 동작 불변이 명백한 항목)            # 시크릿 제거 등
 
-# 4a: 동작 결함 → RGR 사이클 (실패 테스트 선행)
+# 4a: 동작 결함 → RGR 사이클 (실패 테스트 선행). 기본 동작이며 묻지 않는다
 if behavior_defects:
     해당 항목 사용자에게 표시
-    AskUserQuestion: "동작 결함을 RGR 사이클로 수정할까요?"
-      - "예 (RGR)" → 각 항목을 새 AC로 정의 → phase-implement RGR 사이클 진입 (RED부터)
-      - "수동 수정" → 사용자 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
-      - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
-    did_fix = true (RGR 선택 시)
+    if 수정이 승인된 범위를 넘거나(범위 밖 파일·기능) 기존 AC의 의미를 바꾼다:
+        AskUserQuestion: "동작 결함 수정이 승인된 범위·AC를 바꿉니다. 어떻게 할까요?"
+          - "RGR로 수정 (범위·AC 변경 포함)" → 아래 기본 경로와 같다
+          - "수동 수정" → 사용자 수정 후 phase-review 재호출 (execution-log에 "수동 수정 재주입" 기록)
+          - "이대로 진행" → Trust Ledger에 "수용된 위험" 기록
+    else:
+        통지 한 줄: "동작 결함 {N}건을 RGR로 수정합니다 (실패 테스트 먼저)."
+        Ruling(기본값: RGR 수정) → decisions.md에 `Ruling: review 동작 결함 RGR 수정 {N}건` 블록 append (phase-implement "판정 기록 (Rulings)" 규약)
+    기본 경로: 각 항목을 새 AC로 정의 → phase-implement RGR 사이클 진입 (RED부터)
+    did_fix = true (RGR 진행 시)
 
 # 4b: 동작 불변 품질 결함 → 정리 모드 (새 RED 없음. 기본은 세션 직접, --isolated는 implementer)
 #  전제: Step0 mechanical gate(build + Step 0 테스트 집합 통과)로 이미 GREEN 상태가 보장됨 → 정리 모드의 GREEN 선행 조건 충족

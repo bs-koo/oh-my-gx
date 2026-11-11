@@ -6,7 +6,7 @@ gx-tdd의 requirements·implement·보안 수리·재개가 함께 적용한다.
 
 1. 문서·테스트를 바꾸기 **전에** 현재 active 기준선 세대의 `test-file-hash`와 테스트 파일·porcelain를 대조한다. 위반이나 소유권 불명이 있으면 멈추고 원인을 해결하며, 현재 파일의 hash로 덮어서 통과시키지 않는다. 처음 구현된 적 없는 태스크에는 이전 기준선이 없다.
 2. 이전 테스트 원문·케이스 본문/기대값 스냅샷·AC·plan·RED/IMPL report·hash·test-count·porcelain를 `${DEV_DIR}/history/{baseline-generation}/{task-id}/`에 **불변 이력**으로 보관한다. 기존 report의 역사 절도 보존한다. 원본 확인 후 복사하며, 이력 파일을 다음 세대 입력으로 고쳐 쓰지 않는다. 진행 중 `baseline-fingerprint`와 공통 테스트 plan/proof·로그도 별도 기준선 증거로 그대로 둔다. 현재 run·코드·설정·명령·범위가 달라진 proof는 보존하되 재사용하지 않는다.
-3. 변경할 AC와 태스크별 케이스 변경표를 작성한다. core는 문서 변경 전 승인 무효화 → G-W-T·계획 갱신 → AC+계획 실물 함께 재승인한다. 전체 모드는 기존 요구사항·설계 승인 절차로 변경 범위를 확정한다. 승인 전 테스트를 교체·은퇴시키지 않는다.
+3. 변경할 AC와 태스크별 케이스 변경표를 작성한다. core는 문서 변경 전 승인 무효화 → G-W-T·계획 갱신 → AC+계획 실물 함께 재승인한다. 전체 모드는 기존 요구사항·설계 승인 절차로 변경 범위를 확정한다. phase-review 4a 기본 RGR 수정의 Ruling(승인된 범위 안에서 결함 케이스만 `add`하는 변경표)은 변경표 승인으로 본다. 기존 AC 문구·범위를 바꾸거나 `replace`·`retire`가 필요하면 4a 예외(묻는다)로 처리하고 그 실제 응답을 승인으로 쓴다. 승인 전 테스트를 교체·은퇴시키지 않는다.
 
 변경표 report와 state의 연결에는 `baseline-generation`(예: `g2`), `active-case-ids`, `previous-task-ids`(예: `[T1, T2]`), `supersedes`(예: `[g1/T1, g1/T2]`), `case-change-report`(예: `reports/g2/t3-case-changes.md`)를 기록한다. 각 케이스 행은 다음 필드를 갖는다:
 

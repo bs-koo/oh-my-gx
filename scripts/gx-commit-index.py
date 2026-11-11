@@ -14,7 +14,11 @@ import tempfile
 
 
 # 런타임·시각화 산출물, 머신 로컬 stash 기록, 작업 브랜치 생성 전 보호 브랜치 결정 기록은 커밋하지 않는다.
-RUNTIME = ['.dev/*/ralph.lock', '.dev/*/iter-*.log', '.dev/*/auto-stash.txt', '.dev/architecture', '.dev/*/visual/*', '.dev/main/decisions.md', '.dev/master/decisions.md', '.dev/develop/decisions.md', '.dev/trunk/decisions.md']
+# 질문 대기·모델 기록·로그·증거(dev-sharing.gitignore 런타임 항목)와 위험 수용 토큰은 .gitignore 상태와 무관하게 뺀다.
+# porcelain.now(리뷰 판정마다 새로 만드는 비교본)·reports의 태스크 diff 사본은 리뷰 직전에 다시 수집해 재개에 쓰지 않는다.
+RUNTIME = ['.dev/*/ralph.lock', '.dev/*/iter-*.log', '.dev/*/auto-stash.txt', '.dev/architecture', '.dev/*/visual/*', '.dev/main/decisions.md', '.dev/master/decisions.md', '.dev/develop/decisions.md', '.dev/trunk/decisions.md', '.dev/*/pending-question.json', '.dev/*/answered-question.json', '.dev/*/.question-lock', '.dev/*/model-dispatches.jsonl', '.dev/*/discarded-question-*.json', '.dev/*/logs/*', '.dev/*/evidence/*', '.dev/*/verify-risk-accepted', '.dev/*/rgr-*-porcelain.now.txt', '.dev/*/reports/*-diff*.txt']
+# GitHub은 50MiB 초과 파일에 경고하고 100MiB 초과 push를 거부한다. 이보다 큰 .dev 파일(실행 로그 등)은 커밋에서 빼고 알린다.
+LARGE_DEV_FILE = 50 * 1024 * 1024
 
 
 def git(root, *args, check=True, index=None):
@@ -103,6 +107,24 @@ def paths(value):
     return value
 
 
+def candidates(root, head):
+    staged = set(git(root, 'diff', '--cached', '--name-only', '--no-renames', '-z').stdout.decode('utf-8').split('\x00'))
+    changed = (git(root, 'diff', '--name-only', '--no-renames', '-z', head).stdout.decode('utf-8').split('\x00')
+               if head else list(staged) + git(root, 'diff', '--name-only', '-z').stdout.decode('utf-8').split('\x00'))
+    untracked = git(root, 'ls-files', '--others', '--exclude-standard', '-z').stdout.decode('utf-8').split('\x00')
+    return staged, changed, untracked
+
+
+def dev_exclusions(root, candidate_paths, mode):
+    """devArtifacts: local이면 .dev/plan.md 밖 .dev 경로, 모드와 무관하게 LARGE_DEV_FILE 초과 .dev 파일을 뺀다."""
+    if mode not in (None, '', 'commit', 'local'):
+        raise ValueError('devArtifacts는 commit 또는 local이어야 합니다')
+    dev = sorted(p for p in set(candidate_paths) if p.startswith('.dev/'))
+    local = [p for p in dev if mode == 'local' and p != '.dev/plan.md']
+    large = [p for p in dev if (root / p).is_file() and (root / p).stat().st_size > LARGE_DEV_FILE]
+    return local, large
+
+
 def preview(root, payload):
     excluded = paths(payload.get('excludes', []))
     config_path = root / '.claude/config.json'
@@ -111,10 +133,8 @@ def preview(root, payload):
     if not isinstance(sensitive, list) or any(not isinstance(p, str) for p in sensitive):
         raise ValueError('sensitiveFilePatterns는 문자열 배열이어야 합니다')
     head, branch = identity(root)
-    staged = set(git(root, 'diff', '--cached', '--name-only', '--no-renames', '-z').stdout.decode('utf-8').split('\x00'))
-    changed = (git(root, 'diff', '--name-only', '--no-renames', '-z', head).stdout.decode('utf-8').split('\x00')
-               if head else list(staged) + git(root, 'diff', '--name-only', '-z').stdout.decode('utf-8').split('\x00'))
-    untracked = git(root, 'ls-files', '--others', '--exclude-standard', '-z').stdout.decode('utf-8').split('\x00')
+    staged, changed, untracked = candidates(root, head)
+    local, large = dev_exclusions(root, (set(changed + untracked) | staged) - {''}, payload.get('devArtifacts'))
     rows = []
     for path in sorted((set(changed + untracked) | staged) - {''}):
         reasons = []
@@ -123,6 +143,10 @@ def preview(root, payload):
         if any(path == pattern or path.startswith(pattern.rstrip('/') + '/') or fnmatch.fnmatchcase(path, pattern)
                for pattern in RUNTIME):
             reasons.append('runtime/시각화 산출물·보호 브랜치 결정 기록')
+        if path in local:
+            reasons.append('devArtifacts: local — .dev 작업 기록은 이 PC에만 둠')
+        if path in large:
+            reasons.append('50MiB 초과 .dev 파일')
         if any(fnmatch.fnmatchcase(path, pattern) or ('/' not in pattern and fnmatch.fnmatchcase(Path(path).name, pattern))
                for pattern in sensitive):
             reasons.append('민감 파일 후보 — 실제 커밋 시 기존 확인 절차 적용')
@@ -142,6 +166,8 @@ def run(payload):
         raise ValueError('cwd는 확인된 Git 루트 절대경로여야 합니다')
     if payload['action'] == 'preview':
         return preview(root, payload)
+    if payload['action'] == 'accept-risk':
+        return accept_risk(root)
     index = Path(text(root, 'rev-parse', '--git-path', 'index'))
     index = index if index.is_absolute() else root / index
     index = index.parent.resolve() / index.name
@@ -188,10 +214,19 @@ def run(payload):
             if not same_index(root, index, meta):
                 raise ValueError('index가 외부에서 변경됐습니다. snapshot을 보존하고 중단합니다')
             if action == 'stage':
+                # 미해결 충돌 경로가 있으면 add -A가 충돌 표식이 든 파일을 해결된 것으로 스테이징한다. index를 바꾸기 전에 거부한다.
+                if git(root, 'ls-files', '-u', '-z').stdout:
+                    raise ValueError('미해결 병합 충돌 경로가 있습니다(git ls-files -u). 충돌을 해결하고 '
+                                     'git add <경로>로 해결 표시한 뒤 다시 커밋하세요. index는 바꾸지 않았습니다')
                 selected = payload.get('paths')
                 if selected is not None:
                     selected = paths(selected)
                 excluded = paths(payload.get('excludes', []))
+                staged0, changed0, untracked0 = candidates(root, meta['head'][0])
+                local, large = dev_exclusions(root, (set(changed0 + untracked0) | staged0) - {''},
+                                              payload.get('devArtifacts'))
+                # 명시 제외와 같은 경로로 다뤄 assert-excluded가 커밋 직전에 다시 확인한다.
+                excluded = excluded + [p for p in local + large if p not in excluded]
                 untrack = paths(payload.get('untrack', []))
                 specs = [':(literal)' + p for p in excluded] + RUNTIME
                 # add/reset/rm은 실제 index와 분리한다. 실패·중단 시 실제 선택은 그대로다.
@@ -261,7 +296,7 @@ def run(payload):
                             else:
                                 os.replace(rollback, index)
                             raise
-                result = {'staged': True, 'unstaged': unstaged}
+                result = {'staged': True, 'unstaged': unstaged, 'devExcluded': local, 'largeExcluded': large}
             elif action == 'assert-excluded':
                 assert_excluded(root, [':(literal)' + p for p in meta['excludes']] + RUNTIME,
                                 base=meta['head'][0])
@@ -295,6 +330,28 @@ def run(payload):
         # operation.lock 해제 뒤 이 실행의 빈 snapshot 디렉터리만 지운다. 다른 실행의 snapshot은 건드리지 않는다.
         shutil.rmtree(snapshot, ignore_errors=True)
     return result
+
+
+def accept_risk(root):
+    """Claude Code에서 실제 사용자 응답으로 받은 verify 미통과 커밋 위험 수용을 현재 트리에 묶는다.
+
+    훅 G3는 이 토큰의 트리가 현재 트리와 같으면 다시 묻지 않는다. 트리 지문은 Codex helper와 같은 계산(.git/objects 무쓰기)이다.
+    """
+    branch = text(root, 'symbolic-ref', '--short', 'HEAD')
+    token = root / '.dev' / branch.replace('/', '-') / 'verify-risk-accepted'
+    # .dev·작업 디렉터리·토큰이 링크(심볼릭 링크·junction)이거나 저장소 밖으로 해석되면 쓰지 않는다 — 링크를 따라 다른 파일을 덮지 않게 한다.
+    for path in (token.parent.parent, token.parent, token):
+        if path.is_symlink() or (path.exists() and os.path.normcase(str(path.resolve())) != os.path.normcase(str(path))):
+            raise ValueError(f'위험 수용 토큰 경로가 링크이거나 저장소 밖으로 해석됩니다: {path.relative_to(root).as_posix()}')
+    proc = subprocess.run([sys.executable, str(Path(__file__).with_name('codex-fingerprint.py')), '--cwd', str(root)],
+                          capture_output=True, timeout=60)
+    value = proc.stdout.decode('ascii', errors='replace').strip()
+    if proc.returncode or not re.fullmatch(r'[0-9a-f]+:[0-9a-f]{12}', value):
+        raise ValueError('트리 지문을 계산하지 못했습니다: ' + proc.stderr.decode('utf-8', errors='replace').strip())
+    tree = value.split(':')[1]
+    token.parent.mkdir(parents=True, exist_ok=True)
+    token.write_text(f'tree: {tree}\n', encoding='utf-8')
+    return {'token': token.relative_to(root).as_posix(), 'tree': tree}
 
 
 def assert_excluded(root, specs, index=None, base=None):
