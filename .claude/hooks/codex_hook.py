@@ -60,6 +60,9 @@ def run_guard(payload: dict, *, bash: str | None = None) -> dict | None:
     if not isinstance(cwd, str) or not Path(cwd).is_absolute() or not Path(cwd).is_dir():
         return deny("GX 훅의 작업 경로가 유효하지 않습니다.")
 
+    # Claude Code의 bypassPermissions 완화(G3 확인 생략)는 Codex에 적용하지 않는다.
+    # Codex는 verify 미통과 커밋을 위험 수용 없이 차단한다(ask → deny).
+    payload = {key: value for key, value in payload.items() if key != "permission_mode"}
     try:
         proc = subprocess.run(
             [executable, str(HERE / "pre-tool-guard.sh")],

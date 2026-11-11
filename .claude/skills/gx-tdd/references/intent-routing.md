@@ -64,12 +64,41 @@ ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되�
 - `phase W01`처럼 앞에 `phase`가 붙어도 같다. 뒤따르는 토큰이 위 정규식의 W ID면 작업 ID이고, `design`·`implement` 같은 단계명이면 기존 PHASE 판정이다.
 - **자연어 WORK + RESUME 판정**: Step 1·Step 2에서 RESUME이 판정되었으면 WORK를 **무시하고** 1줄 안내한다 — "재개는 state.md의 `work-id`로 작업 문맥을 복원합니다 — {ID} 지정 없이 이어서 진행합니다." ("W01 이어서 해줘"처럼 둘 다 성립하는 발화가 플래그 충돌로 중단되지 않게 한다.) 명시 플래그 `--work`는 이 양보 대상이 아니며 기존대로 충돌 에러를 낸다 — 사용자가 명시한 것을 조용히 버리지 않는다.
 
-**Step 3: 프로젝트 기본값 적용**
+**Step 3: 진행 방식(모드·프로파일) 확인**
 
-일반 기능 요청은 모드를 `all`로 확정한다. 모델은 명시 플래그 > 자연어 > 이번 실행의 기존 결정 > config.json `modelProfile` > `standard` 순으로 정한다. 매 요청마다 모드·모델 프로파일 질문을 만들지 않는다. 적용 결과만 한 줄로 알리고 진행한다.
+모드와 모델 프로파일은 명시 플래그 > 자연어(Step 2의 CORE·ECO 판정) > gx-work 인계(`--core`·`model-profile`) > 이번 실행의 기존 결정 순으로 정한다. 이렇게 정해지지 않은 항목만 실행 시작 전에 **한 번** 묻는다. config.json `modelProfile`은 프로파일 선택지에 "(현재 설정)"으로 표시할 뿐 답을 대신하지 않는다. 두 항목이 모두 정해졌으면 질문 없이 적용 결과만 한 줄로 알린다.
 
-- **프로파일 질문 포함 규칙**: 사용자에게 선택을 요청했거나 설정·명시 지시가 충돌해서 실제 결정이 필요할 때만 묻는다. 설정된 `modelProfile`은 기본값으로 사용하며 재확인하지 않는다.
-- **모드 질문 생략 규칙**: 일반 요청은 `all`. `--core` 또는 명시적 핵심 모드 요청이 있을 때만 `core`다. 자동으로 검증·설계 게이트를 줄이지 않는다.
+- **묻지 않는 경우**: gx-work 인계(진입 질문에서 이미 답했다. 인계에 `model-profile`이 없는 이전 인계는 config.json `modelProfile` > `standard`), `--resume`(state 복원), STATUS, PHASE 단독 실행, 읽기 전용 인계. 같은 run에서 이미 답했으면 다시 묻지 않는다.
+- **추천**: gx-work의 [진행 방식 추천 기준](../../gx-work/references/tdd-entry.md#진행-방식-추천-기준)을 따른다. 요청 문장·관련 문서·코드 탐색으로 근거를 대고, 근거가 부족하면 전체·표준을 추천한다. 에코를 보일 때 세션이 상위 등급 모델이면 같은 기준의 에코 안내를 붙인다.
+- 답은 state의 `mode`·`model-profile`과 `intent-source: user-selection`으로 기록한다. 핵심이면 `--core`와 같게 처리한다. 무응답·추천값은 답이 아니다.
+
+```
+AskUserQuestion(
+  questions: [
+    {
+      header: "모드",
+      question: "어떤 과정으로 진행할까요?",
+      multiSelect: false,
+      options: [
+        { label: "전체 (Recommended)", description: "PRD·설계·구현계획을 거쳐 TDD로 개발합니다. {추천 근거 한 줄}" },
+        { label: "핵심", description: "AC와 경량 구현계획을 함께 승인받고 TDD로 개발합니다. RGR·verify는 같습니다" }
+      ]
+    },
+    {
+      header: "프로파일",
+      question: "에이전트 모델을 어떻게 쓸까요?",
+      multiSelect: false,
+      options: [
+        { label: "표준 (Recommended)", description: "역할별 기본 모델을 씁니다. {추천 근거 한 줄}" },
+        { label: "에코", description: "설계 비판·testability·리뷰 에이전트를 sonnet으로 낮춥니다. {세션 모델 안내}" }
+      ]
+    }
+  ]
+)
+```
+
+이미 정해진 항목의 질문은 뺀다. 추천이 바뀌면 `(Recommended)`를 그 선택지로 옮겨 첫 번째에 둔다.
+
 - 이미 승인한 계획·handoff의 종료점과 명시 실행방법을 보존한다. 전체 모드는 implement Step 1.2에서 구체 계획 검토와 방법 선택을 한 질문으로 확인한다. core는 [core-planning.md](core-planning.md)에 따라 실제 코드 Read → 경량 plan.md → **AC+계획 실물 함께 승인 1회**에 방법도 연결한다. 유효한 동일 run/계획/선택은 재사용하고 방법만 빠졌으면 Step 1.3에서 방법만 묻는다. 미결정 방법을 기본값으로 채우지 않는다. plan/understand는 읽기 전용 경로로 보내고 실행 setup을 시작하지 않는다.
 - 핵심 모드에서도 RGR·verify·G-W-T·긴급 보안 감사는 유지한다. 비TDD 개발 경로는 제공하지 않는다.
 ### 모드 판정 결과 기록

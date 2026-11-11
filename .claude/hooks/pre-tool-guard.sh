@@ -4,9 +4,21 @@
 
 set -uo pipefail
 DEFERRED_REASON=""
+BYPASS_NOTE=""
 
 # plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
 INPUT=$(cat 2>/dev/null || echo '{}')
+
+# Claude Code 권한 모드. bypassPermissions에서는 G3(verify 미통과 커밋 확인)를 묻지 않고 경고 문맥으로 바꾼다
+# — 훅의 ask는 bypass 모드에서도 확인 창을 띄워, 사용자가 고른 "묻지 않기"를 깨뜨린다. G1·G2·레거시 차단은 그대로다.
+# Codex 어댑터는 이 필드를 지우고 넘겨 Codex의 verify 미통과 차단 정책을 유지한다.
+# 최상위 키만 읽는다: 명령 문자열 안의 같은 글자는 JSON에서 \"로 이스케이프되어 이 패턴에 맞지 않는다.
+PERMISSION_MODE=""
+if command -v jq >/dev/null 2>&1; then
+  PERMISSION_MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // empty' 2>/dev/null || echo "")
+else
+  PERMISSION_MODE=$(printf '%s' "$INPUT" | grep -o '"permission_mode"[[:space:]]*:[[:space:]]*"[A-Za-z]*"' | head -1 | sed 's/.*"\([A-Za-z]*\)"$/\1/')
+fi
 
 # tool_input.command 값만 추출해 검사한다 — JSON 전체 글롭 매칭은 description 등
 # 다른 필드의 문자열에 오탐한다 (PR 본문의 "svn"+"gx-commit"으로 G2 오발화, 실측 2026-07-13).
@@ -183,6 +195,7 @@ case "$CMD" in
     # 한 명령에 여러 저장소의 commit이 있으면 각각 검사한다.
     # 루프 변수로 GIT_DIR를 쓰지 않는다 — export된 GIT_DIR를 덮어쓰면 아래 git 호출이 대상 저장소를 잃는다.
     DEFERRED_REASON=""
+    BYPASS_NOTE=""
     while IFS= read -r TARGET_DIR; do
       [ -n "$TARGET_DIR" ] || continue
       # `?` 접두는 대상을 해석하지 못해 대신 검사하는 경로다. Git 저장소가 아니면 건너뛴다(이전 훅과 같은 판정).
@@ -254,6 +267,10 @@ EOF
         fi
         # 앞 저장소의 ask로 뒤 저장소의 보호 브랜치/레거시 deny를 가리지 않는다.
         if [ "$GATE_DECISION" = "ask" ]; then
+          if [ "$PERMISSION_MODE" = "bypassPermissions" ]; then
+            BYPASS_NOTE="${BYPASS_NOTE:+$BYPASS_NOTE; }$TARGET_DIR: $GATE_REASON"
+            continue
+          fi
           DEFERRED_REASON="${DEFERRED_REASON:+$DEFERRED_REASON; }$TARGET_DIR: $GATE_REASON"
           continue
         fi
@@ -327,6 +344,13 @@ if [ -n "${DEFERRED_REASON:-}" ]; then
   # Python 없이도(폴백 판정) ask를 낼 수 있게 JSON 문자열 이스케이프를 셸에서 한다.
   ESCAPED_REASON=$(printf '%s' "$DEFERRED_REASON" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
   printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": "%s"}}\n' "$ESCAPED_REASON"
+  exit 0
+fi
+# bypassPermissions: 확인 창 없이 진행하되 Claude가 읽는 문맥(additionalContext)에 미검증 사실과 기록 의무를 남긴다.
+if [ -n "${BYPASS_NOTE:-}" ]; then
+  NOTE="bypassPermissions 모드라 확인 없이 커밋을 진행합니다. ${BYPASS_NOTE} 이 커밋은 'verify 미통과 커밋'이다. 사용자에게 알리고, gx-tdd 진행 중이면 trust-ledger·PR 본문에 그렇게 기록하라."
+  ESCAPED_NOTE=$(printf '%s' "$NOTE" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "%s"}}\n' "$ESCAPED_NOTE"
   exit 0
 fi
 exit 0

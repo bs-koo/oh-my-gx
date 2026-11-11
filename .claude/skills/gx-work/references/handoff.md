@@ -49,7 +49,7 @@ gx-work가 실제 TDD 진입 답변을 받았거나 gx-tdd가 `--from-plan`·`--
 
 - 새 인계는 `schema-version: 2`다. 경로 포인터(`request-file`·`plan-file`, gx-tdd state의 `handoff-file`)와 지문 계산은 **프로젝트 루트 기준 POSIX 상대경로**를 쓰고 절대 루트를 지문에 넣지 않는다. `project-root`는 표시용이다. 그래서 브랜치 이름 변경·다른 PC·다른 워크트리에서도 같은 인계를 검증할 수 있다.
 - `input-sha256`은 **입력 내용**의 지문이고, `entry-approval.scope-sha256`은 그 지문에 실제 승인 근거를 묶은 **승인** 지문이다. 입력이 바뀌면 둘 다, 승인 근거만 바뀌면 `scope-sha256`만 달라진다.
-- 선택 필드: `work-id`(`W` + 두 자리 이상 ASCII 숫자), `execution-method`(`session`|`subagents`), `model-profile`(`standard`|`eco`). 사용자가 요청에서 밝힌 값만 요청 파일 최상위에 넣는다. 쓰임새는 tdd-entry.md의 "인계 이후의 책임"을 따른다.
+- 선택 필드: `work-id`(`W` + 두 자리 이상 ASCII 숫자), `execution-method`(`session`|`subagents`), `model-profile`(`standard`|`eco`). 사용자가 요청에서 밝혔거나 진입 질문에서 답한 값만 요청 파일 최상위에 넣는다. 쓰임새는 tdd-entry.md의 "인계 이후의 책임"을 따른다.
 - v1 인계(`schema-version: 1`, 절대경로 포인터)도 `validate-handoff`가 그대로 검증한다. v1을 다른 경로에서 재개해 지문이 맞지 않으면 아래 `reissue`로 v2를 다시 발급한다.
 
 `approval.status`는 `approved` 또는 `unconfirmed`이며 **현재 사용자가 요청한 작업 범위**에 대한 값이다. 외부 문서 자체의 승인 여부를 복사하지 않는다. `entry-approval`은 제시한 범위·관련 문서/FR/W·종료점으로 gx-tdd에 진입하겠다는 실제 답변만 기록한다. 같은 run·범위의 유효한 진입 승인·내부 선택·모드·모델은 다시 묻지 않는다. 제품 선택·범위·위험의 미정과 충돌은 계속 질문한다.
