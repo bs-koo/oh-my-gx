@@ -15,6 +15,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".claude/skills"
 COMMIT = SKILLS / "gx-commit/SKILL.md"
+# 항상 제외 pathspec은 SKILL.md 예산 때문에 helper 참조 파일에 둔다.
+COMMIT_INDEX_HELPER = SKILLS / "gx-commit/references/index-helper.md"
 PULL_REQUEST = SKILLS / "gx-pull-request/SKILL.md"
 PROTECTED_CAPTURES = tuple(f".dev/{name}/decisions.md" for name in ("main", "master", "develop", "trunk"))
 
@@ -76,7 +78,7 @@ class CommitRunInputExclusionTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("git"), "git 필요")
     def test_documented_reset_unstages_only_protected_branch_captures(self):
-        command = re.search(r"`(git reset -q -- [^`]+)`", self.body).group(1)
+        command = re.search(r"`(git reset -q -- [^`]+)`", text(COMMIT_INDEX_HELPER)).group(1)
         specs = re.findall(r"'([^']+)'", command)
         staged = staged_after_reset(
             [*PROTECTED_CAPTURES, ".dev/f3a9-run/handoff.json", ".dev/f3a9-run/decisions.md",
@@ -99,7 +101,7 @@ class CommitRunInputExclusionTests(unittest.TestCase):
         import ast
         source = text(ROOT / "scripts/gx-commit-index.py")
         runtime = ast.literal_eval(re.search(r"(?m)^RUNTIME = (\[.*\])$", source).group(1))
-        command = re.search(r"`(git reset -q -- [^`]+)`", self.body).group(1)
+        command = re.search(r"`(git reset -q -- [^`]+)`", text(COMMIT_INDEX_HELPER)).group(1)
         self.assertEqual(re.findall(r"'([^']+)'", command), runtime)
 
 
@@ -141,6 +143,31 @@ class PullRequestBaseArgumentTests(unittest.TestCase):
         step_two = between(self.body, "**Step 2**", "## GH_HOST 감지")
         self.assertIn("질문으로 대체하지 않고", step_two)
         self.assertIn("git rev-parse --verify --quiet", step_two)
+
+
+class CommitPullRequestUxContractTests(unittest.TestCase):
+    """M7·M13·L4·M8·known-failures: 반복 질문을 줄이는 규칙이 스킬과 참조 파일에 남아 있다."""
+
+    def test_configured_base_and_declined_notification_are_not_asked_again(self):
+        body = text(PULL_REQUEST)
+        arguments = between(body, "Arguments:", "## 사전 확인")
+        self.assertLess(arguments.index("conventions.baseBranch"), arguments.index("AskUserQuestion("))
+        self.assertIn("`declined`가 `true`면", between(body, "## PR 생성 후 알림"))
+
+    def test_existing_failures_are_carried_into_audit_summary(self):
+        self.assertIn("references/pr-rules.md", text(PULL_REQUEST))
+        rules = text(SKILLS / "gx-pull-request/references/pr-rules.md")
+        for phrase in ("기존 실패 N건(이번 변경과 무관)", "known-failures", "그대로 옮긴다"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rules)
+
+    def test_protected_branch_offers_branch_creation_and_risk_is_asked_once(self):
+        self.assertIn("Bash(git switch:*)", text(COMMIT))
+        self.assertIn("references/verify-and-branch.md", text(COMMIT))
+        gates = text(SKILLS / "gx-commit/references/verify-and-branch.md")
+        for phrase in ("git switch -c", "답 없이", "accept-risk", "bypassPermissions", "MERGE_HEAD"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, gates)
 
 
 class PullRequestUncommittedOrderTests(unittest.TestCase):
@@ -236,6 +263,7 @@ class UserDocumentBehaviourTests(unittest.TestCase):
                         self.assertIn("두 자리 이상", line)
 
     def test_setup_quickstart_states_verify_as_default_endpoint(self):
+        # L1: gx-work 진입 질문은 pr을 추천하고, 직접 gx-tdd 호출의 기본 종료점은 verify다(SVN은 verify 고정).
         setup = text(SKILLS / "gx-setup/SKILL.md")
         quickstart = between(setup, "### 완료: 퀵스타트")
         work_lines = [line for line in quickstart.splitlines() if line.startswith("/gx-work")]
@@ -243,7 +271,12 @@ class UserDocumentBehaviourTests(unittest.TestCase):
         for line in work_lines:
             with self.subTest(line=line):
                 self.assertNotIn("PRD~PR", line)
-                self.assertIn("verify", line)
+                self.assertNotIn("커밋·PR은 요청 시", line)
+        git = quickstart.split("**svn인 경우:**", 1)[0]
+        self.assertIn("종료점 추천 pr", git)
+        self.assertIn("직접 gx-tdd 호출은 종료점을 묻지 않고 기본 verify", git)
+        self.assertIn("workflowDefaults.stopAt", git)
+        self.assertIn("verify", quickstart.split("**svn인 경우:**", 1)[1])
 
     def test_onboarding_explains_removed_ralph_exit(self):
         onboarding = text(ROOT / "docs/onboarding-guide.md")

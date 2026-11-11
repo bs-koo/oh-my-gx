@@ -4,9 +4,23 @@
 
 set -uo pipefail
 DEFERRED_REASON=""
+ALLOW_NOTE=""
 
 # plain cat 사용: Windows(Git Bash) 훅 spawn에서 /dev/stdin은 빈 값을 반환한다 (실측 2026-07-10)
 INPUT=$(cat 2>/dev/null || echo '{}')
+
+# Claude Code 권한 모드. bypassPermissions에서는 G3(verify 미통과 커밋 확인)를 묻지 않고 경고 문맥으로 바꾼다
+# — 훅의 ask는 bypass 모드에서도 확인 창을 띄워, 사용자가 고른 "묻지 않기"를 깨뜨린다. G1·G2·G4·레거시 차단은 그대로다.
+# auto·dontAsk 등 다른 모드는 ask를 유지한다(dontAsk는 확인이 필요한 호출을 거부하므로 사실상 차단).
+# Codex 어댑터는 이 필드를 지우고 GX_HOOK_HARNESS=codex를 넘긴다 — 아래 G3 완화(bypass·위험 수용 토큰·병합 커밋)를 모두 끄고 차단 정책을 유지한다.
+# jq는 최상위 키만 읽는다. grep 폴백은 JSON 키 모양("permission_mode": "값")만 맞춘다 — 명령 문자열 안의 같은 글자는
+# JSON에서 \"로 이스케이프되어 이 패턴에 맞지 않는다(위조 사례는 scripts/hook-tests.sh가 그 환경의 경로로 검사한다).
+PERMISSION_MODE=""
+if command -v jq >/dev/null 2>&1; then
+  PERMISSION_MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // empty' 2>/dev/null || echo "")
+else
+  PERMISSION_MODE=$(printf '%s' "$INPUT" | grep -o '"permission_mode"[[:space:]]*:[[:space:]]*"[A-Za-z]*"' | head -1 | sed 's/.*"\([A-Za-z]*\)"$/\1/')
+fi
 
 # tool_input.command 값만 추출해 검사한다 — JSON 전체 글롭 매칭은 description 등
 # 다른 필드의 문자열에 오탐한다 (PR 본문의 "svn"+"gx-commit"으로 G2 오발화, 실측 2026-07-13).
@@ -78,11 +92,13 @@ compute_fingerprint() {
 # + (verify-status ≠ passed 또는 verify-fingerprint 불일치)
 STALE_FP=0
 RETIRED_PIPELINE=0
+FP_DUPLICATE=0
 verify_gate_open() {
   STATE_FILE="$1"
   GATE_REPO="${2:-.}"
   STALE_FP=0
   RETIRED_PIPELINE=0
+  FP_DUPLICATE=0
   # 잠금만 남은 실행도 새 커밋으로 진행시키지 않는다. 상태 파일 부재·완료 여부와 독립이다.
   if [ -e "${STATE_FILE%/*}/ralph.lock" ]; then
     RETIRED_PIPELINE=1
@@ -101,8 +117,12 @@ verify_gate_open() {
   # verify-status만은 줄 시작 앵커(들여쓰기 허용)를 쓴다 — execution-log의 자유 텍스트
   # `result: "... verify-status: passed ..."`가 부분 문자열로 매칭되면 게이트가 조용히 꺼진다.
   if grep -qE '^[[:space:]]*verify-status:[[:space:]]*passed' "$STATE_FILE" 2>/dev/null; then
-    RECORDED=$(sed -n 's/^[[:space:]]*verify-fingerprint:[[:space:]]*//p' "$STATE_FILE" 2>/dev/null | head -1 | tr -d ' \t\r')
-    # 지문이 없는 구 세션은 기존 판정을 유지한다 (하위 호환 — passed면 게이트 닫힘)
+    # 기록 양식이 `verify-fingerprint: ""`라 실제 세션은 값을 따옴표로 감싼다 — 따옴표·공백·CR을 벗긴 값으로 대조한다.
+    # 키가 여러 번 나오면(빈 양식 줄 + 실제 기록) 비어 있지 않은 마지막 값을 쓰고, 서로 다른 값이 있으면 사유에 알린다.
+    FP_VALUES=$(sed -n 's/^[[:space:]]*verify-fingerprint:[[:space:]]*//p' "$STATE_FILE" 2>/dev/null | tr -d " \t\r\"'" | grep -v '^$')
+    RECORDED=$(printf '%s\n' "$FP_VALUES" | tail -1)
+    [ "$(printf '%s\n' "$FP_VALUES" | sort -u | grep -c .)" -gt 1 ] && FP_DUPLICATE=1
+    # 지문이 없는(빈 값 포함) 구 세션은 기존 판정을 유지한다 (하위 호환 — passed면 게이트 닫힘)
     [ -n "$RECORDED" ] || return 1
     # 대조는 트리 성분(콜론 뒤)만 — HEAD 성분은 기록·추적용이다. verify 통과 후
     # phase-complete가 커밋하면 HEAD는 전진하지만 트리가 같으면 검증된 코드가 그대로
@@ -115,6 +135,17 @@ verify_gate_open() {
     return 0
   fi
   return 0
+}
+
+# 위험 수용 토큰(Claude Code 전용): gx-commit이 실제 사용자 응답으로 verify 미통과 커밋의 위험 수용을 받으면
+# .dev/{branch-slug}/verify-risk-accepted에 `tree: <트리 지문 12자>`를 쓴다. 트리가 지금과 같을 때만 유효하다
+# — 수용 뒤 코드가 바뀌면 다시 묻는다. 확인을 스킬 질문 한 번으로 끝내기 위한 표식이다 (0 = 유효).
+risk_token_valid() {
+  [ -f "$1" ] || return 1
+  TOKEN_TREE=$(sed -n 's/^[[:space:]]*tree:[[:space:]]*//p' "$1" 2>/dev/null | tr -d " \t\r\"'" | grep -v '^$' | tail -1)
+  [ -n "$TOKEN_TREE" ] || return 1
+  TOKEN_FP=$(compute_fingerprint "$2")
+  [ "${TOKEN_FP##*:}" != "notree" ] && [ "$TOKEN_TREE" = "${TOKEN_FP##*:}" ]
 }
 
 # G4: force-push 차단 — 보호 정책(git push --force / -f 금지)을 훅으로도 배포해
@@ -183,6 +214,7 @@ case "$CMD" in
     # 한 명령에 여러 저장소의 commit이 있으면 각각 검사한다.
     # 루프 변수로 GIT_DIR를 쓰지 않는다 — export된 GIT_DIR를 덮어쓰면 아래 git 호출이 대상 저장소를 잃는다.
     DEFERRED_REASON=""
+    ALLOW_NOTE=""
     while IFS= read -r TARGET_DIR; do
       [ -n "$TARGET_DIR" ] || continue
       # `?` 접두는 대상을 해석하지 못해 대신 검사하는 경로다. Git 저장소가 아니면 건너뛴다(이전 훅과 같은 판정).
@@ -207,6 +239,8 @@ EOF
     # G3: gx-tdd verify 게이트 — 미통과 상태의 커밋은 사용자 확인(ask)을 요구
     # deny가 아닌 ask인 이유: 스킬/라우팅 층에 문서화된 "위험 수용" 경로를 보존하면서,
     # 컨텍스트 압축·라우팅 우회와 무관하게 항상 동작하는 결정론적 확인 지점을 만든다.
+    # Claude Code에서는 미해결 충돌이 없는 진행 중인 베이스 병합 커밋·유효한 위험 수용 토큰·bypassPermissions면 묻지 않고
+    # 문맥 경고(allow + additionalContext)로 바꾼다. Codex(GX_HOOK_HARNESS=codex)는 이 완화 없이 ask → deny다.
     GIT_ROOT=$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
     if [ -z "$GIT_ROOT" ]; then
       [ "$TARGET_OPTIONAL" -eq 1 ] && continue
@@ -248,12 +282,30 @@ EOF
           GATE_DECISION="deny"
           GATE_REASON="Ralph 지원이 중단된 실행 기록입니다 (${GATE_LABEL}). 기존 기록과 잠금을 보존하고 실행 종료를 확인한 뒤 명시적으로 TDD 전환 범위를 정하세요."
         elif [ "$STALE_FP" -eq 1 ]; then
-          GATE_REASON="verify 통과 후 코드가 변경되었습니다 (${GATE_LABEL}의 verify-fingerprint와 현재 코드 지문 불일치). 변경분은 아직 검증되지 않았으므로 oh-my-gx:gx-verify를 다시 통과시킨 뒤 커밋하세요."
+          GATE_REASON="검증(verify) 뒤 코드가 바뀌었습니다(기록 ${RECORDED}, 현재 ${CURRENT_FP}). gx-verify를 다시 통과시킨 뒤 커밋하세요 (${GATE_LABEL})."
+          [ "$FP_DUPLICATE" -eq 1 ] && GATE_REASON="$GATE_REASON 상태 파일에 서로 다른 verify-fingerprint가 여러 번 있어 마지막 값으로 비교했습니다."
         else
-          GATE_REASON="verify 게이트 미통과 상태입니다 (${GATE_LABEL}: verify-status가 passed가 아님). oh-my-gx:gx-verify 통과 후 커밋을 권장합니다. 진행하면 'verify 미통과 커밋'으로 기록해야 합니다."
+          GATE_REASON="검증(verify)을 아직 통과하지 않았습니다 (${GATE_LABEL}). gx-verify를 통과시킨 뒤 커밋하는 것을 권장합니다."
         fi
         # 앞 저장소의 ask로 뒤 저장소의 보호 브랜치/레거시 deny를 가리지 않는다.
         if [ "$GATE_DECISION" = "ask" ]; then
+          if [ "${GX_HOOK_HARNESS:-}" != "codex" ]; then
+            # 병합 완화는 미해결 충돌 경로(git ls-files -u)가 없을 때만이다. 남아 있으면 `git add -A && git commit`이
+            # 충돌 표식을 그대로 커밋할 수 있어 기존 ask를 낸다. 목록을 읽지 못하면 완화하지 않는다.
+            if git -C "$GIT_ROOT" rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 \
+              && UNMERGED=$(git -C "$GIT_ROOT" ls-files -u 2>/dev/null) && [ -z "$UNMERGED" ]; then
+              ALLOW_NOTE="${ALLOW_NOTE:+$ALLOW_NOTE; }$TARGET_DIR: 베이스 병합 커밋 — 병합 후 verify를 다시 통과해야 커밋·PR 게이트가 닫힌다."
+              continue
+            fi
+            if risk_token_valid "${GATE_FILE%/*}/verify-risk-accepted" "$GIT_ROOT"; then
+              ALLOW_NOTE="${ALLOW_NOTE:+$ALLOW_NOTE; }$TARGET_DIR: 사용자가 위험을 수용한 verify 미통과 커밋 — $GATE_REASON"
+              continue
+            fi
+            if [ "$PERMISSION_MODE" = "bypassPermissions" ]; then
+              ALLOW_NOTE="${ALLOW_NOTE:+$ALLOW_NOTE; }$TARGET_DIR: bypassPermissions 모드 — $GATE_REASON"
+              continue
+            fi
+          fi
           DEFERRED_REASON="${DEFERRED_REASON:+$DEFERRED_REASON; }$TARGET_DIR: $GATE_REASON"
           continue
         fi
@@ -325,8 +377,16 @@ esac
 # 모든 강한 deny(Git 보호·레거시·SVN)를 평가한 다음에만 보류한 ask를 반환한다.
 if [ -n "${DEFERRED_REASON:-}" ]; then
   # Python 없이도(폴백 판정) ask를 낼 수 있게 JSON 문자열 이스케이프를 셸에서 한다.
-  ESCAPED_REASON=$(printf '%s' "$DEFERRED_REASON" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  ESCAPED_REASON=$(printf '%s 그대로 진행하면 이 커밋은 '\''verify 미통과 커밋'\''으로 기록해야 합니다.' "$DEFERRED_REASON" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
   printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": "%s"}}\n' "$ESCAPED_REASON"
+  exit 0
+fi
+# 확인 생략(bypass·위험 수용 토큰·베이스 병합 커밋): 확인 창 없이 진행하되 Claude가 읽는 문맥(additionalContext)에
+# 대상별 사유와 기록 의무를 한 번만 남긴다.
+if [ -n "${ALLOW_NOTE:-}" ]; then
+  NOTE="확인 없이 커밋을 진행합니다. ${ALLOW_NOTE} 사용자에게 알리고, 병합 커밋이 아닌 verify 미통과 커밋은 gx-tdd trust-ledger·PR 본문에 'verify 미통과 커밋'으로 기록하라."
+  ESCAPED_NOTE=$(printf '%s' "$NOTE" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "%s"}}\n' "$ESCAPED_NOTE"
   exit 0
 fi
 exit 0

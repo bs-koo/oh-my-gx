@@ -333,7 +333,7 @@ class PipelineBootstrapContractTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_tdd_diff_redirection_handles_spaced_dev_dir(self):
-        text = self.read(TDD.parent / "references/pipeline-state.md")
+        text = self.read(TDD.parent / "references/pipeline-operations.md")
         section = text[text.index("#### 수집 절차") :]
         commands = [
             line.strip() for line in section.splitlines()

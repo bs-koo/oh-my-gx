@@ -249,7 +249,7 @@ class DocReviewRoundTwoTests(unittest.TestCase):
 class LowFindingTests(unittest.TestCase):
     def test_auto_stash_pointer_stays_local(self):
         self.assertIn("/.dev/*/auto-stash.txt", read(WORK / "references/dev-sharing.gitignore"))
-        self.assertIn("'.dev/*/auto-stash.txt'", read(SKILLS / "gx-commit/SKILL.md"))
+        self.assertIn("'.dev/*/auto-stash.txt'", read(SKILLS / "gx-commit/references/index-helper.md"))
 
     def test_slug_flag_is_parsed_by_gx_tdd(self):
         routing = read(TDD / "references/intent-routing.md")

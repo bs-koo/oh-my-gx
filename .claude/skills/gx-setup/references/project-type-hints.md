@@ -48,6 +48,7 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-work/gx-tdd phase-setup의 �
 
 ```json
 "fullstack": {
+  "roots": ["."],
   "detect": ["build.gradle.kts", "frontend/package.json"],
   "build": "./gradlew clean build -x test && pnpm --dir frontend build",
   "test":  "./gradlew test && pnpm --dir frontend test",
@@ -63,6 +64,9 @@ gx-setup "프로젝트 타입 등록" 단계와 gx-work/gx-tdd phase-setup의 �
 3. **권한 prefix는 조각마다 도출한다** — 위 예시면 `Bash(./gradlew *)`와 `Bash(pnpm *)` 둘 다 등록한다.
 4. **`warningPattern`은 하나뿐이다.** `warn`으로 두면 `warning`도 함께 잡혀 대부분의 조합에 무난하다.
 5. **`detect`에 양쪽 파일을 모두 넣는다.** 한쪽만 넣으면 다른 쪽만 있는 저장소에서 오탐한다.
+6. **복합 명령은 `roots: ["."]`로 저장소 루트에서 돌린다.** `/`가 들어간 detect(`frontend/package.json`)는 저장소 상대 경로로 찾고, `roots`가 없으면 찾은 파일의 디렉토리(`frontend`)를 실행 위치로 삼는다. 루트용 복합 명령이 `frontend`에서 한 번 더 돌지 않도록 실행 위치를 고정한다.
+
+레이어마다 타입을 따로 등록해도 된다(`"detect": ["backend/build.gradle.kts"]`, `"test": "./gradlew test"`). 이때 명령은 `backend`에서 실행된다. 같은 디렉토리로 들어가는 앞의 `cd backend &&`는 테스트 선택 helper가 벗겨 내므로 있어도 되지만, 다른 디렉토리로 가는 `cd`는 config 오류다. 레이어별로 관련 테스트만 고를 수 있어 큰 저장소에 유리하다.
 
 한쪽이 도구용일 뿐이면(문서 사이트용 `package.json` 등) 복합이 아니라 주 타입 하나를 고른다.
 

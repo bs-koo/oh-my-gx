@@ -37,7 +37,15 @@ APP_CONFIG = re.compile(r'(?:app|next|nuxt|tailwind|postcss|astro|svelte|gatsby|
                         r'prettier|stylelint|commitlint|lint-staged)\.config\.[^/]+')
 # 공용 판정이 놓치는 `.conf.` 이름의 테스트 러너 설정.
 RUNNER_CONF = re.compile(r'(?:karma|protractor|wdio|jest|mocha)\.conf\.[^/]+|\.mocharc(?:\.[^/]+)?')
-_SHARED_CONFIGURATION = None
+_SHARED_PLAN = None
+
+
+def shared(name):
+    """공통 테스트 계획(gx-test-plan.py)과 같은 판정 함수를 쓴다."""
+    global _SHARED_PLAN
+    if _SHARED_PLAN is None:
+        _SHARED_PLAN = runpy.run_path(str(Path(__file__).with_name('gx-test-plan.py')))
+    return _SHARED_PLAN[name]
 
 
 def sha(data):
@@ -58,16 +66,12 @@ def matches(path, patterns):
 
 def configuration_path(path):
     """공통 테스트 계획과 같은 설정 판정을 쓰되 앱 설정·의존성 전용 파일은 제외한다."""
-    global _SHARED_CONFIGURATION
-    if _SHARED_CONFIGURATION is None:
-        _SHARED_CONFIGURATION = runpy.run_path(str(Path(__file__).with_name('gx-test-plan.py')))[
-            'configuration_path']
     name = Path(path).name
     if name in RUNNER_CONFIG or RUNNER_CONF.fullmatch(name):
         return True
     if name in DEPENDENCY_FILES or APP_CONFIG.fullmatch(name):
         return False
-    return bool(_SHARED_CONFIGURATION(path))
+    return bool(shared('configuration_path')(path))
 
 
 def ignored_by_git(root):
@@ -160,8 +164,10 @@ def inventory(root, settings):
             markers = project.get('detect', [])
             if not isinstance(markers, list):
                 raise ValueError('detect는 배열이어야 합니다')
+            # 이름 marker는 파일 이름, '/'가 든 marker는 저장소 상대 경로로 찾는다 (gx-test-plan.py와 같다).
             roots = [folder.relative_to(root).as_posix() for folder in folders_seen
-                     if any(matches(name, markers) for name in names_by_folder.get(folder, []))]
+                     if any(shared('detected')((folder / name).relative_to(root).as_posix(), markers)
+                            for name in names_by_folder.get(folder, []))]
         if not isinstance(roots, list):
             raise ValueError('roots는 배열이어야 합니다')
         if patterns and not roots:

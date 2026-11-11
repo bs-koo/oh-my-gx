@@ -102,8 +102,7 @@ else:  # ALL
 for phase in PHASES:
 
     if phase in [requirements, design, implement, complete]:
-        Read("references/requirements-dialogue.md")
-        # waiting/stopped면 중단. ready는 승인이 아님.
+        # requirements-dialogue.md는 처음 한 번 Read(압축 뒤 다시). waiting/stopped면 중단. ready는 승인 아님.
 
     # implement/complete에 scope-status closed이면 scope-closed로 종료(자동 완료/커밋 금지).
     # Codex 필수 질문 게이트: pending status가 exit 2이면 질문을 표시하고 실제 답변을 기다린다.
@@ -129,7 +128,7 @@ for phase in PHASES:
     if phase == "implement" and mode == "all":
         design_content = Read("${DEV_DIR}/design.md")
         if "## Testability 평가" not in design_content:
-            → 사용자 경고: "design.md에 testability 평가가 누락됨. red-writer가 격리 전략을 모름."
+            → 사용자 경고: "설계서에 테스트 가능성 평가가 없어 설계 검토를 다시 합니다."
             → phase-design 재실행 (test-architect 호출 강제)
 
     if phase == "review" and 변경사항 없음:
@@ -156,8 +155,7 @@ for phase in PHASES:
     # 미충족 AC/미검증/문서 충돌/요청한 전달 실패이면 in_progress를 유지하고 중단한다.
     Update state.md → phases.{phase}: completed (해당 Phase의 모든 완료 조건 통과 시에만)
 
-    # 2e. 다음 Phase로 진행
-    # implement Step 1.2~1.3의 문서 종료 선택이면 미구현 상태를 보고하고 여기서 루프를 종료한다.
+    # 2e. 다음 Phase로 진행 (2c의 문서 종료·미응답 종료는 여기 오지 않는다)
     # Codex에서는 미응답 pending 질문이 있으면 다음 Phase로 진행하지 않고 현재 Phase에서 대기한다.
 ```
 
@@ -191,7 +189,7 @@ Phase 실행은 필수 참조 roles-and-phases.md의 Agent 팀과 조건부 호�
 > 2. `${PROJECT_ROOT}/.claude/config.json`의 `"vcs"`로 `VCS_TYPE`을 결정한다 (없거나 파싱 불가하면 `"git"`).
 > 3. **git**: `git rev-parse --is-inside-work-tree`로 repo 확인. **svn**: `svn info`로 작업 복사본 확인.
 > 4. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. **svn**: `${PROJECT_ROOT}/.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/` (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
-> 5. `MODEL_PROFILE`: 기존 state 값 > 명시 --eco/--standard > config.json modelProfile > standard 순이다. 목록 계산 전에 [core-planning.md](references/core-planning.md)의 `restore_mode(saved_mode, saved_flags)`로 기존 mode와 승인 필드를 복원한다. 단독 implement/complete도 현재 결합 승인 검사와 필요한 계획 보완을 생략하지 않는다.
+> 5. `MODEL_PROFILE`: 명시 --eco/--standard > 기존 state 값 > 핵심 모드면 standard > config.json workflowDefaults.modelProfile > modelProfile > standard 순이다. 목록 계산 전에 [core-planning.md](references/core-planning.md)의 `restore_mode(saved_mode, saved_flags)`로 기존 mode와 승인 필드를 복원한다. 단독 implement/complete도 현재 결합 승인 검사와 필요한 계획 보완을 생략하지 않는다.
 > 6. 현재 DEV_DIR의 제거된 실행 경로 검사를 먼저 수행하고 해당하면 쓰기 없이 중단한다. gx-work 인계는 진입 게이트를 먼저 통과해야 한다. 기존 state가 `status: completed`이면 재진입 요청(종료점 변경·명시 phase)을 decisions.md에 기록하고 `status: in_progress`·`verify-status: pending`으로 되돌리며 `verify-fingerprint`를 비운 뒤 검증한다(helper가 완료 실행을 거절해 검증 전 유일한 쓰기다. 실패하면 status·verify-status·verify-fingerprint를 원복하고 멈춘다). 기존 state는 쓰기 전에 [재개 계약 0.05](phases/setup-resume.md)로 원 handoff·승인·방법을 복원/검증한다. `${DEV_DIR}/state.md`가 없으면 최소 골격을 생성한다 (`pipeline: gx-tdd`, `status: in_progress`, `verify-status: pending`, `model-profile: {5에서 결정한 값}`, `branch`, 원래 `flags`). [상태 계약](references/pipeline-state.md)의 run·진입 승인·원문 포인터·실행방법 필드도 보존한다. `--phase implement` 기준선 게이트(Step 0.5)가 warnings-baseline을 기록해야 `--phase complete`의 gx-verify가 로드한다.
 > 7. `--work {ID}`가 지정되었으면 **기존 work-id를 먼저 대조**한다. 다른 작업이면 기존 연결을 보존하고 명시적인 전환 결정을 받기 전 기록하지 않는다. `references/document-lifecycle.md`의 사전 대조로 행·원장·run/branch 연결을 검증한 뒤에만 `${DEV_DIR}/state.md`에 `work-id: {ID}`를 기록한다. 이 경로는 phase-setup을 건너뛰므로 없는 ID를 만들거나 조용히 무시하지 않는다. work 미지정도 관련 원장·W계획을 확인하며, 조회/계획/문서 금지 범위는 쓰지 않는다.
 

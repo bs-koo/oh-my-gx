@@ -4,6 +4,8 @@
 
 Codex에서는 이 phase 파일 기준 `../../gx-work/references/codex-runtime.md`를 먼저 읽는다. 역할 index와 파일은 **그 runtime.md 파일과 같은 디렉토리**의 `codex-roles/`에서 찾는다. `agents/red-writer.md`·`agents/implementer.md`·`agents/reviewer.md` 표기는 역할 계약의 원본을 뜻하며, 배포된 Codex에서는 공통 매핑이 주입한 해당 역할 본문·도구 제약을 사용한다. 각 역할의 기존 report와 spec/quality YAML 반환 계약은 유지한다.
 
+**조건부 절차**: `--resume` 재개, 문서·AC·계획·케이스가 바뀌는 재계획, 하네스 게이트의 AC 제외는 이 phase 파일 기준 `../references/implement-recovery.md`에 있다. 해당 조건이 될 때만 Read한다.
+
 ## Iron Law
 
 ```
@@ -43,7 +45,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 핵심 모드는 각 태스크의 RED·IMPLEMENT·fix loop·태스크 리뷰 수리·보안 수리·재개에 진입하기 직전에도 공통 계약으로 현재 두 문서와 승인 지문을 대조한다. 수리나 정리도 승인된 파일·내용 범위 안에서만 수행한다. 계획 위반이 필요하면 **변경 전에 멈추고** ac.md/G-W-T(필요 시)와 plan.md를 갱신하여 함께 재승인한다. 위험 수용·내부 Ruling·자동 수정 선택은 이 승인을 대신하지 않는다.
 
-이 phase 파일 기준 `../references/core-replanning.md`를 Read한다. 문서가 바뀌어도 기존 RED·테스트·report·`test-file-hash`·`test-count`·porcelain·기대값 스냅샷을 먼저 불변 이력에 보관한다. 변경 전 active 세대 hash를 확인한 뒤 케이스를 keep/add/replace/retire로 분류하고 영향 태스크만 새 `baseline-generation`으로 재개한다. add/replace의 새 케이스만 RED, keep은 본문·기대값 불변 GREEN이며 retire는 승인된 범위만 정리한다. task merge/split은 새 active 세대 소유권으로 매핑하고 과거 태스크 hash는 이력으로만 남긴다. 이 계약은 전체 모드·core→all·보안 수리·AC 제외·재개에도 적용한다. 재승인만으로 진행 중 RED가 GREEN인 것처럼 처리하지 않는다. 기준선 사전 실행의 `baseline-fingerprint`와 plan/proof·로그도 보존하며 Step 0.5의 현재 run·코드·설정·명령·범위 일치 조건으로 재사용을 판단한다.
+문서가 바뀌는 재계획은 `../references/implement-recovery.md` §1(정본 `../references/core-replanning.md`)을 Read해 따른다. 이 계약은 전체 모드·core→all·보안 수리·AC 제외·재개에도 적용하며, 재승인만으로 진행 중 RED가 GREEN인 것처럼 처리하지 않는다.
 
 ---
 
@@ -53,7 +55,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 - `${PROJECT_ROOT}/${DEV_DIR}/design.md`를 Read하여 설계서를 로드한다. **testability 섹션**(phase-design에서 test-architect가 추가)을 확인한다.
 - `${PROJECT_ROOT}/${DEV_DIR}/prd.md`를 Read하여 PRD를 로드한다. **수용 기준(AC) Given-When-Then 시나리오**를 추출한다.
-- testability 섹션이 누락된 설계서면 사용자에게 경고: "testability 평가가 누락된 설계서입니다. phase-design을 재실행해야 RGR 격리 컨텍스트를 구성할 수 있습니다."
+- testability 섹션이 누락된 설계서면 사용자에게 경고: "설계서에 테스트 가능성 평가(testability)가 없습니다. 설계 단계를 다시 실행해야 실패 테스트를 구현 코드와 분리해 작성할 근거가 생깁니다."
 - `ANTI_PATTERNS_PATH`를 확정한다: 이 phase 파일이 위치한 gx-tdd 스킬 디렉토리 기준 `references/testing-anti-patterns.md`의 절대 경로 (플러그인 설치 환경에서는 플러그인 베이스 경로 하위 — 소비 프로젝트 루트가 아니다). red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 이 경로를 전달한다.
 - `FRONTEND_TESTING_PATH`를 같은 규칙으로 확정한다 (`references/frontend-testing.md`). **UI 컴포넌트를 다루는 태스크에서만** red-writer(phase-implement)·reviewer(phase-review) 프롬프트에 추가로 전달한다 — 백엔드 전용 태스크에 넣으면 프롬프트만 불어난다.
 - **UI 태스크 판별**: 설계서 testability 섹션의 `레이어` 필드가 `동작`이면서 대상이 화면 컴포넌트·컴포저블·훅·스토어·라우팅 가드인 경우, 또는 (핵심 모드처럼 설계서가 없으면) 대상 파일이 프로젝트의 프론트엔드 경로에 속하는 경우다.
@@ -62,13 +64,15 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 
 RGR 사이클 진입 전에 [공통 테스트 실행 계약](../references/test-execution.md)을 읽고 **이번 변경의 영향 범위**로 기준선을 측정한다. `scripts/gx-test-plan.py plan`에 현재 실행 run-id·base와 승인된 태스크의 소스/기존 테스트 ownership을 전달한다. 신규 RED 테스트는 아직 기준선에 넣지 않는다. 매핑되지 않은 변경·공통 설정/의존성 변경·명시적 `--full-tests`에서만 전체로 확장하고 이유를 기록한다.
 
-동일 실행·동일 코드·설정·명령·범위·정상 로그의 성공 proof가 있으면 `reuse`로 검증한 뒤 재실행하지 않는다. 없으면 plan entry를 순차 실행하고 `record`로 증거를 기록한다. test와 `buildOnly`를 사용해 Gradle build의 테스트 중복을 피한다. 선택된 테스트의 0건·실패·검증 명령 오류는 성공으로 기록하지 않는다. SVN은 재사용 없이 등록된 테스트와 buildOnly를 보수적으로 실행한다. 출력 캡처와 경고 추출은 gx-verify Step 2 규약을 따른다. 아래 판정 1~5는 유지한다.
+**계획 helper 실패**: `plan`이 프로젝트 감지·명령 조립에 실패하면(예: `no project types detected`) 명령을 즉흥으로 만들어 실행하지 않는다. 원인(예: `detect`의 경로형 marker)과 `.claude/config.json` 수정안을 함께 보여 주고 이 단계에서 **한 번만** 묻는다(질문 대기는 아래 1항과 같다) — 수정안 적용 후 다시 계획 / 사용자가 정한 명령으로 진행 / 중단. 정한 명령은 state.md `test-plan-override`(command, scope, reason)로 기록하고 리뷰·verify가 같은 값을 재사용한다. 기준선도 그 명령의 `override` 계획으로 실행해 `record --baseline`한다 — 상세는 같은 계약의 `test-plan-override` 규칙.
 
-1. **기준 GREEN 확인**: 기존 테스트가 깨져 있으면 사용자에게 보고하고 진행 여부를 확인한다 (깨진 기준 위에서는 RGR의 회귀 판정이 성립하지 않는다).
+동일 실행·동일 코드·설정·명령·범위·정상 로그의 성공 proof가 있으면 `reuse`로 검증한 뒤 재실행하지 않는다. 없으면 plan entry를 순차 실행하고 `record`로 증거를 기록한다. test entry는 `record --baseline`으로 기록해 실패해도 실행 수를 남긴다 — 이후 기존 실패가 있는 실행이 이 수에 못 미치면 막는 대조 기준이다(같은 계약의 `known-failures` 규칙). test와 `buildOnly`를 사용해 Gradle build의 테스트 중복을 피한다. 선택된 테스트의 0건·실패·검증 명령 오류는 성공으로 기록하지 않는다. SVN은 재사용 없이 등록된 테스트와 buildOnly를 보수적으로 실행한다. 출력 캡처와 경고 추출은 gx-verify Step 2 규약을 따른다. 아래 판정 1~5는 유지한다.
+
+1. **기준 GREEN 확인**: 기존 테스트가 깨져 있으면 실패한 테스트 목록을 보여 주고 `기존 실패를 알고 진행` / `직접 고친 뒤 다시 측정` / `중단` 중에서 고르게 한다 (깨진 기준 위에서는 회귀 판정이 성립하지 않는다). `직접 고친 뒤 다시 측정`은 `current-step: 기준선 게이트`로 멈춰 재개 때 다시 측정하고, `중단`은 `status: cancelled`다. `기존 실패를 알고 진행`이면 실패 테스트 ID를 state.md 최상위 `known-failures`에 기록한다. verify는 이 목록 밖의 새 실패만 막는다 — 기록 형식과 판정은 [공통 테스트 실행 계약](../references/test-execution.md)의 `known-failures` 규칙을 따른다. 질문 대기는 Step 1.2 끝의 규칙(Codex 질문 등록, 헤드리스 BLOCKED)과 같다.
 2. **warnings-baseline 기록**: 같은 선택 명령·범위의 테스트+buildOnly 출력의 경고 수를 세어 state.md **최상위 필드** `warnings-baseline: N`으로 기록한다. phase-complete의 verify 게이트가 이 값과 비교하여 **이번 구현이 유입한 경고부터** 차단한다 (기존 경고는 허용).
 3. 테스트 명령 미감지·추출 불가 시 baseline을 기록하지 않고 execution-log에 "경고 비교 미수행"을 명시한다 (**조용한 0 기록 금지** — 0과 미측정은 다르다).
 4. **테스트 하네스 부재 감지**: test 명령이 미등록이거나 실행 결과 테스트 수가 0건이면, 테스트 파일 글롭(`**/*test*`, `**/*Test*`, `**/*spec*` — 파일·디렉토리)을 확인한다. 글롭도 0건이면 하네스 부재로 판정하고 안내 후 중단한다:
-   "테스트 하네스가 감지되지 않습니다. gx-tdd는 실행 가능한 테스트 없이 진행할 수 없습니다 (Iron Law 1). 테스트 프레임워크를 먼저 구축한 뒤 다시 실행해주세요 (oh-my-gx 저장소 `docs/test-harness-guide.md` 참고 — C: Unity/Ceedling/CppUTest). 하네스 구축 자체를 원하시면 별도 작업으로 요청해주세요."
+   "테스트 하네스가 감지되지 않습니다. gx-tdd는 실패하는 테스트를 먼저 쓰는 방식이라 실행 가능한 테스트 없이 진행할 수 없습니다. 테스트 프레임워크를 먼저 구축한 뒤 다시 실행해주세요 (oh-my-gx 저장소 `docs/test-harness-guide.md` 참고 — C: Unity/Ceedling/CppUTest). 하네스 구축 자체를 원하시면 별도 작업으로 요청해주세요."
    state.md를 `status: cancelled`로 갱신하고 파이프라인을 종료한다. 테스트 파일이 존재하는데 실행이 0건이면 하네스 부재가 아니라 명령/경로 문제다 — 1항(기준 GREEN 확인)의 절차를 따른다.
 5. **레이어별 하네스 확인**: 4항은 저장소 전체에 테스트가 하나도 없는 경우만 잡는다. 풀스택 저장소에서는 **한쪽 레이어에만 하네스가 있는 상태**가 더 흔하고, 이때 4항은 통과해버린 뒤 해당 레이어의 RED에서 사이클이 정체된다. 진입 전에 미리 확인한다 — 아래 "레이어별 하네스 게이트" 참조.
 
@@ -83,12 +87,12 @@ RGR 사이클 진입 전에 [공통 테스트 실행 계약](../references/test-
 ```
 AskUserQuestion(
   questions: [{
-    question: "{레이어}에 테스트 러너가 감지되지 않습니다. 설계에 해당 컴포넌트 {N}건이 포함되어 있습니다. 어떻게 진행할까요?",
+    question: "{레이어}에 테스트 러너가 없어 이 레이어의 수용 기준(AC) {N}건을 실패 테스트로 먼저 확인할 수 없습니다. 어떻게 진행할까요? 중단하려면 직접 입력해주세요.",
     header: "하네스 게이트",
     options: [
       { label: "하네스 구축 후 재실행", description: "테스트 러너를 먼저 준비합니다. 러너가 없으면 실패 테스트를 쓸 수 없어 이 파이프라인 밖에서 준비하고, 끝나면 --resume으로 이 단계부터 이어 갑니다" },
-      { label: "해당 AC 제외 후 진행", description: "러너가 있는 레이어의 AC만 RGR로 구현합니다. 제외한 AC는 trust-ledger에 기록되며, 그 부분은 별도 작업이 필요합니다" },
-      { label: "중단", description: "요구사항 범위를 다시 정의합니다" }
+      { label: "서버 동작으로 AC 재작성", description: "화면 대신 서버에서 확인할 수 있는 동작으로 수용 기준을 다시 씁니다(예: 동일 요청 중복 처리 방지). 바꾼 기준을 확인받은 뒤 진행합니다" },
+      { label: "해당 AC 제외 후 진행", description: "러너가 있는 쪽의 수용 기준만 구현합니다. 제외한 기준은 위험 기록(trust-ledger)에 남고 별도 작업이 필요합니다" }
     ],
     multiSelect: false
   }]
@@ -96,16 +100,15 @@ AskUserQuestion(
 ```
 
 - **"하네스 구축 후 재실행"** → 대상 레이어와 권장 러너를 안내하고 진행 상태를 남긴 채 멈춘다(`status: in_progress`, `current-step: 하네스 준비 대기`). 러너 준비는 파이프라인 밖에서 한다: 플러그인 `docs/test-harness-guide.md`의 레이어별 안내를 따르고, 새 프로젝트 타입이면 사용자가 `/oh-my-gx:gx-setup`의 타입 등록으로 `test` 명령을 기록한다. 준비 뒤 `/oh-my-gx:gx-tdd --resume`이 이 게이트부터 다시 확인한다. 프론트엔드면 `references/frontend-testing.md` §8의 안내를 함께 전달한다.
-- **"해당 AC 제외 후 진행"** → **프론트 AC 제외**(또는 러너 없는 해당 레이어의 AC 제외)로 처리한다. 기존 케이스가 있으면 문서·테스트 변경 전 `../references/core-replanning.md`대로 active hash 확인·불변 이력 보관을 먼저 한다. 핵심 모드는 기존 승인을 무효화한 뒤 ac.md에 제외 표시하고 plan.md의 retire 변경표까지 갱신하여 두 문서를 함께 재승인받는다. 전체 모드도 승인된 제외 범위를 변경표에 명시한다. 이후 red-writer만 승인된 active 집합을 정리하고 태스크를 복원한다. 제외 항목은 `${DEV_DIR}/trust-ledger.md`의 `### 위험 수용`에 `- [하네스 부재 AC 제외] {AC-N}: {레이어} 러너 없음 (implement/Step 0.5)` 형식으로 기록한다. **제외 후 남은 AC가 0건이면** 승인된 은퇴 정리·검증 후 아래 범위 종료 분기를 따른다 (기존 변경 자동 원복·커밋 금지). 삭제-only는 가짜 RED·프로덕션 변경을 허가하지 않으며 남은 active GREEN과 source 불변을 검증한다. 진행 중 `baseline-fingerprint`와 기존 plan/proof도 지우지 않고 현재 실행 증거의 재사용 조건으로 판단한다.
-- **"중단"** → `status: cancelled`.
-
-AC 제외로 범위가 비면 다음 Phase로 넘기지 않는다. 승인된 retire 정리·production 보존 검증을 마친 뒤 **이번 실행 전체 active 케이스가 0건일 때만** `scope-status: closed`, `current-step: 범위 종료 확인`, `status: in_progress`를 기록하고 `return "scope-closed"`로 전체 루프를 중단한다. 해당 레이어/태스크만 0건이고 다른 active 태스크가 있으면 그 태스크들은 계속한다.
+- **"해당 AC 제외 후 진행"** → **프론트 AC 제외**(또는 러너 없는 해당 레이어의 AC 제외)로 처리한다. 이력 보관·재승인·trust-ledger 기록과 **제외 후 남은 AC가 0건일 때의 범위 종료**(`scope-closed`)는 `../references/implement-recovery.md` §2를 Read해 따른다.
+- **"서버 동작으로 AC 재작성"** → 러너 없는 레이어가 화면일 때만 제시한다. 해당 AC를 서버에서 관찰할 수 있는 G-W-T로 다시 쓰고(예: 같은 요청을 두 번 보내도 한 번만 처리) 바뀐 AC를 보여 실제 확인을 받는다. 확인 전에는 RED를 시작하지 않는다. 기존 케이스가 있으면 문서 변경 전 `../references/implement-recovery.md` §1의 이력 보관을 먼저 한다. 핵심 모드는 ac.md·plan.md를 함께 재승인받고, 전체 모드는 prd.md의 해당 AC와 설계 testability의 대상·러너를 갱신해 그 변경을 확인받는다.
+- **"중단"**(직접 입력) → `status: cancelled`. Codex는 [질문 대기 계약](../../gx-work/references/codex-questions.md)으로 위 세 선택지만 등록한다(helper 선택지에는 직접 입력이 없다). 본문의 "직접 입력해주세요" 대신 "중단하려면 '중단'이라고 답해주세요"로 안내하고, 그 자연어 답을 실제 응답으로 기록한 뒤 중단한다.
 
 이 게이트는 모노레포 복합 명령(`references/frontend-testing.md` §7)이 등록되어 있어도 동작한다 — 명령이 등록되었는지가 아니라 **그 레이어에 실행 가능한 테스트가 있는지**를 본다.
 
 ### 기준선 사전 실행
 
-요구사항을 이해하기 전에는 전체 테스트를 백그라운드에서 시작하지 않는다. 영향 범위가 확정된 뒤 공통 테스트 계획을 생성하고 필요한 명령만 실행한다. 기존 `baseline.done`·옛 proof는 현재 run-id·지문·설정·명령·범위가 일치하지 않으면 재사용하지 않는다. 서로 다른 테스트·빌드를 동시에 시작하지 않는다.
+요구사항을 이해하기 전에는 전체 테스트를 백그라운드에서 시작하지 않는다. 영향 범위가 확정된 뒤 공통 테스트 계획을 생성하고 필요한 명령만 실행한다. 기존 `baseline.done`·옛 proof는 현재 run-id·지문·설정·명령·범위가 일치하지 않으면 재사용하지 않는다. 서로 다른 테스트·빌드를 동시에 시작하지 않는다. 기준선 측정이 끝난 뒤에 RED로 간다. 의존성 설치·테스트 DB 기동 같은 환경 준비만 설계 단계 동안 미리 시작할 수 있으며(phase-design Step 0), 기준선은 그 준비가 끝난 것을 확인한 뒤 실행한다.
 
 경고 baseline은 실제 명령과 scope를 함께 기록한다. 최종 선택 범위가 달라졌으면 경고 합계를 직접 비교하지 않고 `경고 비교 미수행: 선택 범위 변경`으로 보고한다. 범위를 바꾼 측정을 0건으로 가장하지 않는다.
 
@@ -117,16 +120,16 @@ AC 제외로 범위가 비면 다음 Phase로 넘기지 않는다. 승인된 ret
 
 1. **태스크 = AC 1건**이 기본이다. AC 하나의 G-W-T 시나리오 전부가 그 태스크의 테스트 집합이 된다. **같은 컴포넌트를 건드리는 AC들**과 **같은 패턴의 소형 변경으로 환산되는 AC들**(동일 검증 로직의 필드별 반복, 동일 형태의 매핑 추가 등)은 하나의 태스크로 **묶는 것이 기본**이다. 한 AC가 컴포넌트 둘 이상에 걸칠 때만 컴포넌트 단위로 나눈다 — 이때만 AC보다 작은 태스크가 생긴다.
 2. **2~15분**은 태스크의 크기가 아니라 태스크 안에서 **테스트 하나를 통과시키는 한 걸음**의 크기다 (Step 2-I 내부 루프). 태스크는 리뷰어가 이웃 태스크를 승인하면서 이 태스크만 거절할 수 있을 만큼 독립적이면 충분하다.
-3. 다른 태스크와 **파일이 겹치지 않는다** (사이클 간 간섭 방지 — 태스크는 순차 실행된다). 겹치면 앞 태스크의 `test-file-hash`·porcelain 스냅샷 기준선이 뒤 태스크의 변경으로 오염되어 무결성 검증이 오탐한다.
+3. 다른 태스크와 **파일이 겹치지 않는다** (사이클 간 간섭 방지 — 태스크는 순차 실행된다. 예외는 Step 2의 독립 갈래 병렬뿐이다). 겹치면 앞 태스크의 `test-file-hash`·porcelain 스냅샷 기준선이 뒤 태스크의 변경으로 오염되어 무결성 검증이 오탐한다.
 
 ### 1.1 태스크 표 생성
 
 사용자에게 다음 형식으로 제시한다:
 
 ```
-## RGR 태스크 분해
+## 구현 태스크 분해 (태스크마다 실패 테스트 작성 → 구현 → 정리)
 
-| # | AC 매핑 | 컴포넌트 | RED (테스트 작성) | IMPLEMENT (구현+정리) |
+| # | 수용 기준(AC) | 컴포넌트 | RED (실패 테스트 작성) | IMPLEMENT (구현+정리) |
 |---|---------|---------|-------------------|------------------------|
 | 1 | AC-1 | PaymentLimit | PaymentLimitTest (케이스 3건: 초과 거부·경계값·기본 한도) | PaymentLimit.kt: data class + validate() → 매직 넘버 상수화 |
 | 2 | AC-2, AC-3 (묶음) | PaymentService | PaymentServiceTest (케이스 4건) | PaymentService.processPayment() 한도 검증 추가 → 중복 검증 로직 추출 |
@@ -134,22 +137,24 @@ AC 제외로 범위가 비면 다음 Phase로 넘기지 않는다. 승인된 ret
 
 ### 의존성 (실행 순서)
 - T1 (PaymentLimit) → T2 (PaymentService가 PaymentLimit 참조) → T3 (Controller가 Service 참조)
-- T1, T2, T3은 **순차 실행** (의존성 체인).
+- T1, T2, T3은 **순차 실행** (의존성 체인). 독립 갈래: 1개
 ```
+
+**독립 갈래 표시**: 서로 포함 관계가 없는 다른 프로젝트 루트(`TYPE:RELROOT`)에 속하고 파일·의존관계가 겹치지 않는 태스크 묶음을 갈래로 적는다(예: 갈래 A 백엔드 T1→T2, 갈래 B 프론트 T3). 갈래 안은 순차다. 같은 프로젝트 안의 태스크는 의존이 없어도 한 갈래다 — 테스트 실행과 무결성 스냅샷이 겹치기 때문이다. 같은 빌드 루트(Gradle `settings.gradle(.kts)`, Maven 부모 `pom.xml`, JS 워크스페이스 루트)를 공유하는 모듈도 프로젝트 루트가 달라도 한 갈래로 묶는다 — 빌드 데몬·출력·잠금을 함께 쓴다.
 
 태스크마다 정확한 변경/테스트 파일 경로, 공개 인터페이스·제약, G-W-T 시나리오·경계값, RED→GREEN→REFACTOR의 구체 순서, focused 명령·cwd·예상 실패/성공과 검증·리뷰 초점을 기재한다. 코드 전체를 미리 작성하지 않는다. 기존 유효한 구체 계획 파일이 있으면 해당 절을 재사용하고, 없으면 위 내용을 `${DEV_DIR}/implementation-plan.md`에 저장한다. `implementation-plan-file`에 프로젝트 상대경로(예: `.dev/feat-login/implementation-plan.md`), `implementation-plan-sha256`에 파일의 현재 SHA-256을 기록한다. 외부 request-file/plan-file을 이 내부 계획 포인터로 덮지 않는다.
 
 ### 1.15 태스크 수 가드
 
-태스크가 **8개를 넘으면** 승인 게이트 전에 한 질문으로 재분해·작업 분할·그대로 진행을 선택받는다. 태스크마다 RED 작성과 검증 비용이 있으므로 같은 컴포넌트/패턴의 AC를 합칠 수 있는지 먼저 확인한다. 실행 가능한 선택지만 2~3개로 제시한다.
+태스크가 **8개를 넘으면** 승인 게이트 전에 한 질문으로 재분해·작업 분할·그대로 진행을 선택받는다. 태스크마다 RED 작성과 검증 비용이 있으므로 같은 컴포넌트/패턴의 AC를 합칠 수 있는지 먼저 확인한다. 실행 가능한 선택지만 2~3개로 제시한다. **추천은 항상 `AC 묶어서 재분해`다** — 첫 번째에 두고 `(Recommended)`를 붙이며, 묶을 AC가 적어 보여도 `그대로 진행`을 추천으로 바꾸지 않는다. 다른 선택은 사용자의 실제 답으로만 정한다.
 
 ```
 AskUserQuestion(
   questions: [{
-    question: "태스크가 {N}개로 분해됐습니다. 어떻게 진행할까요?",
+    question: "태스크가 {N}개로 분해됐습니다. 태스크마다 실패 테스트 작성과 검증이 따로 돌아 시간이 늘어납니다. 같은 컴포넌트·같은 패턴의 수용 기준(AC)을 묶어 줄이는 것을 권합니다. 어떻게 진행할까요?",
     header: "태스크 수",
     options: [
-      { label: "AC 묶어서 재분해 (Recommended)", description: "같은 컴포넌트·같은 패턴의 AC를 묶어 태스크를 줄입니다. RGR 강도는 유지합니다" },
+      { label: "AC 묶어서 재분해 (Recommended)", description: "같은 컴포넌트·같은 패턴의 수용 기준을 묶어 태스크를 줄입니다. 실패 테스트 먼저 방식은 그대로입니다" },
       { label: "작업 계획으로 분할", description: "이번 실행 범위를 줄이고 나머지 AC를 후속 W작업으로 등록합니다" },
       { label: "그대로 진행", description: "{N}개를 이 세션에서 진행하고, 중단하면 --resume으로 이어갑니다" }
     ],
@@ -168,7 +173,11 @@ AskUserQuestion(
 
 핵심 모드는 `../references/core-planning.md`의 유효한 결합승인이 현재 AC·plan raw bytes·run과 실제 응답에 연결돼 있으면 그 응답을 `plan-approved-run/source/sha256`로 검증하여 이 계획 승인 질문을 생략한다. 결합승인 때의 실제 session/subagents 선택도 현재 plan.md 단독 해시·run·출처에 연결됐으면 Step 1.3에서 검증만 한다. 문서로 종료 응답은 구현 승인으로 바꾸지 않는다. 유효한 계획 승인만 있고 방법이 없으면 Step 1.3의 방법만 묻는다. 기본 session을 승인 기록으로 채우지 않는다.
 
+전체 모드의 **소형 설계**는 phase-design Step 4가 설계 확인에 이 계획 요약과 실행 방법을 묶어 받는다. 그 결합 응답이 현재 run·`implementation-plan.md` 해시에 연결돼 있으면 이 질문의 응답으로 인정한다 — 현재 세션/서브에이전트는 아래 첫 항목, 계획 문서로 종료는 그 항목대로 처리한다. 중형·대형은 아래 질문을 따로 묻는다.
+
 계획 링크와 핵심 태스크·범위·순서·명령을 제시하고 **한 질문에서 계획 검토와 실행방법을 함께 확인**한다. 현재 PRD/AC·설계와 달라진 태스크는 계획 파일에 반영해 해시를 갱신한다. gx-work의 진입 승인과 원래 구현 요청은 이 검토 응답을 대신하지 않는다. `plan-approved-run`·`plan-approved-sha256`이 현재 run·내부 계획 파일 해시와 일치하고 `plan-approved-source`에 실제 응답 근거가 있으면 계획은 재질문하지 않고 1.3에서 방법 기록을 검증한다. 외부 계획의 실제 검토 근거도 현재 파일/범위에 대응할 때만 이 필드로 보존해 재사용한다.
+
+**추천 기준**: 다음 중 하나면 `서브에이전트로 구현`을, 아니면 `현재 세션에서 구현`을 첫 번째에 두고 `(Recommended)`와 근거 한 줄을 붙인다 — 태스크 5개 이상, 이 세션에서 이미 컨텍스트 압축이 있었음, 에코 프로파일인데 세션이 상위 등급 모델(Opus·Fable 등. 구현을 하위 등급 implementer — Claude Code는 sonnet, Codex는 mid — 로 넘겨 절감한다). gx-work가 넘긴 실행 방식 값이 있으면 그 값을 추천한다(아래 인계 항목). 1.1의 독립 갈래가 둘 이상이면 `서브에이전트로 구현`을 추천하고 근거에 "독립 갈래 {K}개({백엔드·프론트 등})를 동시에 진행"을 적는다. 이때 그 선택지 설명에 갈래 병렬을 밝히며, 그 응답이 Step 2의 갈래 병렬 진행 선택이다. 추천은 답이 아니며 실제 응답으로만 기록한다.
 
 ```
 AskUserQuestion(
@@ -176,8 +185,8 @@ AskUserQuestion(
     question: "이 계획을 어떤 방식으로 구현할까요?",
     header: "계획·실행방법",
     options: [
-      { label: "현재 세션에서 구현 (Recommended)", description: "계획을 승인하고 이 세션이 GREEN·REFACTOR를 수행합니다. RED와 리뷰는 별도 에이전트가 담당합니다" },
-      { label: "서브에이전트로 구현", description: "계획을 승인하고 implementer에 GREEN·REFACTOR를 위임합니다. RED와 리뷰의 격리는 유지합니다" },
+      { label: "현재 세션에서 구현 (Recommended)", description: "계획을 승인하고 이 세션이 구현과 정리를 맡습니다. 실패 테스트 작성과 리뷰는 별도 에이전트가 맡습니다" },
+      { label: "서브에이전트로 구현", description: "계획을 승인하고 구현과 정리를 구현 서브에이전트에 맡깁니다(독립 갈래가 둘 이상이면 갈래별로 동시에 진행). 실패 테스트 작성과 리뷰는 지금처럼 따로 합니다" },
       { label: "계획 문서로 종료", description: "계획을 전달하고 이번에는 구현하지 않습니다" }
     ],
     multiSelect: false
@@ -214,13 +223,13 @@ Step 1.2의 응답 또는 기존 기록에서 현재 `run-id`·내부 계획 해
 
 Step 1.2~1.3의 현재 run·계획 검토·방법 기록과 실제 flags의 일치를 확인한 뒤 진입한다. 재개한 RGR 중간 Step도 이 검증을 먼저 수행한다.
 
-각 최초 구현·add/replace 태스크에 대해 **반드시 RED → IMPLEMENT(GREEN+REFACTOR) 순서로 실행**한다. 병렬 금지 (Iron Law). 삭제-only·keep-only는 공통 재계획 계약의 검증으로 마치고 IMPLEMENT를 수행하지 않는다.
+각 최초 구현·add/replace 태스크에 대해 **반드시 RED → IMPLEMENT(GREEN+REFACTOR) 순서로 실행**한다. 한 태스크의 RED와 IMPLEMENT, 같은 갈래의 태스크는 병렬 금지 (Iron Law). 서로 다른 독립 갈래만 아래 "독립 갈래 병렬 진행"으로 동시에 진행할 수 있다. 삭제-only·keep-only는 공통 재계획 계약의 검증으로 마치고 IMPLEMENT를 수행하지 않는다.
 
-**진입 준비**: `mkdir -p ${DEV_DIR}/reports`를 실행한다 (핵심 모드처럼 승인된 계획에서 태스크를 복원한 경로 포함 — 모든 진입 경로 공통). 이후 에이전트 보고는 `reports/t{N}-red.md`·`reports/t{N}-impl.md`에 파일로 저장되고, 인계는 **파일 경로로만** 이루어진다 (전문 인라인 전달 금지 — 컨텍스트 경량화). `.dev/` 공유 정책에 따라 커밋에 포함된다.
+**진입 준비**: `mkdir -p ${DEV_DIR}/reports`를 실행한다 (핵심 모드처럼 승인된 계획에서 태스크를 복원한 경로 포함 — 모든 진입 경로 공통). 이후 에이전트 보고는 `reports/t{N}-red.md`·`reports/t{N}-impl.md`에 파일로 저장되고, 인계는 **파일 경로로만** 이루어진다 (전문 인라인 전달 금지 — 컨텍스트 경량화). `.dev/` 공유 정책에 따라 커밋에 포함된다. 긴 테스트 로그와 큰 보고서는 오케스트레이터가 전문을 읽지 않는다 — 판정에 필요한 끝부분(`tail`)·결과 요약·실패 목록·필요한 절만 읽는다.
 
 핵심 모드의 매 태스크에서 승인된 plan.md를 기준으로 아래 AC·인터페이스 입력을 채운다. red-writer에는 태스크의 AC·허용 테스트 경로·대상 경로·의존 순서·검증 명령·기대 결과와 시그니처만 발췌하고 프로덕션 본문·계획 전문은 제거한다. 세션 IMPLEMENT와 `--isolated` implementer에는 같은 매핑 및 승인된 변경 파일·내용을 인계한다. 기존 focused 명령 플레이스홀더에는 그 태스크의 승인된 테스트 파일에 한정한 명령을 넣는다.
 
-재계획 입력은 `../references/core-replanning.md`의 케이스 변경표로 실제 치환한다: 기존 `{태스크가 매핑된 AC 시나리오}`에는 keep/add/replace/retire별 case-id·AC-ID·정확한 selector·이전/새 기대값·허용 파일·본문 스냅샷과 세대 링크를 함께 넣는다. 초기 구현은 previous 집합이 빈 경우로 명시한다. report↔state의 `baseline-generation`·`active-case-ids`·`previous-task-ids`/`supersedes`와 실제 selector가 서로 복원 가능해야 한다. 파일/selector 충돌은 디스패치 전에 차단한다. 완료 태스크에 새 AC가 붙어도 기존 keep을 다시 실패시키지 않는다.
+재계획 태스크의 RED 입력은 `../references/implement-recovery.md` §1대로 케이스 변경표로 치환한다. 초기 구현은 previous 집합이 빈 경우다.
 
 ```
 for task in tasks:
@@ -254,6 +263,11 @@ for task in tasks:
         review_task(task)                    # reviewer 태스크 범위 모드 (sonnet). report: reports/t{N}-review.md
     record_to_state(task, results)
 ```
+
+**독립 갈래 병렬 진행**: Step 1.3이 `execution-method: subagents`이고 승인된 계획에 독립 갈래(1.1)가 둘 이상일 때만 쓴다. 갈래마다 위 루프를 그대로 돌리고(갈래 안은 순차), 갈래끼리는 red-writer·implementer 디스패치를 동시에 보낸다(Claude Code는 한 메시지에 여러 Task, Codex는 여러 `spawn_agent` 뒤 `wait_agent`). 동시 디스패치를 지원하지 않는 하네스는 갈래를 차례로 진행한다.
+- 갈래의 모든 변경·테스트 파일은 그 갈래의 프로젝트 루트 안에 있어야 한다. 밖의 파일이 필요해지면 병렬을 멈추고 순차로 돌아간다.
+- verify_red·verify_implement·2-V는 오케스트레이터가 갈래별로 하되, porcelain 스냅샷·대조와 2-V (a)의 변경 파일 계산을 그 갈래의 프로젝트 루트로 한정한다(`git status --porcelain -- {RELROOT}`, svn은 `svn status {RELROOT}`). 다른 갈래의 진행 중 변경을 이 갈래의 무단 변경으로 보지 않기 위해서다. focused 실행도 자기 프로젝트에서만 하고, 같은 프로젝트의 테스트·빌드를 동시에 시작하지 않는다. 갈래가 달라도 같은 테스트 DB·포트를 쓰면 테스트 실행을 직렬화한다 — 그 갈래들은 동시에 디스패치하지 않고 차례로 진행한다.
+- 태스크별 `red`·`impl`·`fix-round` 기록이 진행 상태의 정본이다. `current-step`은 마지막으로 갱신한 태스크를 가리키고, 재개는 각 태스크 기록으로 갈래별 다음 단계를 정한다. 한 갈래가 사용자 결정(라운드 5 소진 등)에 걸리면 다른 갈래는 진행 중인 태스크까지만 마치고 기다린다.
 
 ### Step 2-R: RED (red-writer 디스패치)
 
@@ -328,14 +342,14 @@ Task(subagent_type="oh-my-gx:red-writer"):
 ```
 
 **verify_red**: 오케스트레이터가 직접 검증.
-1. report 파일(`reports/t{N}-red.md`)에서 테스트 파일 경로·케이스 목록·실패 확인 명령과 실행 위치를 읽는다. helper의 `cwd`는 프로젝트 루트에 대한 상대경로이며 직접 재실행도 `${PROJECT_ROOT}/${focused.cwd}`에서 같은 `command`를 사용한다. 핵심 모드는 현재 승인 일치를 먼저 확인하고 실제 테스트 파일·AC 매핑·실패 확인 명령이 승인된 plan.md의 해당 태스크와 일치하는지 대조한다. 재계획은 공통 계약대로 변경 전 active hash 확인·불변 이력 보관·변경표 승인을 확인하고 case-id/AC-ID/정확한 selector·이전/새 기대값과 실제 파일을 대조한다. 중복 selector·0건/복수 건 선택·파일 소유권 충돌·승인되지 않은 본문 변경은 실패다. 불일치면 다음 단계로 가지 않고 계획 갱신·재승인 또는 승인 범위 내 RED 보강으로 복귀한다.
+1. report 파일(`reports/t{N}-red.md`)에서 테스트 파일 경로·케이스 목록·실패 확인 명령과 실행 위치를 읽는다. helper의 `cwd`는 프로젝트 루트에 대한 상대경로이며 직접 재실행도 `${PROJECT_ROOT}/${focused.cwd}`에서 같은 `command`를 사용한다. 핵심 모드는 현재 승인 일치를 먼저 확인하고 실제 테스트 파일·AC 매핑·실패 확인 명령이 승인된 plan.md의 해당 태스크와 일치하는지 대조한다. 재계획은 `../references/implement-recovery.md` §1의 추가 대조를 함께 한다. 불일치면 다음 단계로 가지 않고 계획 갱신·재승인 또는 승인 범위 내 RED 보강으로 복귀한다.
 2. **실패 확인 (새 케이스 집합 전체)**: report의 정확한 selector별 명령을 직접 실행해 add/replace의 새 케이스가 **모두** 실패하는지 본다 (실패 건수 = add 수 + replace 수; 최초 구현은 모든 케이스 수). keep은 본문·기대값 불변 GREEN, retire는 승인된 케이스만 active에서 빠졌는지 확인한다. 허용 delta 밖 테스트 변경은 전부 GREEN이어도 차단한다. 삭제-only·keep-only는 실패를 요구하지 않고 남은 active GREEN과 source 불변을 확인하며 IMPLEMENT를 건너뛴다. 통과하는 신규 케이스가 있으면 그 케이스만 지목해 red-writer를 재호출한다 (전체 재작성 아님). 에러(컴파일 실패·러너 오류)로 끝난 것은 실패가 아니다 — 원인을 report와 대조해 red-writer 재호출. **재현 RED**(Step 2-V RED 재호출)에서는 통과하는 케이스가 finding의 오탐을 뜻하므로 재호출하지 않는다 — 3번의 재현 RED 예외를 따른다.
 3. add/replace 신규 케이스의 실패 사유가 "이미 구현이 있어서 통과"이면 → AC를 더 좁히도록 사용자에게 안내 후 중단한다. keep이 통과하는 것은 정상이며 이 분기를 적용하지 않는다. **재현 RED 예외**: Step 2-V RED 재호출에서는 이 통과가 finding이 실제 결함이 아니라는 뜻이다 — 사용자에게 묻지 않고 그 finding을 '재현 불가' 근거(통과한 케이스와 실행 출력)와 함께 재리뷰에 넘기며 라운드를 1 소모한다. 이 재리뷰는 수정 diff 없이 진행한다 — `reports/t{N}-diff-r{r}.txt` 대신 '재현 불가' 근거만 `[재리뷰]` 절에 싣는다.
 4. **격리 오염 검증**: report 파일의 "참조한 파일" 목록에 프로덕션 소스가 포함되어 있으면 → 이번 RED가 새로 만든 오염된 부분만 폐기 후 red-writer 재호출 (구현에 적응한 오염된 RED일 수 있음). 기존 테스트·이전 RED·기준선은 보존한다.
 5. **`NEEDS_CONTEXT` 처리**: red-writer가 `NEEDS_CONTEXT`(설계서 인터페이스 불충분 등)를 반환하면 — 전체 모드: phase-design 재실행(테스트 전략 보강) 여부를 사용자에게 확인. 핵심 모드: 오케스트레이터가 기존 코드/테스트를 Read하여 필요한 시그니처만 발췌하고, 사용자 판단이 필요하면 실제 답변을 기다린다. 계획의 인터페이스·파일·테스트 매핑·검증을 바꿔야 하면 plan.md 갱신·함께 재승인 후 보강 전달하여 재호출한다.
-6. **테스트 파일 해시 기록**: 위 검증이 통과한 뒤 `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용). 재계획은 이전 report·hash·porcelain·test-count·본문/기대값을 불변 이력에 먼저 보관한 후 새 `baseline-generation`·`active-case-ids`·`previous-task-ids`/`supersedes`·`case-change-report`로 연결한다. active 발행 시 `retired-case-ids`에 retire와 replace의 이전 ID를 누적한다. 감소/교체를 새 hash로 숨기지 않는다.
+6. **테스트 파일 해시 기록**: 위 검증이 통과한 뒤 `git hash-object "{테스트 파일}"` 결과를 state.md 해당 태스크의 `test-file-hash`로 기록한다 (GREEN의 테스트 무결성 기준선. untracked 파일에도 동작. 경로는 따옴표로 감싼다). 동시에 `git -c core.quotePath=false status --porcelain > ${DEV_DIR}/rgr-t{N}-porcelain.txt`로 스냅샷을 **파일로 저장**한다 (GREEN에서 **다른 테스트 파일** 변경을 잡기 위한 기준선. **svn 프로젝트는 `svn status`를 사용**. 파일이 DEV_DIR에 남으므로 --resume 재개 시에도 기준선이 유지된다). 테스트 파일 경로를 state.md 해당 태스크의 `test-file`로 기록한다 (focused 집합 조립에 사용). 재계획은 같은 §1의 이력 보관·세대 연결을 함께 기록한다.
 7. **report 저장 확인**: `reports/t{N}-red.md`가 존재하고 테스트 코드·실패 메시지를 담고 있는지 확인한다. 다음 단계(2-I) 인계는 이 파일 경로로만 한다.
-8. ✅ add/replace 실패 정상 → IMPLEMENT(2-I)로 진행. add/replace가 없으면 승인된 정리·keep GREEN·source 불변 검증만 기록하고 다음 태스크로 진행한다. 개별 태스크 active 0건은 해당 태스크만 은퇴/skip하여 다른 active 태스크를 계속한다. **이번 실행 전체 active 케이스가 0건**이고 승인된 은퇴 정리·기존 다른 테스트 보존·production 불변 검증이 모두 끝났으면 `scope-status: closed`, `current-step: 범위 종료 확인`, `status: in_progress`로 기록하고 `return "scope-closed"`로 전체 루프를 중단한다. complete·자동 commit으로 이어가지 않는다.
+8. ✅ add/replace 실패 정상 → IMPLEMENT(2-I)로 진행. add/replace가 없으면(재계획의 삭제-only·keep-only) 위 Step 2 루프의 `no_add_or_replace` 분기대로 검증만 기록하고 다음 태스크로 가거나, 전체 active 0건이면 `scope-closed`로 끝낸다 — 상세는 `../references/core-replanning.md` §4.
 
 `current-step`을 `"RGR T{N}: RED"`로 갱신.
 
@@ -436,7 +450,7 @@ exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focuse
 2. **테스트 결함 의심 확인**: 보고됐으면 사유 확인 후 **red-writer 재호출**로 테스트를 재작성한다 (구현 주체가 테스트를 고치지 않는다).
 3. **테스트 무결성 확인**: `git hash-object "{테스트 파일}"`을 재실행하여 verify_red의 `test-file-hash`와 비교하고, `git -c core.quotePath=false status --porcelain`(svn은 `svn status`)을 verify_red 스냅샷 파일(`${DEV_DIR}/rgr-t{N}-porcelain.txt`)과 대조한다 — **대조는 테스트 파일 라인만 필터**하여 수행한다(판별 글롭은 Step 0.5 4항의 테스트 파일 글롭 `**/*test*`·`**/*Test*`·`**/*spec*` 재사용. `.dev/` 경로 라인은 제외. svn은 `svn status` 출력의 경로 컬럼 기준으로 같은 필터를 적용). **현재 active 세대가 소유한 이전 태스크들의 `test-file-hash`도 재검증**한다. merge/split로 superseded된 과거 태스크 hash는 불변 이력이며 현재 파일과 비교하지 않는다. `active-case-ids`·정확한 selector·본문/기대값 스냅샷과 실제 파일을 대조하여 keep/다른 테스트 무단 변경·은퇴 ID 재사용을 차단한다. 무단 수정 감지 → 해당 테스트를 현재 active 세대 RED 산출물로 원복하고 구현 주체가 1회 재수행한다 — 세션 경로는 세션이 원복 후 재구현, 격리 경로는 implementer 재호출 ("테스트 수정 금지" 재강조 — fix 라운드와 별도 카운트). 재차 위반 시 사이클 중단·사용자 보고.
 4. **focused 집합 직접 실행**: 위 focused 명령을 오케스트레이터가 1회 직접 실행한다 — 통과 목격(증거 주체는 오케스트레이터, verify_red와 대칭) + 결과의 테스트 수를 state.md 해당 태스크의 `test-count`로 기록한다. **같은 태스크의 직전 `test-count`와 비교**해 감소하면 사유를 확인한다(무단 삭제면 롤백 요청). 첫 기록이거나, 직전 기록 이후 red-writer 재호출로 verify_red가 `test-file-hash`를 다시 기록했으면(정당한 테스트 변경) 비교하지 않고 새 값을 기준으로 삼는다. 태스크마다 대상 집합이 다르므로 태스크 간 비교는 하지 않는다. **전체 스위트는 실행하지 않는다** — 태스크 간 회귀는 phase-review Step 0(누적 실행), 기존 스위트 회귀는 완료 verify(`--phase implement` 단독: Step 3.5)가 담당한다.
-   재계획의 새 값 채택은 승인된 케이스 변경표·이력 보관·새 active 세대 발행이 검증됐을 때만 허용한다. 이전 count와 새 count의 차이는 add/replace/retire 및 태스크 소유권 재매핑으로 정확히 설명되어야 한다. 파일에 기존 비태스크 테스트가 있으면 그 목록도 보존하여 focused 전체 수와 별도로 `active-case-ids`의 정확한 selector별 누락·중복·결과를 대조한다. 해시가 갱신됐다는 이유만으로 케이스 감소를 수용하지 않는다.
+   재계획의 count 비교는 `../references/implement-recovery.md` §1을 따른다. 해시가 갱신됐다는 이유만으로 케이스 감소를 수용하지 않는다.
 5. **과잉 구현 판정**: 추가된 public 메서드/필드 중 focused 테스트 집합이 참조하지 않는 것을 찾는다. 있으면 **묻지 않고 판정한다** — "판정 기록 (Rulings)" 절의 기본값대로 설계서 인터페이스가 명시한 멤버는 "설계 예약"으로 유지하고, 그 외는 제거한 뒤 focused를 재실행한다 (제거는 기본 경로에서 세션이 직접, `--isolated`면 implementer에 요청한다 — 4b와 같은 경로 구분. 제거로 깨지면 복원하고 `## 우려사항`에 기록하되, 이것은 관찰이므로 1번의 DONE_WITH_CONCERNS 판정에는 넣지 않는다). 제거·유지 목록을 `reports/t{N}-impl.md`에 `## 과잉 구현 정리` 절로 append하고, decisions.md에 `Ruling: T{N} 과잉 구현 정리` 블록을 append한다. 판정할 것이 없으면 아무것도 기록하지 않는다.
 6. **public 인터페이스 시그니처 변경 없음 확인**: diff에서 공개 메서드·함수·타입 시그니처 라인의 변경을 대조한다 (REFACTOR 금지 목록 위반 — 발견 시 롤백한다. 격리 경로는 implementer에 롤백 요청).
 7. ✅ 통과 + 무결성 유지 → **Step 2-V 태스크 리뷰 판정**으로 진행한다 (발동 조건 미충족이면 `review: skipped` 기록 후 태스크 완료).
@@ -444,7 +458,7 @@ exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focuse
 
 **fix loop (실패 시 — 태스크당 최대 5라운드)**:
 
-첫 수정 전에 [실패 조사](../references/failure-investigation.md)를 읽고 재현·가설·근거를 기록한다. 매 라운드 이 fix loop 절을 디스크에서 다시 읽어 5회 상한과 격상·중단 조건을 복원한다. 이전 대화의 기억만으로 상한을 연장하지 않는다.
+첫 수정 전에 [실패 조사](../references/failure-investigation.md)를 읽고 재현·가설·근거를 기록한다. 이 fix loop 절은 처음 진입할 때 한 번 읽고, 컨텍스트 압축 뒤나 재개 때는 디스크에서 다시 읽어 5회 상한과 격상·중단 조건을 복원한다. 라운드 수는 state.md의 `fix-round`로 확인하며 이전 대화의 기억만으로 상한을 연장하지 않는다.
 
 | 라운드 | 방식 | 모델 |
 |--------|------|------|
@@ -453,7 +467,7 @@ exit0이면 command·cwd·scope를 함께 기록하고 `${PROJECT_ROOT}/${focuse
 
 - 매 라운드: 구현 주체(세션 또는 implementer)가 수정 → focused 재실행 → fix report를 같은 report 파일에 append → 상태 반환(격리 경로만) → 오케스트레이터가 verify_implement 재수행. Step 2-V 태스크 리뷰의 findings 수정도 **이 라운드 카운터와 상한 5를 공유**한다 — 리뷰가 연 라운드는 verify_implement 재수행 뒤 재리뷰(2-V)로 닫힌다. `current-step`을 `"RGR T{N}: FIX R{r}"`로, state.md 해당 태스크에 `fix-round: {r}/5`를 기록한다.
 - 모델 격상은 "실패의 대응"으로 **모델 프로파일과 독립**이다 — eco 세션에서도 라운드 4~5는 opus로 격상한다.
-- **라운드 5 소진 시**: 사이클 중단 + AskUserQuestion — "수동 수정 후 계속" / "태스크 스킵 (위험 수용 — trust-ledger 기록)" / "중단".
+- **라운드 5 소진 시**: 사이클 중단 + AskUserQuestion — "수동 수정 후 계속" / "태스크 스킵 (위험을 받아들이고 위험 기록 trust-ledger에 남김)" / "중단".
 
 `current-step`을 `"RGR T{N}: IMPLEMENT"`로 갱신.
 
@@ -570,20 +584,20 @@ SKILL.md 정체 감지 규칙을 RGR 사이클에 적용.
 
 이 phase 파일 기준 `../references/core-planning.md`의 **`needs_boundary_regression(PHASES)`**로 판단한다. 실제 실행 목록에서 implement 뒤에 complete(verify)가 없으면 core 여부와 무관하게 공통 영향 계획으로 현재 active 태스크와 실제 변경 범위의 회귀를 검증한다. core의 `--phase implement` 단독도 실행한다. 매핑/설정/의존성 불확실성 또는 명시적 전체 검사에서만 전체 테스트를 실행한다. 변경되지 않은 코드의 동일 plan entry는 `reuse` 성공 증거로 확인하며, 코드가 바뀌면 이전 증거를 쓰지 않는다. 후속 complete가 같은 실행 목록에 있으면 그 verify가 이 회귀를 맡는다. 모드 이름이나 과거 기본 목록으로 판단하지 않는다.
 
-실패 시 대상 테스트·에러·focused 명령을 implementer **수리 모드**로 전달한다. RED report 없음, 테스트 파일 무변경 확인, 수리 1회 상한은 유지한다. 수리 후 변경된 범위의 plan/proof를 갱신하고 관련 테스트를 실행한다. 재차 실패하면 사용자에게 보고한다. `current-step: 경계 회귀 수리`로 기록한다.
+실패 시 수리 주체는 Step 1.3의 실행 방법을 따른다. `execution-method: session`이면 세션이 "세션 IMPLEMENT 절차"의 절대 규칙으로 직접 고치고, `subagents`(`--isolated`)면 대상 테스트·에러·focused 명령을 implementer **수리 모드**로 전달한다. 어느 쪽이든 RED report 없음, 테스트 파일 무변경 확인(verify_implement 3의 `git hash-object`·porcelain 대조), 수리 1회 상한은 유지한다. 수리 후 변경된 범위의 plan/proof를 갱신하고 관련 테스트를 실행한다. 재차 실패하면 사용자에게 보고한다. `current-step: 경계 회귀 수리`로 기록한다.
 
 ## Step 4: 사이클 완료 보고
 
 모든 태스크 완료 후 사용자에게 **요약만** 보고한다 (Agent 전문 출력 금지).
 
 ```
-RGR 사이클 완료: {N}개 태스크
+구현 완료: {N}개 태스크 (RED 실패 테스트 작성 → IMPLEMENT 구현·정리 → REVIEW 태스크 리뷰, AC = 수용 기준)
 
 - T1 (AC-1): RED ✅ → IMPLEMENT ✅ → REVIEW skip (파일 1개)
 - T2 (AC-2, AC-3 배칭): RED ✅ → IMPLEMENT ✅ (fix 라운드 1회) → REVIEW ✅ (Important 1건 정리, Minor 2건 유예)
 - T3 (AC-4): RED ✅ → IMPLEMENT ✅ (정리 대상 없음) → REVIEW ✅
 
-focused: 태스크별 {N pass}, 0 fail (태스크 간 회귀는 review Step 0, 전체 회귀는 complete verify — `--phase implement` 단독: Step 3.5)
+태스크 테스트: 태스크별 {N pass}, 0 fail (태스크 간 회귀는 리뷰 단계, 전체 회귀는 최종 검증 — `--phase implement` 단독: Step 3.5)
 변경 파일: {N}개
 판정: {N}건 (decisions.md — 제목 나열: T2 과잉 구현 정리, …)
 
@@ -627,7 +641,7 @@ phase-review로 인계하기 위해 diff를 수집한다.
 **Step H3**: 결과 분기:
 - CRITICAL/HIGH 0건 → "핵심 모드 긴급 감사 통과" 보고 후 실제 PHASES의 다음 단계로 진행한다. complete가 같은 실행 목록에 있을 때 그 phase로 이어가며, 단독 implement는 이 phase의 완료 보고로 끝낸다.
 - CRITICAL/HIGH 1건 이상 → AskUserQuestion:
-  - "자동 수정 시도" → `../references/core-replanning.md`로 변경 전 active hash 확인·불변 이력 보관을 먼저 한다. 기존 승인 무효화 후 보안 항목을 ac.md의 새 G-W-T AC로 정의하고 plan.md의 영향 태스크·파일·테스트 및 keep/add/replace/retire 매핑을 갱신한다. 두 문서를 함께 재승인받아 **RGR 사이클 재진입**: red-writer(add/replace 새 케이스만 delta RED, keep 본문·기대값 불변 GREEN) → IMPLEMENT(세션 또는 implementer) 순서로 수정한다 (Step 2-R/2-I 재실행). 기존 report·기대값·해시 이력과 영향 없는 태스크는 보존하고 새 baseline-generation으로 영향 태스크만 재개한다. implementer를 RED 없이 직접 호출하지 않는다.
+  - "자동 수정 시도" → 보안 항목을 ac.md의 새 G-W-T AC로 정의하고 plan.md를 갱신해 두 문서를 함께 재승인받은 뒤 **RGR 사이클 재진입**(Step 2-R/2-I 재실행)한다. 문서 변경 전 이력 보관·delta RED·영향 태스크만 재개는 `../references/implement-recovery.md` §1을 따른다. implementer를 RED 없이 직접 호출하지 않는다.
   - "이대로 진행" → 위험 수용 기록
   - "중단" → state.md에 `status: cancelled`
 
@@ -696,31 +710,11 @@ steps:
 
 ## --resume 호환
 
-`scope-status: closed` 또는 `current-step: 범위 종료 확인`은 아래 일반 재개 분기보다 우선한다. `status: in_progress`를 유지한 채 `return "scope-closed"`로 전체 Phase 루프를 끝내며 자동 구현·complete·commit/PR를 금지한다. 새 요구 범위 재확정·승인과 세대 재개를 명시적으로 거친 뒤에만 다시 연다. 개별 은퇴 태스크의 active 0건을 전체 범위 종료로 오인하지 않는다.
-
-핵심 모드는 `../references/core-planning.md`로 ac.md·plan.md의 현재 승인 일치를 확인한다. 문서나 승인 필드가 없거나 불일치하면 phase-requirements의 계획·함께 승인으로 복귀하고, 유효하면 승인된 태스크 매핑과 기존 RED·무결성 기준선을 복원해 영향 태스크만 재개한다. 결합승인·실제 방법 선택과 기존 Step 1.2~1.3의 동일 run·계획 해시·출처 연결을 검증하고 부족한 방법만 보완한다. `current-step`만으로 승인 검사를 생략하지 않는다.
-
-모든 모드에서 `../references/core-replanning.md`로 active/후보 baseline-generation·케이스 변경표·이전/새 기대값·ID 원장·불변 이력 링크를 복원하고 현재 active 소유권의 hash부터 검증한다. 후보 RED 작성 중 중단되었다면 변경 전 hash 검증 기록·이력 원본 hash와 승인 delta/keep 본문 보존을 먼저 대조하며, 정당한 후보 delta를 과거 전체 파일 hash 불일치로 오인하지 않는다. 재계획 중단은 이전 완료 task를 새 AC 완료로 간주하지 않으며, merge/split 후 superseded 태스크 hash를 현재 파일과 재대조하지 않는다. RED 재개는 add/replace만, keep은 내용 불변 GREEN, retire는 승인 범위만 정리한다. 삭제-only/active 0건은 IMPLEMENT를 시작하지 않는다. core→all 뒤에는 전이된 실제 PHASES와 전체 모드 요구사항·설계에서 확정한 변경표로 이어간다.
-
-일반 중단 지점 재개 전에는 setup-resume 0.05의 진입 승인·현재 계획 해시·방법/flags도 검증한다. 유효한 같은 run·계획의 선택은 재사용하고, 부족한 계획 검토/방법만 Step 1.2~1.3에서 확정한 후 아래 중단 지점으로 돌아온다. 완료된 RED·태스크/보고서·fix 카운터는 보존한다.
-
-- `"기준선 게이트"` → Step 0.5부터 재실행
-- `"하네스 준비 대기"` → Step 0.5의 레이어별 하네스 게이트부터 다시 확인한다. 러너가 아직 없으면 같은 질문으로 멈춘다.
-- `"태스크 분해 승인"` → 저장된 내부 계획·해시를 읽어 Step 1.2부터 재개. 유효한 계획 전체를 다시 분해하지 않는다.
-- `"실행방법 선택"` → Step 1.3에서 원래 미응답 질문을 복원한다.
-- `"계획 문서로 종료"` → 미구현 상태와 계획 경로를 보고하고 Step 1.2 질문을 다시 제시한다. 현재 세션/서브에이전트 응답이면 같은 계획의 Step 1.3에서 이어 가고, 다시 문서 종료·무응답이면 종료한다.
-- `"RGR T{N}: RED"` → 해당 태스크의 RED부터 재시작
-- `"RGR T{N}: IMPLEMENT"` → state.md `flags`에 `--isolated`가 있으면 implementer 재디스패치, 없으면 세션이 `reports/t{N}-red.md`를 읽고 "세션 IMPLEMENT 절차"를 처음부터 재개 (report 파일이 있으면 그 진행분을 반영)
-- `"RGR T{N}: FIX R{r}"` → 해당 태스크의 fix loop 라운드 {r}부터 재개 (report 파일이 영속 기억)
-- `"RGR T{N}: REVIEW"` → Step 2-V 판정부터 재실행 (변경 파일·태스크 diff 재수집 후 디스패치)
-- `"RGR T{N}: REVIEW R{r}"` → 라운드 {r}의 수정 diff 재수집 후 재리뷰부터 재개 (`reports/t{N}-review.md`가 이전 findings의 영속 기억)
-- 구 세션 호환: `"RGR T{N}: GREEN"`/`"RGR T{N}: REFACTOR"`(3석 세대) → 해당 태스크를 위 IMPLEMENT 규칙(`flags`에 따라 세션 또는 implementer)으로 이어받는다. red 산출물(테스트 파일)은 유효하므로 RED 재실행 불필요. reports/가 없으므로 이 재개에 한해 테스트 코드·실패 메시지의 인라인 인계를 허용하고 execution-log에 "구 세대 전환 재개 — 인라인 인계"를 기록한다. 구 세션 state에 `test-file` 기록이 없으면 RED 산출물과 실제 파일을 대조해 현재 태스크 경로를 복원한 뒤 공통 `focused` CLI를 사용한다. 복원이 불가능하면 필요한 경로를 확인할 때까지 중단하며 전체 `test`로 자동 폴백하지 않는다. `test-file-hash`·porcelain 스냅샷은 구 state에 기록이 있으면 그대로 대조하고 없을 때만 생략한다. `test-count`는 정의가 달라(전체 vs focused) 비교하지 않고 재측정한다
-- `"경계 회귀 수리"` → Step 3.5부터 재실행 (전체 테스트 재확인 후 수리)
-- `"변경사항 수집"` → Step 5부터 재실행
+`--resume`으로 이 phase에 다시 들어오면 이 phase 파일 기준 `../references/implement-recovery.md` §3을 Read해 `current-step`별 중단 지점(범위 종료 우선·승인 재검증·구 세션 호환 포함)으로 간다.
 
 ## 판정 기록 (Rulings)
 
-구현 내부 게이트 3곳 — verify_implement 5번(과잉 구현), phase-review 4b(동작 불변 정리), 4c(Minor·MEDIUM) — 는 사용자에게 묻지 않고 **기본값으로 판정**하고 근거를 남긴다. 답이 거의 항상 기본값인 질문에 사람을 세우지 않기 위해서다. 산출물 승인(PRD·설계·태스크 분해), SPEC FAIL, Critical, 동작 결함의 RGR 여부, 위험 수용은 이 규약의 대상이 **아니며** 계속 AskUserQuestion으로 확인한다.
+구현 내부 게이트 4곳 — verify_implement 5번(과잉 구현), phase-review 4a(동작 결함), 4b(동작 불변 정리), 4c(Minor·MEDIUM) — 는 사용자에게 묻지 않고 **기본값으로 판정**하고 근거를 남긴다. 답이 거의 항상 기본값인 질문에 사람을 세우지 않기 위해서다. 4a는 판정을 한 줄로 알리고 바로 진행하며, 수정이 범위·AC를 바꿀 때만 묻는다. 산출물 승인(PRD·설계·태스크 분해), SPEC FAIL, Critical, 위험 수용은 이 규약의 대상이 **아니며** 계속 AskUserQuestion으로 확인한다.
 
 **기록 위치**: `${DEV_DIR}/decisions.md` — AskUserQuestion 훅(capture-decision)이 쓰는 파일에 오케스트레이터가 append한다. 파일이 없으면 훅과 같은 헤더로 만든다:
 
@@ -745,6 +739,7 @@ AskUserQuestion으로 오간 질문과 선택을 자동 기록한다. 고른 것
 | 게이트 | 기본 판정 | 예외 |
 |---|---|---|
 | verify_implement 5 과잉 구현 | focused 테스트 집합이 참조하지 않는 신규 public 멤버를 **제거**하고 focused를 재실행한다 (기본은 세션 직접, `--isolated`면 implementer). 제거로 focused가 깨지면(간접 사용) 복원하고 `## 우려사항`에 기록한다 | 설계서 인터페이스가 명시한 멤버는 제거하지 않고 "설계 예약"으로 판정만 기록한다 |
+| phase-review 4a 동작 결함 | RGR로 수정 | 수정이 범위·AC를 바꾸면 묻는다 |
 | phase-review 4b 동작 불변 정리 | **수행**한다 (정리 모드 — 기본은 세션 직접, `--isolated`면 implementer) | 없음 |
 | phase-review 4c quality Minor | **유예** — 수정하지 않고 Deferred 목록에 올린다 | 없음 |
 | phase-review 4c security MEDIUM | 동작 불변이 명백하면 **정리 모드로 수정**, 동작 변경을 동반하거나 모호하면 **유예** | 없음 |
@@ -761,7 +756,7 @@ AskUserQuestion으로 오간 질문과 선택을 자동 기록한다. 고른 것
 
 이 Phase에서 절대 수행하지 않는 동작:
 - ❌ "구현 후 테스트 작성" — Iron Law 1 정면 위반
-- ❌ RGR 사이클 병렬 실행 — 격리 깨짐
+- ❌ RGR 사이클 병렬 실행(한 태스크의 RED·IMPLEMENT, 같은 갈래의 태스크) — 격리 깨짐. Step 2의 독립 갈래 병렬만 예외
 - ❌ "이번 한 번만" 코드 우선 작성 — 첫 예외가 규칙이 됨
 - ❌ 검증 명령 생략 (verify_red/verify_implement) — Iron Law 3 위반
 - ❌ 발동 조건(프로덕션 파일 2개 이상 또는 fix 라운드)을 충족한 태스크의 리뷰 생략 — "diff가 작아 보여서"는 사유가 아니다. 조건은 기계 판정이다

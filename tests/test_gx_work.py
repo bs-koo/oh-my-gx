@@ -32,12 +32,22 @@ def plan():
     }
 
 
+def configure(root, **settings):
+    """route의 설정 판정(setup-required)을 통과하는 최소 설정: 등록된 타입과 그 감지 파일."""
+    config = Path(root) / ".claude" / "config.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(json.dumps({"projectTypes": {"python": {"detect": ["pyproject.toml"]}}, **settings}),
+                      encoding="utf-8")
+    (Path(root) / "pyproject.toml").write_text("", encoding="utf-8")
+
+
 class WorkEntryTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         subprocess.run(["git", "init", "-b", "feature/limit", str(self.root)], check=True, capture_output=True)
+        configure(self.root)
         (self.root / "source.txt").write_text("사용자 미커밋 변경\n", encoding="utf-8")
         self.state = self.root / ".dev" / "feature-limit" / "state.md"
 
@@ -109,7 +119,6 @@ class WorkEntryTests(unittest.TestCase):
     def test_malformed_optional_config_keeps_git_resume_available(self):
         self.active()
         config = self.root / ".claude" / "config.json"
-        config.parent.mkdir()
         for content in ("{", "[]"):
             config.write_text(content, encoding="utf-8")
             with self.subTest(content=content):
@@ -193,9 +202,7 @@ class SvnWorkEntryTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        config = self.root / ".claude" / "config.json"
-        config.parent.mkdir()
-        config.write_text('{"vcs": "svn"}', encoding="utf-8")
+        configure(self.root, vcs="svn")
         self.pointer = self.root / ".dev" / ".active"
 
     def active(self, slug, pipeline="gx-tdd"):

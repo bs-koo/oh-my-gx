@@ -28,7 +28,7 @@
 
 커밋/PR 스킬 라우팅 규칙은 `.claude/rules/skill-routing.md`를 따른다.
 
-gx-tdd verify 게이트 미통과 상태의 `git commit`은 PreToolUse 훅(`pre-tool-guard.sh` G3)이 감지하여 사용자 확인(ask)을 요구한다 — 라우팅·스킬 층과 무관하게 항상 동작하는 최종 방어선이다.
+gx-tdd verify 게이트 미통과 상태의 `git commit`은 PreToolUse 훅(`pre-tool-guard.sh` G3)이 감지하여 사용자 확인(ask)을 요구한다(Claude Code의 bypassPermissions 모드, gx-commit이 받은 위험 수용 토큰과 트리가 같은 커밋, 미해결 충돌 경로가 없는 진행 중인 베이스 병합 커밋은 확인 창 없이 진행하고 Claude에게 알리고 기록하라는 문맥을 남긴다. bypass에서는 서브에이전트 커밋도 문맥 경고만 남는다. auto·dontAsk 모드는 ask를 유지한다(dontAsk는 사실상 차단). Codex는 모드·토큰과 무관하게 차단한다) — 라우팅·스킬 층과 무관하게 항상 동작하는 최종 방어선이다.
 
 ### 최신 상태 유지
 

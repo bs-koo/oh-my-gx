@@ -11,7 +11,7 @@ Ralph 무인 반복 기능은 제거되었다. 인계·부분 phase·재개를 �
 - 실제 실행 인자에 `--ralph`, 명시 `/gx-ralph`·`/gx-ralph-iterate` 호출, 또는 무인 실행을 요구하는 `랄프로`·`ralph로`·`무인 루프로`·`루프 돌려`가 있으면 `unsupported-request`로 중단한다. 파일명·원문 인용·명시적 부정이나 설명/제거 요청을 실행 명령으로 오인하지 않는다. 일반 개발이나 커밋으로 조용히 대체하지 않는다.
 - DEV_DIR은 상태 계약의 Git 현재 branch-slug 또는 SVN `.dev/.active` 규약으로 읽기 전용 계산한다. SVN 활성 포인터가 없거나 여러 진행 기록이 있으면 읽기 전용 후보 확인 후 같은 검사를 적용한다. 이 확인을 위해 state 초기화·브랜치 생성·포인터 쓰기를 하지 않는다.
 - 현재 프로젝트/작업 경로를 읽기 전용으로 확정한 뒤 `status: in_progress`인 기존 `pipeline: gx-ralph` 또는 그 진행 상태에 저장된 `flags`의 `--ralph`가 있으면 `migration-required`로 중단한다. `${DEV_DIR}/ralph.lock`이 있으면 상태와 무관하게 별도 구버전 러너가 실행 중일 수 있음을 알리고 `loop-active`로 새 실행을 막는다. 잠금을 지우거나 프로세스를 종료하지 않는다.
-- **구버전 기록에서 빠져나오기**: 그 state·잠금은 고치거나 지우지 않는다. git은 베이스에서 새 브랜치로 시작한다. 미커밋 변경이 있으면 그 변경을 옮기지 않도록 별도 워크트리(`git worktree add <경로> -b <새 브랜치> <베이스>`)를 만들고 그 경로에서 `/oh-my-gx:gx-work <목표>`로 새 진입 결정을 받는다. SVN은 새 목표를 `--slug <새 slug>`로 시작하며 이 검사는 그 slug의 기록에만 적용하고 setup Step 5가 `.dev/.active`를 새 slug로 바꾼다. 같은 브랜치에서 gx-work 전환을 다시 요청하게 안내하지 않는다(같은 판정으로 되돌아온다).
+- **구버전 기록에서 빠져나오기**: 그 state·잠금은 고치거나 지우지 않는다. git은 베이스에서 새 브랜치로 시작한다. 미커밋 변경이 있으면 그 변경을 옮기지 않도록 사용자 동의를 받아 별도 워크트리(`git worktree add <경로> -b <새 브랜치> <베이스>`)를 직접 만들고, 경로와 다음 명령(그 경로에서 `/oh-my-gx:gx-work <목표>`로 새 진입 결정)을 제시한다(절차: gx-work [새 범위용 워크트리 만들기](../../gx-work/references/tdd-entry.md#새-범위용-워크트리-만들기)). SVN은 새 목표를 `--slug <새 slug>`로 시작하며 이 검사는 그 slug의 기록에만 적용하고 setup Step 5가 `.dev/.active`를 새 slug로 바꾼다. 같은 브랜치에서 gx-work 전환을 다시 요청하게 안내하지 않는다(같은 판정으로 되돌아온다).
 - 기존 PRD·설계·AC 원장·커밋·state는 보존한다. 지원 중단과 확인한 기록 경로를 알리고, 사용자가 새 TDD 작업으로 전환하도록 실제 요청한 경우에만 범위·미완료 항목·검증 근거를 검토한다. 원래 pipeline/실행 ID/승인을 새 실행으로 덮거나 자동 승인으로 승격하지 않는다.
 
 상태 조회·기존 문서 검토는 읽기 전용으로 보고할 수 있다. 지원 중단 안내는 확인된 범위에 한정하며, 이 규약 자체가 구버전 외부 러너를 강제로 정지시키는 보안 경계라고 주장하지 않는다.
@@ -25,7 +25,7 @@ ARGS[0]을 받으면 아래 순서로 의도를 파싱한다:
 **Step 1: 플래그 호환** (기존 사용자 보호)
 - --handoff <JSON>·--from-plan <JSON>·--stop-at verify|commit|pr·--full-tests를 먼저 분리하고 [계획 인계 계약](plan-handoff.md)을 적용한다. 원문 파일명은 자연어 의도 키워드로 해석하지 않는다. gx-work origin은 실제 진입 응답을 `validate-handoff`로 검증하기 전 실행 setup을 시작하지 않는다. 일반 요청 문구가 false/pending 승인을 대체하지 않는다.
 - **`--work {ID}`는 다른 플래그보다 먼저 추출한다.** 아래 모드 플래그 분기에서 파싱이 종료되기 전에 소비해야 `--work --core`처럼 조합된 경우에도 작업 계획 참조가 유실되지 않는다. 추출 후 남은 인자로 아래 분기를 계속 판정한다.
-- **gx-work 인계의 모드 판정**: `origin: gx-work` 인계는 handoff의 `intent`·`stop-at`·`read-only`가 실행 범위를 정한다(계획 전용이 아니면 일반 실행 `all`). 목표 문장에는 Step 2의 STATUS/RESUME/CORE·PHASE 키워드 판정을 하지 않는다. 목표의 "이어서"·"긴급"을 재개·핵심 모드로 오인하지 않기 위해서다. 함께 받은 명시 플래그(`--core`·`--eco`·`--standard`·`--isolated`·`--base`)는 반영하고, 작업 ID·모델은 인계 `work-id`·`model-profile`을 쓴다.
+- **gx-work 인계의 모드 판정**: `origin: gx-work` 인계는 handoff의 `intent`·`stop-at`·`read-only`·`mode`가 실행 범위를 정한다(계획 전용이 아니면 인계 `mode`를 쓰며 `core`면 `--core`와 같게 처리하고, 없거나 `all`이면 일반 실행 `all`). 목표 문장에는 Step 2의 STATUS/RESUME/CORE·PHASE 키워드 판정을 하지 않는다. 목표의 "이어서"·"긴급"을 재개·핵심 모드로 오인하지 않기 위해서다. 함께 받은 명시 플래그(`--core`·`--eco`·`--standard`·`--isolated`·`--base`)는 반영하고(`--core`는 이전 인계 호환용), 작업 ID·모델은 인계 `work-id`·`model-profile`을 쓴다.
 - `--core`, `--phase`, `--base`, `--status`, `--resume`이 포함되면 해당 로직으로 실행.
 - `--slug <name>`(SVN 전용)은 작업 slug 지정으로 분리해 phase-setup Step 5의 slug 규칙에 넘긴다. 모드 판정과 독립이며, 구버전 실행이 활성 포인터에 남은 SVN에서 새 범위를 시작하는 경로다.
 - `--isolated`가 포함되면 **격리 구현 플래그**와 명시 `subagents` 방법 선택으로 보존한다 — phase-implement Step 2-I가 세션 직접 수행 대신 implementer 디스패치(현행 2석) 경로를 택한다. 모드 판정과 독립이므로 나머지 파싱을 계속한다. 이 선택도 Step 1.2의 실제 계획 검토 전 RED 실행을 허용하지 않는다. 명시 현재 세션 선택/기존 방법과 충돌하면 해소 전 중단한다.
@@ -43,16 +43,18 @@ gx-work 인계는 Step 1의 인계 모드 판정을 따르고 아래 표의 모�
 | `이어서`, `계속`, `재개`, `아까 하던` | RESUME | "아까 하던 작업 이어서 해줘" |
 | `긴급`, `핫픽스`, `급한`, `빨리 고쳐`, `버그 수정만` | CORE | "로그인 버그 긴급 수정해줘" (AC를 재현 조건 관점의 G-W-T로 작성) |
 | `구현만`, `핵심만`, `라이트`, `가볍게` | CORE | "알림 임계값 검증, TDD로 구현만 해줘" |
+| `전체로`, `전체 모드` | ALL (전체 모드 확정 — Step 3에서 모드를 묻지 않는다) | "결제 한도, 전체 모드로 TDD 개발해줘" |
 | `설계만`, `PRD만`, `리뷰만`, `커밋만` | PHASE(해당) | "설계만 해줘" |
 | `{branch}에서`, `{branch} 기반`, `{branch} 브랜치` | BASE 추출 | "develop 브랜치 기반으로 작업해줘" |
 | `에코 모드`, `에코로`, `절약 모드` | ECO 추출 (프로파일 — 모드와 독립) | "에코로 TDD 개발해줘" |
+| `표준으로`, `표준 모드` | STANDARD 추출 (프로파일 — 모드와 독립) | "표준으로 TDD 개발해줘" |
 | W ID 토큰(`W01`·`W118`, 아래 WORK 추출 규칙) | WORK 추출 (작업 계획 참조 — 모드와 독립) | "W01 시작해줘", "phase W01 개발해줘" |
 
-PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. 기존 실행에 저장된 `stop-at`이 그 요청과 다르면 아래 **종료점 변경**을 먼저 한다. implement phase 단독 실행은 `--phase implement` 플래그 전용이다. 자연어 "구현만"은 CORE다.
+PHASE 매핑: `PRD만`/`요구사항만` → `--phase requirements`, `설계만` → `--phase design`, `리뷰만` → `--phase review`, `커밋만`/`PR만` → `--phase complete`. 기존 실행에 저장된 `stop-at`이 그 요청과 다르면 아래 **종료점 변경**을 먼저 한다. 진행 중 실행의 "지금까지 한 거 커밋만"처럼 현재 상태 커밋일 수 있으면 아래 **진행 중 실행의 선택 변경**의 지금 상태 커밋 확인이 먼저다. implement phase 단독 실행은 `--phase implement` 플래그 전용이다. 자연어 "구현만"은 CORE다.
 
 BASE 추출: `{branch}에서`, `{branch} 기반`, `{branch} 브랜치`에서 branch명을 추출하여 `--base`로 처리한다. BASE 추출은 모드 판정과 독립적이다 — BASE가 추출되어도 모드가 결정되지 않으면 Step 3으로 진행한다.
 
-ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다.
+ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되면 모델 프로파일을 `eco`로 기록한다 (`--eco`와 동일. 단독 명사 `에코`는 도메인 용어 오탐 방지를 위해 매칭하지 않는다 — 예: "에코머니 적립 기능"). 프로파일 추출도 모드 판정과 독립적이다 — 모드가 결정되지 않으면 Step 3으로 진행한다. STANDARD 추출(`표준으로`/`표준 모드`)은 같은 방식으로 `standard`를 기록한다(`--standard`와 동일). ALL(`전체로`/`전체 모드`)은 모드를 `all`로 확정한다. 우연히 겹친 문구(예: "회원 전체로 발송")여도 기본 경로·기본 프로파일로 정해질 뿐이라 위험이 낮다. gx-work 진입 질문의 "이미 밝힌 항목" 표현 목록(gx-work `references/tdd-entry.md`)은 이 표와 같게 유지한다.
 
 
 **WORK 추출 규칙** (오탐 방지가 핵심이다):
@@ -64,12 +66,41 @@ ECO 추출: ARGS[0]에 `에코 모드`/`에코로`/`절약 모드`가 포함되�
 - `phase W01`처럼 앞에 `phase`가 붙어도 같다. 뒤따르는 토큰이 위 정규식의 W ID면 작업 ID이고, `design`·`implement` 같은 단계명이면 기존 PHASE 판정이다.
 - **자연어 WORK + RESUME 판정**: Step 1·Step 2에서 RESUME이 판정되었으면 WORK를 **무시하고** 1줄 안내한다 — "재개는 state.md의 `work-id`로 작업 문맥을 복원합니다 — {ID} 지정 없이 이어서 진행합니다." ("W01 이어서 해줘"처럼 둘 다 성립하는 발화가 플래그 충돌로 중단되지 않게 한다.) 명시 플래그 `--work`는 이 양보 대상이 아니며 기존대로 충돌 에러를 낸다 — 사용자가 명시한 것을 조용히 버리지 않는다.
 
-**Step 3: 프로젝트 기본값 적용**
+**Step 3: 진행 방식(모드·프로파일) 확인**
 
-일반 기능 요청은 모드를 `all`로 확정한다. 모델은 명시 플래그 > 자연어 > 이번 실행의 기존 결정 > config.json `modelProfile` > `standard` 순으로 정한다. 매 요청마다 모드·모델 프로파일 질문을 만들지 않는다. 적용 결과만 한 줄로 알리고 진행한다.
+모드와 모델 프로파일은 명시 플래그 > 자연어(Step 2의 CORE·ALL·ECO·STANDARD 판정) > gx-work 인계(`mode`·`model-profile`) > 이번 실행의 기존 결정 > config.json `workflowDefaults.mode`·`workflowDefaults.modelProfile`(허용값만. 해당 플래그를 준 것과 같게 처리하고 "설정값으로 진행: …" 한 줄로 알린다) 순으로 정한다. 이렇게 정해지지 않은 항목만 실행 시작 전에 **한 번** 묻는다. 최상위 config.json `modelProfile`은 템플릿 기본값이 들어 있어 답을 대신하지 않고, 프로파일 선택지에 "(현재 설정)"으로 표시하며 추천 근거가 없을 때의 추천값으로만 쓴다. 모드가 핵심으로 정해지면 프로파일은 묻지 않고 "핵심 모드는 설계·전체 리뷰가 없어 프로파일 차이가 없습니다"를 한 줄 알린다(에코가 낮추는 design-critic·test-architect·최종 reviewer가 핵심 모드에서는 돌지 않는다). 두 항목이 모두 정해졌으면 질문 없이 적용 결과만 한 줄로 알린다.
 
-- **프로파일 질문 포함 규칙**: 사용자에게 선택을 요청했거나 설정·명시 지시가 충돌해서 실제 결정이 필요할 때만 묻는다. 설정된 `modelProfile`은 기본값으로 사용하며 재확인하지 않는다.
-- **모드 질문 생략 규칙**: 일반 요청은 `all`. `--core` 또는 명시적 핵심 모드 요청이 있을 때만 `core`다. 자동으로 검증·설계 게이트를 줄이지 않는다.
+- **묻지 않는 경우**: gx-work 인계(진입 질문에서 이미 답했다. 인계에 `mode`가 없는 이전 인계는 명시 `--core` > `all`, `model-profile`이 없으면 config.json `modelProfile` > `standard`), `--resume`(state 복원. 재개 중 변경은 아래 **진행 중 실행의 선택 변경**), STATUS, PHASE 단독 실행, 읽기 전용 인계. 같은 run에서 이미 답했으면 다시 묻지 않는다.
+- **추천**: gx-work의 [진행 방식 추천 기준](../../gx-work/references/tdd-entry.md#진행-방식-추천-기준)을 따른다. Step 3은 explore·코드 탐색 전에 실행되므로 근거는 요청 문장과 이미 읽은 관련 문서뿐이다. 추천 근거를 만들려고 코드를 탐색하지 않으며, 근거가 부족하면 전체·표준(프로파일은 현재 설정값)을 추천한다. 프로파일을 묻는데 세션이 상위 등급 모델로 확인되면 같은 기준의 에코 안내를 질문 **전에** 본문으로 출력한다(Codex에서 세션 모델을 확인할 수 없으면 생략).
+- 답은 state의 `mode`·`model-profile`과 `intent-source: user-selection`으로 기록한다. 핵심이면 `--core`와 같게 처리하고, 같은 호출에서 물은 프로파일 답은 쓰지 않고 `standard`로 기록한다(질문 호출을 나누지 않으려고 함께 묻는다). 무응답·추천값은 답이 아니다. Codex stable id는 `gx_tdd_mode`·`gx_tdd_model_profile`이다.
+
+```
+AskUserQuestion(
+  questions: [
+    {
+      header: "모드",
+      question: "어떤 과정으로 진행할까요?",
+      multiSelect: false,
+      options: [
+        { label: "전체 (Recommended)", description: "PRD·설계·구현계획을 거쳐 TDD로 개발합니다. {추천 근거 한 줄}" },
+        { label: "핵심", description: "AC와 경량 구현계획을 함께 승인받고 TDD로 개발합니다. RGR·verify는 같습니다" }
+      ]
+    },
+    {
+      header: "프로파일",
+      question: "에이전트 모델을 어떻게 쓸까요? 핵심 모드에는 적용되지 않습니다",
+      multiSelect: false,
+      options: [
+        { label: "표준 (Recommended)", description: "역할별 기본 모델을 씁니다. {추천 근거 한 줄}" },
+        { label: "에코", description: "설계 비판·testability·최종 리뷰 에이전트를 역할 기본보다 낮은 등급(Claude Code: sonnet, Codex: mid)으로 낮춥니다. 전체 모드에서만 차이가 납니다" }
+      ]
+    }
+  ]
+)
+```
+
+이미 정해진 항목의 질문은 뺀다. 추천이 바뀌면 `(Recommended)`를 그 선택지로 옮겨 첫 번째에 둔다.
+
 - 이미 승인한 계획·handoff의 종료점과 명시 실행방법을 보존한다. 전체 모드는 implement Step 1.2에서 구체 계획 검토와 방법 선택을 한 질문으로 확인한다. core는 [core-planning.md](core-planning.md)에 따라 실제 코드 Read → 경량 plan.md → **AC+계획 실물 함께 승인 1회**에 방법도 연결한다. 유효한 동일 run/계획/선택은 재사용하고 방법만 빠졌으면 Step 1.3에서 방법만 묻는다. 미결정 방법을 기본값으로 채우지 않는다. plan/understand는 읽기 전용 경로로 보내고 실행 setup을 시작하지 않는다.
 - 핵심 모드에서도 RGR·verify·G-W-T·긴급 보안 감사는 유지한다. 비TDD 개발 경로는 제공하지 않는다.
 ### 모드 판정 결과 기록
@@ -91,11 +122,21 @@ intent-source: flag | natural-language | user-selection
 3. gx-work 인계 실행(`handoff-file` 있음)이면 [계획 인계](plan-handoff.md)의 `reissue --stop-at <새 값> --change-source "<1의 근거>"`로 인계를 다시 발급하고 `validate-handoff`를 다시 통과한다. 재발급 뒤 state의 `handoff-file`·`entry-approved-source`·`entry-approved-scope-sha256`를 새 인계 값으로 갱신한다(다음 재개의 대조 기준). 직접 호출 실행은 이 단계가 없다.
 4. `--phase complete`(커밋만·PR만) 또는 `--resume`으로 이어 간다. PR도 커밋 게이트를 거친다.
 
+### 진행 중 실행의 선택 변경
+
+진행 중 실행에서 사용자가 명시한 변경은 아래처럼 다룬다. 원문을 `${DEV_DIR}/decisions.md`에 먼저 기록하고(같은 결정이 gx-work 기록으로 이미 있으면 다시 쓰지 않는다) 추천·무응답으로 바꾸지 않는다. 인계의 `mode`·`model-profile`은 진입 때의 선택 기록이다. 이후 사용자 결정으로 바뀐 state 값이 우선하며 인계를 다시 발급하지 않는다.
+
+- **프로파일**: `--resume --eco|--standard` 또는 재개 발화의 "에코로 바꿔서 이어가"·"표준으로"는 [pipeline-state](pipeline-state.md)의 `--resume` 프로파일 변경 규칙대로 남은 디스패치부터 적용한다. 핵심 모드면 차이가 없음을 한 줄 알린다.
+- **핵심→전체**: "전체 모드로 해줘"는 실제 전체 모드 선택 응답이다. [core-planning의 core → all 전환](core-planning.md#core--all-전환과-중단-후-재개) 1~5를 적용한다. gx-work 경유면 gx-work가 기록한 결정을 재개에서 미적용 전환 결정으로 처리한다.
+- **전체→핵심**: 설계 전(`phase: requirements`이거나 design이 시작되지 않음)에만 허용한다. state를 `mode: core`, flags에 `--core`, `execution-phases: [requirements, implement, complete]`, `phase: requirements`, `current-step: null`로 바꾸고 핵심 요구사항(ac.md)부터 진행한다. 작성 중이거나 승인된 PRD는 AC 초안의 근거로만 쓰고 AC+계획 결합 승인은 새로 받는다. 설계가 시작됐으면 바꾸지 않고 이유를 알린다.
+- **작업 취소**: "이 작업 그만둘래"는 `작업 취소` / `계속 진행`을 묻고 실제 답이 취소일 때만 gx-work helper `cancel`(gx-work SKILL.md **작업 취소**)로 `status: cancelled`를 기록한다. 작업을 그만두는 선택이며 verify 미통과 커밋의 대안으로 권하지 않는다.
+- **지금 상태 커밋**: 진행 중 실행의 "지금까지 한 거 커밋만"은 PHASE 매핑 전에 `지금 상태 그대로 커밋`(파이프라인 일시 중지, verify 미통과 커밋) / `검증까지 마치고 커밋`(위 종료점 변경)을 한 번 묻는다. 처리는 gx-work SKILL.md **지금 상태 커밋**과 같다. Codex는 전자를 내지 않고 검증 후 커밋만 안내한다.
+
 ### 플래그 참조
 
 - `--phase requirements|design|implement|review|complete`: 특정 Phase만 실행
 - `--core`: 핵심 모드 (G-W-T AC → 코드 Read·경량 plan.md → AC+계획 함께 승인 → 승인된 순차 RGR → 인수·문서 대조·verify). commit/pr는 실제 요청한 경우만 추가한다.
-- `--eco`: 에코 모드 — 에이전트 디스패치를 sonnet 중심으로 하향 (공유 규칙 "모델 프로파일" 참조)
+- `--eco`: 에코 모드 — 에이전트 디스패치를 역할 기본보다 낮은 등급(Claude Code: sonnet, Codex: mid) 중심으로 하향 (공유 규칙 "모델 프로파일" 참조)
 - `--standard`: 표준 프로파일 강제 — config.json이 eco여도 이번 실행만 표준
 - `--base <branch>`: 베이스 브랜치 지정
 - `--status`: 현재 파이프라인 진행 상태 조회
@@ -136,7 +177,7 @@ ARGS[0]이 없고 모드도 판정되지 않으면 다음을 응답:
 
 - `--core`와 `--phase`는 **동시 사용 불가**. 둘 다 있으면: "`--core`와 `--phase`는 동시에 사용할 수 없습니다." 에러 후 중단.
 - `--eco`와 `--standard`는 **동시 사용 불가**. 둘 다 있으면: "`--eco`와 `--standard`는 동시에 사용할 수 없습니다." 에러 후 중단.
-- `--resume`과 `--phase`, `--core`, `--status`, `--eco`, `--standard`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `model-profile`을 유지한다).
+- `--resume`과 `--phase`, `--core`, `--status`는 **동시 사용 불가**. 함께 있으면: "`--resume`은 다른 모드 플래그와 동시에 사용할 수 없습니다." 에러 후 중단. `--resume`과 `--eco`/`--standard`는 함께 쓸 수 있으며 재개와 프로파일 변경이다(아래 **진행 중 실행의 선택 변경**. 플래그가 없으면 state.md의 `model-profile`을 유지한다).
 - `--resume`은 ARGS[0] 없이 단독 사용한다. ARGS[0]이 함께 있으면: "`--resume`은 작업 설명 없이 단독으로 사용합니다." 에러 후 중단.
 - `--work`와 `--resume`은 **동시 사용 불가**. 함께 있으면: "`--work`와 `--resume`은 동시에 사용할 수 없습니다." 에러 후 중단 (재개는 state.md의 `work-id`에서 작업 문맥을 복원하므로 ID를 다시 받을 이유가 없다).
 - `--isolated`는 모드 플래그와 호환하며 `--status`에서는 실행하지 않는다. 다만 명시 `session` 선택이나 기존/복원 method·flags와 모순이면 보고하고 실제 결정으로 해소한다. `--resume`에서 이번 플래그나 state를 조용히 우선해 충돌을 덮지 않는다. 유효한 같은 run·계획·선택이면 그대로 복원하며 재질문하지 않는다.

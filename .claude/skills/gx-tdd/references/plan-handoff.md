@@ -12,8 +12,9 @@ gx-tdd의 `--handoff <JSON>`·`--from-plan <JSON>` 실행 시에만 읽는다. �
 
 ## 선택 필드
 
-사용자가 요청에서 밝힌 값만 인계 최상위에 담긴다. 없으면 각 단계의 기존 규칙을 따르고, 값이 있어도 승인·게이트를 건너뛰지 않는다.
+사용자가 요청에서 밝혔거나 gx-work 진입 질문에서 답한 값(설정 `workflowDefaults`로 정한 값 포함)만 인계 최상위에 담긴다. 없으면 각 단계의 기존 규칙을 따르고, 값이 있어도 승인·게이트를 건너뛰지 않는다.
 
+- `mode`(`all`|`core`): 의도 파싱 Step 1의 gx-work 인계 모드 판정에 쓴다. `core`면 `--core`와 같게 처리하고, 필드가 없는 이전 인계는 명시 `--core` > `all`이다.
 - `work-id`(`^W[0-9]{2,}$`): setup 3.0.5 작업 계획 참조의 입력으로 `--work`와 같게 쓴다. 명시 `--work`와 다르면 충돌로 멈춘다.
 - `execution-method`(`session`|`subagents`): phase-implement Step 1.2 질문에서 그 선택지를 첫 번째에 두고 `(Recommended)`를 붙이는 기본 선택으로만 쓴다. 계획 검토는 그대로 묻고, 이 값만으로 plan-approved·execution-method 기록을 채우지 않는다.
 - `model-profile`(`standard`|`eco`): phase-setup Step 1.5에서 명시 플래그 다음 순위로 쓴다.

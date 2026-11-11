@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 from codex_test_support import ROOT, load
-from test_gx_work import plan
+from test_gx_work import configure, plan
 
 
 work = load("gx_work_orchestration", "scripts/gx-work.py")
@@ -20,6 +20,7 @@ class OrchestrationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="gx-work-flow-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        configure(self.root)
         self.request = self.root / "request.json"
         self.request.write_text(json.dumps({"goal": "사용량 엑셀 다운로드", "work-id": "W01",
             "requirements": [{"domain": "계량기", "ids": ["FR-1"]}],
@@ -151,8 +152,7 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_svn_pending_without_active_pointer_or_state_is_not_lost(self):
-        (self.root / ".claude").mkdir()
-        (self.root / ".claude/config.json").write_text('{"vcs":"svn"}', encoding="utf-8")
+        configure(self.root, vcs="svn")
         pending = self.root / ".dev/export/pending-question.json"
         pending.parent.mkdir(parents=True)
         pending.write_text('{"phase":"work-entry","question_set_id":"q-entry"}', encoding="utf-8")

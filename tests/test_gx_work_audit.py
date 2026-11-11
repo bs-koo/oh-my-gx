@@ -14,7 +14,7 @@ from unittest import mock
 import uuid
 
 from codex_test_support import ROOT, load
-from test_gx_work import plan
+from test_gx_work import configure, plan
 
 
 work = load("gx_work_audit", "scripts/gx-work.py")
@@ -65,11 +65,31 @@ def entry_question():
                         {"label": "여기서 종료", "description": "개발로 넘어가지 않습니다"}]}
 
 
+def followup_questions():
+    """Codex 분할 진입 질문의 둘째 세트(모드·프로파일)."""
+    return [{"id": "gx_work_mode", "header": "모드", "question": "어떤 과정으로 진행할까요?",
+             "options": [{"label": "전체 (Recommended)", "description": "PRD·설계부터"},
+                         {"label": "핵심", "description": "AC와 경량 계획"}]},
+            {"id": "gx_work_model_profile", "header": "프로파일", "question": "에이전트 모델을 어떻게 쓸까요?",
+             "options": [{"label": "표준 (Recommended)", "description": "기본 모델"},
+                         {"label": "에코", "description": "검토 역할을 sonnet으로"}]}]
+
+
+def followup(case, slug, run_id, goal, mode="핵심", profile="에코"):
+    """같은 dev-dir에 둘째 세트를 등록하고 실제 답을 기록한다. 질문세트 id를 반환한다."""
+    identifier = gate.run("register", case.root, ".dev/" + slug, {"phase": "work-entry", "goal": goal,
+                          "run_id": run_id, "questions": followup_questions()})[0]["question_set_id"]
+    gate.run("answer", case.root, ".dev/" + slug, {"question_set_id": identifier, "answers": {
+        "gx_work_mode": {"answers": [mode]}, "gx_work_model_profile": {"answers": [profile]}}})
+    return identifier
+
+
 class Project(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="gx-work-audit-")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name).resolve()
+        configure(self.root)
 
     def git(self, branch="feature/limit"):
         subprocess.run(["git", "init", "-b", branch, str(self.root)], check=True, capture_output=True)
@@ -544,8 +564,16 @@ class F11QuestionBindingTests(Project):
         result = work.route(self.root, "implement", goal="결제 한도 구현")
         self.assertEqual(result["action"], "implement")
         self.assertTrue(result["entry-answer-recorded"])
-        self.assertFalse(result["requires-user-decision"])
+        # A5: 진입 답만 있고 둘째 세트(모드·프로파일) 답이 없으면 그 질문만 다시 묻게 한다.
+        self.assertTrue(result["requires-user-decision"])
+        self.assertEqual(result["entry-followup-missing"], ["gx_work_mode", "gx_work_model_profile"])
         self.assertEqual((result["answered-question-set-id"], result["answered-run-id"]), (identifier, "run-1"))
+        followup(self, "feature-limit", "run-1", "결제 한도 구현")
+        result = work.route(self.root, "implement", goal="결제 한도 구현")
+        self.assertFalse(result["requires-user-decision"])
+        self.assertNotIn("entry-followup-missing", result)
+        self.assertEqual(result["answered-choices"], {"mode": "core", "model-profile": "eco"})
+        self.assertEqual(result["answered-selection"], ["gx-tdd로 진행"])
         self.assertTrue(work.route(self.root, "implement", goal="다른 기능")["requires-user-decision"])
 
     def test_completed_run_handoff_is_not_reused(self):
@@ -873,9 +901,7 @@ class F36SvnSlugEscapeTests(Project):
 
     def setUp(self):
         super().setUp()
-        config = self.root / ".claude" / "config.json"
-        config.parent.mkdir(parents=True)
-        config.write_text('{"vcs": "svn"}', encoding="utf-8")
+        configure(self.root, vcs="svn")
         self.state("legacy", pipeline="gx-dev", run_id="legacy-run")
         (self.root / ".dev/.active").write_text("legacy\n", encoding="utf-8")
 
@@ -982,8 +1008,11 @@ class ReviewQuestionBindingTests(Project):
         with self.assertRaisesRegex(ValueError, "여기서 종료"):
             self.entry(identifier)
         self.answered("feature-limit", goal="결제 한도 구현", run_id="run-1")
+        # 모드·프로파일이 설정 기본값으로 정해져 있으면 둘째 세트를 기다리지 않는다(F5·A5).
+        configure(self.root, workflowDefaults={"mode": "all", "modelProfile": "standard"})
         result = work.route(self.root, "implement", goal="결제 한도 구현")
         self.assertFalse(result["requires-user-decision"])
+        self.assertNotIn("entry-followup-missing", result)
         self.assertEqual(result["answered-selection"], ["gx-tdd로 진행"])
 
     def copy_answer_block(self, slug, identifier):

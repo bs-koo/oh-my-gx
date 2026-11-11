@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """gx-work의 상태/계획 계약. 입력을 읽고 stdout JSON만 반환한다.
 
-명령: route, validate-plan, handoff, validate-handoff, reissue.
-오류는 모두 stdout JSON({"error": ..., "issues"?: [...]})과 exit 2다. 파일은 쓰지 않는다.
+명령: route, validate-plan, handoff, validate-handoff, reissue, cancel.
+오류는 모두 stdout JSON({"error": ..., "issues"?: [...]})과 exit 2다. cancel만 state.md·decisions.md를 쓰고 나머지는 파일을 쓰지 않는다.
 """
 
 import argparse
+import datetime
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import subprocess
 import sys
+import tempfile
 import uuid
 
 
@@ -21,6 +24,7 @@ ENDPOINTS = ("understand", "plan", "verify", "commit", "pr")
 EXECUTION_ENDPOINTS = ("verify", "commit", "pr")
 EXECUTION_METHODS = ("session", "subagents")
 MODEL_PROFILES = ("standard", "eco")
+MODES = ("all", "core")
 LIST_FIELDS = ("sources", "decisions", "unresolved", "requirements", "context-paths", "observed-facts", "questions")
 # 작업 ID: W + 두 자리 이상 ASCII 숫자. 하이픈은 이슈 키 패턴과 겹쳐 쓰지 않는다.
 WORK_ID = re.compile(r"W[0-9]{2,}")
@@ -32,11 +36,24 @@ RUN_ID_RULE = "[A-Za-z0-9][A-Za-z0-9._-]{2,79} (영문·숫자로 시작, 3~80�
 ACTIVE_SLUG = re.compile(r"[A-Za-z0-9._-]+")
 ENTRY_QUESTION_ID = "gx_work_tdd_entry"
 ENTRY_PROCEED = "gx-tdd로 진행"
+# Codex는 한 호출에 질문 3개까지라 진입 질문을 나누면 둘째 세트(모드·프로파일)를 이 id로 묻는다.
+# 값: 답 선택지 label → 요청 파일 필드 값. 알 수 없는 label(직접 입력)은 그대로 돌려준다.
+FOLLOWUP_QUESTIONS = {
+    "gx_work_mode": ("mode", {"전체": "all", "핵심": "core", "all": "all", "core": "core"}),
+    "gx_work_model_profile": ("model-profile", {"표준": "standard", "에코": "eco",
+                                                "standard": "standard", "eco": "eco"}),
+}
+# config workflowDefaults 키 → (route defaults 키, 허용값). 최상위 modelProfile은 configured-model-profile로 따로 싣는다.
+WORKFLOW_DEFAULTS = {"stopAt": ("stop-at", EXECUTION_ENDPOINTS), "mode": ("mode", MODES),
+                     "modelProfile": ("model-profile", MODEL_PROFILES),
+                     "executionMethod": ("execution-method", EXECUTION_METHODS)}
+SEMVER = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 # 결정 충돌을 차단으로 보는 impact. gx-context scripts/intake.py의 CONSEQUENTIAL과 같다.
 CONSEQUENTIAL = {"scope", "behavior", "architecture", "acceptance", "removal"}
 NEW_SCOPE = ("기존 기록·질문·잠금은 그대로 두고 새 범위로 시작하세요. git: 미커밋 변경이 없으면 베이스 브랜치로 돌아가고, "
-             "미커밋 변경이 있으면 그 변경이 따라오지 않도록 새 워크트리"
-             "(`git worktree add <경로> -b <새 브랜치> <베이스>`)를 만든 뒤 그 위치에서 `/oh-my-gx:gx-work <새 목표>`로 "
+             "미커밋 변경이 있으면 그 변경이 따라오지 않도록 새 워크트리가 필요합니다. 동의하면 gx-work가 "
+             "`git worktree add <경로> -b <새 브랜치> <베이스>`로 직접 만들고 경로와 다음 명령을 알려 줍니다. 그 위치에서 "
+             "`/oh-my-gx:gx-work <새 목표>`로 "
              "새 브랜치·새 run-id·새 진입 질문을 씁니다. SVN: 새 목표를 `--slug <새 slug>`로 시작합니다. 이 검사는 그 slug의 "
              "기록에만 적용되고 setup이 `.dev/.active`를 새 slug로 바꿉니다. 같은 브랜치·slug에서 전환을 다시 요청하면 같은 "
              "판정으로 돌아옵니다. 구버전 PRD·AC·커밋은 근거 문서로만 연결합니다.")
@@ -245,6 +262,94 @@ def load_settings(root):
     return settings if isinstance(settings, dict) else {}
 
 
+def detect_projects(root, types):
+    """verify가 쓰는 scripts/gx-test-plan.py discover를 그대로 불러 같은 기준으로 프로젝트 타입을 감지한다."""
+    spec = importlib.util.spec_from_file_location("gx_work_test_plan", Path(__file__).with_name("gx-test-plan.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.discover(root, types)
+
+
+def setup_issue(root):
+    """새 실행 전 설정 누락. gx-tdd phase-setup의 config 가드(파일 존재·JSON 객체)와 프로젝트 타입 감지
+    (gx-test-plan.py discover: 이름 패턴은 파일 이름, `/`가 든 패턴은 저장소 상대경로로 비교)를 따른다.
+    문제 없으면 None."""
+    config = root / ".claude" / "config.json"
+    if not config.is_file():
+        return "config-missing", ".claude/config.json이 없습니다"
+    try:
+        settings = json.loads(read_text(config, "config.json"))
+    except (OSError, ValueError):
+        settings = None
+    if not isinstance(settings, dict):
+        return "config-invalid", ".claude/config.json이 손상되었습니다(JSON 객체가 아님)"
+    types = settings.get("projectTypes")
+    detail = "projectTypes가 비어 있음"
+    if isinstance(types, dict) and types:
+        try:
+            detect_projects(root, types)
+            return None
+        except (OSError, ValueError, TypeError, AttributeError) as error:
+            detail = str(error) or type(error).__name__
+    return "project-type-unregistered", f"이 프로젝트에 맞는 projectTypes(detect 감지 파일)가 등록되어 있지 않습니다({detail})"
+
+
+def workflow_defaults(settings):
+    """config workflowDefaults 중 허용값만 route defaults(질문 생략 근거)로 싣고, 무시한 값은 notices로 알린다.
+
+    최상위 modelProfile은 템플릿 기본값이 들어 있어 사용자 선택으로 보지 않는다. 추천·현재 설정 표시용으로만
+    따로 돌려준다(허용값이 아니면 None과 notice).
+    """
+    defaults, notices = {}, []
+    configured = settings.get("workflowDefaults", {})
+    if not isinstance(configured, dict):
+        notices.append(f"config workflowDefaults {shown(configured)}은(는) 객체가 아니라 무시합니다")
+        configured = {}
+    entries = [(f"workflowDefaults.{key}", configured.get(key), *WORKFLOW_DEFAULTS[key]) for key in WORKFLOW_DEFAULTS]
+    entries.append(("modelProfile", settings.get("modelProfile"), "configured-model-profile", MODEL_PROFILES))
+    for label, value, field, allowed in entries:
+        if value in (None, ""):
+            continue
+        if value in allowed:
+            defaults[field] = value
+        else:
+            notices.append(f"config {label} 값 {shown(value)}은(는) 허용값({'|'.join(allowed)})이 아니라 무시합니다")
+    return defaults, defaults.pop("configured-model-profile", None), notices
+
+
+def plugin_version(directory):
+    try:
+        data = json.loads((directory / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    version = data.get("version") if isinstance(data, dict) else None
+    match = SEMVER.fullmatch(version) if isinstance(version, str) else None
+    return tuple(int(part) for part in match.groups()) if match else None
+
+
+def update_notices(plugin_root=None):
+    """플러그인 캐시(<상위>/<semver>/)에서 로드된 판보다 높은 판이 형제 디렉토리로 설치돼 있으면 안내한다.
+
+    로드된 루트 이름이 semver가 아니면(개발 체크아웃 등 캐시 형식이 아님) 조용히 넘어간다.
+    """
+    root = Path(plugin_root) if plugin_root is not None else Path(__file__).resolve().parents[1]
+    try:
+        current = plugin_version(root)
+        if current is None or not SEMVER.fullmatch(root.name):
+            return []
+        newest = current
+        for sibling in root.parent.iterdir():
+            if sibling.name != root.name and SEMVER.fullmatch(sibling.name) and sibling.is_dir():
+                version = plugin_version(sibling)
+                newest = max(newest, version) if version else newest
+    except OSError:
+        return []
+    if newest == current:
+        return []
+    return [f"새 판 {'.'.join(map(str, newest))}가 설치되어 있습니다. Claude Code는 /reload-plugins, Codex는 새 세션으로 "
+            f"다시 시작하세요(현재 로드된 판 {'.'.join(map(str, current))})"]
+
+
 def git(root, safe_directory, *args):
     """git을 실행한다. 소유권 예외는 확인된 프로젝트 경로 하나에만 명령별 -c로 준다."""
     command = ["git"] + (["-c", f"safe.directory={safe_directory}"] if safe_directory else []) + list(args)
@@ -383,6 +488,65 @@ def active_state(layout, slug=None):
     return state_fields(path), str(path)
 
 
+def elsewhere_candidates(layout, current):
+    """현재 위치에 진행 중 실행이 없을 때 다른 slug·워크트리의 진행 중 gx-tdd 실행을 읽기만 해서 찾는다.
+
+    이 체크아웃의 .dev/*/state.md와 `git worktree list --porcelain`의 각 워크트리 .dev/*/state.md를 본다.
+    같은 run이 여러 곳에 있으면 그 브랜치가 체크아웃된 워크트리의 기록을 쓴다. git 실패는 이 체크아웃만 본다.
+    git은 그 브랜치가 로컬 또는 원격 추적 ref(refs/remotes, 네트워크 조회 없음)에 있을 때만 후보로 낸다.
+    머지 뒤 지워진 브랜치의 기록은 이어갈 곳이 없다. ref 조회가 실패하면 이 거르기를 하지 않는다.
+    """
+    root, worktrees, branches = layout["root"], [], None
+    if layout["vcs"] == "git":
+        result = git(root, layout["safe"], "worktree", "list", "--porcelain")
+        for record in result.stdout.split("\n\n") if result.returncode == 0 else ():
+            lines = record.splitlines()
+            path = next((line[9:] for line in lines if line.startswith("worktree ")), None)
+            branch = next((line[18:] for line in lines if line.startswith("branch refs/heads/")), None)
+            if path and "bare" not in lines:
+                worktrees.append((Path(path).resolve(), branch))
+        refs = git(root, layout["safe"], "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes")
+        if refs.returncode == 0:
+            branches = {ref[11:] for ref in refs.stdout.splitlines() if ref.startswith("refs/heads/")}
+            branches |= {ref.split("/", 3)[3] for ref in refs.stdout.splitlines()
+                         if ref.startswith("refs/remotes/") and ref.count("/") >= 3}
+    if not any(same_path(path, root) for path, _ in worktrees):
+        worktrees.insert(0, (root, None))
+    chosen = {}
+    for worktree, branch in worktrees:
+        for path in sorted((worktree / ".dev").glob("*/state.md")) if worktree.is_dir() else ():
+            if current is not None and same_path(path.parent, current):
+                continue
+            try:
+                fields = state_fields(path)
+            except (OSError, ValueError):
+                continue
+            if fields.get("pipeline") != "gx-tdd" or fields.get("status") != "in_progress":
+                continue
+            own = branch is not None and branch.replace("/", "-") == path.parent.name
+            name = fields.get("branch") or (branch if own else None)
+            if branches is not None and name not in branches:
+                continue
+            checkout =next((place for place, held in worktrees if name and held == name), None)
+            candidate = {"branch": name, "slug": path.parent.name, "worktree": str(checkout) if checkout else None,
+                         "state-file": str(path.resolve()), "run-id": fields.get("run-id"),
+                         "work-id": fields.get("work-id"), "goal": fields.get("goal", fields.get("args")),
+                         "stop-at": fields.get("stop-at"), "phase": fields.get("phase"),
+                         "current-step": fields.get("current-step")}
+            key = fields.get("run-id") or candidate["state-file"]
+            if key not in chosen or (own and not chosen[key][0]):
+                chosen[key] = (own, candidate)
+    return [candidate for _, candidate in chosen.values()]
+
+
+def requested_here(candidate, goal):
+    """새 구현 요청이 다른 위치의 진행 중 실행과 같은 일인지: 같은 목표 문장이거나 같은 W ID를 말한다."""
+    if not text(goal):
+        return False
+    words = re.findall(r"(?<![A-Za-z0-9_-])W[0-9]{2,}(?![A-Za-z0-9_-])", goal)
+    return candidate["goal"] == goal or (candidate["work-id"] is not None and candidate["work-id"] in words)
+
+
 def question_file(path, label):
     value = read_json(path, label)
     if not isinstance(value, dict):
@@ -407,7 +571,10 @@ def route(project_root, intent, stop_at=None, goal="", git_safe_directory=None, 
     layout = project_layout(project_root, git_safe_directory)
     root = layout["root"]
     state, state_file = active_state(layout, slug)
-    base = {"requested-goal": goal, "requested-stop-at": stop_at, "project-root": str(root)}
+    defaults, configured_profile, notices = workflow_defaults(load_settings(root))
+    base = {"requested-goal": goal, "requested-stop-at": stop_at, "project-root": str(root),
+            "defaults": defaults, "configured-model-profile": configured_profile,
+            "notices": update_notices() + notices}
     if not same_path(root, layout["requested"]):
         base["requested-project-root"] = str(layout["requested"])
     if slug is not None:
@@ -473,11 +640,20 @@ def route(project_root, intent, stop_at=None, goal="", git_safe_directory=None, 
                              "answered-run-id": receipt_run})
                 if selection is not None:
                     base["answered-selection"] = selection
-                if (text(goal) and receipt.get("goal") == goal and text(receipt_run)
-                        and any(isinstance(item, dict) and item.get("id") == ENTRY_QUESTION_ID
-                                for item in receipt.get("questions") or [])):
+                # 분할 질문은 영수증이 마지막 세트로 바뀌어도 같은 run의 답을 run_answers에 누적한다.
+                answers = run_answers(record)
+                if text(goal) and receipt.get("goal") == goal and text(receipt_run) and ENTRY_QUESTION_ID in answers:
                     base["entry-answer-recorded"] = True
                     proceed = is_proceed(selection)
+                    if proceed:
+                        choices, missing = followup_answers(answers)
+                        if choices:
+                            base["answered-choices"] = choices
+                        # 설정 기본값으로 정해진 항목은 둘째 세트에서 묻지 않으므로 빠진 답으로 보지 않는다.
+                        missing = [item for item in missing if FOLLOWUP_QUESTIONS[item][0] not in defaults]
+                        if missing:
+                            base["entry-followup-missing"] = missing
+                            proceed = False
 
     if mutating and (locked or retired or retired_ralph_request(goal)):
         action = "loop-active" if locked else "migration-required" if retired else "unsupported-request"
@@ -518,6 +694,26 @@ def route(project_root, intent, stop_at=None, goal="", git_safe_directory=None, 
             "candidate-work-directories": state.get("work-candidates", []), "requires-user-decision": True,
             "existing-pipeline": None, "phase": None,
         }
+    # 여기부터 현재 위치에 이어갈 실행이 없으면 새 실행(implement) 또는 no-active-run이다.
+    if (mutating and not active and layout["vcs"] in ("git", "svn") and slug is None
+            and not base.get("entry-answer-recorded")):
+        # 재개 요청은 다른 브랜치·워크트리의 진행 중 실행을 모두, 새 구현은 같은 목표·W ID인 것만 보여준다.
+        found = [item for item in elsewhere_candidates(layout, directory)
+                 if intent == "resume" or requested_here(item, goal)]
+        if found:
+            setup = setup_issue(root)
+            return {**base, "action": "resume-elsewhere", "skill": None, "read-only": True,
+                    "requires-user-decision": True, "goal": goal, "stop-at": None, "run-id": None,
+                    "state-file": state_file, "existing-pipeline": pipeline, "phase": state.get("phase"),
+                    "elsewhere-candidates": found, "setup-reason": setup[0] if setup else None}
+    setup = setup_issue(root) if mutating and not active and intent == "implement" else None
+    if setup:
+        return {**base, "action": "setup-required", "skill": None, "read-only": True,
+                "requires-user-decision": False, "goal": goal, "stop-at": stop_at or default, "run-id": None,
+                "state-file": state_file, "existing-pipeline": pipeline, "phase": state.get("phase"),
+                "setup-reason": setup[0],
+                "reason": f"{setup[1]}. 진입 질문 전에 멈춥니다. /oh-my-gx:gx-setup으로 설정과 프로젝트 타입을 "
+                          "등록한 뒤 같은 요청을 다시 하세요."}
     action, endpoint_change = intent, False
     if mutating:
         action = "resume" if active else ("no-active-run" if intent == "resume" else "implement")
@@ -553,7 +749,8 @@ def shared_field_issues(value):
             issues.append({"kind": "format", "path": key, "message": f"목록이 필요합니다 (현재 값 {shown(value[key])})"})
     rules = (("work-id", lambda item: isinstance(item, str) and WORK_ID.fullmatch(item), WORK_ID_RULE),
              ("execution-method", lambda item: item in EXECUTION_METHODS, "|".join(EXECUTION_METHODS)),
-             ("model-profile", lambda item: item in MODEL_PROFILES, "|".join(MODEL_PROFILES)))
+             ("model-profile", lambda item: item in MODEL_PROFILES, "|".join(MODEL_PROFILES)),
+             ("mode", lambda item: item in MODES, "|".join(MODES)))
     for key, valid, expected in rules:
         if value.get(key) is not None and not valid(value[key]):
             issues.append({"kind": "format", "path": key,
@@ -736,15 +933,35 @@ def scope_digest(value, path, kind, root, run_id, stop_at):
                 "run-id": run_id, "stop-at": stop_at})
 
 
-def scope_digest_v2(value, pointer, kind, run_id, stop_at, legacy_origin=False):
+def scope_digest_v2(value, pointer, kind, run_id, stop_at, legacy_origin=False, choices=None):
     """v2 입력 지문. 프로젝트 기준 POSIX 상대경로만 넣어 위치가 바뀌어도 같다.
 
     3.0.0(v1) 실행을 재발급한 인계는 legacy-run-id를 지문에 묶어 다른 인계가 v1 규칙을 빌려 쓰지 못하게 한다.
+    handoff --mode·--model-profile로 원문 밖에서 받은 진입 답(choices)도 지문에 묶는다. 없으면 이전 지문과 같다.
     """
     scope = {"schema-version": 2, "input": value, "file": pointer, "kind": kind, "run-id": run_id, "stop-at": stop_at}
     if legacy_origin:
         scope["legacy-run-id"] = True
+    if choices:
+        scope["entry-choices"] = choices
     return sha(scope)
+
+
+def entry_choices(value, mode, model_profile):
+    """handoff CLI로 받은 모드·프로파일 답. 원문(요청·외부 계획)에 같은 필드가 있으면 값이 같아야 하고,
+    원문에 없을 때만 인계에 덧붙인다(외부 계획 파일은 고치지 않는다)."""
+    choices = {}
+    for key, given, allowed in (("mode", mode, MODES), ("model-profile", model_profile, MODEL_PROFILES)):
+        if given is None:
+            continue
+        if given not in allowed:
+            raise field_error(key, given, "|".join(allowed))
+        if value.get(key) is None:
+            choices[key] = given
+        elif value[key] != given:
+            raise InputError(f"{key} 값 {given!r}이(가) 원문 파일의 {value[key]!r}와 다릅니다. 같은 값으로 지정하거나 "
+                             "옵션을 빼세요")
+    return choices
 
 
 def entry_digest(fingerprint, request_source, entry_source, question_set_id):
@@ -783,12 +1000,34 @@ def is_uuid(value):
         return False
 
 
+def run_answers(receipt):
+    """영수증의 같은 run 누적 답(run_answers, 분할 질문). 없으면 이번 질문세트의 답(answers)."""
+    for key in ("run_answers", "answers"):
+        value = receipt.get(key) if isinstance(receipt, dict) else None
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
 def entry_selection(receipt):
     """답변 영수증에 기록된 진입 질문 선택(문자열 목록). 없으면 None."""
-    answers = receipt.get("answers") if isinstance(receipt, dict) else None
-    entry = answers.get(ENTRY_QUESTION_ID) if isinstance(answers, dict) else None
+    entry = run_answers(receipt).get(ENTRY_QUESTION_ID)
     selected = entry.get("answers") if isinstance(entry, dict) else None
     return selected if isinstance(selected, list) and all(isinstance(item, str) for item in selected) else None
+
+
+def followup_answers(answers):
+    """둘째 세트(모드·프로파일) 답을 요청 파일 값으로 바꾼다. 반환: ({필드: 값}, 답이 없는 질문 id 목록)."""
+    choices, missing = {}, []
+    for identifier, (field, labels) in FOLLOWUP_QUESTIONS.items():
+        entry = answers.get(identifier)
+        chosen = entry.get("answers") if isinstance(entry, dict) else None
+        if not (isinstance(chosen, list) and chosen and isinstance(chosen[0], str)):
+            missing.append(identifier)
+            continue
+        label = re.sub(r"\s*\(Recommended\)\s*$", "", chosen[0]).strip()
+        choices[field] = labels.get(label, label)
+    return choices, missing
 
 
 def marker_selection(text, start):
@@ -834,11 +1073,17 @@ def question_status(root, identifier, run_id=None):
             except (OSError, ValueError):
                 continue
             if name == "pending-question.json":
-                pending = pending or record.get("question_set_id") == identifier
+                # 같은 run의 둘째 세트(모드·프로파일)가 미응답이면 진입 답도 아직 인계에 쓰지 않는다.
+                followup = run_id is not None and record.get("run_id") == run_id and any(
+                    isinstance(item, dict) and item.get("id") in FOLLOWUP_QUESTIONS for item in record.get("questions") or [])
+                pending = pending or record.get("question_set_id") == identifier or followup
                 continue
             recorded = record.get("question")
+            earlier = record.get("earlier_question_set_ids")
+            identifiers = [recorded.get("question_set_id") if isinstance(recorded, dict) else None,
+                           *(earlier if isinstance(earlier, list) else [])]
             if (run_id is not None and isinstance(recorded, dict)
-                    and recorded.get("question_set_id") == identifier and recorded.get("run_id") == run_id):
+                    and identifier in identifiers and recorded.get("run_id") == run_id):
                 answered, selection = True, entry_selection(record)
     if run_id is not None and not answered and not re.search(r"[\\/\x00-\x1f]|\.\.", run_id):
         decisions = dev / run_id / "decisions.md"
@@ -865,10 +1110,11 @@ def completed_state(root, run_id):
 
 
 def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry_approval_source,
-                  question_set_id, schema_version, legacy_origin=False):
+                  question_set_id, schema_version, legacy_origin=False, mode=None, model_profile=None):
     """인계 본문을 만든다. root는 확정된 프로젝트 루트(없으면 미리보기용 인계)다.
 
     legacy_origin은 3.0.0(v1) 실행을 재발급한 v2 인계다. run-id 형식과 요청 차단 규칙을 소급하지 않는다.
+    mode·model_profile은 handoff CLI로 받은 진입 답이다(v2만, entry_choices 규칙).
     """
     if stop_at not in ENDPOINTS:
         raise field_error("stop-at", stop_at, "|".join(ENDPOINTS))
@@ -885,6 +1131,9 @@ def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry
         issues += request_blocking_issues(value)
     if issues:
         raise InputError(issue_summary(label, issues), issues)
+    if legacy and (mode is not None or model_profile is not None):
+        raise InputError("v1 인계에는 모드·프로파일을 싣지 않습니다. reissue로 v2 인계를 발급하세요")
+    choices = entry_choices(value, mode, model_profile)
     if approval_source is not None and not text(approval_source):
         raise InputError("approval-source(최초 요청 근거)는 비어 있지 않은 문자열이어야 합니다")
     if entry_approval_source is not None and not text(entry_approval_source):
@@ -912,8 +1161,9 @@ def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry
         else:
             pending, answered, selection = question_status(root, question_set_id, None if legacy else identifier)
             if pending:
-                raise InputError(f"question-set-id {question_set_id!r}의 질문이 아직 응답되지 않았습니다"
-                                 "(pending-question.json). 실제 답변을 질문 helper answer로 기록한 뒤 다시 발급하세요")
+                raise InputError(f"question-set-id {question_set_id!r}의 질문(같은 run의 모드·프로파일 둘째 세트 포함)이 "
+                                 "아직 응답되지 않았습니다(pending-question.json). 실제 답변을 질문 helper answer로 "
+                                 "기록한 뒤 다시 발급하세요")
             if not legacy and not answered:
                 raise InputError(f"question-set-id {question_set_id!r}의 응답 기록을 찾을 수 없습니다. 이 run의 답변 영수증"
                                  f"(answered-question.json의 run_id {identifier!r})이나 `.dev/{identifier}/decisions.md`의 "
@@ -934,7 +1184,7 @@ def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry
         fingerprint = scope_digest(value, path, kind, root, identifier, stop_at)
     else:
         pointer = path.relative_to(root).as_posix() if root is not None else str(path)
-        fingerprint = scope_digest_v2(value, pointer, kind, identifier, stop_at, legacy_origin)
+        fingerprint = scope_digest_v2(value, pointer, kind, identifier, stop_at, legacy_origin, choices)
     ready = bool(entry_approval_source and root)
     entry_fingerprint = entry_digest(fingerprint, approval_source or entry_approval_source,
                                      entry_approval_source, question_set_id)
@@ -947,7 +1197,8 @@ def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry
     }
     if not legacy:
         result["execution-method"] = value.get("execution-method")
-        result["model-profile"] = value.get("model-profile")
+        result["model-profile"] = choices.get("model-profile", value.get("model-profile"))
+        result["mode"] = choices.get("mode", value.get("mode"))
     if legacy_origin:
         result["legacy-run-id"] = True
     result.update({
@@ -964,8 +1215,11 @@ def build_handoff(kind, source, root, *, stop_at, run_id, approval_source, entry
 
 def handoff(plan_path=None, stop_at="verify", run_id=None, approval_source=None, *,
             request_path=None, project_root=None, entry_approval_source=None, question_set_id=None,
-            git_safe_directory=None):
-    """새 인계(schema v2)를 만든다. 포인터·지문은 프로젝트 기준 상대경로다."""
+            git_safe_directory=None, mode=None, model_profile=None):
+    """새 인계(schema v2)를 만든다. 포인터·지문은 프로젝트 기준 상대경로다.
+
+    mode·model_profile은 진입 질문의 모드·프로파일 답이다. 기존 계획(--plan)처럼 원문에 실을 수 없을 때 쓴다.
+    """
     if stop_at not in ENDPOINTS:
         raise field_error("stop-at", stop_at, "|".join(ENDPOINTS))
     if (plan_path is None) == (request_path is None):
@@ -975,7 +1229,7 @@ def handoff(plan_path=None, stop_at="verify", run_id=None, approval_source=None,
     return build_handoff(kind, plan_path if kind == "plan" else request_path, root, stop_at=stop_at,
                          run_id=run_id, approval_source=approval_source,
                          entry_approval_source=entry_approval_source, question_set_id=question_set_id,
-                         schema_version=2)
+                         schema_version=2, mode=mode, model_profile=model_profile)
 
 
 def handoff_document(path):
@@ -1023,11 +1277,13 @@ def validate_handoff(handoff_path, project_root, git_safe_directory=None):
                                  entry_approval_source=entry.get("source"),
                                  question_set_id=entry.get("question-set-id"),
                                  schema_version=data["schema-version"],
-                                 legacy_origin=not legacy and data.get("legacy-run-id") is True)
+                                 legacy_origin=not legacy and data.get("legacy-run-id") is True,
+                                 mode=None if legacy else data.get("mode"),
+                                 model_profile=None if legacy else data.get("model-profile"))
         keys = ["input-sha256", "goal", "intent", "ready-for-tdd", "read-only", "execution-authorized", "work-id",
                 *LIST_FIELDS, "entry-approval", "approval"]
         if not legacy:
-            keys += ["execution-method", "model-profile", "plan-file", "request-file", "legacy-run-id"]
+            keys += ["execution-method", "model-profile", "mode", "plan-file", "request-file", "legacy-run-id"]
         for key in keys:
             if data.get(key) != expected.get(key):
                 raise InputError(f"승인한 요청·실행·종료점 또는 인계가 바뀌었습니다: {key}")
@@ -1065,6 +1321,7 @@ def reissue(handoff_path, project_root, stop_at=None, change_source=None, questi
     label = "계획 파일" if kind == "plan" else "요청 파일"
     # 3.0.0에서 시작한 실행(v1 또는 v1에서 재발급한 v2)은 v1의 run-id·요청 차단 규칙을 유지한다.
     legacy_origin = data["schema-version"] == 1 or data.get("legacy-run-id") is True
+    mode = model_profile = None
     if data["schema-version"] == 1:
         relative = legacy_relative(data[pointer], data.get("project-root"))
         value = read_json(project_file(root, relative, label), label)
@@ -1072,7 +1329,10 @@ def reissue(handoff_path, project_root, stop_at=None, change_source=None, questi
     else:
         relative = data[pointer]
         value = read_json(project_file(root, relative, label), label)
-        fingerprint = scope_digest_v2(value, relative, kind, data["run-id"], old_stop, legacy_origin)
+        # 인계에 실린 모드·프로파일 답(원문 밖에서 받은 값)을 그대로 이어 싣는다.
+        mode, model_profile = data.get("mode"), data.get("model-profile")
+        choices = entry_choices(value, mode, model_profile) if isinstance(value, dict) else {}
+        fingerprint = scope_digest_v2(value, relative, kind, data["run-id"], old_stop, legacy_origin, choices)
     if fingerprint != data.get("input-sha256"):
         raise InputError("인계 이후 요청·계획 내용이나 인계가 바뀌었습니다. 재발급이 아니라 결과를 다시 보여주고 "
                          "새 진입 질문으로 확인하세요")
@@ -1110,7 +1370,8 @@ def reissue(handoff_path, project_root, stop_at=None, change_source=None, questi
             dropped, identifier = identifier, None
     result = build_handoff(kind, relative, root, stop_at=new_stop, run_id=data["run-id"],
                            approval_source=approval.get("source"), entry_approval_source=entry_source,
-                           question_set_id=identifier, schema_version=2, legacy_origin=legacy_origin)
+                           question_set_id=identifier, schema_version=2, legacy_origin=legacy_origin,
+                           mode=mode, model_profile=model_profile)
     result["reissued-from-sha256"] = hashlib.sha256(raw).hexdigest()
     # 위치 변경: 기록된 project-root(v2는 표시용)나 v1 절대 포인터가 현재 위치와 다르다.
     result["relocated"] = data.get("project-root") != str(root) or (
@@ -1120,6 +1381,73 @@ def reissue(handoff_path, project_root, stop_at=None, change_source=None, questi
     if dropped is not None:
         result["dropped-question-set-id"] = dropped
     return result
+
+
+def cancel(project_root, reason, run_id=None, git_safe_directory=None, slug=None):
+    """현재 위치의 진행 중 gx-tdd 실행 state를 status: cancelled로 바꾸고 같은 디렉터리 decisions.md에 취소 근거를
+    덧붙인다. 다른 줄·파일(질문·보고서, decisions.md의 기존 내용)은 그대로 둔다. 구버전(gx-tdd 외·Ralph) 기록은 바꾸지 않는다.
+
+    주의: 사용자가 작업 취소를 실제로 답했을 때만 부른다. 추천·무응답·시간 경과·헤드리스 판단으로 부르지 않는다.
+    reason에는 그 실제 응답 근거를 넣는다(helper는 응답 사건의 진위를 증명하지 않는다). 호출 조건은 gx-work 문서가 정한다.
+    """
+    if not text(reason):
+        raise InputError("reason(작업 취소를 고른 실제 사용자 응답 근거)이 필요합니다")
+    if slug is not None and not safe_slug(slug):
+        raise field_error("slug", slug, "영문·숫자·._- 조합, setup이 정규화한 SVN 작업 slug")
+    layout = project_layout(project_root, git_safe_directory)
+    state, state_file = active_state(layout, slug)
+    if state.get("detached-head"):
+        raise InputError("브랜치가 없는 HEAD(detached)라 취소할 실행을 정할 수 없습니다")
+    if state.get("resume-candidates") or state.get("work-candidates"):
+        raise InputError("진행 중 실행 후보가 여럿입니다. 취소할 작업의 slug를 --slug로 지정하세요")
+    if state_file is None or state.get("status") != "in_progress":
+        raise InputError(f"취소할 진행 중 실행이 없습니다(state {state_file or '없음'}, status "
+                         f"{state.get('status') or '없음'}). 진행 중(in_progress)인 실행만 취소합니다")
+    # route의 구버전 판정(pipeline·flags의 Ralph 흔적)과 같은 규칙이다. 구버전 기록은 고치지 않고 새 범위로 빠져나온다.
+    if state.get("pipeline") != "gx-tdd" or re.search(r"(?<![\w-])(?:--)?ralph(?![\w-])", state.get("flags", ""), re.I):
+        raise InputError(f"gx-tdd 실행만 취소합니다(pipeline {state.get('pipeline') or '없음'}, flags "
+                         f"{state.get('flags') or '없음'}). 구버전 기록은 바꾸지 않고 그대로 둡니다")
+    if run_id is not None and state.get("run-id") != run_id:
+        raise InputError(f"run-id {run_id!r}이(가) 현재 실행의 run-id {state.get('run-id')!r}와 다릅니다. 취소하지 않습니다")
+    path = Path(state_file)
+    if (path.parent / "ralph.lock").exists():
+        raise InputError("ralph.lock이 있어 state를 바꾸지 않습니다. 잠금·러너는 사용자가 먼저 정리합니다")
+    raw = path.read_bytes()
+    lines = read_text(path, "state.md").splitlines(keepends=True)
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    for index, line in enumerate(lines):
+        match = STATE_KEY.match(line.rstrip("\r\n"))
+        if match and match.group(1) == "status":
+            # state_fields가 읽는 첫 최상위 status 줄만 바꾸고 취소 시각·근거를 바로 뒤에 덧붙인다.
+            if scalar(match.group(2)) != "in_progress":
+                raise InputError(f"state.md의 첫 status 줄이 in_progress가 아닙니다: {path}. 손으로 확인하세요")
+            ending = line[len(line.rstrip("\r\n")):] or "\n"
+            lines[index:index + 1] = ["status: cancelled" + ending, f"cancelled-at: {now}" + ending,
+                                      "cancel-source: " + json.dumps(reason, ensure_ascii=False) + ending]
+            break
+    else:
+        raise InputError(f"state.md에서 최상위 status 줄을 찾지 못했습니다: {path}")
+    content = ("﻿" if raw.startswith(b"\xef\xbb\xbf") else "") + "".join(lines)
+    # 취소 근거를 state보다 먼저 남긴다(pipeline-state cancelled 수명주기). 헤더는 질문 helper의 decisions.md와 같다.
+    decisions = path.parent / "decisions.md"
+    note = (f"\n## {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} · 작업 취소\n\n"
+            f"**결정.** 작업 취소 (run-id {state.get('run-id') or '없음'}, phase {state.get('phase') or '없음'})\n\n"
+            f"**근거.** {reason}\n")
+    with open(decisions, "a", encoding="utf-8", newline="\n") as stream:
+        stream.write(note if decisions.stat().st_size else "# 의사결정 기록\n\n확인 질문과 선택을 기록한다.\n" + note)
+    descriptor, temporary = tempfile.mkstemp(prefix=".state-", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
+            stream.write(content)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return {"status": "cancelled", "previous-status": "in_progress", "state-file": str(path),
+            "run-id": state.get("run-id"), "goal": state.get("goal", state.get("args")),
+            "pipeline": state.get("pipeline"), "phase": state.get("phase"), "cancelled-at": now,
+            "reason": reason, "reason-provenance": "caller_supplied; user_event_not_verified",
+            "decisions-file": str(decisions)}
 
 
 def build_parser():
@@ -1145,6 +1473,8 @@ def build_parser():
     transfer.add_argument("--entry-approval-source")
     transfer.add_argument("--question-set-id")
     transfer.add_argument("--git-safe-directory")
+    transfer.add_argument("--mode", choices=MODES)
+    transfer.add_argument("--model-profile", choices=MODEL_PROFILES)
     recheck = commands.add_parser("validate-handoff")
     recheck.add_argument("--handoff", required=True)
     recheck.add_argument("--project-root", required=True)
@@ -1156,6 +1486,13 @@ def build_parser():
     again.add_argument("--change-source")
     again.add_argument("--question-set-id")
     again.add_argument("--git-safe-directory")
+    # 실제 사용자 취소 응답이 있을 때만 쓴다(cancel 함수 주석).
+    stop = commands.add_parser("cancel")
+    stop.add_argument("--project-root", required=True)
+    stop.add_argument("--reason", required=True)
+    stop.add_argument("--run-id")
+    stop.add_argument("--git-safe-directory")
+    stop.add_argument("--slug")
     return parser
 
 
@@ -1177,11 +1514,14 @@ def main(argv=None):
         elif command == "reissue":
             result = reissue(args.handoff, args.project_root, args.stop_at, args.change_source,
                              args.question_set_id, args.git_safe_directory)
+        elif command == "cancel":
+            result = cancel(args.project_root, args.reason, args.run_id, args.git_safe_directory, args.slug)
         else:
             result = handoff(args.plan, args.stop_at, args.run_id, args.approval_source,
                              request_path=args.request, project_root=args.project_root,
                              entry_approval_source=args.entry_approval_source,
-                             question_set_id=args.question_set_id, git_safe_directory=args.git_safe_directory)
+                             question_set_id=args.question_set_id, git_safe_directory=args.git_safe_directory,
+                             mode=args.mode, model_profile=args.model_profile)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return code
     except (OSError, ValueError, TypeError, KeyError, RecursionError) as error:

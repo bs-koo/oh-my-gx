@@ -106,6 +106,17 @@ class TestIntegrityTests(unittest.TestCase):
         self.write("apps/api/package.json", '{"scripts":{"test":"echo pass"}}')
         self.assertFalse(self.helper.verify(self.root, self.baseline, before["baseline_sha256"])["unchanged"])
 
+    def test_path_detect_marker_resolves_the_project_root_for_custom_tests(self):
+        self.write("backend/build.gradle.kts", "")
+        self.write("backend/scenarios/login.case", "assert\n")
+        self.write("api/backend/build.gradle.kts", "")
+        self.write("api/backend/scenarios/other.case", "assert\n")
+        self.write(".claude/config.json", json.dumps({"projectTypes": {"java-spring": {
+            "detect": ["backend/build.gradle.kts"], "testSelection": {"tests": ["scenarios/*.case"]}}}}))
+        files = self.capture()["files"]
+        self.assertIn("backend/scenarios/login.case", files)
+        self.assertNotIn("api/backend/scenarios/other.case", files)
+
     def test_runner_configuration_alone_is_not_a_test_inventory(self):
         for path in ("test/current.test.js", "test/existing.test.js", "checks/한글.custom"):
             (self.root / path).unlink()

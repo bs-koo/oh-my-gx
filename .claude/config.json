@@ -1,6 +1,12 @@
 {
   "vcs": "",
   "modelProfile": "standard",
+  "workflowDefaults": {
+    "stopAt": "",
+    "mode": "",
+    "modelProfile": "",
+    "executionMethod": ""
+  },
   "codex": {
     "modelTiers": {}
   },
@@ -22,6 +28,7 @@
     ],
     "branchFormat": "{type}/{description}",
     "commitFormat": "{type}: {message}",
+    "baseBranch": "",
     "prTitleMapping": {
       "feat": "FEATURE",
       "fix": "BUGFIX",
@@ -47,8 +54,13 @@
     "node_modules/",
     "dist/"
   ],
+  "devSharing": "",
+  "devArtifacts": "commit",
+  "documentChecks": {
+    "customFormatPaths": []
+  },
   "timeouts": {
-    "build": 300000,
+    "build": 600000,
     "network": 120000,
     "install": 300000
   },
@@ -85,7 +97,8 @@
   "notifications": {
     "googleChat": {
       "enabled": false,
-      "webhookUrl": ""
+      "webhookUrl": "",
+      "declined": false
     }
   },
   "contextLimits": {

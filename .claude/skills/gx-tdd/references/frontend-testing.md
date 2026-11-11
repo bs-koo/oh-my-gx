@@ -194,6 +194,7 @@ RED를 통과시키는 최소 구현에는 클래스도 레이아웃도 없다. 
 ```json
 "projectTypes": {
   "fullstack": {
+    "roots": ["."],
     "detect": ["build.gradle.kts", "frontend/package.json"],
     "build": "./gradlew clean build -x test && pnpm --dir frontend build",
     "test":  "./gradlew test && pnpm --dir frontend test",
@@ -203,12 +204,13 @@ RED를 통과시키는 최소 구현에는 클래스도 레이아웃도 없다. 
 }
 ```
 
-주의할 점 넷:
+주의할 점 다섯:
 
 1. **`detect`가 없으면 타입 감지가 실패한다.** 감지 실패 시 verify 게이트는 fail-closed로 차단된다 — 조용히 통과하지 않는다.
 2. **`&&`로 잇는다.** 한쪽이 실패하면 exit code가 살아서 게이트가 정상 차단된다. `;`로 이으면 뒤 명령의 결과만 남아 앞의 실패를 삼킨다.
 3. **`cd A && ...` 대신 도구의 디렉토리 옵션을 쓴다** (`pnpm --dir`, `npm --prefix`, `make -C`). `cd`로 시작하는 명령은 `allowed-tools`의 prefix 패턴과 매칭되지 않아 매번 권한 프롬프트가 뜬다.
 4. **`warningPattern`은 하나뿐이다.** `warn`으로 두면 `warning`도 함께 잡히므로 양쪽에 무난하다. 경고 비교는 근사치이며, 차단 전에 로그 원문 대조 단계가 있어 오차단으로 이어지지 않는다.
+5. **`roots: ["."]`로 실행 위치를 저장소 루트에 고정한다.** `/`가 든 detect(`frontend/package.json`)는 roots가 없으면 그 디렉토리(`frontend`)를 별도 프로젝트로 감지해 루트용 복합 명령을 거기서 한 번 더 돌린다. 레이어마다 타입을 나눠 등록하는 방법은 gx-setup 힌트 카탈로그의 "복합 타입" 절을 따른다.
 
 태스크는 순차 실행되므로 FE·BE 태스크가 한 파이프라인에 모이면 그만큼 오래 걸린다. 태스크가 8개를 넘어가면 백엔드·프론트 파이프라인을 나눠 도는 편이 실질적으로 빠르다.
 

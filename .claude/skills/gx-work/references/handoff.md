@@ -28,6 +28,7 @@ gx-work가 실제 TDD 진입 답변을 받았거나 gx-tdd가 `--from-plan`·`--
   "work-id": "W118",
   "execution-method": null,
   "model-profile": null,
+  "mode": null,
   "input-sha256": "요청/계획 파일 내용과 종류·상대경로·run-id·종료점을 묶은 입력 지문",
   "approval": {"status": "approved", "source": "현재 사용자의 구현 요청을 식별하는 근거"},
   "entry-approval": {
@@ -49,12 +50,12 @@ gx-work가 실제 TDD 진입 답변을 받았거나 gx-tdd가 `--from-plan`·`--
 
 - 새 인계는 `schema-version: 2`다. 경로 포인터(`request-file`·`plan-file`, gx-tdd state의 `handoff-file`)와 지문 계산은 **프로젝트 루트 기준 POSIX 상대경로**를 쓰고 절대 루트를 지문에 넣지 않는다. `project-root`는 표시용이다. 그래서 브랜치 이름 변경·다른 PC·다른 워크트리에서도 같은 인계를 검증할 수 있다.
 - `input-sha256`은 **입력 내용**의 지문이고, `entry-approval.scope-sha256`은 그 지문에 실제 승인 근거를 묶은 **승인** 지문이다. 입력이 바뀌면 둘 다, 승인 근거만 바뀌면 `scope-sha256`만 달라진다.
-- 선택 필드: `work-id`(`W` + 두 자리 이상 ASCII 숫자), `execution-method`(`session`|`subagents`), `model-profile`(`standard`|`eco`). 사용자가 요청에서 밝힌 값만 요청 파일 최상위에 넣는다. 쓰임새는 tdd-entry.md의 "인계 이후의 책임"을 따른다.
+- 선택 필드: `work-id`(`W` + 두 자리 이상 ASCII 숫자), `execution-method`(`session`|`subagents`), `model-profile`(`standard`|`eco`), `mode`(`all`|`core`). 사용자가 요청에서 밝혔거나 진입 질문에서 답한 값(설정 `workflowDefaults`로 정한 값 포함)만 요청 파일 최상위에 넣는다. 전체·표준으로 답했어도 `all`·`standard`로 넣어 재진입 때 답이 바뀌지 않게 한다. 기존 계획 인계는 계획 파일을 고치지 않고 `handoff --mode`·`--model-profile`로 싣는다(원문에 같은 필드가 있으면 같은 값이어야 한다). 이 값은 입력 지문에 묶이고 `validate-handoff`가 다시 대조한다. 쓰임새는 tdd-entry.md의 "인계 이후의 책임"을 따른다.
 - v1 인계(`schema-version: 1`, 절대경로 포인터)도 `validate-handoff`가 그대로 검증한다. v1을 다른 경로에서 재개해 지문이 맞지 않으면 아래 `reissue`로 v2를 다시 발급한다.
 
 `approval.status`는 `approved` 또는 `unconfirmed`이며 **현재 사용자가 요청한 작업 범위**에 대한 값이다. 외부 문서 자체의 승인 여부를 복사하지 않는다. `entry-approval`은 제시한 범위·관련 문서/FR/W·종료점으로 gx-tdd에 진입하겠다는 실제 답변만 기록한다. 같은 run·범위의 유효한 진입 승인·내부 선택·모드·모델은 다시 묻지 않는다. 제품 선택·범위·위험의 미정과 충돌은 계속 질문한다.
 
-구체 구현계획이 없는 새 요청은 `handoff-kind: request`와 `request-file`을 쓴다. 요청 파일의 최소 내용은 `{goal, sources?, decisions?, unresolved?, requirements?, context-paths?, work-id?, execution-method?, model-profile?}`이며 `units`·Given-When-Then AC를 강제하지 않는다. gx-tdd가 PRD·설계·T태스크 구현계획을 만든다. 이미 구체 계획이 있을 때만 [계획 계약](planning.md)의 정규화 JSON을 `handoff-kind: plan`·`plan-file`로 재사용한다. 새 요청에 계획 파일을 만들기 위한 선행 구현계획 작성을 추가하지 않는다.
+구체 구현계획이 없는 새 요청은 `handoff-kind: request`와 `request-file`을 쓴다. 요청 파일의 최소 내용은 `{goal, sources?, decisions?, unresolved?, requirements?, context-paths?, work-id?, execution-method?, model-profile?, mode?}`이며 `units`·Given-When-Then AC를 강제하지 않는다. gx-tdd가 PRD·설계·T태스크 구현계획을 만든다. 이미 구체 계획이 있을 때만 [계획 계약](planning.md)의 정규화 JSON을 `handoff-kind: plan`·`plan-file`로 재사용한다. 새 요청에 계획 파일을 만들기 위한 선행 구현계획 작성을 추가하지 않는다.
 
 **요청 인계의 차단 규칙**: v2 요청 인계는 `unresolved`에 `blocking: true` 항목이나 `blocking` 값이 없는 항목이 있으면 helper가 exit 2와 `ready-for-tdd: false`, 이유 목록(`issues`)을 돌려준다. 결정 충돌은 gx-context intake와 같은 기준으로만 차단한다. `status: explicit`이고 source와 값이 있는 결정끼리 같은 topic의 값이 다르고, 그중 하나라도 impact가 scope·behavior·architecture·acceptance·removal일 때다. metadata 충돌, `status: unresolved`인 결정, 위임 추론과의 차이는 차단하지 않는다(필요하면 intake가 `unresolved`로 올린다). 그 항목을 실제 답변으로 해소해 요청 파일을 고친 뒤 다시 발급한다. 차단 미정을 남긴 채 진입 답변만으로 진행하지 않는다.
 
@@ -66,7 +67,7 @@ gx-work가 실제 TDD 진입 답변을 받았거나 gx-tdd가 `--from-plan`·`--
 | `commit` | verify와 커밋 게이트를 통과해 요청한 커밋 후 종료 |
 | `pr` | verify·커밋·PR 게이트를 통과하여 요청한 PR 생성 후 종료 |
 
-별도 지정 없는 새 구현의 stop-at는 `verify`다. 기존 실행 재개는 state의 종료점을 복원한다. 종료점 변경은 SKILL.md의 **종료점 변경** 절차(결정 기록 → state 갱신 → `reissue`)를 따른다. 기본값이나 외부 문서의 지시로 종료점을 확장하지 않는다.
+별도 지정 없는 새 구현의 stop-at는 `verify`다(gx-work는 진입 질문으로 정하며 추천은 `pr`, SVN은 `verify`). 기존 실행 재개는 state의 종료점을 복원한다. 종료점 변경은 SKILL.md의 **종료점 변경** 절차(결정 기록 → state 갱신 → `reissue`)를 따른다. 기본값이나 외부 문서의 지시로 종료점을 확장하지 않는다.
 
 ## 파일 생성과 gx-tdd 전달
 
@@ -91,16 +92,19 @@ gx-work가 실제 TDD 진입 답변을 받았거나 gx-tdd가 `--from-plan`·`--
 
 ## helper와 입력 검증
 
-자연어 판단과 실제 응답 확인은 하네스가 하고 helper는 확정한 의도·데이터·진입 근거의 정합성만 검사한다. helper 자체는 파일을 쓰거나 테스트 명령을 실행하지 않는다. 아래 `python`은 Windows PowerShell 기준이며 POSIX에서는 `python3`를 쓴다. 플러그인 루트는 SKILL.md의 규칙으로 확인한다.
+자연어 판단과 실제 응답 확인은 하네스가 하고 helper는 확정한 의도·데이터·진입 근거의 정합성만 검사한다. helper는 `cancel`(현재 위치 state의 `status` 줄을 바꾸고 같은 디렉토리 `decisions.md`에 취소 근거를 덧붙인다) 외에는 파일을 쓰거나 테스트 명령을 실행하지 않는다. 아래 `python`은 Windows PowerShell 기준이며 POSIX에서는 `python3`를 쓴다. 플러그인 루트는 SKILL.md의 규칙으로 확인한다.
 
 ```text
 python <plugin-root>/scripts/gx-work.py route --project-root <project> --intent plan [--git-safe-directory <project>] [--slug <SVN 작업 slug>]
 python <plugin-root>/scripts/gx-work.py validate-plan --plan <plan.json>
 python <plugin-root>/scripts/gx-work.py handoff --request .dev/<run-id>/intake.json --project-root <project> --stop-at pr --run-id <run-id> --approval-source <최초 요청 근거> --entry-approval-source <실제 TDD 진입 응답 근거> [--question-set-id <Codex helper 반환값>] [--git-safe-directory <project>]
-python <plugin-root>/scripts/gx-work.py handoff --plan .dev/<run-id>/plan.json --project-root <project> --stop-at verify --run-id <run-id> --approval-source <최초 요청 근거> --entry-approval-source <실제 TDD 진입 응답 근거> [--git-safe-directory <project>]
+python <plugin-root>/scripts/gx-work.py handoff --plan .dev/<run-id>/plan.json --project-root <project> --stop-at verify --run-id <run-id> --approval-source <최초 요청 근거> --entry-approval-source <실제 TDD 진입 응답 근거> [--mode all|core] [--model-profile standard|eco] [--question-set-id <Codex helper 반환값>] [--git-safe-directory <project>]
 python <plugin-root>/scripts/gx-work.py validate-handoff --handoff .dev/<run-id>/handoff.json --project-root <project> [--git-safe-directory <project>]
 python <plugin-root>/scripts/gx-work.py reissue --handoff .dev/<run-id>/handoff.json --project-root <project> [--stop-at verify|commit|pr] [--change-source "<실제 사용자 결정 근거>"] [--question-set-id <id>] [--git-safe-directory <project>]
+python <plugin-root>/scripts/gx-work.py cancel --project-root <project> --reason "<작업 취소를 고른 실제 사용자 응답 근거>" [--run-id <현재 run-id>] [--git-safe-directory <project>] [--slug <SVN 작업 slug>]
 ```
+
+`handoff --mode`·`--model-profile`은 원문 파일에 진입 답을 실을 수 없는 기존 계획 인계용이며(`--request`에도 쓸 수 있다) 원문에 그 필드가 없을 때만 인계에 싣고 지문에 묶는다. `reissue`는 인계에 실린 값을 그대로 이어 싣는다. `cancel`은 route와 같은 규칙의 현재 위치 state(git은 현재 브랜치, SVN은 `--slug` > `.dev/.active`)의 첫 `status: in_progress`를 `status: cancelled`로 바꾸고 `cancelled-at`·`cancel-source`를 남긴다. 그보다 먼저 같은 디렉토리 `decisions.md`에 `작업 취소` 절(run-id·phase·근거)을 덧붙이고 결과 `decisions-file`로 알린다. 다른 기록은 바꾸지 않는다. 실제 사용자 응답 없이 부르지 않으며 진행 중 실행 없음·`pipeline`이 `gx-tdd`가 아님·flags의 Ralph 흔적(`--ralph`·`RALPH`)·`--run-id` 불일치·`ralph.lock`·detached HEAD·SVN 후보 여럿이면 파일을 바꾸지 않고 exit 2다.
 
 helper는 내부에서 git으로 루트·브랜치를 확인한다(v1 인계 검증은 git을 부르지 않는다). Codex 샌드박스처럼 git 소유권 불일치(dubious ownership)가 나는 환경에서는 확인된 프로젝트 루트를 `--git-safe-directory`로 넘긴다. helper는 project-root와 같은 그 경로 하나에만 명령별 `safe.directory`를 적용하고 전역 설정을 바꾸지 않는다. `handoff`의 `--request`·`--plan` 상대경로는 프로젝트 루트 기준으로 해석한다(`validate-plan`의 `--plan`은 현재 디렉토리 기준).
 

@@ -48,10 +48,11 @@ gx-work 인계: `Read("../references/plan-handoff.md")`대로 `validate-handoff 
 `MODEL_PROFILE` 첫 매칭:
 1. 플래그: `--eco` → `eco`, `--standard` → `standard`
 2. gx-work 인계의 `model-profile` (`standard`/`eco`)
-3. ARGS[0] 자연어(gx-work 인계는 제외): `에코 모드`/`에코로`/`절약 모드` 포함 → `eco` (단독 명사 `에코`는 오탐 방지를 위해 제외)
-4. 의도 파싱 Step 3에서 프로파일 질문에 답한 경우 → 그 답변 (표준 → `standard`, 에코 → `eco`)
-5. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`)
-6. 그 외 (미설정·빈 값) → `standard`
+3. ARGS[0] 자연어(gx-work 인계는 제외): `에코 모드`/`에코로`/`절약 모드` 포함 → `eco`, `표준으로`/`표준 모드` 포함 → `standard` (단독 명사 `에코`·`표준`은 오탐 방지를 위해 제외)
+4. 핵심 모드 → `standard` (묻지 않는다. 프로파일 차이가 없어 5·6의 설정값도 쓰지 않는다). 그 밖에 의도 파싱 Step 3에서 프로파일 질문에 답한 경우 → 그 답변 (표준 → `standard`, 에코 → `eco`)
+5. `.claude/config.json`의 `workflowDefaults.modelProfile` 값 (`"eco"` / `"standard"`, 사용자가 저장한 기본값)
+6. `.claude/config.json`의 `"modelProfile"` 값 (`"eco"` / `"standard"`)
+7. 그 외 (미설정·빈 값) → `standard`
 
 Codex는 [모델 정책](../../gx-work/references/codex-models.md)의 배정·대체 사유를 표시한다. 아래는 Claude Code 전용이다.
 
@@ -77,9 +78,10 @@ Step 7에서 state.md `model-profile`에 기록한다. 디스패치는 SKILL.md 
 
 **Iron Law (자동 호출 금지)**: gx-setup은 사용자가 실행하는 명령이다(모델 호출 비활성). `Skill`로 호출하거나 설정을 추측해 만들지 않는다.
 
-- **부재 시**: 아래를 안내하고 중단한다(브랜치·stash·state 변경 없음). 설정 후 같은 요청(인계면 같은 `--handoff`)을 다시 실행하면 처음부터 진행한다.
+- **부재 시**: 아래를 안내하고 중단한다(브랜치·stash·state 변경 없음). `{재개 명령}`은 실제 값으로 채운다. 인계면 `/oh-my-gx:gx-tdd "<목표>" --handoff .dev/<run-id>/handoff.json`(진입 답을 다시 묻지 않음), 아니면 이번 호출 원문 그대로다.
   ```
-  ".claude/config.json이 없습니다. /oh-my-gx:gx-setup을 실행해 설정을 만든 뒤 같은 요청을 다시 실행해주세요.
+  ".claude/config.json이 없습니다. /oh-my-gx:gx-setup을 실행해 설정을 만든 뒤 아래 명령으로 다시 시작해주세요.
+  {재개 명령}
   수동으로 만들려면 플러그인의 .claude/skills/gx-setup/references/config.template.json을 .claude/config.json으로 복사하고 vcs·projectTypes를 맞춥니다."
   ```
 - **존재 시**: Read하여 `vcs`, `modelProfile`, `projectTypes`, `sensitiveFilePatterns`, `buildArtifactPatterns`, `timeouts`, `contextLimits`를 변수에 로드한다.

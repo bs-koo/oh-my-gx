@@ -99,6 +99,16 @@ Q2는 인증된 실제 소비 프로젝트의 Codex 세션에서 두 질문을 �
 | I4 | 유효한 동일 승인/답변 재개, 이후 새 요청과 승인 정책 충돌 | 같은 범위는 재인터뷰 없이 재개; 새 충돌만 질문; 변경 시 이력 보존·승인 무효화·재승인 | 미실행 |
 | I5 | HANDOFF_READ_ONLY·저장 금지, 단독 design/implement의 중요 미정, 비차단 가정 | read-only는 확인된 요청 문서만 `.dev/<run-id>/`에 저장하고 state/pending/decisions 무쓰기(Claude 결정 기록 훅 기록은 예외), 저장 금지는 무쓰기; 단독 진입도 미정 차단; 비차단만 남으면 이유를 기록하고 기존 승인 경로 유지 | 미실행 |
 
+## 진입 질문 둘째 세트·확인 생략·작업 취소 후속 검증 (3.2.0, 2026-11-11)
+
+로컬 helper 회귀(`codex-question.py` 둘째 세트 등록 조건, `gx-work.py cancel`, `codex_hook.py`의 `GX_HOOK_HARNESS=codex` 전달)와 `scripts/hook-tests.sh`는 실제 앱의 질문 표시·답변 capture·훅 신뢰를 대체하지 않는다. 이번 변경에서는 아래 실제 세션을 실행하지 않았다.
+
+| ID | 입력·환경 | 필수 증거 | 상태 |
+|---|---|---|---|
+| Q10 | 설정 `workflowDefaults`가 빈 소비 프로젝트에서 gx-work 기능 요청, 진입 질문 4개가 남음 | 첫 세트는 `gx_work_tdd_entry`·`gx_work_stop_at`만 등록·표시; 진입 답이 `gx-tdd로 진행`일 때만 둘째 세트 `gx_work_mode`·`gx_work_model_profile`(선택지 `전체`/`핵심`, `표준`/`에코`) 등록, `문서·범위 보완`/`여기서 종료`면 둘째 세트 없음; 둘째 세트 미응답이면 `handoff` exit 2; 둘째 세트 전에 턴이 끝난 뒤 재진입하면 진입 답은 다시 묻지 않고 route `entry-followup-missing` 항목만 묻기; 인계 `mode`·`model-profile`이 실제 답과 같고 영수증 `run_answers`에 두 세트가 누적됨 | 미실행 |
+| H5 | 신뢰된 GX 훅, verify 미통과 state에서 (a) 같은 트리의 `.dev/{slug}/verify-risk-accepted`, (b) 진행 중 베이스 병합(MERGE_HEAD), (c) 훅 입력에 `permission_mode: bypassPermissions`가 든 JSON fixture로 커밋 시도 | 어댑터가 `permission_mode`를 지우고 `GX_HOOK_HARNESS=codex`를 넘겨 세 경우 모두 deny event와 이유; HEAD/index 불변; Claude Code 전용 확인 생략(문맥 경고 allow)이 나타나지 않음; (a)(b)는 실제 세션, (c)는 fixture로 기록 | 미실행 |
+| W8 | 진행 중 gx-tdd 실행(verify 미통과)에서 "이 작업 그만둘래" | `작업 취소`/`계속 진행` 질문이 등록·표시되고 실제 답 전 `gx-work.py cancel` 미실행; 취소 답 뒤 exit 0과 state `status: cancelled`·`cancelled-at`·`cancel-source`, 다른 기록 불변; 이후 일반 커밋이 verify 게이트에 막히지 않음; `계속 진행`·무응답·async ack로는 state 불변 | 미실행 |
+
 ## 보호 훅·커밋
 
 실제 hook 로드는 임시 테스트 hook에서 무해한 `Write-Output GX_HOOK_SENTINEL` 또는 `printf GX_HOOK_SENTINEL`을 **deny**하는 것으로 확인한다. 배포 hook에는 sentinel 규칙을 넣지 않는다. `/hooks`에서 테스트 정의를 확인·신뢰한 후 무해한 명령만 실행한다. 강제 push는 JSON fixture로만 테스트한다. 각 시나리오는 격리된 임시 프로젝트에서 HEAD/index 해시를 기록한다.

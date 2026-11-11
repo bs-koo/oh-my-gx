@@ -823,7 +823,7 @@
 
     <ol class="work-journey">
       <li><span class="journey-number">01</span><h3>의도와 상태 파악</h3><p>원하는 결과, 기존 문서와 코드, 중단한 작업을 확인합니다. 필요한 조사·문서 스킬을 선택합니다.</p><span class="journey-owner">gx-work · 필요한 전문 스킬</span></li>
-      <li><span class="journey-number">02</span><h3>다음 단계 확인</h3><p>결과와 추천 작업을 보여줍니다. 개발이 필요하면 범위·관련 문서·종료점을 제시하고 실제 답변을 기다립니다.</p><span class="journey-owner">사용자 결정</span></li>
+      <li><span class="journey-number">02</span><h3>다음 단계 확인</h3><p>결과와 추천 작업을 보여줍니다. 개발이 필요하면 범위·관련 문서를 제시하고 종료점·모드·프로파일을 추천과 함께 물은 뒤 실제 답변을 기다립니다. 요청·설정으로 정한 항목, SVN의 종료점, 핵심 모드의 프로파일은 묻지 않습니다.</p><span class="journey-owner">사용자 결정</span></li>
       <li><span class="journey-number">03</span><h3>구체 계획과 개발</h3><p>gx-tdd가 PRD·설계·구현계획을 만듭니다. 계획 검토와 실행 방식 선택 후 TDD로 구현합니다.</p><span class="journey-owner">gx-tdd · 현재 세션 또는 구현 서브에이전트</span></li>
       <li><span class="journey-number">04</span><h3>검증과 요청한 완료점</h3><p>리뷰와 문서 정합성을 확인하고 영향 범위에 맞게 검증합니다. 커밋·PR은 요청한 경우에 진행합니다.</p><span class="journey-owner">리뷰 · gx-verify · 커밋·PR</span></li>
     </ol>
@@ -1107,7 +1107,7 @@
     <div class="callout-coral">
       <p class="eyebrow">안전장치</p>
       <h2 class="display-md">요청 범위와 검증 근거를 지킵니다</h2>
-      <p>기본 완료점은 검증입니다. 커밋·PR·머지는 각각 사용자 요청에 따라 수행하며, 훅은 설치와 신뢰 상태를 확인해야 작동 여부를 판단할 수 있습니다.</p>
+      <p>gx-work는 개발 진입 때 완료점을 묻고 PR까지를 추천하며(SVN은 검증까지), 직접 gx-tdd 호출은 완료점을 묻지 않고 기본 검증까지 진행하며 정해지지 않은 모드·프로파일만 묻습니다. 커밋·PR·머지는 각각 사용자 결정에 따라 수행하며, 훅은 설치와 신뢰 상태를 확인해야 작동 여부를 판단할 수 있습니다.</p>
       <div class="safeguard-grid">
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -1119,7 +1119,7 @@
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>브랜치 확인</strong> — 커밋 스킬은 main·master·develop과 detached HEAD에서 중단합니다.</span>
+          <span class="sg-text"><strong>브랜치 확인</strong> — 커밋 스킬은 main·master·develop에서 작업 브랜치를 만들어 옮길지 묻고, detached HEAD에서는 중단합니다.</span>
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -1131,7 +1131,7 @@
         </div>
         <div class="safeguard">
           <span class="check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="sg-text"><strong>완료 검증</strong> — 현재 코드와 검증 근거가 맞지 않으면 완료·커밋·PR 진행을 보류합니다.</span>
+          <span class="sg-text"><strong>완료 검증</strong> — 현재 코드와 검증 근거가 맞지 않으면 완료·커밋·PR 진행을 보류합니다. Claude Code는 커밋 전에 한 번만 묻고(bypassPermissions 모드는 경고만), Codex는 검증 전까지 멈춥니다.</span>
         </div>
       </div>
     </div>
@@ -1170,7 +1170,7 @@ oh-my-gx:gx-work로 로그인 입력 검증의 계획만 세워줘.
 oh-my-gx:gx-work로 이 계획대로 구현하고 검증해줘.
 oh-my-gx:gx-cross-review --advisor native로 변경사항을 검토해줘.
 oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code></pre></div>
-      <p>기본 완료점은 verify입니다. 검증된 변경의 커밋·PR만 필요하면 <code>oh-my-gx:gx-commit</code>, <code>oh-my-gx:gx-pull-request</code>를 직접 요청할 수 있습니다. 작업 브랜치와 환경별 실행 권한은 각 스킬에서 확인합니다.</p>
+      <p>gx-work는 개발 진입 때 완료점을 묻고 PR까지를 추천합니다. 요청에 적은 완료점은 다시 묻지 않습니다. 검증된 변경의 커밋·PR만 필요하면 <code>oh-my-gx:gx-commit</code>, <code>oh-my-gx:gx-pull-request</code>를 직접 요청할 수 있습니다. 작업 브랜치와 환경별 실행 권한은 각 스킬에서 확인합니다.</p>
       <p><a class="btn btn-primary" href="codex/">Codex 사용 가이드</a></p>
     </div>
   </div>
@@ -1248,7 +1248,7 @@ oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code><
       </details>
       <details>
         <summary>커밋·PR·머지까지 자동으로 진행하나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>
-        <div class="faq-body">구현 요청의 기본 완료점은 검증입니다. 커밋이나 PR이 필요하면 처음부터 완료점으로 지정하거나 검증 후 요청하세요. 같은 범위에서 이미 허용한 작업은 허가를 반복해서 묻지 않으며, 머지는 별도 명시 요청이 있을 때 수행합니다.</div>
+        <div class="faq-body"><code>gx-work</code>는 개발 진입 때 완료점(검증·커밋·PR)을 묻고 PR까지를 추천합니다. 요청에 적었거나 설정에서 정했으면 묻지 않으며, SVN과 직접 <code>gx-tdd</code> 호출은 검증까지입니다. 검증 후에 커밋이나 PR을 따로 요청할 수도 있습니다. 같은 범위에서 이미 허용한 작업은 허가를 반복해서 묻지 않으며, 머지는 별도 명시 요청이 있을 때 수행합니다.</div>
       </details>
       <details>
         <summary>SVN 프로젝트에서도 사용할 수 있나요?<span class="chev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></summary>

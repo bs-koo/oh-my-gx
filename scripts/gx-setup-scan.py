@@ -2,10 +2,10 @@
 """설정을 바꾸지 않고 등록된 타입과 추가 빌드 마커를 함께 조사한다."""
 
 import argparse
-import fnmatch
 import json
 import os
 from pathlib import Path, PurePosixPath
+import runpy
 import stat
 import sys
 
@@ -22,6 +22,31 @@ def linked(path):
     metadata = path.lstat()
     return path.is_symlink() or bool(getattr(metadata, "st_file_attributes", 0) &
                                     getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+
+
+_PLAN = None
+
+
+def plan_rule(name):
+    """테스트 계획(gx-test-plan.py)의 detect 판정을 그대로 쓴다."""
+    global _PLAN
+    if _PLAN is None:
+        _PLAN = runpy.run_path(str(Path(__file__).with_name("gx-test-plan.py")))
+    return _PLAN[name]
+
+
+def registered(path, directory, settings):
+    """roots가 없으면 detect 일치. roots가 있으면 이름 marker는 root 바로 아래, 경로 marker는 root 아래 어디든."""
+    detect = settings.get("detect", [])
+    if not plan_rule("detected")(path, detect):
+        return False
+    if settings.get("roots") is None:
+        return True
+    names = [p for p in detect if not plan_rule("path_pattern")(p)]
+    paths = [p for p in detect if plan_rule("path_pattern")(p)]
+    return any((directory == item and plan_rule("detected")(path, names)) or
+               (plan_rule("under")(path, item) and plan_rule("detected")(path, paths))
+               for item in {relative_root(value) for value in settings["roots"]})
 
 
 def relative_root(value):
@@ -79,21 +104,13 @@ def scan(cwd, config_source="auto"):
         for filename in sorted(filenames):
             candidate = current / filename
             path = candidate.relative_to(root).as_posix()
-            if not any(fnmatch.fnmatchcase(filename, pattern) or fnmatch.fnmatchcase(path, pattern)
-                       for pattern in candidate_patterns) or linked(candidate):
+            if not plan_rule("detected")(path, candidate_patterns) or linked(candidate):
                 continue
             local_root = candidate.parent.relative_to(root).as_posix()
-            registered = []
-            for name, settings in types.items():
-                roots = settings.get("roots")
-                if roots is not None and local_root not in {relative_root(value) for value in roots}:
-                    continue
-                if any(fnmatch.fnmatchcase(filename, pattern) or fnmatch.fnmatchcase(path, pattern)
-                       for pattern in settings.get("detect", [])):
-                    registered.append(name)
+            names = [name for name, settings in types.items() if registered(path, local_root, settings)]
             records.append({"path": path, "root": local_root,
-                            "registered_types": registered,
-                            "needs_confirmation": config_source == "template" or not registered})
+                            "registered_types": names,
+                            "needs_confirmation": config_source == "template" or not names})
     records.sort(key=lambda item: item["path"])
     registrations = [{"name": name, "detect": settings.get("detect", []),
                       "roots": settings.get("roots"), "has_build": bool(settings.get("build")),

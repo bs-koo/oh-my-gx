@@ -103,9 +103,40 @@ PRD 부재만으로 인수 통과를 만들지 않는다. 복원한 AC와 실제
 
 **임의 반영 금지**: 기존 승인·위임 source가 유효한 관련 차이는 같은 승인을 다시 묻지 않는다. 새 의미·범위·위험 또는 아직 받지 않은 저장 승인이 필요한 경우 그 차이만 확인한다. 문서 금지·read-only는 실제 파일을 수정하지 않고 차이/예외를 기록한다. 코드 관측에서 미래 요구사항을 발명하거나 요구사항을 구현에 맞춰 조용히 바꾸지 않는다.
 
-같은 run-id/plan/branch와 보존한 사전 inspect 보고서로 `development.py inspect --phase post --previous <document-pre.json>`을 실행한다. 전체 결과는 파일에 받고 bounded summary만 읽는다. 관련 실제 문서 반영과 구조/의미 대조가 끝나야 Step -1의 최종 영향 계획·proof·fingerprint를 만들 수 있다. 변경 없음도 확인 근거를 .dev 보고서에 남긴다. 충돌·미응답이면 새 ✅를 조건부 원복하고 여기서 대기한다.
+같은 run-id/plan/branch와 보존한 사전 inspect 보고서로 `development.py inspect --phase post --previous <document-pre.json>`을 실행한다. 사전 inspect와 같은 `--skip-registration`·`--ruled` 기준([문서 수명주기](../references/document-lifecycle.md) 3번)을 적용한다. 전체 결과는 파일에 받고 bounded summary만 읽는다. 관련 실제 문서 반영과 구조/의미 대조가 끝나야 Step -1의 최종 영향 계획·proof·fingerprint를 만들 수 있다. 변경 없음도 확인 근거를 .dev 보고서에 남긴다. 충돌·미응답이면 새 ✅를 조건부 원복하고 여기서 대기한다.
 
-`stop-at: verify`는 로컬 문서/검증까지다. 문서 변경만을 이유로 commit·push하지 않는다. 이어서 Step -1로 진행한다.
+`stop-at: verify`는 로컬 문서/검증까지다. 문서 변경만을 이유로 commit·push하지 않는다. 이어서 Step 4.5로 진행한다.
+
+## Step 4.5: 베이스 동기화 (선택 — git)
+
+svn이거나 `--non-interactive`이거나 state `base`가 없으면 건너뛰고 Step -1로 간다. 같은 실행에서 이미 답했으면 다시 묻지 않고 그 답을 따른다. `stop-at: verify`(커밋하지 않음)이면 아래 1·2와 3의 `rev-list --count`로 앞선 커밋 수 N만 확인하고 묻거나 병합하지 않는다. 앞서 있으면 Step 6 최종 보고에 `베이스(<base>)가 N커밋 앞서 있음 — 커밋 전에 병합 여부를 정하세요` 한 줄을 남기고 Step -1로 간다.
+
+**충돌 재개**: `current-step: 베이스 동기화 충돌`로 phase-complete에 다시 들어오면 Step -3·-2 확인 뒤, Step 0의 스테이징보다 먼저 이 분기를 수행한다(미해결 충돌 파일을 `git add -A`로 해결 처리하지 않기 위해서다). 다시 merge하지 않는다.
+- `git rev-parse -q --verify MERGE_HEAD`가 실패하면(사용자가 이미 커밋했거나 병합을 취소함) `git merge-base --is-ancestor <베이스 SHA> HEAD`로 병합 여부만 확인해, 병합됐으면 아래 마무리 뒤 규칙을, 아니면 5(그대로 검증)를 따른다.
+- MERGE_HEAD가 있고 `git ls-files -u`에 미해결 경로가 있으면 목록을 보여 해결(`git add <경로>`)을 요청하고 같은 `current-step`으로 대기한다.
+- 미해결 경로가 없으면 병합 커밋을 마무리한다. Claude Code는 `Skill(skill: "oh-my-gx:gx-commit", args: "--skip-context-sync")`으로 커밋한다(미해결 충돌 없는 병합 커밋은 훅과 gx-commit이 묻지 않는다). Codex는 verify 미통과 커밋을 훅 G3가 막으므로 사용자가 터미널에서 `git commit --no-edit`으로 마무리하도록 안내하고 실제 완료 응답을 기다린다.
+- 마무리 뒤에는 4와 같이 병합이 이번 변경 파일을 건드렸으면 Step 0의 AC 대조부터, 아니면 Step -1로 간다.
+
+1. `git fetch origin <base>`로 베이스를 갱신하고 비교 대상 `B`를 `origin/<base>`로 둔다. 원격이 없거나 fetch가 실패하면 로컬 `<base>`로 비교하고 그 사실을 한 줄 알린다.
+2. `git merge-base --is-ancestor <B> HEAD`가 exit 0이면 베이스가 앞서 있지 않으므로 묻지 않고 Step -1로 간다.
+3. 앞서 있으면 `git rev-list --count HEAD..<B>`로 커밋 수 N을 세고 한 번 묻는다:
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "베이스(<base>)에 이 브랜치에 없는 커밋이 N개 있습니다. 최종 검증 전에 병합할까요?",
+       header: "베이스 동기화",
+       options: [
+         { label: "그대로 검증 (Recommended)", description: "병합하지 않고 현재 브랜치로 최종 검증합니다" },
+         { label: "병합 후 검증", description: "베이스를 일반 merge로 합친 뒤 병합된 코드로 최종 검증합니다. 충돌이 나면 멈추고 알립니다" }
+       ],
+       multiSelect: false
+     }]
+   )
+   ```
+4. **병합 후 검증** → `git rev-parse <B>`로 병합할 베이스 SHA를 확정하고 `git merge --no-edit <베이스 SHA>`로 일반 병합한다. 베이스 SHA와 결과를 decisions.md와 execution-log(`gate: 베이스 동기화`)에 남긴다(충돌 재개와 Step -1의 베이스 실패 확인이 이 SHA를 쓴다). 병합이 이번 변경 파일을 건드렸으면 Step 0의 AC 대조부터 다시 하고, 아니면 Step -1로 간다.
+   - 충돌하거나, 작업 트리 변경과 겹쳐 git이 병합을 거부하면 해결을 시도하지 않는다. 충돌·거부 파일 목록을 보여 주고 `병합 취소하고 그대로 검증`(충돌 중이면 `git merge --abort`) / `직접 해결 후 재개`(`current-step: 베이스 동기화 충돌`, 해결 뒤 `--resume`)를 묻는다.
+   - rebase·force push를 쓰지 않는다. 병합을 위해 작업 변경을 임의로 커밋·stash하지 않으며 `git commit-tree`·`git reset --soft`·`git read-tree`·`git checkout-index`·`git update-ref` 같은 저수준 명령으로 병합이나 커밋을 대신하지 않는다. 이 절에 없는 처리가 필요하면 멈추고 사용자에게 보고한다.
+5. **그대로 검증** → 기록만 남기고 Step -1로 간다.
 
 ## Step -1: verify 게이트 (commit/PR 진입 전 필수)
 
@@ -115,17 +146,21 @@ verify 실행 중에는 다른 테스트·빌드 명령을 시작하지 않고 �
 
 verify 게이트는 테스트 0 failures·빌드 성공에 더해, phase-implement Step 0.5(기준선 게이트)가 기록한 `warnings-baseline` 대비 **신규 경고**도 차단한다 (기존 경고는 허용 — 기준선이 RGR 시작 전이므로 이번 구현이 유입한 경고부터 잡힌다). verify가 "위험 수용"으로 통과를 보고하면(신규 경고·검증 명령 미감지 등) **오케스트레이터가 그 내용을 `${DEV_DIR}/trust-ledger.md`에 기록**한다 (gx-verify는 Write 권한이 없다).
 
+실패도 같은 방식이다. state `known-failures`(기준선에서 사용자가 알고 진행한 실패 테스트 ID)에 있는 실패는 차단하지 않고 "기존 실패 N건"으로 따로 보고되며, 목록 밖의 **새 실패**만 차단한다(판정 정본은 [테스트 실행 규약](../references/test-execution.md)). 기존 실패가 보고되면 오케스트레이터가 trust-ledger `### 위험 수용`의 `[기존 실패 알고 진행]` 항목을 이번 결과(N건·ID)로 갱신하고 Step 2-1 Audit Summary에 싣는다.
+
 **verify 결과 처리**:
 
 - **✅ verify 통과** → state.md 최상위 `verify-status: passed`와 **verify가 보고한 `verify-fingerprint` 값을 함께 갱신**한다 (둘이 커밋/PR 게이트 해제 키다 — 지문이 없으면 통과 후 코드를 고쳐도 게이트가 열리지 않는다). 이후 Step 3.5 (작업 계획 완료)로 진행. 코드 또는 context/ 문서 변경이 발생해 재진입하면 `verify-status: pending`·`verify-fingerprint: ""`로 리셋하고 Step 0의 현재 AC 대조·관련 문서 반영 후 Step -1을 재실행한다. **verify가 지문을 보고하지 않았으면**(svn 등) 지문 없이 `passed`만 기록하고, 게이트는 구 세션과 동일하게 동작함을 인지한다
 - **❌ verify 차단**:
   - 먼저 [문서 수명주기](../references/document-lifecycle.md)의 journal로 이번 실행이 만든 새 ✅만 조건부 원복한다. 동시 변경이면 덮어쓰지 않고 중단한다. W행/실행은 진행 상태로 유지하고 verify는 pending·빈 지문으로 둔다.
   1. verify가 실패 테스트·빌드·신규 경고 항목을 보고함
-  2. 사용자에게 표시 후 AskUserQuestion:
+  2. Step 4.5에서 베이스를 병합했으면 실패를 둘로 나눠 보고한다: **베이스에서 온 실패**(실패 테스트와 그 대상 코드가 병합 전 이 브랜치의 변경에 없고 병합으로 들어온 변경과 관련됨)와 이번 변경 관련 실패. 판단 근거(파일)를 함께 보인다.
+  3. 사용자에게 표시 후 AskUserQuestion:
      - "수정" → 아래 **verify 회귀 수리**를 수행한다
      - "수동 수정" → 사용자 수정 후 phase-complete 재호출 (execution-log에 "수동 수정 재주입" 기록. 재호출 시 Step 0의 현재 AC·문서 대조 후 최종 verify 재실행)
      - "중단" → 조건부 원복 후 state.md에 `status: cancelled` 기록
-  3. 자동 수정은 시도하지 않음 (사용자가 "수정"을 고른 경우에만 수리한다. coder 직접 호출 금지)
+     - 남은 실패가 모두 베이스에서 온 실패이고 **실행 근거**가 있으면 "수정" 대신 "기존 실패로 기록하고 진행"을 둔다. 근거는 판단이 아니라 실행이다. 질문 전에 Step 4.5에서 기록한 베이스 SHA로 저장소 밖 임시 경로에 `git worktree add <임시경로> <베이스 SHA>`를 만들고, verify 계획의 같은 entry 명령을 그 경로의 같은 cwd에서 실행해 같은 테스트 ID가 실패하는지 확인한 뒤 `git worktree remove <임시경로>`로 정리한다(필요한 의존성 설치도 그 임시 경로에서만 한다). 거기서도 실패한 ID만 대상이다. 선택하면 그 ID를 `known-failures`에 추가하고 decisions.md에 베이스 SHA·명령·로그 경로를 남긴 뒤 Step -1을 다시 실행한다. 확인하지 못했거나 베이스에서 통과한 ID가 있으면 이 선택지를 두지 않는다(Claude Code·Codex 공통). 섞여 있으면 기존 세 선택지로 이번 변경의 실패부터 처리하고 베이스 실패는 다음 재검증에서 다시 묻는다.
+  4. 자동 수정은 시도하지 않음 (사용자가 "수정"을 고른 경우에만 수리한다. coder 직접 호출 금지)
 
 **verify 회귀 수리** ("수정" 선택 시):
 
@@ -136,8 +171,8 @@ core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 �
 
    | 차단 사유 | 처리 | 새 RED |
    |---|---|---|
-   | 기존 테스트 실패 (프로덕션 코드가 기대를 깨뜨림) | implementer **수리 모드** — 깨진 테스트 + 에러 전문 + 깨진 대상으로 조립한 focused 검증 명령. 프로덕션 코드로만 해결하고 수리 뒤 테스트 파일 무변경을 확인한다 | 불필요 (깨진 테스트가 RED) |
-   | 빌드 실패 — 프로덕션 소스 | implementer 수리 모드 | 불필요 |
+   | 기존 테스트 실패 (프로덕션 코드가 기대를 깨뜨림) | **수리 모드** — `execution-method: session`(기본)이면 세션 직접, `subagents`·`--isolated`면 implementer. 세션도 `agents/implementer.md` 수리 모드 계약을 그대로 따른다. 깨진 테스트 + 에러 전문 + 깨진 대상으로 조립한 focused 검증 명령. 프로덕션 코드로만 해결하고 수리 뒤 테스트 파일 무변경을 확인한다 | 불필요 (깨진 테스트가 RED) |
+   | 빌드 실패 — 프로덕션 소스 | 수리 모드 (위와 같은 주체) | 불필요 |
    | 신규 경고 — 동작 불변으로 정리 가능 | 정리 모드 — 세션 직접(`--isolated`면 implementer 정리 모드), phase-implement 세션 IMPLEMENT 절차의 REFACTOR 규칙·수행 불가능한 정리 목록을 따른다 | 불필요 |
    | 신규 경고 — 고치려면 동작이 바뀜 | 실패 항목을 새 AC로 정의해 phase-implement로 복귀 (RGR) | 필요 |
    | 테스트를 고쳐야만 해결됨 (테스트 기대가 틀렸다고 의심되거나 테스트 소스가 컴파일되지 않음) | 수리하지 않는다. 근거(실패 단언·관련 AC)를 보여 주고 "수동 수정"·"중단"으로 안내한다 | — |
@@ -202,7 +237,7 @@ core는 수리·코드 변경 직전에 Step -3의 현재 ac.md+plan.md 결합 �
    - 총 N건 (CRITICAL: n, HIGH: n, MEDIUM: n)
    - [주요 발견 항목 1줄 요약] (최대 5건)
    ```
-   Trust Ledger가 없으면 이 섹션을 생략한다.
+   Trust Ledger가 없으면 이 섹션을 생략한다. 단 state `known-failures`가 1건 이상이면 Trust Ledger 유무와 무관하게 `## Audit Summary`에 `- 기존 실패 N건(이번 변경과 무관): {테스트 ID, 최대 5개}` 한 줄을 넣는다.
 
    **핵심 모드 긴급 감사 병기**: Trust Ledger에 `### 핵심 모드 긴급 감사` 섹션이 포함되어 있으면, `## Audit Summary` 블록 끝에 `- 핵심 모드 긴급 감사: CRITICAL n건, HIGH n건 (자세한 내용은 Trust Ledger 참조)` 한 줄을 추가한다. 전체·핵심 모드 모두 동일한 Audit Summary 포맷을 사용하여 PR 본문의 일관성을 유지한다.
 
@@ -239,7 +274,9 @@ pull-request 스킬은 --background로 받은 파일만 PR 본문(Background + A
 
 **헤드리스 판정 먼저**: ARGS에 `--non-interactive`가 있으면 이 절 전체를 **strict no-op**으로 건너뛴다. 질문하지 않고 기존 완료 출력을 바꾸지 않는다 — 응답할 사용자가 없다.
 
-대화형 세션이면 아래를 질문한다. 구조화된 질문 도구가 없는 세션에서는 같은 선택지를 **자연어로 묻고 실제 답을 기다린다** — 도구가 없다는 이유로 건너뛰지 않는다. "질문 도구가 없음"과 "응답할 사용자가 없음"은 다른 조건이다: 앞의 것은 묻는 방식만 바뀌고, 뒤의 것만 strict no-op이다.
+**질문 조건**: design.md의 설계 규모가 중형·대형이거나 이번 변경이 새 모듈(새 패키지·최상위 디렉터리·서비스)을 만든 경우에만 묻는다. 그 밖에는 질문하지 않고 Step 6 최종 보고에 `구조 그림이 필요하면 /oh-my-gx:gx-visualize로 아키텍처 맵을 갱신할 수 있습니다.` 한 줄만 남긴다. 핵심 모드처럼 design.md가 없으면 새 모듈 여부로만 판단한다.
+
+질문 조건을 만족하는 대화형 세션이면 아래를 질문한다. 구조화된 질문 도구가 없는 세션에서는 같은 선택지를 **자연어로 묻고 실제 답을 기다린다** — 도구가 없다는 이유로 건너뛰지 않는다. "질문 도구가 없음"과 "응답할 사용자가 없음"은 다른 조건이다: 앞의 것은 묻는 방식만 바뀌고, 뒤의 것만 strict no-op이다.
 
 ```
 AskUserQuestion(
@@ -270,3 +307,5 @@ PR이 생성되었으면 완료이다. **PR 머지는 절대 실행하지 않는
 
 리뷰 수정 요청에 대비하여 작업환경 유지를 안내한다:
 "리뷰 피드백 대응을 위해 현재 브랜치를 유지합니다. 리뷰 완료 후 베이스 브랜치로 전환하세요."
+
+PR을 만들었으면 [진행 안내](../references/interaction-contract.md#진행-안내)의 맥락 정리 한 줄(`/compact` 또는 새 세션에서 `--resume`, W 작업 하나에 세션 하나)을 덧붙인다.

@@ -50,8 +50,9 @@ ok()   { echo "  ok: $1"; }
 # TDD 실행 계약은 main과 명시적으로 읽는 참조만 검사한다.
 # gx-work는 진입/정리만 맡으므로 별도 계약으로 검사한다.
 WORK_SKILL_TEXT=$(cat .claude/skills/gx-work/SKILL.md)
+# pipeline-operations.md는 pipeline-state.md에서 분리한 조건부 운영 규칙(Diff 수집·Context Slicing 등)이라 함께 검사한다.
 TDD_SKILL_TEXT=$(cat .claude/skills/gx-tdd/SKILL.md \
-  .claude/skills/gx-tdd/references/{intent-routing,pipeline-state,interaction-contract,roles-and-phases}.md)
+  .claude/skills/gx-tdd/references/{intent-routing,pipeline-state,pipeline-operations,interaction-contract,roles-and-phases}.md)
 skill_contract_text() {
   if [ "$1" = .claude/skills/gx-work/SKILL.md ]; then
     printf '%s\n' "$WORK_SKILL_TEXT"
@@ -307,7 +308,7 @@ for f in "$GXTDD"; do
   grep -q "모델 프로파일 (MODEL_PROFILE)" <(skill_contract_text "$f") || fail "모델 프로파일 공유 규칙 누락: $f"
   grep -q 'model: "sonnet"' <(skill_contract_text "$f") || fail "eco 디스패치 오버라이드 문구 누락: $f"
   grep -q "architect는 eco에서도 opus" <(skill_contract_text "$f") || fail "architect opus 유지 문구 누락: $f"
-  grep -qF '일반 기능 요청은 모드를 `all`로 확정한다' <(skill_contract_text "$f") || fail "모드 기본값 재사용 규칙 누락: $f"
+  grep -qF '정해지지 않은 항목만 실행 시작 전에 **한 번** 묻는다' <(skill_contract_text "$f") || fail "모드·프로파일 미정 시 1회 질문 규칙 누락: $f"
 done
 for f in .claude/skills/gx-tdd/phases/phase-setup.md; do
   grep -q "모델 프로파일 결정" "$f" || fail "MODEL_PROFILE 결정 로직 누락: $f"

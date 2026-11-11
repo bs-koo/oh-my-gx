@@ -19,6 +19,13 @@ DEPENDENCIES = {'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yam
                 'settings.gradle', 'settings.gradle.kts', 'gradle.properties',
                 'pom.xml', 'requirements.txt', 'pyproject.toml', 'poetry.lock',
                 'uv.lock', 'go.mod', 'go.sum', 'Cargo.toml', 'Cargo.lock'}
+OVERRIDE = 'test-plan-override'
+BASELINE_COUNTS = 'baseline-tests.json'
+
+
+def selection_excluded(path):
+    """Pipeline records and gx-context Markdown under context/; code kept in context/ still selects tests."""
+    return path.startswith('.dev/') or bool(re.fullmatch(r'context/.+\.md', path))
 
 
 def digest(value):
@@ -66,24 +73,66 @@ def file_operands(files):
     return shlex.join('./' + path if path.startswith('-') else path for path in files)
 
 
-def discover(root, types):
-    files = []
-    for directory, folders, names in os.walk(root):
+def path_pattern(pattern):
+    return '/' in pattern.removeprefix('**/')
+
+
+def detected(path, patterns):
+    """File-name markers match any directory; markers containing '/' are repository-relative paths."""
+    return any(matches(path if path_pattern(p) else path.rsplit('/', 1)[-1], [p]) for p in patterns)
+
+
+def walk(root, start):
+    for directory, folders, names in os.walk(start):
         folders[:] = sorted(f for f in folders if f not in EXCLUDED and not Path(directory, f).is_symlink())
-        files.extend(Path(directory, name).relative_to(root).as_posix() for name in sorted(names))
+        yield from (Path(directory, name).relative_to(root).as_posix() for name in sorted(names))
+
+
+def has_marker(root, directory, patterns):
+    """A name marker sits directly in the project root; a path marker may sit anywhere under it."""
+    base = root.resolve()
+    folder = (base / directory).resolve()
+    if any(detected(file.name, [p for p in patterns if not path_pattern(p)])
+           for file in folder.iterdir() if file.is_file()):
+        return True
+    paths = [p for p in patterns if path_pattern(p)]
+    return bool(paths) and any(detected(path, paths) for path in walk(base, folder))
+
+
+CD_PREFIX = re.compile(r'\s*cd\s+(?:"([^"]+)"|\'([^\']+)\'|([^\s;&|]+))\s*&&\s*(\S.*)', re.DOTALL)
+
+
+def project_commands(directory, settings):
+    """Commands run in the detected project directory, so a leading cd into that same directory is dropped."""
+    if directory == '.':
+        return settings
+    result = dict(settings)
+    for field in ('test', 'focusedTest', 'affectedTest', 'buildOnly', 'build'):
+        command = settings.get(field)
+        if not isinstance(command, str) or not re.match(r'\s*cd\s', command):
+            continue
+        found = CD_PREFIX.fullmatch(command)
+        target = next((part for part in found.groups()[:3] if part), '') if found else ''
+        if target.replace('\\', '/').removeprefix('./').rstrip('/') != directory:
+            raise ValueError(f'{field} leaves project directory {directory!r}: run it from that directory, '
+                             f'or set roots ["."] to run it from the repository root: {command}')
+        result[field] = found.group(4)
+    return result
+
+
+def discover(root, types):
+    files = list(walk(root, root))
     projects = []
     for name, settings in types.items():
         explicit = settings.get('roots')
         roots = {relative(path) for path in explicit} if explicit is not None else {
             str(Path(file).parent).replace('\\', '/') for file in files
-            if matches(Path(file).name, settings.get('detect', []))}
+            if detected(file, settings.get('detect', []))}
         for directory in sorted(roots):
             folder = (root / directory).resolve()
             if not folder.is_relative_to(root):
                 raise ValueError(f'project root is outside repository: {name}:{directory}')
-            if not folder.is_dir() or not any(matches(file.relative_to(folder).as_posix(),
-                                                      settings.get('detect', []))
-                                              for file in folder.iterdir() if file.is_file()):
+            if not folder.is_dir() or not has_marker(root, directory, settings.get('detect', [])):
                 if explicit is not None:
                     raise ValueError(f'configured project root not detected: {name}:{directory}')
                 continue
@@ -146,9 +195,9 @@ def focused(args):
     if settings.get('roots') is not None and directory not in {
             relative(path) for path in settings['roots']}:
         raise ValueError('focused project is outside configured roots')
-    if not any(matches(path.name, settings.get('detect', []))
-               for path in folder.iterdir() if path.is_file()):
+    if not has_marker(root, directory, settings.get('detect', [])):
         raise ValueError('focused project marker was not detected')
+    settings = project_commands(directory, settings)
     tests = read_json(args.tests_file)
     if not isinstance(tests, list) or not tests or any(not isinstance(p, str) or not p for p in tests):
         raise ValueError('focused tests must be a nonempty repository-relative path array')
@@ -277,9 +326,12 @@ def plan(args):
     config_path = (args.config or root / '.claude/config.json').resolve()
     config = read_json(config_path)
     projects = discover(root, config.get('projectTypes', {}))
+    for project in projects:
+        project['settings'] = project_commands(project['cwd'], project['settings'])
+    # Pipeline records and root context/ documents do not select tests; context/ stays in the fingerprint.
     paths = sorted({relative(p) for p in (changed_paths(root, args.base) +
                                          (read_json(args.changed_file) if args.changed_file else []))
-                    if not relative(p).startswith('.dev/')})
+                    if not selection_excluded(relative(p))})
     tests = sorted({relative(p) for p in read_json(args.tests_file)}) if args.tests_file else []
     for path in set(paths) | set(tests):
         if not (root / path).resolve().is_relative_to(root):
@@ -324,10 +376,28 @@ def plan(args):
             'changed': paths, 'rerunTests': args.rerun_tests, 'entries': entries, 'skipped': skipped}
 
 
+def override_plan(args):
+    """One-entry plan for the user's test-plan-override so record/reuse bind it to run, tree and scope.
+
+    The override exists because detection failed, so the unreadable config is not part of its identity."""
+    root = args.cwd.resolve()
+    if not args.command.strip():
+        raise ValueError('override command is empty')
+    scope = ['*'] if args.scope == ['*'] else sorted({relative(p) for p in args.scope})
+    if '*' in scope and len(scope) > 1:
+        raise ValueError("override scope is '*' or test paths, not both")
+    entry = {'project': f'{OVERRIDE}:.', 'type': OVERRIDE, 'cwd': '.', 'kind': 'test',
+             'command': args.command, 'scope': scope, 'reason': OVERRIDE}
+    entry['id'] = digest({k: v for k, v in entry.items() if k != 'reason'})[:16]
+    return {'version': 1, 'source': OVERRIDE, 'runId': args.run_id, 'root': str(root),
+            'fingerprint': fingerprint(root), 'configPath': None, 'configHash': None, 'base': None,
+            'changed': [], 'rerunTests': False, 'entries': [entry], 'skipped': []}
+
+
 def identity(root, value, entry_id):
     if str(root) != value['root'] or tree_fingerprint(fingerprint(root)) != tree_fingerprint(value['fingerprint']):
         raise ValueError('code fingerprint changed or project root differs; regenerate plan')
-    if digest(read_json(value['configPath'])) != value['configHash']:
+    if value.get('source') != OVERRIDE and digest(read_json(value['configPath'])) != value['configHash']:
         raise ValueError('validation configuration changed; regenerate plan')
     entry = next(e for e in value['entries'] if e['id'] == entry_id)
     return {'runId': value['runId'], 'root': value['root'], 'fingerprint': tree_fingerprint(value['fingerprint']),
@@ -335,31 +405,87 @@ def identity(root, value, entry_id):
              ('project', 'type', 'cwd', 'kind', 'command', 'scope')}}, entry
 
 
+def test_ids(path):
+    value = read_json(path) if path else []
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item for item in value):
+        raise ValueError('expected a test ID array')
+    return set(value)
+
+
+def covers(scope, baseline_scope):
+    """A full run covers any baseline scope of its project; a file scope covers its own subsets."""
+    return scope == ['*'] or (baseline_scope != ['*'] and set(baseline_scope) <= set(scope))
+
+
+def baseline_tests(path, entry):
+    counts = read_json(path) if path.is_file() else []
+    return max((item['tests'] for item in counts
+                if item['project'] == entry['project'] and covers(entry['scope'], item['scope'])),
+               default=None)
+
+
+def record_baseline(path, entry, tests):
+    """Step 0.5 counts survive a failing run: later known-failure runs must reach them."""
+    counts = [item for item in (read_json(path) if path.is_file() else [])
+              if (item['project'], item['scope']) != (entry['project'], entry['scope'])]
+    counts.append({'project': entry['project'], 'scope': entry['scope'], 'tests': tests})
+    path.write_text(json.dumps(counts, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+
 def proof_action(args):
     root, value = args.cwd.resolve(), read_json(args.plan)
     proof_path = args.proof.resolve()
     if args.action == 'record':
         # Overwrite a previous pass before validating, so failed/zero/stale attempts invalidate it.
+        # The duration survives a failure so the next run of the same entry can be estimated.
+        duration = getattr(args, 'duration_seconds', None)
+        placeholder = {'passed': False, **({'durationSeconds': duration} if duration is not None else {})}
         proof_path.parent.mkdir(parents=True, exist_ok=True)
-        proof_path.write_text('{"passed": false}\n', encoding='utf-8')
+        proof_path.write_text(json.dumps(placeholder) + '\n', encoding='utf-8')
     key, entry = identity(root, value, args.entry)
+    known = test_ids(getattr(args, 'known_failures_file', None))
     if args.action == 'reuse':
         proof = read_json(proof_path)
         if not proof.get('passed') or proof.get('identity') != key:
             raise ValueError('no matching successful evidence in this run')
+        if not set(proof.get('knownFailures', [])) <= known:
+            raise ValueError('recorded failures are not in the current known failures')
         log = Path(proof['log'])
         if hashlib.sha256(log.read_bytes()).hexdigest() != proof['logHash']:
             raise ValueError('evidence log changed')
-        return {'reusable': True, 'entry': args.entry}
-    if args.exit_code != 0 or args.failures != 0 or (entry['kind'] == 'test' and args.tests < 1):
+        return {'reusable': True, 'entry': args.entry, 'knownFailures': proof.get('knownFailures', [])}
+    failed = test_ids(getattr(args, 'failed_file', None))
+    counts = proof_path.parent / BASELINE_COUNTS
+    if getattr(args, 'baseline', False) and entry['kind'] == 'test' and args.tests > 0:
+        record_baseline(counts, entry, args.tests)
+    # A failing run passes only when every failure was accepted at the baseline (known-failures).
+    accepted = (entry['kind'] == 'test' and args.failures > 0 and
+                len(failed) == args.failures and failed <= known)
+    if args.failures and not accepted:
+        raise ValueError('failed test outside known failures cannot be reused')
+    if (args.exit_code != 0 and not accepted) or (entry['kind'] == 'test' and args.tests < 1):
         raise ValueError('failed/zero/unconfirmed test execution cannot be reused')
+    if accepted:
+        # A runner that stops at the first failure (Gradle without --continue, Maven without -fae)
+        # can skip later tests; the baseline count of the same project and scope bounds that.
+        expected = baseline_tests(counts, entry)
+        if expected is None:
+            raise ValueError('known failures need a baseline test count for this project and scope '
+                             '(실행 수를 대조할 기준이 없음)')
+        if args.tests < expected:
+            raise ValueError(f'{args.tests} tests ran, fewer than the baseline {expected}: '
+                             'a runner may have stopped at a known failure')
     log = args.log.resolve()
     proof = {'passed': True, 'identity': key, 'exitCode': args.exit_code,
              'tests': args.tests, 'failures': args.failures, 'log': str(log),
              'logHash': hashlib.sha256(log.read_bytes()).hexdigest(),
              'recordedAt': datetime.now(timezone.utc).isoformat()}
+    if accepted:
+        proof['knownFailures'] = sorted(failed)
+    if getattr(args, 'duration_seconds', None) is not None:
+        proof['durationSeconds'] = args.duration_seconds
     proof_path.write_text(json.dumps(proof, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    return {'recorded': True, 'entry': args.entry}
+    return {'recorded': True, 'entry': args.entry, 'knownFailures': proof.get('knownFailures', [])}
 
 
 def main():
@@ -378,22 +504,32 @@ def main():
     planning.add_argument('--ownership-file', type=Path)
     planning.add_argument('--full', action='store_true')
     planning.add_argument('--rerun-tests', action='store_true')
+    overriding = subs.add_parser('override')
+    overriding.add_argument('--run-id', required=True)
+    overriding.add_argument('--command', required=True)
+    overriding.add_argument('--scope', nargs='+', default=['*'])
     for name in ('record', 'reuse'):
         sub = subs.add_parser(name)
         sub.add_argument('--plan', required=True, type=Path)
         sub.add_argument('--entry', required=True)
         sub.add_argument('--proof', required=True, type=Path)
+        sub.add_argument('--known-failures-file', type=Path)
         if name == 'record':
             sub.add_argument('--log', required=True, type=Path)
             sub.add_argument('--exit-code', required=True, type=int)
             sub.add_argument('--tests', type=int, default=-1)
             sub.add_argument('--failures', type=int, default=0)
+            sub.add_argument('--failed-file', type=Path)
+            sub.add_argument('--duration-seconds', type=float)
+            sub.add_argument('--baseline', action='store_true')
     for sub in subs.choices.values():
         sub.add_argument('--cwd', required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.action == 'focused':
             result = focused(args)
+        elif args.action == 'override':
+            result = override_plan(args)
         else:
             result = plan(args) if args.action == 'plan' else proof_action(args)
     except (OSError, ValueError, KeyError, StopIteration, subprocess.SubprocessError) as exc:

@@ -28,6 +28,9 @@ DISCARDED = "discarded-question-{stamp}.json"
 HEADER = "# 의사결정 기록\n\n확인 질문과 선택을 기록한다.\n"
 # gx-work run-id 형식(I3)과 같다.
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{2,79}")
+# gx-work 진입 질문 분할(한 호출 3문항 제한): 둘째 세트(모드·프로파일)는 같은 run의 진입 답이 '진행'일 때만 묻는다.
+ENTRY_ID, ENTRY_PROCEED = "gx_work_tdd_entry", "gx-tdd로 진행"
+FOLLOWUP_IDS = {"gx_work_mode", "gx_work_model_profile"}
 
 
 def read_json(path):
@@ -171,6 +174,25 @@ def view(pending, status="pending"):
             "limitations": "실제 도구 스키마·용도와 사용자 응답 여부는 호출자가 확인합니다."}
 
 
+def previous_receipt(directory):
+    try:
+        receipt = read_json(directory / RECEIPT) if (directory / RECEIPT).is_file() else {}
+    except (OSError, ValueError):
+        return {}
+    return receipt if isinstance(receipt, dict) else {}
+
+
+def run_answers(receipt, run_id):
+    """같은 run_id 영수증에 누적된 답(run_answers, 없으면 answers). run이 다르면 빈 객체."""
+    question = receipt.get("question")
+    if not run_id or not isinstance(question, dict) or question.get("run_id") != run_id:
+        return {}
+    for key in ("run_answers", "answers"):
+        if isinstance(receipt.get(key), dict):
+            return receipt[key]
+    return {}
+
+
 def register(directory, value):
     normalized = questions_input(value)
     path = directory / PENDING
@@ -179,6 +201,14 @@ def register(directory, value):
         if {key: pending[key] for key in ("phase", "questions", "goal", "run_id") if key in pending} != normalized:
             raise ValueError("미응답 질문을 다른 질문·phase·작업(goal/run_id)으로 덮어쓸 수 없습니다.")
     else:
+        identifiers = {question["id"] for question in normalized["questions"]}
+        if identifiers & FOLLOWUP_IDS and ENTRY_ID not in identifiers:
+            entry = run_answers(previous_receipt(directory), normalized.get("run_id")).get(ENTRY_ID)
+            chosen = entry.get("answers") if isinstance(entry, dict) else None
+            if not (isinstance(chosen, list) and chosen and isinstance(chosen[0], str)
+                    and re.sub(r"\s*\(Recommended\)\s*$", "", chosen[0]).strip() == ENTRY_PROCEED):
+                raise ValueError("모드·프로파일 질문(둘째 세트)은 같은 dev-dir에 같은 run_id의 진입 질문 답이 "
+                                 f"'{ENTRY_PROCEED}'로 기록된 뒤에만 등록합니다. 진입 답이 다른 선택이면 묻지 않습니다.")
         pending = {"version": 1, "question_set_id": str(uuid.uuid4()), **normalized}
         atomic_json(path, pending)
     return view(pending)
@@ -241,8 +271,19 @@ def answer(directory, value):
     if not repeated:
         atomic_text(decisions, text + "\n" + marker + "\n" + render_decision(pending, response))
     # 선택값을 함께 남겨 gx-work route가 진입 답변이 '진행'이었는지 확인할 수 있게 한다.
-    atomic_json(directory / RECEIPT, {"question": pending, "answer_digest": answer_digest,
-                                      "answers": response["answers"]})
+    receipt = {"question": pending, "answer_digest": answer_digest, "answers": response["answers"]}
+    if pending.get("run_id"):
+        # 같은 run의 앞 세트 답(분할 진입 질문)을 이어 싣는다. 영수증이 마지막 세트로 바뀌어도 진입 답이 남는다.
+        before = previous_receipt(directory)
+        carried = run_answers(before, pending["run_id"])
+        earlier = before.get("earlier_question_set_ids") if carried else None
+        earlier = [item for item in earlier if isinstance(item, str)] if isinstance(earlier, list) else []
+        if carried and before["question"].get("question_set_id") not in (pending["question_set_id"], *earlier):
+            earlier.append(before["question"]["question_set_id"])
+        receipt["run_answers"] = {**carried, **response["answers"]}
+        if earlier:
+            receipt["earlier_question_set_ids"] = earlier
+    atomic_json(directory / RECEIPT, receipt)
     path.unlink()
     return {"status": "answered", "phase": pending["phase"], "repeated": repeated,
             "answer_provenance": "caller_normalized; user_event_not_verified"}

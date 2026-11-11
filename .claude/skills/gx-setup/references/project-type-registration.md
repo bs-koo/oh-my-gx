@@ -13,7 +13,7 @@
    - 매칭되면 해당 행의 타입 키·build/test·warningPattern·artifacts를 제안 값으로 사용한다.
    - **여러 행이 매칭되면** 두 가지 상황을 구분한다. 잘못 고르면 한쪽 레이어가 영구히 검증되지 않으므로 사용자에게 물어본다.
      - **부수 감지**: 한쪽이 도구용일 뿐 별도 테스트 대상이 아닌 경우 (예: C 프로젝트의 도구용 `package.json`, 문서 사이트용 `package.json`). → 주 타입 하나를 고른다.
-     - **복합 타입**: 양쪽 모두 실제 소스와 테스트를 가진 경우 (예: `build.gradle.kts` + `frontend/package.json`인 풀스택 모노레포). → **한 타입 키에 양쪽을 `&&`로 이은 복합 명령**을 등록한다. 하나만 고르면 나머지 레이어는 verify 게이트가 아예 실행하지 않아 미검증 상태로 통과한다.
+     - **복합 타입**: 양쪽 모두 실제 소스와 테스트를 가진 경우 (예: `build.gradle.kts` + `frontend/package.json`인 풀스택 모노레포). → **한 타입 키에 양쪽을 `&&`로 이은 복합 명령**을 등록한다. 하나만 고르면 나머지 레이어는 verify 게이트가 아예 실행하지 않아 미검증 상태로 통과한다. 복합 명령은 저장소 루트에서 돌므로 `roots: ["."]`를 함께 등록한다(없으면 `frontend/package.json`의 디렉토리가 별도 프로젝트로 감지된다).
      ```
      AskUserQuestion(
        questions: [{
@@ -27,7 +27,7 @@
        }]
      )
      ```
-     복합을 선택하면 각 행의 명령을 `&&`로 잇고 타입 키는 프로젝트를 나타내는 이름으로 제안한다 (예: `fullstack`). 기존에 별도 타입·`roots`가 등록돼 있으면 이를 보존하고 미등록 프로젝트만 추가하는 안도 제시한다. 기존 `roots`를 지우거나 미확인 마커만으로 자동 확대하지 않는다. 명령 조합 규칙과 주의점은 힌트 카탈로그의 "복합 타입" 절을 따른다.
+     복합을 선택하면 각 행의 명령을 `&&`로 잇고 타입 키는 프로젝트를 나타내는 이름으로 제안한다 (예: `fullstack`). 복합 명령은 저장소 루트에서 돌므로 `roots: ["."]`를 함께 등록한다(없으면 `frontend/package.json`의 디렉토리가 별도 프로젝트로 감지된다). 기존에 별도 타입·`roots`가 등록돼 있으면 이를 보존하고 미등록 프로젝트만 추가하는 안도 제시한다. 기존 `roots`를 지우거나 미확인 마커만으로 자동 확대하지 않는다. 명령 조합 규칙과 주의점은 힌트 카탈로그의 "복합 타입" 절을 따른다.
    - 매칭되지 않으면 프로젝트 구조(빌드 스크립트, README, CI 설정)를 근거로 추론해 제안하되 근거를 함께 표시한다. 근거 없는 명령을 지어내지 않는다.
    - 아무 빌드 파일도 감지되지 않으면 → `프로젝트 타입 등록 : 건너뜀 (감지 실패)` 출력 후 1단계로 진행한다 (파이프라인 게이트가 fail-closed로 처리).
 4. **사용자 확인**:
@@ -46,7 +46,12 @@
    )
    ```
    - "등록" → 5로 진행. "명령 수정" → 입력값 반영 후 5로 진행. "건너뛰기" → `프로젝트 타입 등록 : 건너뜀 (사용자 선택)` 출력 후 1단계로 진행.
-5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). Codex에서는 위 helper에 `{"projectTypes":{"{타입키}":{확정한 필드만}}}` 형태의 updates만 전달해 기존 타입의 다른 필드와 사용자 정의 필드를 보존한다. Claude Code는 기존 Edit를 사용한다. `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다.
+5. **config 기록**: 확정 값을 `projectTypes.{타입키}`에 기록한다 (`detect`/`build`/`test`/`focusedTest`/`warningPattern`/`artifacts`. 빈 제안 값은 필드를 생략한다). Codex에서는 위 helper에 `{"projectTypes":{"{타입키}":{확정한 필드만}}}` 형태의 updates만 전달해 기존 타입의 다른 필드와 사용자 정의 필드를 보존한다. Claude Code는 기존 Edit를 사용한다. `focusedTest`는 선택 필드로, 특정 테스트만 실행하는 명령 템플릿이다 — `{files}`(테스트 파일 경로 공백 구분) 또는 `{pattern}`(클래스 글롭 — 파일명에서 유도) 플레이스홀더를 쓴다. 미등록 시 gx-tdd가 전체 `test` 명령으로 폴백한다. 레이어별로 등록할 때 `/`가 든 detect는 그 파일의 디렉토리에서 명령을 실행하고 `{files}`도 그 디렉토리 기준이다. 같은 디렉토리로 들어가는 앞의 `cd`는 helper가 벗기며, 다른 디렉토리로 가는 `cd`와 테스트를 제외하지 않은 custom `build`(`buildOnly` 없음)는 config 오류다.
+
+   **기록 직후 감지 확인** (이번에 등록·변경한 타입이 있을 때, git만): gx-tdd·gx-verify가 쓰는 테스트 계획 helper로 감지되는지 확인한다. 설치된 [gx-test-plan.py](../../../../scripts/gx-test-plan.py)를 `python "<GX_PLUGIN_ROOT>/scripts/gx-test-plan.py" plan --cwd "<PROJECT_ROOT>" --base HEAD --run-id gx-setup-detect --full`로 실행한다 (Bash는 `python3`). 명령은 실행하지 않고 JSON만 출력하며 파일을 쓰지 않는다.
+   - 출력 `entries[].project`(`타입:디렉토리`)에 이번 타입이 있으면 `타입 감지 : 확인 ✅ ({타입}:{디렉토리} …)`.
+   - exit 1의 `no project types detected`·`configured project root not detected`, 이번 타입이 `entries`에 없음, 그 밖의 config 오류(`cd`·`buildOnly`·test 명령 누락)는 감지 실패다. 원인과 현재 `detect`·`roots`·명령, 그리고 config 수정안(파일명 marker로 바꾸기, 실제 저장소 상대 경로로 고치기, 루트 복합 명령의 `roots: ["."]`, 다른 디렉토리로 가는 `cd` 제거, `buildOnly` 추가 중 해당하는 것)을 보여 주고 `AskUserQuestion`으로 "수정안 적용 (Recommended)"·"그대로 두기 (gx-tdd·gx-verify 검증이 막힘)"를 묻는다. 적용하면 위 config 기록 규칙대로 반영하고 이 확인을 1회 다시 한다. 그대로 두기면 `타입 감지 : 실패 — {원인}`으로 표시하고 진행한다.
+   - 커밋이 없어 `HEAD`가 없으면 `타입 감지 : 보류 (커밋 없음)`, svn이면 `타입 감지 : 건너뜀 (SVN — Git 전용 helper)`로 표시한다.
 6. **권한 등록 (Claude Code만)**: build/test 명령의 첫 토큰에서 prefix 권한을 도출하고 (예: `make test` → `Bash(make *)`) 확인받는다. **Codex에서는 이 단계에서 `.claude/settings.local.json`을 읽거나 수정하지 않는다.** 대신 Python/Bash/Git 명령의 실제 실행 가능 여부와 `/hooks`에서 사용자가 GX hook을 검토·신뢰했는지 확인한다. 필요한 명령 권한은 현재 Codex 정책에 따라 처리하며 확인되지 않은 상태를 `권한 설정 완료`로 표시하지 않는다:
    ```
    AskUserQuestion(

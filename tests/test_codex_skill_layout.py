@@ -178,10 +178,13 @@ class SkillInstructionLayoutTests(unittest.TestCase):
                     self.assertIn("상대경로는 이 파일의 위치를 기준으로 해석한다.", self.text(reference).splitlines()[0])
 
         state = SKILLS / "gx-tdd/references/pipeline-state.md"
-        for relative in ("../phases/setup-resume.md", "frontend-testing.md"):
+        operations = SKILLS / "gx-tdd/references/pipeline-operations.md"
+        for owner, relative in ((state, "../phases/setup-resume.md"), (operations, "frontend-testing.md")):
             with self.subTest(pointer=relative):
-                self.assertIn(f"`{relative}`", self.text(state))
-                self.assertTrue((state.parent / relative).is_file())
+                self.assertIn(f"`{relative}`", self.text(owner))
+                self.assertTrue((owner.parent / relative).is_file())
+        self.assertIn("상대경로는 이 파일의 위치를 기준으로 해석한다.", self.text(operations).splitlines()[0])
+        self.assert_relative_links_resolve(operations)
 
     def assert_contract_load(self, name: str) -> None:
         directory = SKILLS / name

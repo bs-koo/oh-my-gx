@@ -64,13 +64,7 @@ ARGS에 `--non-interactive`가 포함되면 **비대화 모드**로 동작한다
 
 ## 실행 절차
 
-### Step 0: 정체성 확인
-
-```
-oh-my-gx:gx-verify — 완료 검증 게이트 진입.
-신선한 실행 증거를 수집합니다.
-증거 없이 다음 단계 진입 불가.
-```
+진입 배너는 출력하지 않는다. 바로 Step 0.5부터 수행한다.
 
 ### Step 0.5: 경고 baseline 로드
 
@@ -80,10 +74,11 @@ oh-my-gx:gx-verify — 완료 검증 게이트 진입.
 2. **git**: `git branch --show-current` → `/`를 `-`로 치환 → `DEV_DIR = .dev/{branch-slug}/`. 결과가 빈 문자열(detached HEAD 등)이면 baseline 탐색을 건너뛰고 그 사실을 보고한다. **svn**: `.dev/.active`가 가리키는 `DEV_DIR = .dev/{slug}/`를 사용한다 (`.active` 부재·공백 시 `.dev/trunk/` 폴백).
 3. `${DEV_DIR}/state.md`가 존재하고 **`status: in_progress`**(진행 중 파이프라인)이며 최상위 필드 `warnings-baseline: N`이 있으면 로드한다. **`status: completed`인 옛 파이프라인의 baseline은 로드하지 않는다** (stale 기준에 의한 오차단 방지).
 4. 조건 미충족(파일 없음·완료 상태·필드 없음 — 단독 호출 등)이면 → **baseline 없음**으로 진행한다 (Step 4에서 경고 수 보고만, 비교 차단 없음).
+5. baseline 유무와 무관하게, `${DEV_DIR}/state.md`가 `status: in_progress`이고 `known-failures`(기존 실패 ID 목록)·`test-plan-override`가 있으면 로드한다.
 
 ### Step 1: 검증 명령 식별
 
-Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 포함한 계획을 생성한다. 필수 테스트의 RED 해시 확인은 생략하지 않는다. 이 계획을 review와 verify에서 공유하며 모든 감지 프로젝트의 entry 또는 명시적 제외 사유를 확인한다. helper 실패 시 기본값은 게이트 차단이다. 사용자의 전체 회귀 요청은 helper `--full`로 반영한다. **SVN은 Git helper·지문·증거 재사용을 적용하지 않는다.** 모든 감지 프로젝트의 config `test`와 테스트가 없는 `buildOnly`를 순차 직접 실행하는 보수적 폴백을 사용한다. 테스트 수·exit·경고 게이트는 동일하게 지킨다.
+Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 포함한 계획을 생성한다. 필수 테스트의 RED 해시 확인은 생략하지 않는다. 이 계획을 review와 verify에서 공유하며 모든 감지 프로젝트의 entry 또는 명시적 제외 사유를 확인한다. helper 실패 시 기본값은 게이트 차단이다. `test-plan-override`가 로드되었으면 helper `override` 계획으로 그 `command`를 `reuse`/`record`하고 다시 묻지 않는다(테스트 실행 계약 "계획 실패 처리"). 사용자의 전체 회귀 요청은 helper `--full`로 반영한다. **SVN은 Git helper·지문·증거 재사용을 적용하지 않는다.** 모든 감지 프로젝트의 config `test`와 테스트가 없는 `buildOnly`를 순차 직접 실행하는 보수적 폴백을 사용한다. 테스트 수·exit·경고 게이트는 동일하게 지킨다.
 
 프로젝트 타입별 검증 명령:
 
@@ -103,7 +98,7 @@ Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 
 **감지 실패 시 (config.json 부재·projectTypes 미매칭·명령 결정 불가)**:
 - 기본값은 **게이트 차단**이다. 검증 명령 없이 조용히 통과하는 것은 Iron Law 3 위반.
 - **비대화 모드**: 질문 없이 즉시 게이트 차단으로 종료한다 — 보고: "검증 명령 미감지 (비대화 모드 fail-closed)".
-- (대화형) AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다. (영구 등록은 /gx-setup의 프로젝트 타입 등록을 사용하세요)"
+- (대화형) AskUserQuestion으로 처리한다: "검증 명령을 감지하지 못했습니다. 게이트를 진행하려면 명령이 필요합니다. (영구 등록은 /gx-setup의 프로젝트 타입 등록을 사용하세요)" — helper 오류 원문 한 줄과 config 수정안을 본문에 함께 보인다
   - "직접 입력" → 입력받은 명령으로 Step 2 진행
   - "건너뛰기 (위험 수용)" → 테스트 검증 없이 진행하되, 보고에 "위험 수용: 검증 명령 미감지"를 명시한다. trust-ledger 기록은 호출한 오케스트레이터가 수행한다 (이 스킬은 Write 권한이 없다)
   - "중단" → 게이트 차단 유지. commit/PR 진입 불가를 보고
@@ -112,16 +107,16 @@ Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 
 
 계획의 test entry마다 `reuse`를 확인한다. **같은 runId·정확한 코드 지문·configHash·명령·scope·로그 해시가 모두 일치한 성공 증거**는 재사용한다. 나머지는 선택된 명령을 직접 실행하고 `record`한다. 이전 세션·실패·0건·실행 수 미확정 결과는 재사용하지 않는다. 범위를 줄일 근거가 없으면 helper가 명시한 전체 폴백을 실행한다. 단독 verify는 새 runId이므로 기존 증거를 재사용하지 않는다.
 
-검증 실행 중에는 다른 테스트·빌드 명령을 병행하지 않는다 (호출자 포함 — 같은 빌드 데몬·DB·CPU 경합은 시간 제한 테스트 오탐과 테스트 프로세스 메모리 부족을 부른다). 복수 타입도 config 등록 순서대로 하나씩 실행한다.
+검증 실행 중에는 다른 테스트·빌드 명령을 병행하지 않는다 (호출자 포함 — 같은 빌드 데몬·DB·CPU 경합은 시간 제한 테스트 오탐과 테스트 프로세스 메모리 부족을 부른다). 복수 타입도 config 등록 순서대로 하나씩 실행한다. 시작 알림·백그라운드 실행·시간 초과는 테스트 실행 계약 "긴 실행과 시간 초과"를 따른다.
 
 ```bash
 # 예: java-spring
-./gradlew test --tests LoginTest  # 선택 계획 예시, timeout: 300000 (5분)
+./gradlew test --tests LoginTest  # 선택 계획 예시, timeout: config timeouts.build
 ```
 
 수집 정보:
 - exit code
-- 테스트 통과 수 / 실패 수
+- 테스트 통과 수 / 실패 수 / 실패 테스트 ID (`known-failures` 대조용)
 - 실행 시간
 - 출력 마지막 30줄 (실패 시 분석용)
 - 경고 수 (baseline 비교용 — 아래 측정 규약 참조)
@@ -137,7 +132,7 @@ Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 
 계획의 build entry도 정확히 일치하는 같은 실행 증거는 재사용한다. 없으면 `buildOnly`를 직접 실행하고 기록한다. 빌드 명령에 테스트가 포함되지 않게 한다. custom 명령의 테스트 제외 여부를 확정할 수 없으면 `buildOnly`를 명시할 때까지 차단한다. 기본 Gradle 명령의 제한적 변환은 test-execution.md를 따른다.
 
 ```bash
-./gradlew build -x test testClasses  # timeout: 300000
+./gradlew build -x test testClasses  # timeout: config timeouts.build
 ```
 
 수집 정보:
@@ -158,29 +153,18 @@ Git은 먼저 test-execution.md의 helper로 변경·태스크 소유 관계를 
 ```
 
 판정 (아래 순서로 하나씩 평가한다 — **이 목록이 판정의 단일 기준**이다):
-1. 테스트 실패(1건 이상 failures) 또는 빌드 exit ≠ 0 → **게이트 차단**
+1. `known-failures` 밖의 **새** 테스트 실패 1건 이상 또는 빌드 exit ≠ 0 → **게이트 차단**. 목록 안 실패는 차단하지 않고 보고만 한다. 해소 알림·시간 초과는 테스트 실행 계약을 따르며 하네스·비대화 모드와 무관하다
 2. **테스트 실행 수 확인**: 실행 수가 0건이거나 확인 불가("No tests found", gradle `:test UP-TO-DATE`처럼 콘솔에 개수 미표기)이면 먼저 실행 수를 확정한다 — gradle은 해당 프로젝트 `build/test-results/test/*.xml`의 tests 합계를 확인하고 신선한 증거가 없으면 helper plan --rerun-tests로 계획을 다시 만들어 **선택된 명령**에 `--rerun-tasks`를 붙여 1회 재실행한다. 실제 실행한 정확한 명령으로 계획·증거를 다시 기록한다. 0건/미확정은 재사용 가능한 증거를 만들지 않는다. 확정 후에도 0건이면 → **게이트 차단**. **비대화 모드**: 질문 없이 차단 보고("테스트 실행 0건")로 종료. (대화형) AskUserQuestion — "테스트 명령/경로 확인 후 재실행" / "위험 수용 (테스트 부재 진행 — 보고에 명시, trust-ledger 기록은 오케스트레이터)" / "중단". **단, Step 1에서 이미 '건너뛰기(위험 수용)'를 선택했다면 이 검사를 건너뛴다** (동일 위험의 이중 차단 방지). 명시적 ignore로 test entry가 없는 프로젝트는 제외 사유를 보고하고 저장소 필수 구조 검사·린트는 유지한다.
 3. **신규 경고 비교** (Step 0.5에서 baseline을 로드한 경우만): 동일 명령·scope의 현재 경고 수(테스트+빌드)가 `warnings-baseline`보다 크면 측정 규약 3항대로 로그 원문을 대조하고, **실제 신규 경고로 확인되면** → **게이트 차단**. **비대화 모드**: 질문 없이 차단 보고(신규 경고 목록 포함)로 종료. (대화형) AskUserQuestion — "수정 후 재실행" / "위험 수용 (통과 처리하되 보고에 "위험 수용: 신규 경고 {N}건" 명시, trust-ledger 기록은 오케스트레이터)". baseline이 없으면(단독 호출 등) 경고 수를 보고만 한다.
 4. 위 어디에도 걸리지 않음 → **게이트 통과**
 
 ### Step 5-A: 게이트 통과
 
-통과 시 **코드 지문을 함께 계산해 보고에 싣는다**. 이 스킬은 Write 권한이 없으므로 state.md 기록은 호출한 오케스트레이터가 수행한다.
+통과 시 **코드 지문을 함께 계산해 기록용 블록에 싣는다**. state.md 기록은 호출한 오케스트레이터가, 단독 호출이면 메인 세션이 `references/output.md`대로 수행한다.
 
 git 저장소는 통과 보고 전에 반드시 `Read("references/fingerprint.md")`를 읽고 현재 하네스의 계산·형식·실패 처리를 수행한다. Codex helper 부재·실패·빈/잘못된 지문은 테스트·빌드가 통과했어도 게이트 차단이며 pending·기존 지문 제거를 요청한다. 이전 passed를 유지하지 않는다. svn은 지문을 "해당 없음"으로 보고한다.
 
-```
-✅ verify 게이트 통과
-
-증거:
-- 테스트: 47 pass, 0 fail
-- 빌드: success
-- 실행 시각: 2026-05-16T15:00:00
-- 코드 지문: 7c9e814:3ca970cc12ab
-
-오케스트레이터 조치: state.md에 `verify-status: passed`와 위 `verify-fingerprint`를 기록하세요.
-다음 단계 진행 가능 (commit, PR 등).
-```
+통과 출력은 `Read("references/output.md")`대로 나눈다. 사용자에게는 결과·테스트 수·범위 한 줄만 보인다. 코드 지문 등 내부 식별자와 state 기록 지시(`verify-status: passed`·`verify-fingerprint`)는 오케스트레이터 기록용 블록에만 둔다.
 
 오케스트레이터(`oh-my-gx:gx-tdd`)가 호출했으면 다음 Phase 진입 신호.
 
