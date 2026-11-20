@@ -117,12 +117,22 @@ class CommitChainTests(unittest.TestCase):
 
 
 class ReviewOnlyTests(unittest.TestCase):
-    """Medium-6: 리뷰만은 gx-tdd 리뷰 phase나 교차 리뷰로 잇는다."""
+    """Medium-6: 리뷰만 요청과 엣지케이스 조사의 범위를 확인한다."""
 
     def test_review_only_has_its_own_route(self):
         line = row(read(WORK / "SKILL.md"), "| 리뷰만")
         self.assertIn("--phase review", line)
-        self.assertIn("gx-cross-review", line)
+        self.assertIn("읽기 전용", line)
+        self.assertNotIn("gx-edge-cases", line)
+
+    def test_explicit_edge_case_requests_route_to_the_standalone_skill(self):
+        body = read(WORK / "SKILL.md")
+        line = row(body, "| 구현 후 엣지케이스 조사")
+        self.assertIn("oh-my-gx:gx-edge-cases", line)
+        routing = read(ROOT / ".claude/rules/skill-routing.md")
+        self.assertIn("`/gx-edge-cases`", row(routing, "| `엣지케이스 조사`"))
+        self.assertNotIn("gx-cross-review", body)
+        self.assertNotIn("gx-cross-review", routing)
 
 
 class CompletionRequestScopeTests(unittest.TestCase):

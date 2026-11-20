@@ -458,9 +458,18 @@ class NormalizedPlanTests(unittest.TestCase):
 
 
 class InstalledSkillResourceTests(unittest.TestCase):
+    def test_both_plugin_manifests_discover_edge_case_replacement(self):
+        root = Path(__file__).resolve().parents[1]
+        for manifest_dir in (".claude-plugin", ".codex-plugin"):
+            with self.subTest(manifest=manifest_dir):
+                manifest = json.loads((root / manifest_dir / "plugin.json").read_text(encoding="utf-8"))
+                skills = root / manifest["skills"]
+                self.assertTrue((skills / "gx-edge-cases/SKILL.md").is_file())
+                self.assertFalse((skills / "gx-cross-review/SKILL.md").exists())
+
     def test_split_skills_resolve_read_pointers_after_install_relocation(self):
         source = Path(__file__).resolve().parents[1] / ".claude" / "skills"
-        skills = ("gx-work", "gx-tdd", "gx-cross-review", "gx-setup", "gx-humanizer", "gx-visualize", "gx-verify")
+        skills = ("gx-work", "gx-tdd", "gx-edge-cases", "gx-setup", "gx-humanizer", "gx-visualize", "gx-verify")
         with tempfile.TemporaryDirectory(prefix="gx-installed-") as directory:
             installed = Path(directory) / "plugin" / ".claude" / "skills"
             for name in skills:
@@ -468,6 +477,10 @@ class InstalledSkillResourceTests(unittest.TestCase):
             for name in skills:
                 entry = installed / name / "SKILL.md"
                 self.assertLess(len(entry.read_bytes()), 20000, name)
+                if name == "gx-edge-cases":
+                    runtime = "../gx-work/references/codex-runtime.md"
+                    self.assertIn(runtime, entry.read_text(encoding="utf-8"))
+                    self.assertTrue((entry.parent / runtime).is_file())
                 candidates = [entry]
                 candidates.extend((installed / name / "references").glob("*.md"))
                 for path in candidates:
@@ -479,6 +492,30 @@ class InstalledSkillResourceTests(unittest.TestCase):
                     for relative in re.findall(r'python(?:3)? (\.\./scripts/[a-z_]+\.py)', path.read_text(encoding="utf-8")):
                         with self.subTest(skill=name, command_source=path.name, relative=relative):
                             self.assertTrue((path.parent / relative).is_file(), str(path.parent / relative))
+
+
+class EdgeCaseScopeContractTests(unittest.TestCase):
+    def test_edge_case_scope_uses_current_base_and_excludes_runtime_artifacts(self):
+        root = Path(__file__).resolve().parents[1]
+        skill = (root / ".claude/skills/gx-edge-cases/SKILL.md").read_text(encoding="utf-8")
+        scope = skill.split("## 1. 조사 범위 잡기", 1)[1].split("## 2.", 1)[0]
+
+        with self.subTest(rule="자동 기준 우선순위"):
+            sources = (".dev/{branch-slug}/state.md", ".claude/config.json", "conventions.baseBranch", "origin/HEAD")
+            positions = tuple(scope.find(source) for source in sources)
+            self.assertTrue(all(position >= 0 for position in positions), sources)
+            self.assertEqual(positions, tuple(sorted(positions)))
+            state_line = next(line for line in scope.splitlines() if sources[0] in line)
+            self.assertIn("`base`", state_line)
+
+        with self.subTest(rule="공통 경로 제외와 명시 조회"):
+            self.assertIn(":(exclude).dev", scope)
+            self.assertIn("`diff --no-ext-diff --no-textconv <기준> -- <pathspec>`", scope)
+            self.assertIn("`ls-files --others --exclude-standard -- <pathspec>`", scope)
+            self.assertTrue(any("명시" in line and "`.dev" in line and "경로" in line
+                                for line in scope.splitlines()))
+            self.assertTrue(any("직접 읽" in line and "`.dev" in line and "계약" in line
+                                for line in skill.splitlines()))
 
 
 if __name__ == "__main__":

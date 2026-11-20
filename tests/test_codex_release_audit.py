@@ -203,7 +203,7 @@ LEGACY_MARKERS = ("제거", "레거시", "기존 gx-dev", "pipeline: gx-dev", "�
 CURRENT_GUIDES = (
     COMMIT, PULL_REQUEST,
     *sorted((SKILLS / "gx-setup").rglob("*.md")),
-    *sorted((SKILLS / "gx-cross-review").rglob("*.md")),
+    *sorted((SKILLS / "gx-edge-cases").rglob("*.md")),
     *sorted((SKILLS / "gx-visualize").rglob("*.md")),
     *sorted((ROOT / "agents").glob("*.md")),
     ROOT / ".claude/rules/skill-routing.md",
@@ -228,7 +228,9 @@ class RemovedDevPipelineGuidanceTests(unittest.TestCase):
         def description(name):
             return between(text(ROOT / "agents" / f"{name}.md"), "description: |", "<example>")
 
-        self.assertIn("oh-my-gx:gx-cross-review", description("qa-manager"))
+        qa_manager = description("qa-manager")
+        self.assertIn("oh-my-gx:gx-tdd", qa_manager)
+        self.assertNotIn("gx-cross-review", qa_manager)
         self.assertIn("oh-my-gx:gx-tdd", description("researcher"))
         coder = description("coder")
         self.assertIn("레거시", coder)
@@ -291,7 +293,7 @@ class UserDocumentBehaviourTests(unittest.TestCase):
         index = text(ROOT / "index.html")
         faq = between(index, "계획만 요청하거나 기존 계획을 가져올 수 있나요?", "</details>")
         guide = between(text(ROOT / "docs/guide.md"), "## 요청 예시", "## 결과에 맞춰 다음 단계 선택")
-        codex = between(text(ROOT / "docs/codex-guide.md"), "계획만 필요하거나", "```text\noh-my-gx:gx-cross-review")
+        codex = between(text(ROOT / "docs/codex-guide.md"), "계획만 필요하거나", "```text\noh-my-gx:gx-edge-cases")
         for name, body in (("index-faq", faq), ("guide", guide), ("codex-guide", codex)):
             with self.subTest(document=name):
                 self.assertIn("대화로", body)

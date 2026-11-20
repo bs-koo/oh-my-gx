@@ -69,11 +69,11 @@ oh-my-gx:gx-work로 이 기획서의 기능을 구현하고 PR까지 올려줘.
 계획만 요청하면 gx-work가 범위·작업 단위·AC·예상 변경 파일·테스트 의도를 대화로 제시하고 종료합니다. 별도 저장 요청 없이 파일·인계를 만들거나 브랜치를 전환하지 않습니다. PRD·설계 문서로 남기려면 저장을 요청하세요. 확인을 받은 뒤 gx-tdd가 읽기 전용으로 PRD·설계만 작성합니다. `gx-tdd`도 직접 사용할 수 있으며 이 독립 호출에는 gx-work 진입 질문을 새로 붙이지 않습니다. 직접 호출은 종료점을 묻지 않고(기본 검증) 정해지지 않은 모드·프로파일만 묻습니다. 핵심 모드는 진입 질문에서 고르거나 `--core`·명시적 요청으로 선택합니다.
 
 ```text
-oh-my-gx:gx-cross-review --advisor native로 변경사항을 검토해줘.
+oh-my-gx:gx-edge-cases로 --base main 기준 주문 취소 변경의 엣지케이스를 조사해줘.
 oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘.
 ```
 
-Codex 안에서는 먼저 `--advisor native`를 사용하세요. 현재 Codex의 역할 에이전트로 리뷰하며, 외부 Codex를 다시 실행할 때 발생할 수 있는 홈 디렉터리 권한 문제를 피할 수 있습니다.
+`gx-edge-cases`는 변경 코드의 실제 호출 경로를 따라가며, 기대 동작과 기존 테스트의 단언을 대조합니다. 코드·문서·테스트를 읽고 발생 조건, 코드 근거, 영향, 회귀 테스트 제안을 대화로 보고합니다. `--base <ref>`로 비교 기준을 지정하거나 파일·기능으로 범위를 좁힐 수 있습니다. 테스트와 빌드의 실행 검증은 `gx-verify`가 담당합니다.
 
 검증 후 Git 작업까지 맡기려면 별도로 요청합니다.
 
@@ -109,7 +109,8 @@ Superpowers와 GX는 별도 플러그인입니다. GX 사용에 Superpowers 설�
 | GX로 개발 시작 | `oh-my-gx:gx-work로 이 기능을 구현해줘` |
 | GX로 계획만 작성 | `oh-my-gx:gx-work로 이 기능의 계획만 작성해줘` |
 | GX로 구현부터 PR까지 | `oh-my-gx:gx-work로 이 기능을 구현하고 PR까지 올려줘` |
-| GX로 검토·검증 | `oh-my-gx:gx-cross-review --advisor native로 검토하고 gx-verify로 검증해줘` |
+| GX로 엣지케이스 조사 | `oh-my-gx:gx-edge-cases로 구현이 끝난 주문 취소의 빠진 예외 케이스를 조사해줘` |
+| GX로 실행 검증 | `oh-my-gx:gx-verify로 테스트와 빌드를 실행해 검증해줘` |
 
 ## 4. 갱신과 문제 확인
 
@@ -128,6 +129,6 @@ codex.cmd plugin list --json
 |---|---|
 | GX 스킬이 안 보임 | 설치 목록·활성 상태를 확인하고 새 Codex 세션에서 `/skills` 확인 |
 | 보호 훅이 안 보임 | `/hooks`에서 GX 정의·신뢰 확인 |
-| 외부 Codex 리뷰가 권한 오류로 중단됨 | `--advisor native`로 요청 |
+| 엣지케이스 조사 범위가 비어 있음 | 커밋된 변경의 `--base <ref>` 또는 확인할 파일·기능 지정 |
 
 이전 버전은 [PR #89](https://github.com/bs-koo/oh-my-gx/pull/89)의 수정 브랜치에서 설치된 GX 스킬 17개와 핵심 작업 흐름을 실측했습니다. 이 기록은 현재 버전의 새 설치 발견과 실제 UI 동작을 입증하지 않습니다. RED 역할의 구현 소스 미열람은 독립 trace가 없어 미확인이며, 역할 도구 목록은 권한을 강제하는 경계가 아닙니다. 전체 결과는 [실측 보고서](https://github.com/bs-koo/oh-my-gx/blob/main/docs/reports/2026-09-14-codex-validation.md)를 참고하세요.

@@ -951,7 +951,7 @@
     <div class="section-head">
       <p class="eyebrow">분석 · 협업 · 글쓰기</p>
       <h2 class="display-lg">분석과 협업을 지원합니다</h2>
-      <p>정책·기술 조사, 교차 검토, 환경 설정, 커밋·PR 작성과 문장 교정을 목적에 맞게 요청할 수 있습니다.</p>
+      <p>정책·기술 조사, 엣지케이스 조사, 환경 설정, 커밋·PR 작성과 문장 교정을 목적에 맞게 요청할 수 있습니다.</p>
     </div>
 
     <div class="grid grid-3">
@@ -972,8 +972,8 @@
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
-        <h3>gx-cross-review · 구현 교차 검토</h3>
-        <p>요구사항·설계·검증 기록을 바탕으로 수용 기준 충족, 범위 이탈, 새 위험을 검토합니다. Codex에서는 <code>--advisor native</code>로 현재 환경의 역할 리뷰를 요청할 수 있습니다.</p>
+        <h3>gx-edge-cases · 구현 후 엣지케이스 조사</h3>
+        <p>변경 코드의 호출 경로와 기존 테스트를 읽고 놓친 예외 케이스를 찾습니다. 발생 조건과 코드 근거, 회귀 테스트 제안을 보고합니다.</p>
       </div>
       <div class="card">
         <span class="card-icon">◆</span>
@@ -1168,7 +1168,7 @@ codex.cmd</code></pre></div>
       <div class="code-window"><pre class="code-body"><code>oh-my-gx:gx-work로 이 프로젝트 구조를 파악해줘.
 oh-my-gx:gx-work로 로그인 입력 검증의 계획만 세워줘.
 oh-my-gx:gx-work로 이 계획대로 구현하고 검증해줘.
-oh-my-gx:gx-cross-review --advisor native로 변경사항을 검토해줘.
+oh-my-gx:gx-edge-cases로 --base main 기준 변경의 엣지케이스를 조사해줘.
 oh-my-gx:gx-work로 중단한 개발을 이어서 PR까지 만들어줘.</code></pre></div>
       <p>gx-work는 개발 진입 때 완료점을 묻고 PR까지를 추천합니다. 요청에 적은 완료점은 다시 묻지 않습니다. 검증된 변경의 커밋·PR만 필요하면 <code>oh-my-gx:gx-commit</code>, <code>oh-my-gx:gx-pull-request</code>를 직접 요청할 수 있습니다. 작업 브랜치와 환경별 실행 권한은 각 스킬에서 확인합니다.</p>
       <p><a class="btn btn-primary" href="codex/">Codex 사용 가이드</a></p>
