@@ -1,6 +1,6 @@
 {
   "name": "oh-my-gx",
-  "description": "프로젝트 지식 관리, 요구사항 정의, 설계·구현·리뷰·검증과 PR 생성을 지원하는 개발 워크플로.",
+  "description": "프로젝트 지식 관리와 설계·TDD·검증·PR을 지원합니다. v3.3.0에서 gx-cross-review를 읽기 전용 엣지케이스 조사 스킬(gx-edge-cases)로 교체했습니다.",
   "version": "3.3.0",
   "author": {
     "name": "bs-koo"
@@ -16,6 +16,7 @@
     "dev-workflow",
     "prd",
     "code-review",
+    "edge-cases",
     "ai-workflow",
     "tdd",
     "domain-context"
