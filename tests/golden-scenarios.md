@@ -87,7 +87,7 @@ printf 'pipeline: gx-tdd\nstatus: in_progress\nverify-status: pending\n' > .dev/
 
 위 Claude Code 시나리오 및 `scripts/behavior-tests.sh`의 Claude CLI 결과와 별도로, [codex-smoke.md](codex-smoke.md)의 H/R/Q/S 시나리오와 네이티브 실행 검증을 수행한다. Codex의 훅 판정·도구 API·역할 전달은 Claude와 다르므로 Claude mock 통과만으로 Codex 지원을 판정하지 않는다.
 
-실제 설치 캐시에서 스킬 17개와 역할 리소스를 확인하고, setup→TDD→교차 리뷰→verify→커밋 준비를 새 소비 프로젝트에서 3회 실행한다. 하네스 버전, 운영체제, 훅 신뢰, 실제 모델과 에이전트 실행 증거를 기록하며, 미실행 항목은 NOT_RUN으로 남긴다. 보호 브랜치, verify 미통과 및 stale fingerprint 차단은 실제 훅 결과와 HEAD/index 불변으로 확인한다.
+실제 설치 캐시에서 현재 스킬과 역할 리소스를 확인하고, setup → TDD → 엣지케이스 조사 → verify → 커밋 준비를 새 소비 프로젝트에서 3회 실행한다. 엣지케이스 조사는 [E1~E3의 증거 기준](codex-smoke.md#구현-후-엣지케이스-조사)을 적용한다. 하네스 버전, 운영체제, 훅 신뢰, 실제 모델과 에이전트 실행 증거를 기록하며, 미실행 항목은 NOT_RUN으로 남긴다. 보호 브랜치, verify 미통과 및 stale fingerprint 차단은 실제 훅 결과와 HEAD/index 불변으로 확인한다.
 
 ## 결과 기록
 

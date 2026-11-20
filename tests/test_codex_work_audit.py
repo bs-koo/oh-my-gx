@@ -164,7 +164,7 @@ class SpecialistRoutingTests(unittest.TestCase):
     def test_entry_lists_specialist_skills_and_ready_work_lookup(self):
         entry = read(REFS / "tdd-entry.md")
         for skill in ("gx-context", "gx-lens", "gx-research", "gx-visualize", "gx-tech-debt", "gx-tdd",
-                      "gx-verify", "gx-cross-review", "gx-commit", "gx-pull-request", "gx-humanizer"):
+                      "gx-verify", "gx-edge-cases", "gx-commit", "gx-pull-request", "gx-humanizer"):
             self.assertIn(f"`oh-my-gx:{skill}`", entry)
         self.assertIn("../../gx-context/scripts/plan.py", entry)
         self.assertTrue((REFS / "../../gx-context/scripts/plan.py").resolve().is_file())

@@ -21,7 +21,7 @@
 # 16. context 변경 승인·종료점 + 단일 진입점 형제 스킬 호출
 # 17. force-push 훅 가드 G4 (v1.19.0)
 # 18. SVN .dev/.active 포인터 계약 (producer·consumer·폴백) (v1.19.0)
-# 19. cross-review fallback 3원 조건 단일화 + humanizer 영어 P1 치트시트(E2/E5/E6) (v1.19.0)
+# 19. 엣지케이스 조사 스킬 교체 + humanizer 영어 P1 치트시트(E2/E5/E6)
 # 20. 언어 중립화 projectTypes SSOT 계약 (v1.21.0)
 # 21. .dev 협업 공유 계약 (v1.21.0)
 # 22. 리뷰 후속 v1.21.1 계약 (사용자 문서·경계 밖 소비 지점)
@@ -62,8 +62,6 @@ skill_contract_text() {
     cat "$1" .claude/skills/gx-verify/references/fingerprint.md
   elif [ "$1" = .claude/skills/gx-setup/SKILL.md ]; then
     cat "$1" .claude/skills/gx-setup/references/{project-type-registration,authentication-git,authentication-svn,google-chat}.md
-  elif [ "$1" = .claude/skills/gx-cross-review/SKILL.md ]; then
-    cat "$1" .claude/skills/gx-cross-review/references/{codex-preflight,advisor-codex,advisor-native,result-format,finding-actions,fallback}.md
   elif [ "$1" = .claude/skills/gx-humanizer/SKILL.md ]; then
     cat "$1" .claude/skills/gx-humanizer/references/{quick-ko,quick-en,strict,voice}.md
   else
@@ -383,17 +381,15 @@ grep -q 'ACTIVE_SLUG' .claude/hooks/pre-tool-guard.sh || fail "훅 ACTIVE_SLUG �
 grep -qF '".active"' scripts/gx-work.py || fail "svn .dev/.active consumer 누락: scripts/gx-work.py"
 [ "$FAIL" -eq 0 ] && ok "SVN .dev/.active producer·consumer·폴백 확인"
 
-echo "[19/36] cross-review fallback 3원 조건 + humanizer P1 커버리지"
-if grep -qF 'prd.md/design.md 둘 다 없으면' <(skill_contract_text .claude/skills/gx-cross-review/SKILL.md); then
-  fail "cross-review fallback 구 조건(prd/design 둘 다) 잔존"
-fi
-grep -qF 'prd.md·ac.md·design.md 셋 다 없으면' <(skill_contract_text .claude/skills/gx-cross-review/SKILL.md) \
-  || fail "cross-review fallback 3원 조건(prd·ac·design 셋 다) 누락"
+echo "[19/36] 엣지케이스 조사 스킬 교체 + humanizer P1 커버리지"
+grep -qxF 'name: gx-edge-cases' .claude/skills/gx-edge-cases/SKILL.md \
+  || fail "gx-edge-cases 스킬 진입점 누락"
+[ ! -e .claude/skills/gx-cross-review/SKILL.md ] || fail "종료된 gx-cross-review 진입점 잔존"
 for code in E2 E5 E6; do
   awk '/### 영어 즉시 수정/{p=1} /### 영어 맥락 판단/{p=0} p' <(skill_contract_text .claude/skills/gx-humanizer/SKILL.md) \
     | grep "^| $code " >/dev/null || fail "humanizer 영어 P1 치트시트에 $code 누락"
 done
-[ "$FAIL" -eq 0 ] && ok "cross-review fallback 3원 + humanizer P1(E2/E5/E6) 확인"
+[ "$FAIL" -eq 0 ] && ok "gx-edge-cases 진입점과 humanizer P1(E2/E5/E6) 확인"
 
 echo "[20/36] 언어 중립화(projectTypes SSOT) 계약 정합"
 # --- PR1: config 신규 필드 + gx-verify 일반화 + 카탈로그 + gx-setup 등록 단계 ---

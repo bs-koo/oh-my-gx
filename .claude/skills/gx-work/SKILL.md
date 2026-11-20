@@ -16,7 +16,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 ## 진행 순서
 
 1. **요청 보존** — 원문 목표·제공 문서·제외 범위·요청한 종료점과 대화의 결정·부정·제한을 그대로 둔다. 단어 하나로 라우팅하지 않으며, 같은 run·범위에서 이미 답한 선택은 다시 묻지 않는다. 결과에 영향을 주는 미정·충돌만 묻는다.
-2. **의도 분류** — 아래 **의도별 처리** 표로 의도와 종료점을 정한다. 이해·계획·상태만이면 읽기 전용으로 끝낸다.
+2. **의도 분류** — 아래 **의도별 처리** 표로 의도와 종료점을 정한다. 이해·계획·상태만이면 읽기 전용으로 끝낸다. 구현 후 엣지케이스 조사 요청은 바로 해당 스킬을 실행하고 조사 결과에서 끝낸다.
 3. **상태 확인(읽기 전용)** — 프로젝트 지침을 읽고 분류한 의도로 `route`를 실행해 진행 상태·잠금·미응답 질문을 확인한다. 결과는 아래 **route 결과별 처리**를 따른다. 잠금·프로세스·기록은 바꾸지 않는다.
 4. **필요한 근거만 준비** — [작업 총괄 계약](references/tdd-entry.md)의 스킬 표에서 지금 부족한 근거에 맞는 스킬만 쓴다. 모든 스킬을 돌거나 결과를 개발로 자동 확장하지 않는다.
 5. **결과와 다음 단계 제시** — [판단과 검증 전달](references/reviewability.md)에 따라 근거·불확실성·추천 다음 단계를 짧게 보여준다. 새 질문 단계나 일괄 퀴즈를 만들지 않는다.
@@ -39,7 +39,8 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 | 진행 중 작업 이어서 | route `resume`의 run-id·목표·종료점·step으로 gx-tdd `--resume` | 저장된 종료점 |
 | 컨텍스트·용어·요구사항 정리, 진행 상태 동기화 | `oh-my-gx:gx-context`로 연결하고 그 결과에서 끝낸다 | `plan` |
 | 요구사항 정리 후 개발까지 | gx-context로 원장·계획을 반영한 뒤 같은 run으로 진입 질문 → 인계 | 요청한 종료점 |
-| 리뷰만 | 진행 중 gx-tdd 실행이면 `Skill("oh-my-gx:gx-tdd", args="--phase review")`, 완료된 구현의 교차 검토는 `oh-my-gx:gx-cross-review` | 리뷰 결과 |
+| 리뷰만 | 진행 중 gx-tdd 실행이면 `Skill("oh-my-gx:gx-tdd", args="--phase review")`. 그 밖에는 현재 세션에서 변경분과 관련 수용 기준을 읽기 전용으로 검토하고 근거가 있는 발견 사항을 보고한다 | 리뷰 결과 |
+| 구현 후 엣지케이스 조사, 빠진 예외 케이스 확인 | `Skill("oh-my-gx:gx-edge-cases")`로 조사 대상과 비교 기준·관심 사례를 전달한다. Codex는 설치된 해당 `SKILL.md`를 읽고 같은 절차를 실행한다 | 조사 결과 |
 | 커밋만·PR만 | route `--intent status`의 `state-file`로 현재 브랜치의 gx-tdd 실행 기록을 확인한다. 진행 중이면 아래 **지금 상태 커밋**인지 먼저 확인한다. 진행 중이거나 verify로 끝난 실행이면 아래 **종료점 변경**으로 재검증 뒤 진행한다. gx-tdd 실행 기록이 없으면 gx-commit·gx-pull-request 게이트만 수행(PR은 커밋 성공 뒤) | 요청한 결과 |
 
 이해·계획·상태만 요청하면 **stash, checkout, pull, 브랜치/worktree 생성, gx-setup, 빌드·테스트를 실행하지 않는다**. 저장 요청이 없으면 계획·질문·state 파일도 만들지 않는다. gx-setup은 자동 호출하지 않고 실제 누락이 실행을 막을 때만(route `setup-required`) `/oh-my-gx:gx-setup` 실행을 안내한다.

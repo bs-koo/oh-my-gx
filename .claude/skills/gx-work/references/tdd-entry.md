@@ -16,7 +16,7 @@ gx-work의 요청 판단·스킬 연결·결과 제안·TDD 진입 확인의 **�
 | 기술 부채 진단 | `oh-my-gx:gx-tech-debt` | 읽기 전용 |
 | PRD·설계·T태스크·RGR 개발과 재개 | `oh-my-gx:gx-tdd` | 진입 답변과 `validate-handoff` 통과 뒤에만 |
 | 완료 검증만 | `oh-my-gx:gx-verify` | 테스트 실행 근거로 판정 |
-| 교차 리뷰 | `oh-my-gx:gx-cross-review` | gx-tdd 완료 후 단발 |
+| 구현 후 엣지케이스 조사 | `oh-my-gx:gx-edge-cases` | 명시 요청 시 변경분과 테스트를 읽고 조사 결과에서 종료 |
 | 커밋·PR | `oh-my-gx:gx-commit`·`oh-my-gx:gx-pull-request` | 각 스킬의 게이트를 따르고 PR은 커밋 성공 뒤 |
 | 문장 다듬기 | `oh-my-gx:gx-humanizer` | 요청한 문서만 |
 
